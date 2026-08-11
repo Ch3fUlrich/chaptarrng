@@ -18,10 +18,14 @@
     "check-react-router-context": "node scripts/check-react-router-context.cjs",
     "lint-fix": "yarn lint --fix",
     "check-translations": "node frontend/build/check-missing-translation-keys.js",
+    "analyze": "ANALYZER=true webpack --env production --config ./frontend/build/webpack.config.js",
     "stylelint-linux": "stylelint $(find frontend -name '*.css') --config frontend/.stylelintrc",
     "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc",
     "sync-yunohost-package": "node scripts/sync-yunohost-package.mjs"
   },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/snapetech/chaptarrng.git"
@@ -151,6 +155,7 @@
     "typescript-plugin-css-modules": "5.2.0",
     "url-loader": "4.1.1",
     "webpack": "5.111.1",
+    "webpack-bundle-analyzer": "5.3.1",
     "webpack-cli": "7.2.3",
     "webpack-livereload-plugin": "3.0.2",
     "worker-loader": "3.0.8"
