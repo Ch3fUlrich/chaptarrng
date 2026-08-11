@@ -49,6 +49,7 @@
     "@microsoft/signalr": "10.0.11",
     "@sentry/browser": "7.119.1",
     "@sentry/integrations": "7.120.4",
+    "@tanstack/react-query": "4.42.0",
     "@types/node": "26.6.4",
     "@types/react": "18.2.79",
     "@types/react-dom": "18.2.25",
@@ -158,6 +159,7 @@
     "webpack-bundle-analyzer": "5.3.1",
     "webpack-cli": "7.2.3",
     "webpack-livereload-plugin": "3.0.2",
+    "workbox-webpack-plugin": "7.4.1",
     "worker-loader": "3.0.8"
   },
   "volta": {

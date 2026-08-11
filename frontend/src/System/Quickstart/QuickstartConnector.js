@@ -19,6 +19,7 @@ import {
   selectIndexerSchema,
   selectNotificationSchema } from 'Store/Actions/settingsActions';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+import queryClient from 'Store/queryClient';
 import Quickstart from './Quickstart';
 
 function createMapStateToProps() {
@@ -129,12 +130,16 @@ class QuickstartConnector extends Component {
   }
 
   fetchInstallationId = () => {
-    const request = createAjaxRequest({
-      url: '/system/status',
-      method: 'GET'
-    });
-
-    request.request.done((data) => {
+    // Use react-query's fetchQuery for caching: if /system/status was already
+    // fetched elsewhere (e.g., SystemStatus page), we get the cached response
+    // instantly instead of hitting the API again.
+    queryClient.fetchQuery(
+      ['systemStatus'],
+      () => createAjaxRequest({
+        url: '/system/status',
+        method: 'GET'
+      }).request
+    ).then((data) => {
       const installationId = data?.installationId;
 
       if (installationId) {
@@ -142,9 +147,7 @@ class QuickstartConnector extends Component {
       } else {
         this.props.loadQuickstartState();
       }
-    });
-
-    request.request.fail(() => {
+    }).catch(() => {
       this.props.loadQuickstartState();
     });
   };
