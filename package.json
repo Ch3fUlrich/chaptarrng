@@ -51,6 +51,7 @@
     "classnames": "2.5.1",
     "clipboard": "2.0.11",
     "connected-react-router": "6.9.3",
+    "dayjs": "1.11.21",
     "element-class": "0.2.2",
     "filesize": "11.0.25",
     "fuse.js": "7.5.0",
