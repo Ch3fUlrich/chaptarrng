@@ -345,7 +345,7 @@ namespace Chaptarr.Api.V1.Author
             // See AuthorController.DeleteAuthor - a bulk selection can add up to just as many books
             // as one huge author, so this goes through the same size-gated path instead of always
             // blocking the request on every synchronous BookDeletedEvent subscriber.
-            var queued = _authorService.DeleteAuthorsSyncOrQueue(resource.AuthorIds, false);
+            var queued = _authorService.DeleteAuthorsSyncOrQueue(resource.AuthorIds, resource.DeleteFiles);
 
             if (queued)
             {
