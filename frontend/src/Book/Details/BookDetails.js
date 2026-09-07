@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React, { Component, Fragment } from 'react';
+import React, { Component } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
 import DeleteBookModal from 'Book/Delete/DeleteBookModal';
@@ -13,6 +13,7 @@ import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
+import CalibrePushModal from 'Calibre/CalibrePushModal';
 import SwipeHeaderConnector from 'Components/Swipe/SwipeHeaderConnector';
 import ConvertPreviewModalConnector from 'Convert/ConvertPreviewModalConnector';
 import { icons } from 'Helpers/Props';
@@ -35,6 +36,7 @@ class BookDetails extends Component {
     super(props, context);
 
     this.state = {
+      isCalibrePushModalOpen: false,
       isOrganizeModalOpen: false,
       isRetagModalOpen: false,
       isConvertModalOpen: false,
@@ -84,6 +86,19 @@ class BookDetails extends Component {
     this.setState({ isConvertModalOpen: false });
   };
 
+  onCalibrePushPress = () => {
+    this.setState({ isCalibrePushModalOpen: true });
+  };
+
+  onCalibrePushModalClose = () => {
+    this.setState({ isCalibrePushModalOpen: false });
+  };
+
+  onCalibrePushConfirmed = (fields) => {
+    this.setState({ isCalibrePushModalOpen: false });
+    this.props.onPushToCalibrePress(fields);
+  };
+
   onEditBookPress = () => {
     this.setState({ isEditBookModalOpen: true });
   };
@@ -129,6 +144,8 @@ class BookDetails extends Component {
       isSearching,
       isRePushing,
       showRePush,
+      isPushingToCalibre,
+      showPushToCalibre,
       onRefreshPress,
       onRePushPress,
       onSearchPress,
@@ -138,6 +155,16 @@ class BookDetails extends Component {
     const {
       bookFileCount = 0
     } = statistics;
+
+    if (!id || !author) {
+      return (
+        <PageContent title={title}>
+          <PageContentBody>
+            <LoadingIndicator />
+          </PageContentBody>
+        </PageContent>
+      );
+    }
 
     const {
       isOrganizeModalOpen,
@@ -194,8 +221,7 @@ class BookDetails extends Component {
             <PageToolbarSeparator />
 
             {
-              showRePush ?
-                <Fragment>
+              showRePush &&
                   <PageToolbarButton
                     label={translate('ResendToCalibre')}
                     title={translate('ResendToCalibreContentServerConnections')}
@@ -204,11 +230,21 @@ class BookDetails extends Component {
                     isSpinning={isRePushing}
                     onPress={onRePushPress}
                   />
-
-                  <PageToolbarSeparator />
-                </Fragment> :
-                null
             }
+
+            {
+              showPushToCalibre &&
+                  <PageToolbarButton
+                    label={translate('CalibrePush')}
+                    title={translate('PushMetadataToCalibre')}
+                    iconName={icons.TAGS}
+                    isDisabled={!hasBookFiles}
+                    isSpinning={isPushingToCalibre}
+                    onPress={this.onCalibrePushPress}
+                  />
+            }
+
+            {(showRePush || showPushToCalibre) && <PageToolbarSeparator />}
 
             <PageToolbarButton
               label={translate('Edit')}
@@ -414,6 +450,14 @@ class BookDetails extends Component {
             onDeleteAuthorPress={this.onDeleteBookPress}
           />
 
+          <CalibrePushModal
+            isOpen={this.state.isCalibrePushModalOpen}
+            bookCount={1}
+            previewValues={this.props.calibrePreview}
+            onPushPress={this.onCalibrePushConfirmed}
+            onModalClose={this.onCalibrePushModalClose}
+          />
+
           <DeleteBookModal
             isOpen={isDeleteBookModalOpen}
             bookId={id}
@@ -447,6 +491,10 @@ BookDetails.propTypes = {
   isSearching: PropTypes.bool,
   isRePushing: PropTypes.bool,
   showRePush: PropTypes.bool,
+  calibrePreview: PropTypes.object,
+  isPushingToCalibre: PropTypes.bool,
+  showPushToCalibre: PropTypes.bool,
+  onPushToCalibrePress: PropTypes.func,
   isFetching: PropTypes.bool,
   isPopulated: PropTypes.bool,
   bookFilesError: PropTypes.object,

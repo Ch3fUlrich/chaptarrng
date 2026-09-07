@@ -12,6 +12,7 @@ import { clearEditions, fetchEditions } from 'Store/Actions/editionActions';
 import { clearQueueDetails, fetchQueueDetails } from 'Store/Actions/queueActions';
 import { cancelFetchReleases, clearReleases } from 'Store/Actions/releaseActions';
 import { fetchNotifications } from 'Store/Actions/settingsActions';
+import { fetchRootFolders } from 'Store/Actions/Settings/rootFolders';
 import createAllAuthorSelector from 'Store/Selectors/createAllAuthorsSelector';
 import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
@@ -42,6 +43,40 @@ const selectBookFiles = createSelector(
   }
 );
 
+function titleCase(value) {
+  return String(value).replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buildCalibrePreview(book, author, edition) {
+  const text = (value) => (value == null || value === '' ? null : String(value));
+  const identifiers = [];
+
+  if (edition?.isbn13) {
+    identifiers.push(`isbn: ${edition.isbn13}`);
+  }
+
+  if (edition?.asin || book.asin) {
+    identifiers.push(`asin: ${edition?.asin || book.asin}`);
+  }
+
+  if (edition?.foreignEditionId || book.foreignEditionId) {
+    identifiers.push(`goodreads: ${edition?.foreignEditionId || book.foreignEditionId}`);
+  }
+
+  return {
+    title: text(edition?.title || book.title),
+    authors: text(author.authorName),
+    series: text(book.seriesTitle),
+    comments: text(edition?.overview || book.overview),
+    publisher: text(edition?.publisher),
+    pubdate: book.releaseDate ? String(book.releaseDate).substring(0, 10) : null,
+    languages: text(edition?.language),
+    tags: (book.genres && book.genres.length) ? book.genres.map(titleCase).join(', ') : null,
+    rating: edition?.ratings?.value ? String(Math.trunc(edition.ratings.value * 2)) : null,
+    identifiers: identifiers.length ? identifiers.join(', ') : null
+  };
+}
+
 function createMapStateToProps() {
   return createSelector(
     (state, { bookId }) => bookId,
@@ -53,7 +88,8 @@ function createMapStateToProps() {
     createUISettingsSelector(),
     createDimensionsSelector(),
     (state) => state.settings.notifications.items,
-    (bookId, bookFiles, books, editions, authors, commands, uiSettings, dimensions, notifications) => {
+    (state) => state.settings.rootFolders.items,
+    (bookId, bookFiles, books, editions, authors, commands, uiSettings, dimensions, notifications, rootFolders) => {
       try {
         const book = books.items.find((b) => b.id === bookId);
 
@@ -115,6 +151,13 @@ function createMapStateToProps() {
         rePushCommand.body &&
         rePushCommand.body.bookId === book.id
         );
+        const pushCommand = findCommand(commands, { name: commandNames.PUSH_CALIBRE_METADATA });
+        const isPushingToCalibre = !!(
+          pushCommand &&
+        isCommandExecuting(pushCommand) &&
+        pushCommand.body &&
+        (pushCommand.body.bookIds || []).includes(book.id)
+        );
         const isRenamingFiles = isCommandExecuting(findCommand(commands, { name: commandNames.RENAME_FILES, authorId: author.id }));
         const isRenamingAuthorCommand = findCommand(commands, { name: commandNames.RENAME_AUTHOR });
         const isRenamingAuthor = (
@@ -147,6 +190,9 @@ function createMapStateToProps() {
           ...book,
           shortDateFormat: uiSettings.shortDateFormat,
           author,
+          calibrePreview: buildCalibrePreview(book, author, selectedEdition),
+          showPushToCalibre: rootFolders.some((f) => f.isCalibreLibrary && (author.path || '').startsWith(f.path)),
+          isPushingToCalibre,
           isRefreshing,
           isSearching,
           isRePushing,
@@ -175,6 +221,7 @@ function createMapStateToProps() {
 const mapDispatchToProps = {
   executeCommand,
   fetchNotifications,
+  fetchRootFolders,
   fetchBookFiles,
   clearBookFiles,
   fetchEditions,
@@ -241,6 +288,7 @@ class BookDetailsConnector extends Component {
     this.props.fetchEditions({ bookId });
     this.props.fetchQueueDetails({ bookIds: [bookId] });
     this.props.fetchNotifications();
+    this.props.fetchRootFolders();
   };
 
   unpopulate = () => {
@@ -282,6 +330,14 @@ class BookDetailsConnector extends Component {
     });
   };
 
+  onPushToCalibrePress = (fields) => {
+    this.props.executeCommand({
+      name: commandNames.PUSH_CALIBRE_METADATA,
+      bookIds: [this.props.id],
+      fields
+    });
+  };
+
   //
   // Render
 
@@ -293,6 +349,7 @@ class BookDetailsConnector extends Component {
         onRefreshPress={this.onRefreshPress}
         onRePushPress={this.onRePushPress}
         onSearchPress={this.onSearchPress}
+        onPushToCalibrePress={this.onPushToCalibrePress}
       />
     );
   }
@@ -300,6 +357,8 @@ class BookDetailsConnector extends Component {
 
 BookDetailsConnector.propTypes = {
   id: PropTypes.number,
+  fetchRootFolders: PropTypes.func.isRequired,
+  fetchNotifications: PropTypes.func.isRequired,
   anyReleaseOk: PropTypes.bool,
   isRefreshing: PropTypes.bool.isRequired,
   isRenamingFiles: PropTypes.bool.isRequired,
@@ -316,7 +375,6 @@ BookDetailsConnector.propTypes = {
   clearReleases: PropTypes.func.isRequired,
   cancelFetchReleases: PropTypes.func.isRequired,
   toggleBooksMonitored: PropTypes.func.isRequired,
-  fetchNotifications: PropTypes.func.isRequired,
   executeCommand: PropTypes.func.isRequired
 };
 
