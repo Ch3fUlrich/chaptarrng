@@ -148,11 +148,43 @@ namespace NzbDrone.Core.MediaFiles
                 }
                 else
                 {
-                    _calibre.DeleteBook(bookFile, rootFolder.CalibreSettings);
+                    if (bookFile.CalibreId == 0)
+                    {
+                        bookFile.CalibreId = _calibre.GetCalibreIdForPath(bookFile.Path, rootFolder.CalibreSettings);
+                    }
+
+                    if (bookFile.CalibreId != 0)
+                    {
+                        var format = System.IO.Path.GetExtension(bookFile.Path).TrimStart('.');
+                        var calibreBook = _calibre.GetBook(bookFile.CalibreId, rootFolder.CalibreSettings);
+
+                        if (format.IsNotNullOrWhiteSpace() && calibreBook?.Formats?.Count > 1)
+                        {
+                            // Deleting one of several formats must not remove the whole book
+                            _calibre.RemoveFormats(bookFile.CalibreId, new[] { format }, rootFolder.CalibreSettings);
+                        }
+                        else
+                        {
+                            _calibre.DeleteBook(bookFile, rootFolder.CalibreSettings);
+                        }
+                    }
+                    else if (_diskProvider.FileExistsCanonical(bookFile.Path))
+                    {
+                        _logger.Warn("Calibre does not know book file ({0}), deleting it from disk instead.", bookFile.Path);
+                        _recycleBinProvider.DeleteFile(bookFile.Path, subfolder);
+                    }
                 }
             }
             catch (Exception e)
             {
+                if (bookFile?.Path != null && !_diskProvider.FileExistsCanonical(bookFile.Path))
+                {
+                    // Another cleanup path (such as the calibre record deletion) already
+                    // removed this file; the missing record is success, not failure.
+                    _logger.Debug(e, "Book file was already removed: {0}", bookFile.Path);
+                    return;
+                }
+
                 _logger.Error(e, "Unable to delete book file");
                 throw new NzbDroneClientException(HttpStatusCode.InternalServerError, "Unable to delete book file");
             }
@@ -203,112 +235,114 @@ namespace NzbDrone.Core.MediaFiles
         [EventHandleOrder(EventHandleOrder.First)]
         public void Handle(AuthorDeletedEvent message)
         {
-            if (message.DeleteFiles)
+            if (!message.DeleteFiles)
             {
-                var author = message.Author;
+                return;
+            }
 
-                List<BookFile> allFiles = null;
-                List<KeyValuePair<int, string>> allAuthors = null;
+            var author = message.Author;
+            List<KeyValuePair<int, string>> allAuthors = null;
 
-                // An author can have separate audiobook/ebook root folders (AudiobookPath, EbookPath)
-                // in addition to the legacy single Path field, and each one can independently be a
-                // Calibre library or not. Deriving Calibre status from just one path and applying it
-                // to the rest is wrong in both directions, so each path here is checked individually.
-                // ExtraFilePathHelper.GetAuthorBasePaths is the existing helper for exactly this
-                // {Path, AudiobookPath, EbookPath} dedup - reused here rather than reimplemented.
-                foreach (var path in ExtraFilePathHelper.GetAuthorBasePaths(author))
+            foreach (var path in ExtraFilePathHelper.GetAuthorBasePaths(author))
+            {
+                if (ShouldRefuseToDeletePath(path, author, ref allAuthors))
                 {
-                    var rootFolder = _rootFolderService.GetBestRootFolder(path);
-                    var isCalibre = rootFolder?.IsCalibreLibrary == true && rootFolder.CalibreSettings != null;
-
-                    if (!isCalibre)
-                    {
-                        continue;
-                    }
-
-                    if (ShouldRefuseToDeletePath(path, author, ref allAuthors))
-                    {
-                        continue;
-                    }
-
-                    allFiles ??= _mediaFileService.GetFilesByAuthor(author.Id);
-
-                    var booksUnderPath = allFiles
-                        .Where(file => file?.Path != null && path.IsParentPath(file.Path))
-                        .ToList();
-
-                    if (!booksUnderPath.Any())
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        _calibre.DeleteBooks(booksUnderPath, rootFolder.CalibreSettings);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Don't let one Calibre-managed path's failure (server down, timeout, locked
-                        // metadata.db) stop another distinct Calibre path on this same author from
-                        // being attempted - same isolation as the recycle-bin loop in HandleAsync.
-                        _logger.Error(ex, "Failed to delete Calibre books at '{0}' for author '{1}'.", path, author.Name);
-                    }
+                    continue;
                 }
+
+                var rootFolder = _rootFolderService.GetBestRootFolder(path);
+                if (rootFolder?.IsCalibreLibrary != true || rootFolder.CalibreSettings == null)
+                {
+                    continue;
+                }
+
+                DeleteCalibreBooksUnderPath(path, rootFolder.CalibreSettings, author);
             }
         }
 
         public void HandleAsync(AuthorDeletedEvent message)
         {
-            if (message.DeleteFiles)
+            if (!message.DeleteFiles)
             {
-                var author = message.Author;
+                return;
+            }
 
-                // An author can have separate audiobook/ebook root folders (AudiobookPath, EbookPath)
-                // in addition to the legacy single Path field. Only ever deleting Path left the other
-                // format's entire folder - and every file in it - untouched on disk while the DB
-                // treated the author as fully deleted, leaving those files' BookFile rows to surface
-                // as "unmapped" even though they were never actually removed.
-                List<KeyValuePair<int, string>> allAuthors = null;
+            var author = message.Author;
+            List<KeyValuePair<int, string>> allAuthors = null;
 
-                foreach (var path in ExtraFilePathHelper.GetAuthorBasePaths(author))
+            foreach (var path in ExtraFilePathHelper.GetAuthorBasePaths(author))
+            {
+                if (ShouldRefuseToDeletePath(path, author, ref allAuthors))
                 {
-                    var rootFolder = _rootFolderService.GetBestRootFolder(path);
-                    var isCalibre = rootFolder?.IsCalibreLibrary == true && rootFolder.CalibreSettings != null;
-
-                    if (isCalibre)
-                    {
-                        // Calibre-managed paths are cleaned up via _calibre.DeleteBook(s) in the sync
-                        // Handle() above, not a raw recycle-bin folder delete.
-                        continue;
-                    }
-
-                    if (ShouldRefuseToDeletePath(path, author, ref allAuthors))
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        if (_diskProvider.FolderExists(path))
-                        {
-                            _recycleBinProvider.DeleteFolder(path);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Don't let one path's failure (permissions, a momentarily-unavailable NFS
-                        // mount, ...) abort the rest of this author's paths or skip the
-                        // DeleteCompletedEvent below - a partially-deleted author still needs its
-                        // Plex refresh queue flushed.
-                        _logger.Error(ex, "Failed to delete '{0}' for author '{1}'.", path, author.Name);
-                    }
+                    continue;
                 }
 
-                // Always published once per author now, regardless of which (if any) path above was
-                // refused/Calibre-routed - the previous single-path version only published this in
-                // some cases, which could leave Plex's pending-refresh queue never flushed.
-                // ProcessQueue() is a no-op against an empty queue, so this is safe unconditionally.
-                _eventAggregator.PublishEvent(new DeleteCompletedEvent());
+                var rootFolder = _rootFolderService.GetBestRootFolder(path);
+                if (rootFolder?.IsCalibreLibrary == true && rootFolder.CalibreSettings != null)
+                {
+                    // Calibre owns the library directory. Retry deletion of tracked records through
+                    // Calibre, but never recycle the whole folder or touch untracked Calibre books.
+                    DeleteCalibreBooksUnderPath(path, rootFolder.CalibreSettings, author);
+                    continue;
+                }
+
+                try
+                {
+                    if (_diskProvider.FolderExists(path))
+                    {
+                        _recycleBinProvider.DeleteFolder(path);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Failed to delete '{0}' for author '{1}'.", path, author.Name);
+                }
+            }
+
+            // Flush external library refresh queues once even when a path is refused or a disk
+            // operation fails; queued handlers are harmless when there is nothing to process.
+            _eventAggregator.PublishEvent(new DeleteCompletedEvent());
+        }
+
+        private void DeleteCalibreBooksUnderPath(string path, CalibreSettings settings, Author author)
+        {
+            if (_calibre == null || settings == null)
+            {
+                return;
+            }
+
+            var files = _mediaFileService.GetFilesWithBasePath(path) ?? new List<BookFile>();
+            foreach (var file in files.Where(file => file.CalibreId == 0 && file.Path.IsNotNullOrWhiteSpace()))
+            {
+                try
+                {
+                    file.CalibreId = _calibre.GetCalibreIdForPath(file.Path, settings);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Debug(ex, "Could not resolve Calibre id for {0}", file.Path);
+                }
+            }
+
+            var calibreBooks = files
+                .Where(file => file.CalibreId > 0)
+                .GroupBy(file => file.CalibreId)
+                .Select(group => group.First())
+                .ToList();
+
+            if (!calibreBooks.Any())
+            {
+                return;
+            }
+
+            try
+            {
+                _logger.Info("Deleting {0} Calibre books for author {1} under {2}", calibreBooks.Count, author?.Name, path);
+                _calibre.DeleteBooks(calibreBooks, settings);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to delete Calibre books at '{0}' for author '{1}'.", path, author?.Name);
             }
         }
 
