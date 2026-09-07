@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
 import DeleteBookModal from 'Book/Delete/DeleteBookModal';
@@ -127,7 +127,10 @@ class BookDetails extends Component {
       nextBook,
       hasBookNavigation,
       isSearching,
+      isRePushing,
+      showRePush,
       onRefreshPress,
+      onRePushPress,
       onSearchPress,
       statistics = {}
     } = this.props;
@@ -189,6 +192,22 @@ class BookDetails extends Component {
             />
 
             <PageToolbarSeparator />
+
+            {
+              showRePush ?
+                <Fragment>
+                  <PageToolbarButton
+                    label={translate('ResendToCalibre')}
+                    title={translate('ResendToCalibreContentServerConnections')}
+                    iconName={icons.EXPORT}
+                    isSpinning={isRePushing}
+                    onPress={onRePushPress}
+                  />
+
+                  <PageToolbarSeparator />
+                </Fragment> :
+                null
+            }
 
             <PageToolbarButton
               label={translate('Edit')}
@@ -425,6 +444,8 @@ BookDetails.propTypes = {
   isSaving: PropTypes.bool.isRequired,
   isRefreshing: PropTypes.bool,
   isSearching: PropTypes.bool,
+  isRePushing: PropTypes.bool,
+  showRePush: PropTypes.bool,
   isFetching: PropTypes.bool,
   isPopulated: PropTypes.bool,
   bookFilesError: PropTypes.object,
@@ -438,6 +459,7 @@ BookDetails.propTypes = {
   isSmallScreen: PropTypes.bool.isRequired,
   onMonitorTogglePress: PropTypes.func.isRequired,
   onRefreshPress: PropTypes.func,
+  onRePushPress: PropTypes.func,
   onSearchPress: PropTypes.func.isRequired
 };
 
