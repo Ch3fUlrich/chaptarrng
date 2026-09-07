@@ -29,6 +29,7 @@ namespace NzbDrone.Core.Notifications
           IHandle<AuthorDeletedEvent>,
           IHandleAsync<BookDeletedEvent>,
           IHandle<BookFileDeletedEvent>,
+          IHandle<BookFileAddedEvent>,
           IHandle<HealthCheckFailedEvent>,
           IHandle<DownloadFailedEvent>,
           IHandle<BookImportIncompleteEvent>,
@@ -205,7 +206,9 @@ namespace NzbDrone.Core.Notifications
 
         public void Handle(BookImportedEvent message)
         {
-            if (!message.NewDownload)
+            var isLibraryImport = !message.NewDownload;
+
+            if (isLibraryImport && _notificationFactory.OnReleaseImportEnabled().All(n => !n.NotifyOnLibraryImports))
             {
                 _logger.Info("Skipping OnReleaseImport for '{0}' (BookId={1}): import was not from a tracked download",
                     message.Book?.Title ?? "<unknown>",
@@ -239,6 +242,11 @@ namespace NzbDrone.Core.Notifications
             {
                 try
                 {
+                    if (isLibraryImport && !notification.NotifyOnLibraryImports)
+                    {
+                        continue;
+                    }
+
                     if (ShouldHandleAuthor(notification.Definition, author))
                     {
                         if (downloadMessage.OldFiles.Empty() || ((NotificationDefinition)notification.Definition).OnUpgrade)
@@ -415,6 +423,72 @@ namespace NzbDrone.Core.Notifications
                 {
                     _notificationStatusService.RecordFailure(notification.Definition.Id);
                     _logger.Warn(ex, "Unable to send OnBookDelete notification to: " + notification.Definition.Name);
+                }
+            }
+        }
+
+        public void Handle(BookFileAddedEvent message)
+        {
+            var bookFile = message.BookFile;
+
+            if (bookFile?.Path == null || bookFile.EditionId <= 0)
+            {
+                return;
+            }
+
+            Book book = null;
+
+            try
+            {
+                book = bookFile.Edition?.Book;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to read the edition for {0}", bookFile.Path);
+            }
+
+            if (book == null)
+            {
+                book = _editionService.GetEdition(bookFile.EditionId)?.Book;
+            }
+
+            if (book == null)
+            {
+                return;
+            }
+
+            Author author = null;
+
+            try
+            {
+                author = book.Author ?? bookFile.Author;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to resolve the author for {0}", bookFile.Path);
+            }
+
+            foreach (var notification in _notificationFactory.OnReleaseImportEnabled())
+            {
+                if (!notification.NotifyOnLibraryImports)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (author != null && !ShouldHandleAuthor(notification.Definition, author))
+                    {
+                        continue;
+                    }
+
+                    notification.OnLibraryFileAdded(bookFile, book);
+                    _notificationStatusService.RecordSuccess(notification.Definition.Id);
+                }
+                catch (Exception ex)
+                {
+                    _notificationStatusService.RecordFailure(notification.Definition.Id);
+                    _logger.Warn(ex, "Unable to send library-file notification to: " + notification.Definition.Name);
                 }
             }
         }
