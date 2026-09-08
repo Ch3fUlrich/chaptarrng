@@ -179,8 +179,6 @@ namespace NzbDrone.Core.MediaFiles
             {
                 if (bookFile?.Path != null && !_diskProvider.FileExistsCanonical(bookFile.Path))
                 {
-                    // Another cleanup path (such as the calibre record deletion) already
-                    // removed this file; the missing record is success, not failure.
                     _logger.Debug(e, "Book file was already removed: {0}", bookFile.Path);
                     return;
                 }

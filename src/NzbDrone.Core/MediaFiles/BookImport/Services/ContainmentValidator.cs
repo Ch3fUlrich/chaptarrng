@@ -901,8 +901,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
         /// </summary>
         private static bool CanConsumeAllTokens(List<string> editionTokens, List<string> fieldTokens)
         {
-            // Releases often brand the series position into the title ("The Lord of the
-            // Rings 2 - The Two Towers"); tolerate those markers between aligned tokens.
             return TitleTokenAlignment.TryAlignStructural(
                 editionTokens,
                 GetFieldTokensForTitleAlignment(editionTokens, fieldTokens),
