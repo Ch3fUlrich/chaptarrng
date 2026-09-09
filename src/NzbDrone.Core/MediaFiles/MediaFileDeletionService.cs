@@ -421,6 +421,10 @@ namespace NzbDrone.Core.MediaFiles
             {
                 CleanupEmptyFolders(author, folder);
             }
+
+            // Notification providers queue work on OnBookDelete and drain it when this event
+            // signals the files are actually off the disk; author deletes already publish it.
+            _eventAggregator.PublishEvent(new DeleteCompletedEvent());
         }
 
         private static void CollectFolder(List<string> folders, string folder)
