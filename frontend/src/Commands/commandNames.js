@@ -18,6 +18,7 @@ export const MISSING_BOOK_SEARCH = 'MissingBookSearch';
 export const REPUSH_BOOK = 'RePushBook';
 export const PUSH_CALIBRE_METADATA = 'PushCalibreMetadata';
 export const MOVE_AUTHOR = 'MoveAuthor';
+export const PUSH_GRIMMORY_METADATA = 'PushGrimmoryMetadata';
 export const REFRESH_AUTHOR = 'RefreshAuthor';
 export const BULK_REFRESH_AUTHOR = 'BulkRefreshAuthor';
 export const REFRESH_BOOK = 'RefreshBook';

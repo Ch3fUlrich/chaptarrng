@@ -5,6 +5,7 @@ import * as commandNames from 'Commands/commandNames';
 import SelectInput from 'Components/Form/SelectInput';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import PageContentFooter from 'Components/Page/PageContentFooter';
+import GrimmoryPushModal from 'Grimmory/GrimmoryPushModal';
 import { kinds } from 'Helpers/Props';
 import { executeCommand } from 'Store/Actions/commandActions';
 import { fetchNotifications } from 'Store/Actions/settingsActions';
@@ -32,6 +33,7 @@ class BookEditorFooter extends Component {
       savingTags: false,
       isDeleteBookModalOpen: false,
       isCalibrePushModalOpen: false,
+      isGrimmoryPushModalOpen: false,
       isTagsModalOpen: false,
       isConfirmMoveModalOpen: false,
       destinationRootFolder: null
@@ -110,6 +112,24 @@ class BookEditorFooter extends Component {
     this.setState({ isDeleteBookModalOpen: false });
   };
 
+  onPushToGrimmoryPress = () => {
+    this.setState({ isGrimmoryPushModalOpen: true });
+  };
+
+  onGrimmoryPushModalClose = () => {
+    this.setState({ isGrimmoryPushModalOpen: false });
+  };
+
+  onGrimmoryPushConfirmed = (fields) => {
+    this.setState({ isGrimmoryPushModalOpen: false });
+
+    this.props.executeCommand({
+      name: commandNames.PUSH_GRIMMORY_METADATA,
+      bookIds: this.props.bookIds,
+      fields
+    });
+  };
+
   //
   // Render
 
@@ -122,13 +142,16 @@ class BookEditorFooter extends Component {
       isResendingToCalibre,
       showResendToCalibre,
       isPushingToCalibre,
-      showPushToCalibre
+      showPushToCalibre,
+      isPushingToGrimmory,
+      showPushToGrimmory
     } = this.props;
 
     const {
       monitored,
       isDeleteBookModalOpen,
-      isCalibrePushModalOpen
+      isCalibrePushModalOpen,
+      isGrimmoryPushModalOpen
     } = this.state;
 
     const monitoredOptions = [
@@ -188,6 +211,20 @@ class BookEditorFooter extends Component {
                   </SpinnerButton>
               }
 
+              {
+                showPushToGrimmory ?
+                  <SpinnerButton
+                    className={styles.organizeSelectedButton}
+                    kind={kinds.WARNING}
+                    isSpinning={isPushingToGrimmory}
+                    isDisabled={!selectedCount || isPushingToGrimmory}
+                    onPress={this.onPushToGrimmoryPress}
+                  >
+                    {translate('PushChaptarrMetadataToGrimmory')}
+                  </SpinnerButton> :
+                  null
+              }
+
               <SpinnerButton
                 className={styles.deleteSelectedButton}
                 kind={kinds.DANGER}
@@ -214,6 +251,13 @@ class BookEditorFooter extends Component {
           onModalClose={this.onDeleteBookModalClose}
         />
 
+        <GrimmoryPushModal
+          isOpen={isGrimmoryPushModalOpen}
+          bookCount={selectedCount}
+          onPushPress={this.onGrimmoryPushConfirmed}
+          onModalClose={this.onGrimmoryPushModalClose}
+        />
+
       </PageContentFooter>
     );
   }
@@ -233,18 +277,23 @@ BookEditorFooter.propTypes = {
   isPushingToCalibre: PropTypes.bool.isRequired,
   showPushToCalibre: PropTypes.bool.isRequired,
   fetchRootFolders: PropTypes.func.isRequired,
+  isPushingToGrimmory: PropTypes.bool.isRequired,
+  showPushToGrimmory: PropTypes.bool.isRequired,
   onSaveSelected: PropTypes.func.isRequired
 };
 
 const selectIsResendingToCalibre = createCommandExecutingSelector(commandNames.REPUSH_BOOK);
 const selectIsPushingToCalibre = createCommandExecutingSelector(commandNames.PUSH_CALIBRE_METADATA);
+const selectIsPushingToGrimmory = createCommandExecutingSelector(commandNames.PUSH_GRIMMORY_METADATA);
 
 function mapStateToProps(state) {
   return {
     isResendingToCalibre: selectIsResendingToCalibre(state),
     showResendToCalibre: state.settings.notifications.items.some((n) => n.implementation === 'CalibreContentServer'),
     isPushingToCalibre: selectIsPushingToCalibre(state),
-    showPushToCalibre: state.settings.rootFolders.items.some((f) => f.isCalibreLibrary)
+    showPushToCalibre: state.settings.rootFolders.items.some((f) => f.isCalibreLibrary),
+    isPushingToGrimmory: selectIsPushingToGrimmory(state),
+    showPushToGrimmory: state.settings.notifications.items.some((n) => n.implementation === 'Grimmory')
   };
 }
 
