@@ -854,7 +854,7 @@ namespace NzbDrone.Core.MediaFiles
             {
                 var localBook = decision.Item;
                 var matchedBook = localBook?.Book;
-                if (!SharesRetargetableRowIdentity(targetBook, matchedBook))
+                if (!IsSameWorkRetargetCandidate(targetBook, matchedBook))
                 {
                     continue;
                 }
@@ -866,34 +866,22 @@ namespace NzbDrone.Core.MediaFiles
                 //  1. Work-level provider IDs intersect (hc/gr/ol work IDs). This is the original signal and
                 //     covers duplicate rows catalogued through the same metadata provider.
                 //
-                //  2. The matched edition itself also exists under the grabbed book row, identified by an
-                //     edition-level provider ID (ISBN-10/13, ASIN/Audible ASIN, or a Goodreads/Hardcover/
-                //     OpenLibrary/Google Books edition ID). Duplicate rows created by author-bibliography
-                //     re-discovery are frequently sourced from a *different* provider than the row that was
-                //     grabbed, so their work-level ID sets never intersect even though they describe the same
-                //     title. Signal 2 recognises those without weakening the guarantee: edition-level provider
-                //     IDs are globally unique per physical edition, so a shared one means both rows carry the
-                //     very same edition. Combined with the same-author and same-media-type guards in
-                //     SharesRetargetableRowIdentity, this cannot collide two different books that merely share
-                //     a title -- which is exactly why title similarity is deliberately NOT used as a signal.
-                //
-                // Both signals still have to land on a concrete equivalent edition below before anything is
-                // retargeted, so a match on either one can only ever move the file to an edition the grabbed
-                // book row already owns.
+                //  2. The matched edition already exists under the grabbed row, identified by provider IDs.
+                //  3. For twin rows from different catalogues, a normalized title plus compatible format and
+                //     narrator can establish the edition match after the strict identity checks fail.
+                // Every path remains constrained to the same author and media type, and the target edition
+                // must already belong to the grabbed book row.
                 var sameWorkProviderId = WorkIdMatcher.WorkProviderIdMatches(targetBook, matchedBook);
                 var targetEdition = FindEquivalentEditionForTargetBook(targetBook, matchedEdition);
 
                 if (targetEdition == null)
                 {
-                    if (!sameWorkProviderId)
+                    if (sameWorkProviderId)
                     {
-                        // Neither signal fired: nothing establishes that these two rows are the same book.
-                        // Leave the decision untouched so the caller's expected-book check rejects it.
-                        continue;
+                        decision.Reject(new Rejection(
+                            $"Completed download was grabbed for {FormatBookLabel(targetBook)} and matched same-work sibling {FormatBookLabel(matchedBook)}, but no equivalent edition exists under the grabbed book row. Refresh metadata and retry."));
                     }
 
-                    decision.Reject(new Rejection(
-                        $"Completed download was grabbed for {FormatBookLabel(targetBook)} and matched same-work sibling {FormatBookLabel(matchedBook)}, but no equivalent edition exists under the grabbed book row. Refresh metadata and retry."));
                     continue;
                 }
 
@@ -943,7 +931,9 @@ namespace NzbDrone.Core.MediaFiles
         /// two distinct persisted rows, the same media type, and the same (known) author. These are
         /// hard requirements -- retargeting across authors or across media types would misfile the download.
         /// </summary>
-        private static bool SharesRetargetableRowIdentity(Book targetBook, Book matchedBook)
+        // Two different rows for the same author and media type. Whether they are the same work is
+        // decided by a shared work id, or failing that by an equivalent edition under the grabbed row.
+        private static bool IsSameWorkRetargetCandidate(Book targetBook, Book matchedBook)
         {
             if (targetBook == null ||
                 matchedBook == null ||
@@ -961,12 +951,7 @@ namespace NzbDrone.Core.MediaFiles
 
             var targetAuthorId = GetAuthorId(targetBook);
             var matchedAuthorId = GetAuthorId(matchedBook);
-            if (targetAuthorId <= 0 || matchedAuthorId <= 0 || targetAuthorId != matchedAuthorId)
-            {
-                return false;
-            }
-
-            return true;
+            return targetAuthorId > 0 && matchedAuthorId > 0 && targetAuthorId == matchedAuthorId;
         }
 
         private Edition FindEquivalentEditionForTargetBook(Book targetBook, Edition matchedEdition)
@@ -987,7 +972,69 @@ namespace NzbDrone.Core.MediaFiles
                 editions = _editionService.GetEditionsByBook(targetBook.Id) ?? new List<Edition>();
             }
 
-            return editions.FirstOrDefault(edition => BookEditionIdentity.EditionsMatch(edition, matchedEdition));
+            var identityMatch = editions.FirstOrDefault(edition => BookEditionIdentity.EditionsMatch(edition, matchedEdition));
+            if (identityMatch != null)
+            {
+                return identityMatch;
+            }
+
+            return FindMetadataEquivalentEdition(editions, matchedEdition);
+        }
+
+        // Twin rows: the same book stored twice because two catalogue listings were never linked. Such
+        // rows share no work id, and their editions share no ISBN, ASIN or edition id, so the identity
+        // checks above can never recognise them. What they do share is what a person sees: the same
+        // author and media type (checked by the caller), the same edition title and the same narrator.
+        internal static Edition FindMetadataEquivalentEdition(IEnumerable<Edition> candidates, Edition matchedEdition)
+        {
+            var title = NormalizeEditionText(matchedEdition?.Title);
+            if (title.Length == 0 || GenericEditionTitles.Contains(title))
+            {
+                return null;
+            }
+
+            var narrator = NormalizeEditionText(matchedEdition.Narrator);
+            var format = matchedEdition.Format;
+
+            var sameTitle = (candidates ?? Enumerable.Empty<Edition>())
+                .Where(edition => edition != null && edition.Id > 0)
+                .Where(edition => NormalizeEditionText(edition.Title) == title)
+                .Where(edition => FormatsCompatible(edition.Format, format))
+                .ToList();
+
+            // A known, different narrator is a different recording, never an equivalent edition. An
+            // unknown narrator on either side is not evidence against the match. Exact narrator matches
+            // win over unknowns; within each group the monitored edition wins.
+            var exactNarrator = sameTitle
+                .Where(edition => narrator.Length > 0 && NormalizeEditionText(edition.Narrator) == narrator);
+            var unknownNarrator = sameTitle
+                .Where(edition => narrator.Length == 0 || NormalizeEditionText(edition.Narrator).Length == 0);
+
+            return PreferMonitored(exactNarrator) ?? PreferMonitored(unknownNarrator);
+        }
+
+        private static readonly HashSet<string> GenericEditionTitles = new(StringComparer.Ordinal) { "untitled", "unknown", "unknown title" };
+
+        private static Edition PreferMonitored(IEnumerable<Edition> editions)
+        {
+            return editions
+                .OrderByDescending(edition => edition.Monitored)
+                .ThenBy(edition => edition.Id)
+                .FirstOrDefault();
+        }
+
+        private static string NormalizeEditionText(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : NzbDrone.Core.Parser.Parser.NormalizeTitle(value);
+        }
+
+        private static bool FormatsCompatible(string left, string right)
+        {
+            return string.IsNullOrWhiteSpace(left) ||
+                   string.IsNullOrWhiteSpace(right) ||
+                   string.Equals(left.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         private static Author ResolveTargetAuthor(Book targetBook, Book matchedBook, Author expectedAuthor, Author localAuthor)
