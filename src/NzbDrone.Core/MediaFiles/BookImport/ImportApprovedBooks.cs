@@ -404,7 +404,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 _logger.Debug("[UPGRADE-CHECK] replaceExisting={0}, existingFiles.Any()={1}, filesToReplace={2}, UpgradeAllowed={3}",
                     replaceExisting, existingFiles.Any(), filesToReplace, qualityProfile?.UpgradeAllowed ?? true);
 
-                    var conversionResult = ConvertBookGroupIfNeeded(bookDecisions, book, author, downloadClientItem, replaceExisting, hasRejectedTrackedDownloadDecisions, downloadForced);
+                    var conversionResult = ConvertBookGroupIfNeeded(bookDecisions, book, author, downloadClientItem, replaceExisting, hasRejectedTrackedDownloadDecisions, downloadForced, cancellationToken);
                     conversionWorkFolder = conversionResult.WorkFolder;
                     if (!conversionResult.Failed && conversionResult.Decisions == null)
                     {
@@ -1736,7 +1736,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 DownloadClientItem downloadClientItem,
                 bool replaceExisting,
                 bool hasRejectedTrackedDownloadDecisions,
-                bool downloadForced)
+                bool downloadForced,
+                CancellationToken cancellationToken)
             {
                 if (bookDecisions == null || bookDecisions.Count == 0)
                 {
@@ -1969,7 +1970,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     }
 
                     var threadPlan = GetAudiobookConversionThreadPlan(inputFiles.Length);
-                    using var conversionCancellation = new CancellationTokenSource();
+                    // Linked to the caller's token so cancelling the command that asked for this
+                    // conversion (a library conversion's task) stops the running converter too.
+                    using var conversionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     var conversionSemaphore = GetAudiobookConversionSemaphore();
                     var conversionSlotAcquired = false;
                     ConversionResult result;
@@ -3159,7 +3162,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 if (bookId > 0)
                 {
-                    return string.Format(CultureInfo.InvariantCulture, "chaptarr-local-{0}-{1}", bookId, editionId);
+                    return LocalConversionId.For(bookId, editionId);
                 }
 
                 // No persisted book to key on (a manual import that is still creating one). A random
