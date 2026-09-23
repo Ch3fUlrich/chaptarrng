@@ -37,6 +37,8 @@ namespace Chaptarr.Core.Test.MediaFiles
                 Decisions = decisions ?? new List<ImportDecision<LocalBook>>();
                 return new List<ImportResult>();
             }
+
+            public string CheckExistingDestinationConflict(LocalBook localBook, Book book, Author author) => null;
         }
 
         private sealed class StubFileMatchingService : IFileMatchingService
