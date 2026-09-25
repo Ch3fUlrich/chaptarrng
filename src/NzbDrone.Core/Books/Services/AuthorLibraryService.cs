@@ -571,15 +571,25 @@ namespace NzbDrone.Core.Books.Services
             var authorProviderId = NormalizeRequiredProviderId(selection.AuthorProviderId, "author");
             var workProviderId = NormalizeRequiredProviderId(selection.WorkProviderId, "work");
             var remoteAuthor = await FetchAuthorBlobAsync(authorProviderId);
-            var remoteTarget = ResolveUniqueRemoteUserSelection(
-                remoteAuthor,
-                workProviderId,
-                selection.EditionProviderId,
-                selection.MediaType,
-                selection.EditionTitle);
-            var editionProviderId = string.IsNullOrWhiteSpace(selection.EditionProviderId)
-                ? PickProviderIdForEdition(remoteTarget.Edition)
-                : NormalizeRequiredProviderId(selection.EditionProviderId, "edition");
+            RemoteUserSelection remoteTarget = null;
+            string editionProviderId = null;
+            AmbiguousRemoteEditionException ambiguousEdition = null;
+            try
+            {
+                remoteTarget = ResolveUniqueRemoteUserSelection(
+                    remoteAuthor,
+                    workProviderId,
+                    selection.EditionProviderId,
+                    selection.MediaType,
+                    selection.EditionTitle);
+                editionProviderId = string.IsNullOrWhiteSpace(selection.EditionProviderId)
+                    ? PickProviderIdForEdition(remoteTarget.Edition)
+                    : NormalizeRequiredProviderId(selection.EditionProviderId, "edition");
+            }
+            catch (AmbiguousRemoteEditionException ex) when (string.IsNullOrWhiteSpace(selection.EditionProviderId))
+            {
+                ambiguousEdition = ex;
+            }
 
             var localAuthor = FindExistingAuthor(authorProviderId, remoteAuthor);
             if (localAuthor == null)
@@ -598,6 +608,36 @@ namespace NzbDrone.Core.Books.Services
             {
                 throw new InvalidOperationException(
                     $"Authoritative metadata author '{authorProviderId}' is not locally available yet.");
+            }
+
+            if (ambiguousEdition != null)
+            {
+                // Several editions fit and the suggestion cannot pick one: do not pin an arbitrary edition.
+                // The ordinary reconcile above creates the work under the author's metadata profile; use the
+                // book it produced and its own monitored edition.
+                var remoteBooks = (remoteAuthor?.Books ?? new List<Book>())
+                    .Where(book => book != null &&
+                                   book.MediaType == selection.MediaType &&
+                                   RemoteBookHasWorkProviderId(book, workProviderId))
+                    .ToList();
+                var reconciledBook = remoteBooks.Count == 1
+                    ? ResolveLocalBookForUserSelection(localAuthor, remoteBooks[0], workProviderId, selection.MediaType)
+                    : null;
+                var reconciledEdition = reconciledBook == null
+                    ? null
+                    : BookEditionIdentity.GetMonitoredEdition(reconciledBook) ??
+                      (_editionService.GetEditionsByBook(reconciledBook.Id) ?? new List<Edition>()).FirstOrDefault(e => e.Monitored);
+                if (reconciledBook == null || reconciledEdition == null)
+                {
+                    throw ambiguousEdition;
+                }
+
+                return new UserSelectedEditionMaterialization
+                {
+                    Author = localAuthor,
+                    Book = _bookService.GetBook(reconciledBook.Id) ?? reconciledBook,
+                    Edition = _editionService.GetEdition(reconciledEdition.Id) ?? reconciledEdition
+                };
             }
 
             var localBook = ResolveLocalBookForUserSelection(
@@ -666,6 +706,14 @@ namespace NzbDrone.Core.Books.Services
             };
         }
 
+        internal sealed class AmbiguousRemoteEditionException : InvalidOperationException
+        {
+            public AmbiguousRemoteEditionException(string message)
+                : base(message)
+            {
+            }
+        }
+
         internal sealed class RemoteUserSelection
         {
             public Book Book { get; init; }
@@ -732,7 +780,7 @@ namespace NzbDrone.Core.Books.Services
 
             if (candidates.Count != 1)
             {
-                throw new InvalidOperationException(
+                throw new AmbiguousRemoteEditionException(
                     $"The authoritative author blob maps {description} and work '{workProviderId}' to {candidates.Count} rows. Select a local edition to resolve the ambiguity.");
             }
 
