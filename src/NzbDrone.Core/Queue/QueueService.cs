@@ -528,9 +528,13 @@ namespace NzbDrone.Core.Queue
                 return;
             }
 
+            var durableJobsByDownloadId = BuildNonCompletedConversionJobs();
+
             foreach (var item in queue)
             {
-                var durableJob = _conversionJobService?.Get(item.DownloadId);
+                var durableJob = item.DownloadId != null
+                    ? durableJobsByDownloadId.GetValueOrDefault(item.DownloadId)
+                    : null;
                 if (durableJob != null && durableJob.Status != ConversionJobStatus.Completed)
                 {
                     item.ConversionStatus = GetConversionJobStatus(durableJob.Status);
@@ -564,6 +568,28 @@ namespace NzbDrone.Core.Queue
                 item.ConversionMessage = conversion.Message;
                 item.CanCancelConversion = IsCancellableConversion(conversion);
             }
+        }
+
+        private Dictionary<string, ConversionJob> BuildNonCompletedConversionJobs()
+        {
+            // One query per queue build instead of one per queue item: the per-item lookup was only
+            // ever used when the job was not Completed, which is exactly what NonCompleted returns.
+            var result = new Dictionary<string, ConversionJob>(StringComparer.Ordinal);
+
+            if (_conversionJobService == null)
+            {
+                return result;
+            }
+
+            foreach (var job in _conversionJobService.GetNonCompleted() ?? new List<ConversionJob>())
+            {
+                if (job != null && !string.IsNullOrWhiteSpace(job.DownloadId))
+                {
+                    result.TryAdd(job.DownloadId, job);
+                }
+            }
+
+            return result;
         }
 
         private static string GetConversionJobStatus(ConversionJobStatus status)
