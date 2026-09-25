@@ -66,6 +66,48 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             public List<BookFile> DatabaseRowsToReplace { get; } = new();
         }
 
+        // Files already written or displaced by the batch currently being imported. A multi-file
+        // release re-reads the book's existing rows for every file, so without this the second file
+        // of a batch sees the first file's freshly written destination as an "old file to replace".
+        internal sealed class BookImportBatchState
+        {
+            public HashSet<string> ProtectedDestinationPaths { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public HashSet<int> ProtectedFileIds { get; } = new();
+        }
+
+        internal static bool IsReplaceableExistingFile(
+            BookFile existingFile,
+            string importSourcePath,
+            int editionId,
+            bool manualReplaceExisting,
+            BookImportBatchState batchState)
+        {
+            if (existingFile?.Path.IsNullOrWhiteSpace() != false)
+            {
+                return false;
+            }
+
+            if (importSourcePath.IsNotNullOrWhiteSpace() &&
+                existingFile.Path.Equals(importSourcePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (existingFile.EditionId != editionId && !manualReplaceExisting)
+            {
+                return false;
+            }
+
+            if (batchState != null &&
+                (batchState.ProtectedDestinationPaths.Contains(existingFile.Path) ||
+                 (existingFile.Id > 0 && batchState.ProtectedFileIds.Contains(existingFile.Id))))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private readonly IMediaFileService _mediaFileService;
         private readonly IMetadataTagService _metadataTagService;
         private readonly IMediaInfoExtractor _mediaInfoExtractor;
@@ -499,6 +541,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     // Collect all BookFile objects for this book to batch insert them
                     var bookFilesToAdd = new List<BookFile>();
                     var pendingFileCommits = new List<PendingFileCommit>();
+                    var batchState = new BookImportBatchState();
                     var bookImportResults = new List<ImportResult>();
                     // Track all successfully imported book files (including ones already present in the DB)
                     // so BookImportedEvent accurately reflects the work performed.
@@ -527,13 +570,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             fileLocalBook.Book = newBookInstance;
                             fileLocalBook.Edition = newEdition;
                             importedTargetBook = newBookInstance;
-                            (result, bookFile) = ImportFile(decision, newBookInstance, author, false, downloadClientItem, importMode, downloadForced, out pendingFileCommit);
+                            (result, bookFile) = ImportFile(decision, newBookInstance, author, false, downloadClientItem, importMode, downloadForced, batchState, out pendingFileCommit);
                         }
                         else
                         {
                             // Normal import
                             importedTargetBook = book;
-                            (result, bookFile) = ImportFile(decision, book, author, replaceExisting, downloadClientItem, importMode, downloadForced, out pendingFileCommit);
+                            (result, bookFile) = ImportFile(decision, book, author, replaceExisting, downloadClientItem, importMode, downloadForced, batchState, out pendingFileCommit);
                         }
 
                             if (result.Result == ImportResultType.Imported && bookFile != null)
@@ -541,6 +584,16 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 if (pendingFileCommit != null && bookFile.Id == 0)
                                 {
                                     pendingFileCommits.Add(pendingFileCommit);
+                                }
+
+                                if (bookFile.Path.IsNotNullOrWhiteSpace())
+                                {
+                                    batchState.ProtectedDestinationPaths.Add(bookFile.Path);
+                                }
+
+                                if (bookFile.Id > 0)
+                                {
+                                    batchState.ProtectedFileIds.Add(bookFile.Id);
                                 }
 
                                 importedBookFilesForBook.Add(bookFile);
@@ -940,6 +993,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             DownloadClientItem downloadClientItem,
             ImportMode importMode,
             bool downloadForced,
+            BookImportBatchState batchState,
             out PendingFileCommit pendingFileCommit)
         {
             pendingFileCommit = null;
@@ -1068,9 +1122,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     existingFiles.Count);
 
                     var manualReplaceExisting = replaceExisting && (localBook.IsManualImport || downloadForced);
-                    var filesToReplace = existingFiles.Where(f =>
-                        !f.Path.Equals(localBook.Path, StringComparison.OrdinalIgnoreCase) &&
-                        (f.EditionId == edition.Id || manualReplaceExisting)).ToList();
+                    var filesToReplace = existingFiles
+                        .Where(f => IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState))
+                        .ToList();
 
                     // Relocation is not an "upgrade/replacement"; do not block or stage/delete other files.
                     if (relocateExistingFile != null)
@@ -1298,11 +1352,21 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 continue;
                             }
 
+                            // Never stage a path this same batch already imported into; that file is new content.
+                            if (batchState != null && batchState.ProtectedDestinationPaths.Contains(oldFile.Path))
+                            {
+                                continue;
+                            }
+
                             var backupPath = GetUniqueUpgradeBackupPath(oldFile.Path);
                             try
                             {
                                 File.Move(oldFile.Path, backupPath);
                                 stagedReplacements.Add((oldFile, backupPath));
+                                if (oldFile.Id > 0)
+                                {
+                                    batchState?.ProtectedFileIds.Add(oldFile.Id);
+                                }
                             }
                             catch (Exception ex)
                             {
