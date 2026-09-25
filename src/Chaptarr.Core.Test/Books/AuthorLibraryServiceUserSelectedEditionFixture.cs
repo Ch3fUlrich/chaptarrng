@@ -152,6 +152,26 @@ namespace Chaptarr.Core.Test.Books
             Assert.That(error.Message, Does.Contain("2 rows"));
         }
 
+        [Test]
+        public void suggested_work_without_edition_id_should_fall_back_to_the_providers_default_edition()
+        {
+            var providerDefault = new Edition { Title = "Nightfall (Audible)", ForeignEditionId = "gr:2" };
+            var book = CreateAudiobookPocket("Nightfall");
+            book.ForeignEditionId = "gr:2";
+            book.Editions = new List<Edition>
+            {
+                new() { Title = "Nightfall (Other)", ForeignEditionId = "gr:1" },
+                providerDefault,
+                new() { Title = "Nightfall (Third)", ForeignEditionId = "gr:3" }
+            };
+            var author = new Author { Books = new List<Book> { book } };
+
+            var result = AuthorLibraryService.ResolveUniqueRemoteUserSelection(
+                author, "hc:1987747", null, BookMediaType.Audiobook, "No Such Title");
+
+            Assert.That(result.Edition, Is.SameAs(providerDefault));
+        }
+
         private static Book CreateAudiobookPocket(string title)
         {
             return new Book

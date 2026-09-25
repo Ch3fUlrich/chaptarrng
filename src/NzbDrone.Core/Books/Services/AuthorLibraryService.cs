@@ -711,6 +711,18 @@ namespace NzbDrone.Core.Books.Services
                 }
             }
 
+            if (inferEdition && candidates.Count > 1)
+            {
+                var providerDefaults = candidates
+                    .Where(c => !string.IsNullOrWhiteSpace(c.Book.ForeignEditionId) &&
+                                BookEditionIdentity.EditionMatchesProviderId(c.Edition, c.Book.ForeignEditionId))
+                    .ToList();
+                if (providerDefaults.Count == 1)
+                {
+                    candidates = providerDefaults;
+                }
+            }
+
             var description = inferEdition ? "an edition" : $"edition '{editionProviderId}'";
             if (candidates.Count == 0)
             {
