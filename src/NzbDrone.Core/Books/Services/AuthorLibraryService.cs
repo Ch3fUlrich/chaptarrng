@@ -592,6 +592,17 @@ namespace NzbDrone.Core.Books.Services
             }
 
             var localAuthor = FindExistingAuthor(authorProviderId, remoteAuthor);
+            if (ambiguousEdition != null && localAuthor?.Id > 0)
+            {
+                // The work may already exist locally; then there is nothing to reconcile, and reconciling a
+                // prolific author's whole catalogue for one file is very slow.
+                var existing = TryUseExistingLocalWork(localAuthor, remoteAuthor, workProviderId, selection.MediaType);
+                if (existing != null)
+                {
+                    return existing;
+                }
+            }
+
             if (localAuthor == null)
             {
                 localAuthor = await AddAuthorAsync(authorProviderId, config);
@@ -615,29 +626,8 @@ namespace NzbDrone.Core.Books.Services
                 // Several editions fit and the suggestion cannot pick one: do not pin an arbitrary edition.
                 // The ordinary reconcile above creates the work under the author's metadata profile; use the
                 // book it produced and its own monitored edition.
-                var remoteBooks = (remoteAuthor?.Books ?? new List<Book>())
-                    .Where(book => book != null &&
-                                   book.MediaType == selection.MediaType &&
-                                   RemoteBookHasWorkProviderId(book, workProviderId))
-                    .ToList();
-                var reconciledBook = remoteBooks.Count == 1
-                    ? ResolveLocalBookForUserSelection(localAuthor, remoteBooks[0], workProviderId, selection.MediaType)
-                    : null;
-                var reconciledEdition = reconciledBook == null
-                    ? null
-                    : BookEditionIdentity.GetMonitoredEdition(reconciledBook) ??
-                      (_editionService.GetEditionsByBook(reconciledBook.Id) ?? new List<Edition>()).FirstOrDefault(e => e.Monitored);
-                if (reconciledBook == null || reconciledEdition == null)
-                {
-                    throw ambiguousEdition;
-                }
-
-                return new UserSelectedEditionMaterialization
-                {
-                    Author = localAuthor,
-                    Book = _bookService.GetBook(reconciledBook.Id) ?? reconciledBook,
-                    Edition = _editionService.GetEdition(reconciledEdition.Id) ?? reconciledEdition
-                };
+                return TryUseExistingLocalWork(localAuthor, remoteAuthor, workProviderId, selection.MediaType)
+                       ?? throw ambiguousEdition;
             }
 
             var localBook = ResolveLocalBookForUserSelection(
@@ -698,6 +688,43 @@ namespace NzbDrone.Core.Books.Services
             }
 
             PinUserSelectedBookAndEdition(localBook, localEdition, selection.MediaType);
+            return new UserSelectedEditionMaterialization
+            {
+                Author = localAuthor,
+                Book = _bookService.GetBook(localBook.Id) ?? localBook,
+                Edition = _editionService.GetEdition(localEdition.Id) ?? localEdition
+            };
+        }
+
+        private UserSelectedEditionMaterialization TryUseExistingLocalWork(
+            Author localAuthor,
+            Author remoteAuthor,
+            string workProviderId,
+            BookMediaType mediaType)
+        {
+            var remoteBooks = (remoteAuthor?.Books ?? new List<Book>())
+                .Where(book => book != null &&
+                               book.MediaType == mediaType &&
+                               RemoteBookHasWorkProviderId(book, workProviderId))
+                .ToList();
+            if (remoteBooks.Count != 1)
+            {
+                return null;
+            }
+
+            var localBook = ResolveLocalBookForUserSelection(localAuthor, remoteBooks[0], workProviderId, mediaType);
+            if (localBook == null)
+            {
+                return null;
+            }
+
+            var localEdition = BookEditionIdentity.GetMonitoredEdition(localBook) ??
+                               (_editionService.GetEditionsByBook(localBook.Id) ?? new List<Edition>()).FirstOrDefault(e => e.Monitored);
+            if (localEdition == null)
+            {
+                return null;
+            }
+
             return new UserSelectedEditionMaterialization
             {
                 Author = localAuthor,
