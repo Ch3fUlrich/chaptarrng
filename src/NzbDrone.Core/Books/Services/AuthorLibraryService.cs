@@ -582,8 +582,10 @@ namespace NzbDrone.Core.Books.Services
                     selection.EditionProviderId,
                     selection.MediaType,
                     selection.EditionTitle);
+                // With no edition id in the suggestion the inferred remote edition is matched to its local row
+                // structurally (EditionsMatch), so a provider-owned id is used only when the edition carries one.
                 editionProviderId = string.IsNullOrWhiteSpace(selection.EditionProviderId)
-                    ? PickProviderIdForEdition(remoteTarget.Edition)
+                    ? TryPickProviderIdForEdition(remoteTarget.Edition)
                     : NormalizeRequiredProviderId(selection.EditionProviderId, "edition");
             }
             catch (AmbiguousRemoteEditionException ex) when (string.IsNullOrWhiteSpace(selection.EditionProviderId))
@@ -816,10 +818,9 @@ namespace NzbDrone.Core.Books.Services
             return candidates[0];
         }
 
-        private static string PickProviderIdForEdition(Edition edition)
+        private static string TryPickProviderIdForEdition(Edition edition)
         {
-            var candidates = new[] { edition?.ForeignEditionId, edition?.HardcoverEditionId };
-            foreach (var candidate in candidates)
+            foreach (var candidate in new[] { edition?.ForeignEditionId, edition?.HardcoverEditionId })
             {
                 if (ProviderIdHelper.TryNormalize(candidate, defaultPrefix: null, out var normalized) &&
                     BookEditionIdentity.EditionMatchesProviderId(edition, normalized))
@@ -828,8 +829,7 @@ namespace NzbDrone.Core.Books.Services
                 }
             }
 
-            throw new InvalidOperationException(
-                "The authoritative author blob edition does not carry a provider-owned edition ID.");
+            return null;
         }
 
         private static bool RemoteBookHasWorkProviderId(Book book, string providerId)
@@ -918,7 +918,7 @@ namespace NzbDrone.Core.Books.Services
 
         private List<Edition> FindLocalEditionsByProviderId(string providerId)
         {
-            var separator = providerId.IndexOf(':');
+            var separator = providerId?.IndexOf(':') ?? -1;
             return separator <= 0
                 ? new List<Edition>()
                 : _editionService.GetEditionsByProviderAndId(
