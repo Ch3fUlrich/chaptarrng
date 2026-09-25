@@ -50,6 +50,7 @@ namespace NzbDrone.Core.Books.Services
         public string AuthorProviderId { get; init; }
         public string WorkProviderId { get; init; }
         public string EditionProviderId { get; init; }
+        public string EditionTitle { get; init; }
         public BookMediaType MediaType { get; init; }
     }
 
@@ -569,13 +570,16 @@ namespace NzbDrone.Core.Books.Services
 
             var authorProviderId = NormalizeRequiredProviderId(selection.AuthorProviderId, "author");
             var workProviderId = NormalizeRequiredProviderId(selection.WorkProviderId, "work");
-            var editionProviderId = NormalizeRequiredProviderId(selection.EditionProviderId, "edition");
             var remoteAuthor = await FetchAuthorBlobAsync(authorProviderId);
             var remoteTarget = ResolveUniqueRemoteUserSelection(
                 remoteAuthor,
                 workProviderId,
-                editionProviderId,
-                selection.MediaType);
+                selection.EditionProviderId,
+                selection.MediaType,
+                selection.EditionTitle);
+            var editionProviderId = string.IsNullOrWhiteSpace(selection.EditionProviderId)
+                ? PickProviderIdForEdition(remoteTarget.Edition)
+                : NormalizeRequiredProviderId(selection.EditionProviderId, "edition");
 
             var localAuthor = FindExistingAuthor(authorProviderId, remoteAuthor);
             if (localAuthor == null)
@@ -683,30 +687,60 @@ namespace NzbDrone.Core.Books.Services
             Author remoteAuthor,
             string workProviderId,
             string editionProviderId,
-            BookMediaType mediaType)
+            BookMediaType mediaType,
+            string editionTitle = null)
         {
-            var matches = (remoteAuthor?.Books ?? new List<Book>())
+            var inferEdition = string.IsNullOrWhiteSpace(editionProviderId);
+            var candidates = (remoteAuthor?.Books ?? new List<Book>())
                 .Where(book => book != null &&
                                book.MediaType == mediaType &&
                                RemoteBookHasWorkProviderId(book, workProviderId))
                 .SelectMany(book => (book.Editions ?? new List<Edition>())
-                    .Where(edition => BookEditionIdentity.EditionMatchesProviderId(edition, editionProviderId))
+                    .Where(edition => inferEdition || BookEditionIdentity.EditionMatchesProviderId(edition, editionProviderId))
                     .Select(edition => new RemoteUserSelection { Book = book, Edition = edition }))
                 .ToList();
 
-            if (matches.Count == 0)
+            if (inferEdition && candidates.Count > 1 && !string.IsNullOrWhiteSpace(editionTitle))
             {
-                throw new InvalidOperationException(
-                    $"The authoritative author blob does not contain edition '{editionProviderId}' under work '{workProviderId}' for {mediaType}.");
+                var titleMatches = candidates
+                    .Where(c => string.Equals(c.Edition.Title?.Trim(), editionTitle.Trim(), StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (titleMatches.Count > 0)
+                {
+                    candidates = titleMatches;
+                }
             }
 
-            if (matches.Count != 1)
+            var description = inferEdition ? "an edition" : $"edition '{editionProviderId}'";
+            if (candidates.Count == 0)
             {
                 throw new InvalidOperationException(
-                    $"The authoritative author blob maps edition '{editionProviderId}' and work '{workProviderId}' to {matches.Count} rows. Select a local edition to resolve the ambiguity.");
+                    $"The authoritative author blob does not contain {description} under work '{workProviderId}' for {mediaType}.");
             }
 
-            return matches[0];
+            if (candidates.Count != 1)
+            {
+                throw new InvalidOperationException(
+                    $"The authoritative author blob maps {description} and work '{workProviderId}' to {candidates.Count} rows. Select a local edition to resolve the ambiguity.");
+            }
+
+            return candidates[0];
+        }
+
+        private static string PickProviderIdForEdition(Edition edition)
+        {
+            var candidates = new[] { edition?.ForeignEditionId, edition?.HardcoverEditionId };
+            foreach (var candidate in candidates)
+            {
+                if (ProviderIdHelper.TryNormalize(candidate, defaultPrefix: null, out var normalized) &&
+                    BookEditionIdentity.EditionMatchesProviderId(edition, normalized))
+                {
+                    return normalized;
+                }
+            }
+
+            throw new InvalidOperationException(
+                "The authoritative author blob edition does not carry a provider-owned edition ID.");
         }
 
         private static bool RemoteBookHasWorkProviderId(Book book, string providerId)
