@@ -145,7 +145,7 @@ namespace Chaptarr.Core.Test.Books
             };
             var author = new Author { Books = new List<Book> { book } };
 
-            var error = Assert.Throws<InvalidOperationException>(() =>
+            var error = Assert.Catch<InvalidOperationException>(() =>
                 AuthorLibraryService.ResolveUniqueRemoteUserSelection(
                     author, "hc:1987747", null, BookMediaType.Audiobook, "Something Else"));
 

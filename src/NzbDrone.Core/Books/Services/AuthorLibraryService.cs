@@ -780,8 +780,10 @@ namespace NzbDrone.Core.Books.Services
 
             if (candidates.Count != 1)
             {
-                throw new AmbiguousRemoteEditionException(
-                    $"The authoritative author blob maps {description} and work '{workProviderId}' to {candidates.Count} rows. Select a local edition to resolve the ambiguity.");
+                var message = $"The authoritative author blob maps {description} and work '{workProviderId}' to {candidates.Count} rows. Select a local edition to resolve the ambiguity.";
+                throw inferEdition
+                    ? new AmbiguousRemoteEditionException(message)
+                    : new InvalidOperationException(message);
             }
 
             return candidates[0];
