@@ -2345,6 +2345,11 @@ namespace NzbDrone.Core.Books
 
         public void DeleteMany(List<Book> books, bool deleteFiles)
         {
+            DeleteMany(books, deleteFiles, skipDiskCleanup: false);
+        }
+
+        private void DeleteMany(List<Book> books, bool deleteFiles, bool skipDiskCleanup)
+        {
             var booksToDelete = (books ?? new List<Book>())
                 .Where(book => book != null)
                 .GroupBy(book => book.Id)
@@ -2355,7 +2360,7 @@ namespace NzbDrone.Core.Books
 
             foreach (var book in booksToDelete)
             {
-                _eventAggregator.PublishEvent(new BookDeletedEvent(book, deleteFiles, false));
+                _eventAggregator.PublishEvent(new BookDeletedEvent(book, deleteFiles, false, skipDiskCleanup: skipDiskCleanup));
 
                 _providerAliasService?.DeleteAliases("Book", book.Id);
             }
@@ -2542,7 +2547,10 @@ namespace NzbDrone.Core.Books
             // Previously hardcoded to false here regardless of what the author-level delete actually
             // requested, so MediaFileService always unlinked (never deleted) each book's BookFile rows -
             // leaving them behind as "unmapped files" even when the physical files really were deleted.
-            DeleteMany(books, message.DeleteFiles);
+            // skipDiskCleanup: true because MediaFileDeletionService's own AuthorDeletedEvent handler
+            // already recursively deletes the author's whole folder(s) when DeleteFiles is set - a
+            // per-book disk delete here would just race that and duplicate recycle-bin entries.
+            DeleteMany(books, message.DeleteFiles, skipDiskCleanup: true);
         }
 
         public void Execute(BulkSyncFormatMonitoringCommand message)
