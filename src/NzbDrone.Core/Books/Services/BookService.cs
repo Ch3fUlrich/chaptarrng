@@ -6,6 +6,7 @@ using System.Linq;
 using FluentValidation;
 using FluentValidation.Results;
 using NLog;
+using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
@@ -48,7 +49,7 @@ namespace NzbDrone.Core.Books
         List<Book> GetCandidates(int authorId, string title);
         void DeleteBook(int bookId, bool deleteFiles, bool addImportListExclusion = false, bool applyToBothFormats = false);
         List<Book> GetAllBooks();
-        List<string> GetAllGenres();
+        List<string> GetAllGenres() => throw new NotImplementedException();
         Book UpdateBook(Book book);
         void UpdateManyWithLifecycle(List<Book> books)
         {
@@ -92,6 +93,7 @@ namespace NzbDrone.Core.Books
                                 IExecute<BulkSyncFormatMonitoringCommand>
     {
         private readonly IBookRepository _bookRepository;
+        private readonly ICached<List<string>> _genresCache;
         private readonly IEditionService _editionService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IAuthorService _authorService;
@@ -125,9 +127,11 @@ namespace NzbDrone.Core.Books
                            IMultiCopySeriesService multiCopySeriesService,
                            Logger logger,
                            IEditionSelector editionSelector = null,
-                           IProviderAliasService providerAliasService = null)
+                           IProviderAliasService providerAliasService = null,
+                           ICacheManager cacheManager = null)
         {
             _bookRepository = bookRepository;
+            _genresCache = cacheManager?.GetCache<List<string>>(GetType(), "genres");
             _editionService = editionService;
             _eventAggregator = eventAggregator;
             _authorService = authorService;
@@ -950,7 +954,14 @@ namespace NzbDrone.Core.Books
 
         public List<string> GetAllGenres()
         {
-            return _bookRepository.GetAllGenres();
+            // Full-table scan + per-row JSON parse in the repository; cache the result rather than
+            // paying that cost on every metadata-profile-editor open in a session.
+            if (_genresCache == null)
+            {
+                return _bookRepository.GetAllGenres();
+            }
+
+            return _genresCache.Get("all", () => _bookRepository.GetAllGenres(), TimeSpan.FromMinutes(10));
         }
 
         public Book GetBook(int bookId)
