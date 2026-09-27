@@ -23,8 +23,8 @@ namespace NzbDrone.Core.Notifications
           IHandle<AuthorRenamedEvent>,
           IHandle<AuthorAddedEvent>,
           IHandle<BookAddedEvent>,
-          IHandle<AuthorDeletedEvent>,
-          IHandle<BookDeletedEvent>,
+          IHandleAsync<AuthorDeletedEvent>,
+          IHandleAsync<BookDeletedEvent>,
           IHandle<BookFileDeletedEvent>,
           IHandle<HealthCheckFailedEvent>,
           IHandle<DownloadFailedEvent>,
@@ -316,7 +316,7 @@ namespace NzbDrone.Core.Notifications
             }
         }
 
-        public void Handle(AuthorDeletedEvent message)
+        public void HandleAsync(AuthorDeletedEvent message)
         {
             var deleteMessage = new AuthorDeleteMessage(message.Author, message.DeleteFiles);
 
@@ -338,7 +338,7 @@ namespace NzbDrone.Core.Notifications
             }
         }
 
-        public void Handle(BookDeletedEvent message)
+        public void HandleAsync(BookDeletedEvent message)
         {
             var deleteMessage = new BookDeleteMessage(message.Book, message.DeleteFiles);
 
