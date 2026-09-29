@@ -1248,6 +1248,64 @@ namespace NzbDrone.Core.Books
                    book.EbookMonitored != snapshot.EbookMonitored;
         }
 
+        // Book.Editions is lazy-loaded, and both BuildWorkGroups (BookIdentity.GetProviderIdentityTokens ->
+        // BookEditionIdentity.GetOrderedEditions) and CloneStoredBook (GetAsin) read it. Handing a whole author's
+        // books to them therefore cost one Editions query per book, on every save that reaches the format-sync
+        // pass (for an author with thousands of books, most of a refresh's wall-clock time). Fill the books that
+        // have not loaded their editions from a single per-author query instead; already-loaded books are left
+        // alone, and the rows are the same ones the lazy loader would have returned (Editions by BookId).
+        private void PreloadEditions(int authorId, IEnumerable<Book> books)
+        {
+            if (_editionService == null || books == null)
+            {
+                return;
+            }
+
+            var unloaded = books
+                .Where(book => book != null && book.Id > 0 && (book.LazyEditions == null || !book.LazyEditions.IsLoaded))
+                .ToList();
+
+            if (unloaded.Count == 0)
+            {
+                return;
+            }
+
+            var editionsByBookId = (_editionService.GetEditionsByAuthor(authorId) ?? new List<Edition>())
+                .ToLookup(edition => edition.BookId);
+
+            foreach (var book in unloaded)
+            {
+                book.Editions = editionsByBookId[book.Id].ToList();
+            }
+        }
+
+        // Same idea as PreloadEditions, for a caller that holds a specific set of books rather than a whole
+        // author's: one Editions-by-BookId query for the ones that have not loaded them.
+        private void PreloadEditionsByBook(IEnumerable<Book> books)
+        {
+            if (_editionService == null || books == null)
+            {
+                return;
+            }
+
+            var unloaded = books
+                .Where(book => book != null && book.Id > 0 && (book.LazyEditions == null || !book.LazyEditions.IsLoaded))
+                .ToList();
+
+            if (unloaded.Count == 0)
+            {
+                return;
+            }
+
+            var editionsByBookId = (_editionService.GetEditionsByBook(unloaded.Select(book => book.Id).Distinct().ToList()) ?? new List<Edition>())
+                .ToLookup(edition => edition.BookId);
+
+            foreach (var book in unloaded)
+            {
+                book.Editions = editionsByBookId[book.Id].ToList();
+            }
+        }
+
         private static Book CloneStoredBook(Book book)
         {
             if (book == null)
@@ -1657,6 +1715,7 @@ namespace NzbDrone.Core.Books
                 var repositoryBooks = hintForAuthor != null && hintForAuthor.Count > 0
                     ? hintForAuthor
                     : _bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>();
+                PreloadEditions(authorBooks.Key, repositoryBooks);
                 var authorStoredById = repositoryBooks.ToDictionary(book => book.Id, CloneStoredBook);
                 var authorBooksById = repositoryBooks.ToDictionary(book => book.Id);
 
@@ -1669,6 +1728,8 @@ namespace NzbDrone.Core.Books
 
                     authorBooksById[changedBook.Id] = changedBook;
                 }
+
+                PreloadEditions(authorBooks.Key, authorBooks);
 
                 var changedBookIds = authorBooks.Select(book => book.Id).ToHashSet();
                 var baseStates = authorBooksById.ToDictionary(pair => pair.Key, pair => SnapshotMonitoredState(pair.Value));
@@ -1729,6 +1790,7 @@ namespace NzbDrone.Core.Books
                 var combinedBooks = (_bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>())
                     .Concat(insertedBooks)
                     .ToList();
+                PreloadEditions(authorBooks.Key, combinedBooks);
 
                 foreach (var workGroup in BuildWorkGroups(combinedBooks))
                 {
@@ -1794,6 +1856,8 @@ namespace NzbDrone.Core.Books
                 {
                     continue;
                 }
+
+                PreloadEditions(authorId, authorBooks);
 
                 var storedById = authorBooks.ToDictionary(book => book.Id, CloneStoredBook);
                 var baseStates = authorBooks.ToDictionary(book => book.Id, SnapshotMonitoredState);
@@ -1923,7 +1987,9 @@ namespace NzbDrone.Core.Books
             // Ensure unique TitleSlugs for duplicate books when updating
             EnsureUniqueTitleSlugs(books);
             books.ForEach(EnsureBookDbFields);
-            var storedById = _bookRepository.Get(books.Select(book => book.Id)).ToDictionary(book => book.Id, CloneStoredBook);
+            var storedBooks = _bookRepository.Get(books.Select(book => book.Id)).ToList();
+            PreloadEditionsByBook(storedBooks);
+            var storedById = storedBooks.ToDictionary(book => book.Id, CloneStoredBook);
             var syncUpdates = GetSyncUpdatesForMutations(books, storedById, authorBooksHint);
             var booksToUpdate = books
                 .Concat(syncUpdates.Select(update => update.Book))
@@ -1954,9 +2020,11 @@ namespace NzbDrone.Core.Books
             }
 
             var bookIds = changedBooks.Select(book => book.Id).ToList();
-            var storedById = _bookRepository.FindExisting(bookIds)
+            var storedBooks = _bookRepository.FindExisting(bookIds)
                 .Where(book => book != null)
-                .ToDictionary(book => book.Id, CloneStoredBook);
+                .ToList();
+            PreloadEditionsByBook(storedBooks);
+            var storedById = storedBooks.ToDictionary(book => book.Id, CloneStoredBook);
 
             changedBooks = changedBooks.Where(book => storedById.ContainsKey(book.Id)).ToList();
             if (!changedBooks.Any())
@@ -2309,6 +2377,7 @@ namespace NzbDrone.Core.Books
         public void SetMonitored(IEnumerable<int> ids, bool monitored)
         {
             var books = _bookRepository.Get(ids).ToList();
+            PreloadEditionsByBook(books);
             var storedById = books.ToDictionary(book => book.Id, CloneStoredBook);
 
             foreach (var book in books)
@@ -2353,6 +2422,7 @@ namespace NzbDrone.Core.Books
             }
 
             var books = _bookRepository.Get(ids).ToList();
+            PreloadEditionsByBook(books);
             var storedById = books.ToDictionary(book => book.Id, CloneStoredBook);
             var booksToMutate = new List<Book>();
 
