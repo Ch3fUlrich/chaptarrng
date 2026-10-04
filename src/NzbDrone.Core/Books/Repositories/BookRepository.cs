@@ -18,6 +18,12 @@ namespace NzbDrone.Core.Books
         public int AuthorId { get; set; }
     }
 
+    public sealed class AuthorBookCount
+    {
+        public int AuthorId { get; set; }
+        public int BookCount { get; set; }
+    }
+
 		    public interface IBookRepository : IBasicRepository<Book>
 		    {
 		        List<Book> GetBooks(int authorId);
@@ -38,6 +44,8 @@ namespace NzbDrone.Core.Books
 		            throw new NotSupportedException();
 		        }
 		        List<Book> GetBooksByMediaType(BookMediaType mediaType) => throw new NotImplementedException();
+		        List<Book> GetBooksByAuthorIds(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
+		        List<AuthorBookCount> GetBookCountsByAuthor(BookMediaType mediaType) => throw new NotImplementedException();
 		        List<Book> GetBooksForRefresh(int authorId, IEnumerable<string> providerIds);
 		        List<Book> GetBooksByFileIds(IEnumerable<int> fileIds);
 		        Book FindByTitle(int authorId, string title);
@@ -313,6 +321,26 @@ namespace NzbDrone.Core.Books
         public List<Book> GetBooksByMediaType(BookMediaType mediaType)
         {
             return Query(s => s.MediaType == mediaType);
+        }
+
+        public List<Book> GetBooksByAuthorIds(IEnumerable<int> authorIds, BookMediaType mediaType)
+        {
+            var idsArray = authorIds?.Distinct().ToArray() ?? Array.Empty<int>();
+            if (idsArray.Length == 0)
+            {
+                return new List<Book>();
+            }
+
+            return Query(Builder().Where<Book>(x => Enumerable.Contains(idsArray, x.AuthorId) && x.MediaType == mediaType));
+        }
+
+        public List<AuthorBookCount> GetBookCountsByAuthor(BookMediaType mediaType)
+        {
+            var sql = $"SELECT \"AuthorId\", COUNT(*) AS \"BookCount\" FROM \"{_table}\" WHERE \"MediaType\" = @mediaType GROUP BY \"AuthorId\"";
+            using (var conn = _database.OpenConnection())
+            {
+                return conn.Query<AuthorBookCount>(sql, new { mediaType = (int)mediaType }).ToList();
+            }
         }
 
 			        public List<Book> GetBooksForRefresh(int authorId, IEnumerable<string> providerIds)
