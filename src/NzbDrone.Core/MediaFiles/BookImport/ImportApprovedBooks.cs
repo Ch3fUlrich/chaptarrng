@@ -2682,6 +2682,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     EditionId = source.Edition.Id,
                     Edition = source.Edition,
                     Author = author,
+                    // The same part values the import gives the converted file's BookFile.
                     Part = previewLocalBook.Part > 0 ? previewLocalBook.Part : 1,
                     PartCount = previewLocalBook.PartCount,
                     MediaType = BookFile.DetermineMediaType(convertedQuality)
