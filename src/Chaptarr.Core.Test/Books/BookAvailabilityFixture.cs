@@ -55,6 +55,16 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void non_book_extensions_are_ignored()
+        {
+            var a = BookAvailabilityCalculator.Calculate(MakeBook(BookMediaType.Ebook, new[] { "/x/cover.jpg", "/x/a.opf", "/x/a.nfo", "/x/a.cue", "/x/noext" }, "eng"));
+
+            Assert.That(a.CanRead, Is.False);
+            Assert.That(a.CanListen, Is.False);
+            Assert.That(a.FileFormats, Is.Empty);
+        }
+
+        [Test]
         public void no_files_is_neither()
         {
             var a = BookAvailabilityCalculator.Calculate(MakeBook(BookMediaType.Ebook, new string[0], "eng"));

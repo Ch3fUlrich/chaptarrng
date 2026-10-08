@@ -21,6 +21,11 @@ namespace NzbDrone.Core.Books
             "m4b", "m4a", "mp3", "flac", "opus", "ogg", "aac", "wav", "wma"
         };
 
+        private static readonly HashSet<string> EbookFormats = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "epub", "pdf", "azw", "azw3", "mobi", "kfx", "cbz", "cbr", "cb7", "djvu", "fb2", "lit", "txt", "rtf", "docx"
+        };
+
         public static BookAvailability Calculate(Book book)
         {
             var result = new BookAvailability();
@@ -41,29 +46,20 @@ namespace NzbDrone.Core.Books
                     continue;
                 }
 
-                formats.Add(ext);
-
                 if (AudioFormats.Contains(ext))
                 {
                     result.CanListen = true;
                 }
-                else
+                else if (EbookFormats.Contains(ext))
                 {
                     result.CanRead = true;
                 }
-            }
+                else
+                {
+                    continue;
+                }
 
-            // Files with no usable extension fall back to the book's media type.
-            if (files.Any() && !result.CanListen && !result.CanRead)
-            {
-                if (book.MediaType == BookMediaType.Audiobook)
-                {
-                    result.CanListen = true;
-                }
-                else
-                {
-                    result.CanRead = true;
-                }
+                formats.Add(ext);
             }
 
             result.FileFormats = formats.ToList();
