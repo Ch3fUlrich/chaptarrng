@@ -690,6 +690,8 @@ namespace Chaptarr.Api.V1.Books
                     filteredBooks = BookListPaging.Slice(filteredBooks, offset, limit, b => b.Id);
                 }
 
+                HydrateFilesForAvailability(filteredBooks, statsByBookId);
+
                 return MapToResource(filteredBooks,
                     IncludeRequested(include, "author"),
                     statsByBookId,
@@ -1668,6 +1670,34 @@ namespace Chaptarr.Api.V1.Books
 	                ? author.AudiobookQualityProfileId.HasValue && !string.IsNullOrWhiteSpace(author.AudiobookRootFolderPath)
 	                : author.EbookQualityProfileId.HasValue && !string.IsNullOrWhiteSpace(author.EbookRootFolderPath);
 	        }
+
+        // The lean index path leaves BookFiles empty; load them for books that have files in one
+        // batched query so BookResource.Availability reflects the real files (no per-row loads).
+        private void HydrateFilesForAvailability(List<Book> books, IReadOnlyDictionary<int, BookStatistics> statsByBookId)
+        {
+            var idsWithFiles = books
+                .Where(b => statsByBookId.TryGetValue(b.Id, out var stats) && stats.BookFileCount > 0)
+                .Select(b => b.Id)
+                .ToList();
+
+            if (idsWithFiles.Count == 0)
+            {
+                return;
+            }
+
+            var filesByBookId = (_mediaFileService.GetFilesByBooks(idsWithFiles) ?? new List<BookFile>())
+                .Where(f => f.Edition?.BookId > 0)
+                .GroupBy(f => f.Edition.BookId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var book in books)
+            {
+                if (filesByBookId.TryGetValue(book.Id, out var files))
+                {
+                    book.BookFiles = files;
+                }
+            }
+        }
 
         private static bool HasFiles(Book book, IReadOnlyDictionary<int, BookStatistics> statsByBookId)
         {
