@@ -126,6 +126,24 @@ export const defaultState = {
       isVisible: true
     },
     {
+      name: 'availability',
+      label: () => translate('Availability'),
+      isSortable: true,
+      isVisible: false
+    },
+    {
+      name: 'fileFormats',
+      label: () => translate('Formats'),
+      isSortable: false,
+      isVisible: false
+    },
+    {
+      name: 'languages',
+      label: () => translate('Languages'),
+      isSortable: false,
+      isVisible: false
+    },
+    {
       name: 'path',
       label: () => translate('Path'),
       isSortable: true,
@@ -184,6 +202,13 @@ export const defaultState = {
       return statistics.bookFileCount || 0;
     },
 
+    availability: function(item) {
+      const { availability } = item;
+
+      // listen=1, read=2, both=3, none/unknown=0
+      return (availability?.canListen ? 1 : 0) + (availability?.canRead ? 2 : 0);
+    },
+
     ratings: function(item) {
       const { ratings = {} } = item;
 
@@ -214,6 +239,30 @@ export const defaultState = {
       const predicate = filterTypePredicates[type];
 
       return predicate(item.anyEditionOk, filterValue);
+    },
+
+    canRead: function(item, filterValue, type) {
+      const predicate = filterTypePredicates[type];
+
+      return predicate(item.availability?.canRead === true, filterValue);
+    },
+
+    canListen: function(item, filterValue, type) {
+      const predicate = filterTypePredicates[type];
+
+      return predicate(item.availability?.canListen === true, filterValue);
+    },
+
+    fileFormats: function(item, filterValue, type) {
+      const predicate = filterTypePredicates[type];
+
+      return predicate(item.availability?.fileFormats ?? [], filterValue);
+    },
+
+    languages: function(item, filterValue, type) {
+      const predicate = filterTypePredicates[type];
+
+      return predicate(item.availability?.languages ?? [], filterValue);
     }
   },
 
@@ -278,6 +327,46 @@ export const defaultState = {
       label: () => translate('SizeOnDisk'),
       type: filterBuilderTypes.NUMBER,
       valueType: filterBuilderValueTypes.BYTES
+    },
+    {
+      name: 'canRead',
+      label: () => translate('CanRead'),
+      type: filterBuilderTypes.EXACT,
+      valueType: filterBuilderValueTypes.BOOL
+    },
+    {
+      name: 'canListen',
+      label: () => translate('CanListen'),
+      type: filterBuilderTypes.EXACT,
+      valueType: filterBuilderValueTypes.BOOL
+    },
+    {
+      name: 'fileFormats',
+      label: () => translate('Formats'),
+      type: filterBuilderTypes.ARRAY,
+      optionsSelector: function(items) {
+        const values = new Set();
+
+        items.forEach((book) => {
+          (book.availability?.fileFormats ?? []).forEach((value) => values.add(value));
+        });
+
+        return Array.from(values).sort().map((value) => ({ id: value, name: value }));
+      }
+    },
+    {
+      name: 'languages',
+      label: () => translate('Languages'),
+      type: filterBuilderTypes.ARRAY,
+      optionsSelector: function(items) {
+        const values = new Set();
+
+        items.forEach((book) => {
+          (book.availability?.languages ?? []).forEach((value) => values.add(value));
+        });
+
+        return Array.from(values).sort().map((value) => ({ id: value, name: value }));
+      }
     },
     {
       name: 'genres',
