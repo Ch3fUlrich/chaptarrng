@@ -86,9 +86,20 @@ namespace Chaptarr.Api.V1.Books
         public List<string> Formats { get; set; }
         public string FileSizeOnDisk { get; set; }
 
+        // Null when the book's files were not loaded for this response (never lazy-loaded per row).
+        public BookAvailabilityResource Availability { get; set; }
+
         //Hiding this so people don't think its usable (only used to set the initial state)
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool Grabbed { get; set; }
+    }
+
+    public class BookAvailabilityResource
+    {
+        public bool CanRead { get; set; }
+        public bool CanListen { get; set; }
+        public List<string> FileFormats { get; set; }
+        public List<string> Languages { get; set; }
     }
 
     public class BookLocalInstanceResource
@@ -244,7 +255,8 @@ namespace Chaptarr.Api.V1.Books
                 DurationMinutes = GetDurationMinutes(model, selectedEdition),
                 MediaType = model.MediaType == BookMediaType.Audiobook ? "audiobook" : "ebook",
                 HasFiles = hasFiles,
-                IsOmnibus = model.IsOmnibus
+                IsOmnibus = model.IsOmnibus,
+                Availability = ToAvailabilityResource(model)
             };
 
             // Gate narrator display for V1 (audiobooks only): show names only when they come from files
@@ -260,6 +272,24 @@ namespace Chaptarr.Api.V1.Books
 
             return resource;
         }
+
+            private static BookAvailabilityResource ToAvailabilityResource(Book model)
+            {
+                if (model.LazyBookFiles?.IsLoaded != true)
+                {
+                    return null;
+                }
+
+                var availability = BookAvailabilityCalculator.Calculate(model);
+
+                return new BookAvailabilityResource
+                {
+                    CanRead = availability.CanRead,
+                    CanListen = availability.CanListen,
+                    FileFormats = availability.FileFormats,
+                    Languages = availability.Languages
+                };
+            }
 
             private static List<string> BuildSuffixCandidates(Book model, string seriesTitle)
             {
