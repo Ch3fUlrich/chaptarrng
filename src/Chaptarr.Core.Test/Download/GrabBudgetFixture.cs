@@ -15,6 +15,7 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Queue;
+using QueueItem = NzbDrone.Core.Queue.Queue;
 
 namespace Chaptarr.Core.Test.Download
 {
@@ -264,15 +265,15 @@ namespace Chaptarr.Core.Test.Download
 
         private sealed class RecordingQueueService : IQueueService
         {
-            private readonly List<Queue> _queue;
+            private readonly List<QueueItem> _queue;
 
             public RecordingQueueService(int count)
             {
-                _queue = Enumerable.Range(0, count).Select(_ => new Queue()).ToList();
+                _queue = Enumerable.Range(0, count).Select(_ => new QueueItem()).ToList();
             }
 
-            public List<Queue> GetQueue() => _queue.ToList();
-            public Queue Find(int id) => _queue.FirstOrDefault(q => q.Id == id);
+            public List<QueueItem> GetQueue() => _queue.ToList();
+            public QueueItem Find(int id) => _queue.FirstOrDefault(q => q.Id == id);
             public void Remove(int id) => _queue.RemoveAll(q => q.Id == id);
         }
 
@@ -290,8 +291,8 @@ namespace Chaptarr.Core.Test.Download
             public void AddMany(List<Tuple<DownloadDecision, PendingReleaseReason>> decisions) { }
             public List<ReleaseInfo> GetPending() => new();
             public List<RemoteBook> GetPendingRemoteBooks(int authorId) => new();
-            public List<Queue> GetPendingQueue() => new();
-            public Queue FindPendingQueueItem(int queueId) => null;
+            public List<QueueItem> GetPendingQueue() => new();
+            public QueueItem FindPendingQueueItem(int queueId) => null;
             public void RemovePendingQueueItems(int queueId) { }
             public RemoteBook OldestPendingRelease(int authorId, int[] bookIds) => null;
         }
