@@ -56,6 +56,7 @@ namespace NzbDrone.Core.Download
         public async Task<ProcessedDecisions> ProcessDecisions(List<DownloadDecision> decisions)
         {
             GrabBudgetResult = GrabBudgetResult.Allow();
+            var runStartedAt = DateTime.UtcNow;
 
             var qualifiedReports = GetQualifiedReports(decisions);
             var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(qualifiedReports);
@@ -75,6 +76,7 @@ namespace NzbDrone.Core.Download
             var skippedCount = 0;
             var failedCount = 0;
             var indexerCooldownSkipped = false;
+            var cooldownIndexerIds = budgetEnabled ? GetCooldownIndexerIds() : new HashSet<int>();
 
             var isDryRun = budgetEnabled && (_configService?.GrabBudgetDryRun ?? false);
             var wouldGrabCount = 0;
@@ -144,7 +146,7 @@ namespace NzbDrone.Core.Download
                         }
                     }
 
-                    if (IsIndexerOnCooldown(report.RemoteBook?.Release?.IndexerId ?? 0))
+                    if (cooldownIndexerIds.Contains(report.RemoteBook?.Release?.IndexerId ?? 0))
                     {
                         skippedCount++;
                         indexerCooldownSkipped = true;
@@ -276,7 +278,7 @@ namespace NzbDrone.Core.Download
             if (budgetEnabled && decisions != null && decisions.Any())
             {
                 var details = isDryRun && detailsLines != null ? string.Join("\n", detailsLines) : null;
-                _grabBudgetService.RecordBatch(isDryRun ? wouldGrabCount : grabbed.Count, skippedCount, failedCount, GrabBudgetResult.StopReason, details: details);
+                _grabBudgetService.RecordBatch(isDryRun ? wouldGrabCount : grabbed.Count, skippedCount, failedCount, GrabBudgetResult.StopReason, runStartedAt, details);
             }
 
             return new ProcessedDecisions(grabbed, pending, rejected);
@@ -352,27 +354,24 @@ namespace NzbDrone.Core.Download
                    _configService.GrabBudgetEnabled;
         }
 
-        private bool IsIndexerOnCooldown(int indexerId)
+        private HashSet<int> GetCooldownIndexerIds()
         {
-            if (_indexerStatusService == null || indexerId <= 0)
+            if (_indexerStatusService == null)
             {
-                return false;
+                return new HashSet<int>();
             }
 
             try
             {
-                var blocked = _indexerStatusService.GetBlockedProviders();
-                if (blocked == null)
-                {
-                    return false;
-                }
-
-                return blocked.Any(p => p.ProviderId == indexerId && (p.DisabledTill == null || p.IsDisabled() || p.DisabledTill.Value > DateTime.UtcNow));
+                // GetBlockedProviders only returns providers that are currently disabled (backed off).
+                return (_indexerStatusService.GetBlockedProviders() ?? new List<IndexerStatus>())
+                    .Select(p => p.ProviderId)
+                    .ToHashSet();
             }
             catch (Exception ex)
             {
                 _logger.Debug(ex, "Unable to check indexer status for grab budget.");
-                return false;
+                return new HashSet<int>();
             }
         }
 

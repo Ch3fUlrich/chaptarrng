@@ -480,7 +480,7 @@ namespace Chaptarr.Core.Test.Download
                 Assert.That(batchRepo.Store[0].Skipped, Is.EqualTo(2));
                 Assert.That(batchRepo.Store[0].Failed, Is.EqualTo(0));
                 Assert.That(batchRepo.Store[0].StopReason, Is.EqualTo(GrabBudgetStopReason.MaxPerRunReached));
-                Assert.That(batchRepo.Store[0].StartedAt, Is.EqualTo(Now));
+                Assert.That(batchRepo.Store[0].StartedAt, Is.EqualTo(DateTime.UtcNow).Within(TimeSpan.FromMinutes(1)));
             });
         }
 
