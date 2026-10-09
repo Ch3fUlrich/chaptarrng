@@ -5,7 +5,9 @@ namespace NzbDrone.Core.Download.GrabBudget
         None,
         MaxPerRunReached,
         MaxPerDayReached,
-        MaxActiveQueueReached
+        MaxActiveQueueReached,
+        IndexerCooldown,
+        ConsecutiveFailures
     }
 
     public class GrabBudgetResult

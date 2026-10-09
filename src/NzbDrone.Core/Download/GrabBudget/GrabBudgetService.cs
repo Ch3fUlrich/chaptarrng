@@ -10,13 +10,18 @@ namespace NzbDrone.Core.Download.GrabBudget
         void RecordGrab(DateTime? grabbedAt = null);
         void Prune(DateTime? utcNow = null);
         GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null);
+        void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null);
+        void RecordBatch(GrabBudgetBatch batch);
+        void PruneBatches(DateTime? utcNow = null);
     }
 
     public class GrabBudgetService : IGrabBudgetService
     {
         public static readonly TimeSpan RollingWindow = TimeSpan.FromHours(24);
+        public static readonly TimeSpan BatchRetentionWindow = TimeSpan.FromDays(30);
 
         private readonly IGrabBudgetLogRepository _repository;
+        private readonly IGrabBudgetBatchRepository _batchRepository;
         private readonly IConfigService _configService;
         private readonly IGrabBudgetClock _clock;
         private readonly Logger _logger;
@@ -24,12 +29,14 @@ namespace NzbDrone.Core.Download.GrabBudget
         public GrabBudgetService(IGrabBudgetLogRepository repository,
                                  IConfigService configService,
                                  IGrabBudgetClock clock,
-                                 Logger logger)
+                                 Logger logger,
+                                 IGrabBudgetBatchRepository batchRepository = null)
         {
             _repository = repository;
             _configService = configService;
             _clock = clock;
             _logger = logger;
+            _batchRepository = batchRepository;
         }
 
         public int GrabsInLastDay(DateTime utcNow)
@@ -86,6 +93,46 @@ namespace NzbDrone.Core.Download.GrabBudget
             }
 
             return GrabBudgetResult.Allow();
+        }
+
+        public void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null)
+        {
+            var batch = new GrabBudgetBatch
+            {
+                StartedAt = startedAt ?? _clock.UtcNow,
+                Grabbed = grabbed,
+                Skipped = skipped,
+                Failed = failed,
+                StopReason = stopReason
+            };
+
+            RecordBatch(batch);
+        }
+
+        public void RecordBatch(GrabBudgetBatch batch)
+        {
+            if (batch == null)
+            {
+                return;
+            }
+
+            if (batch.StartedAt == default)
+            {
+                batch.StartedAt = _clock.UtcNow;
+            }
+
+            if (_batchRepository != null)
+            {
+                _batchRepository.Insert(batch);
+                PruneBatches(batch.StartedAt);
+            }
+        }
+
+        public void PruneBatches(DateTime? utcNow = null)
+        {
+            var now = utcNow ?? _clock.UtcNow;
+
+            _batchRepository?.DeleteBefore(now - BatchRetentionWindow);
         }
     }
 }

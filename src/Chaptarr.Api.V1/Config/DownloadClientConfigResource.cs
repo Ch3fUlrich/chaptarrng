@@ -16,6 +16,7 @@ namespace Chaptarr.Api.V1.Config
         public int GrabBudgetMaxPerDay { get; set; }
         public int GrabBudgetMaxActiveQueue { get; set; }
         public bool GrabBudgetApplyToInteractive { get; set; }
+        public int GrabBudgetMaxConsecutiveFailures { get; set; }
     }
 
     public static class DownloadClientConfigResourceMapper
@@ -34,7 +35,8 @@ namespace Chaptarr.Api.V1.Config
                 GrabBudgetMaxPerRun = model.GrabBudgetMaxPerRun,
                 GrabBudgetMaxPerDay = model.GrabBudgetMaxPerDay,
                 GrabBudgetMaxActiveQueue = model.GrabBudgetMaxActiveQueue,
-                GrabBudgetApplyToInteractive = model.GrabBudgetApplyToInteractive
+                GrabBudgetApplyToInteractive = model.GrabBudgetApplyToInteractive,
+                GrabBudgetMaxConsecutiveFailures = model.GrabBudgetMaxConsecutiveFailures
             };
         }
     }

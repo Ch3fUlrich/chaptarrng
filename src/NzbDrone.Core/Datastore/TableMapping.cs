@@ -225,6 +225,7 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(e => e.RemoteBook);
 
             Mapper.Entity<GrabBudgetLog>("GrabBudgetLog").RegisterModel();
+            Mapper.Entity<GrabBudgetBatch>("GrabBudgetBatch").RegisterModel();
 
             Mapper.Entity<RemotePathMapping>("RemotePathMappings").RegisterModel();
             Mapper.Entity<Tag>("Tags").RegisterModel();

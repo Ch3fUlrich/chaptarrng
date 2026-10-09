@@ -211,6 +211,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("GrabBudgetApplyToInteractive", value); }
         }
 
+        public int GrabBudgetMaxConsecutiveFailures
+        {
+            get { return GetValueInt("GrabBudgetMaxConsecutiveFailures", 3); }
+
+            set { SetValue("GrabBudgetMaxConsecutiveFailures", value); }
+        }
+
         public bool CreateEmptyAuthorFolders
         {
             get { return GetValueBoolean("CreateEmptyAuthorFolders", false); }
