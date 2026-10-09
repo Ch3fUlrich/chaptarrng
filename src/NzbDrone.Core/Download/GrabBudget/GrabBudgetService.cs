@@ -8,7 +8,6 @@ namespace NzbDrone.Core.Download.GrabBudget
     public interface IGrabBudgetService
     {
         int GrabsInLastDay(DateTime utcNow);
-        int GrabsInLastDay();
         void RecordGrab(DateTime? grabbedAt = null);
         void Prune(DateTime? utcNow = null);
         GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null);
@@ -16,7 +15,6 @@ namespace NzbDrone.Core.Download.GrabBudget
         void RecordBatch(GrabBudgetBatch batch);
         void PruneBatches(DateTime? utcNow = null);
         List<GrabBudgetBatch> GetLatestBatches(int count = 20);
-        List<GrabBudgetBatch> LatestBatches(int count = 20);
     }
 
     public class GrabBudgetService : IGrabBudgetService
@@ -46,11 +44,6 @@ namespace NzbDrone.Core.Download.GrabBudget
         public int GrabsInLastDay(DateTime utcNow)
         {
             return _repository.Since(utcNow - RollingWindow).Count;
-        }
-
-        public int GrabsInLastDay()
-        {
-            return GrabsInLastDay(_clock.UtcNow);
         }
 
         public void RecordGrab(DateTime? grabbedAt = null)
@@ -148,11 +141,6 @@ namespace NzbDrone.Core.Download.GrabBudget
         public List<GrabBudgetBatch> GetLatestBatches(int count = 20)
         {
             return _batchRepository?.Latest(count) ?? new List<GrabBudgetBatch>();
-        }
-
-        public List<GrabBudgetBatch> LatestBatches(int count = 20)
-        {
-            return GetLatestBatches(count);
         }
     }
 }
