@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Configuration
         int GrabBudgetMaxActiveQueue { get; set; }
         bool GrabBudgetApplyToInteractive { get; set; }
         int GrabBudgetMaxConsecutiveFailures { get; set; }
+        bool GrabBudgetDryRun { get; set; }
 
         //Media Management
         bool AutoUnmonitorPreviouslyDownloadedBooks { get; set; }

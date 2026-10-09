@@ -218,6 +218,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("GrabBudgetMaxConsecutiveFailures", value); }
         }
 
+        public bool GrabBudgetDryRun
+        {
+            get { return GetValueBoolean("GrabBudgetDryRun", false); }
+
+            set { SetValue("GrabBudgetDryRun", value); }
+        }
+
         public bool CreateEmptyAuthorFolders
         {
             get { return GetValueBoolean("CreateEmptyAuthorFolders", false); }

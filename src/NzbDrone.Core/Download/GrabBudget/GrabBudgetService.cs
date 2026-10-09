@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NLog;
 using NzbDrone.Core.Configuration;
 
@@ -7,12 +8,15 @@ namespace NzbDrone.Core.Download.GrabBudget
     public interface IGrabBudgetService
     {
         int GrabsInLastDay(DateTime utcNow);
+        int GrabsInLastDay();
         void RecordGrab(DateTime? grabbedAt = null);
         void Prune(DateTime? utcNow = null);
         GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null);
-        void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null);
+        void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null, string details = null);
         void RecordBatch(GrabBudgetBatch batch);
         void PruneBatches(DateTime? utcNow = null);
+        List<GrabBudgetBatch> GetLatestBatches(int count = 20);
+        List<GrabBudgetBatch> LatestBatches(int count = 20);
     }
 
     public class GrabBudgetService : IGrabBudgetService
@@ -42,6 +46,11 @@ namespace NzbDrone.Core.Download.GrabBudget
         public int GrabsInLastDay(DateTime utcNow)
         {
             return _repository.Since(utcNow - RollingWindow).Count;
+        }
+
+        public int GrabsInLastDay()
+        {
+            return GrabsInLastDay(_clock.UtcNow);
         }
 
         public void RecordGrab(DateTime? grabbedAt = null)
@@ -95,7 +104,7 @@ namespace NzbDrone.Core.Download.GrabBudget
             return GrabBudgetResult.Allow();
         }
 
-        public void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null)
+        public void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null, string details = null)
         {
             var batch = new GrabBudgetBatch
             {
@@ -103,7 +112,8 @@ namespace NzbDrone.Core.Download.GrabBudget
                 Grabbed = grabbed,
                 Skipped = skipped,
                 Failed = failed,
-                StopReason = stopReason
+                StopReason = stopReason,
+                Details = details
             };
 
             RecordBatch(batch);
@@ -133,6 +143,16 @@ namespace NzbDrone.Core.Download.GrabBudget
             var now = utcNow ?? _clock.UtcNow;
 
             _batchRepository?.DeleteBefore(now - BatchRetentionWindow);
+        }
+
+        public List<GrabBudgetBatch> GetLatestBatches(int count = 20)
+        {
+            return _batchRepository?.Latest(count) ?? new List<GrabBudgetBatch>();
+        }
+
+        public List<GrabBudgetBatch> LatestBatches(int count = 20)
+        {
+            return GetLatestBatches(count);
         }
     }
 }

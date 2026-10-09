@@ -10,5 +10,6 @@ namespace NzbDrone.Core.Download.GrabBudget
         public int Skipped { get; set; }
         public int Failed { get; set; }
         public GrabBudgetStopReason StopReason { get; set; }
+        public string Details { get; set; }
     }
 }

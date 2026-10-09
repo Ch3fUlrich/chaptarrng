@@ -102,6 +102,128 @@ function DownloadClientOptions(props) {
                 {translate('RemoveDownloadsAlert')}
               </Alert>
             </FieldSet>
+
+            <FieldSet
+              legend={translate('GrabBudget')}
+            >
+              <Form>
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetEnabled')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="grabBudgetEnabled"
+                    helpText={translate('GrabBudgetEnabledHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetEnabled}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetMaxPerRun')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="grabBudgetMaxPerRun"
+                    min={0}
+                    helpText={translate('GrabBudgetMaxPerRunHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetMaxPerRun}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetMaxPerDay')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="grabBudgetMaxPerDay"
+                    min={0}
+                    helpText={translate('GrabBudgetMaxPerDayHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetMaxPerDay}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetMaxActiveQueue')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="grabBudgetMaxActiveQueue"
+                    min={0}
+                    helpText={translate('GrabBudgetMaxActiveQueueHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetMaxActiveQueue}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetMaxConsecutiveFailures')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="grabBudgetMaxConsecutiveFailures"
+                    min={0}
+                    helpText={translate('GrabBudgetMaxConsecutiveFailuresHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetMaxConsecutiveFailures}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetApplyToInteractive')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="grabBudgetApplyToInteractive"
+                    helpText={translate('GrabBudgetApplyToInteractiveHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetApplyToInteractive}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('GrabBudgetDryRun')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="grabBudgetDryRun"
+                    helpText={translate('GrabBudgetDryRunHelpText')}
+                    onChange={onInputChange}
+                    {...settings.grabBudgetDryRun}
+                  />
+                </FormGroup>
+              </Form>
+            </FieldSet>
           </div>
       }
     </div>

@@ -508,6 +508,77 @@ namespace Chaptarr.Core.Test.Download
             });
         }
 
+        [Test]
+        public async Task dry_run_with_50_eligible_limit_5_downloads_zero_and_records_batch_with_details()
+        {
+            var repo = InMemoryGrabBudgetLogRepository.Create();
+            var batchRepo = InMemoryGrabBudgetBatchRepository.Create();
+            var config = GrabBudgetConfigProxy.Create(enabled: true, maxPerRun: 5, maxPerDay: 25, dryRun: true);
+            var subject = BuildSubject(repo, config, Now, out var downloads, out _, batchRepo: batchRepo);
+
+            var decisions = BuildDecisions(50, BookMediaType.Audiobook, Quality.MP3, startId: 1000);
+
+            var result = await subject.ProcessDecisions(decisions);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Grabbed, Is.Empty);
+                Assert.That(downloads.Downloaded, Is.Empty);
+                Assert.That(repo.Store, Is.Empty);
+                Assert.That(batchRepo.Store, Has.Count.EqualTo(1));
+
+                var batch = batchRepo.Store[0];
+                Assert.That(batch.Grabbed, Is.EqualTo(5));
+                Assert.That(batch.StopReason, Is.EqualTo(GrabBudgetStopReason.MaxPerRunReached));
+                Assert.That(batch.Details, Is.Not.Null);
+
+                var lines = batch.Details.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var wouldGrabLines = lines.Where(l => l.StartsWith("[would grab]")).ToList();
+                Assert.That(wouldGrabLines, Has.Count.EqualTo(5));
+            });
+        }
+
+        [Test]
+        public async Task dry_run_off_records_batch_with_null_details()
+        {
+            var repo = InMemoryGrabBudgetLogRepository.Create();
+            var batchRepo = InMemoryGrabBudgetBatchRepository.Create();
+            var config = GrabBudgetConfigProxy.Create(enabled: true, maxPerRun: 5, maxPerDay: 25, dryRun: false);
+            var subject = BuildSubject(repo, config, Now, out var downloads, out _, batchRepo: batchRepo);
+
+            var decisions = BuildDecisions(10, BookMediaType.Audiobook, Quality.MP3, startId: 1000);
+
+            var result = await subject.ProcessDecisions(decisions);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Grabbed, Has.Count.EqualTo(5));
+                Assert.That(downloads.Downloaded, Has.Count.EqualTo(5));
+                Assert.That(repo.Store, Has.Count.EqualTo(5));
+                Assert.That(batchRepo.Store, Has.Count.EqualTo(1));
+                Assert.That(batchRepo.Store[0].Details, Is.Null);
+            });
+        }
+
+        [Test]
+        public void batch_repository_latest_returns_newest_first()
+        {
+            var batchRepo = InMemoryGrabBudgetBatchRepository.Create();
+            var repoInterface = (IGrabBudgetBatchRepository)(object)batchRepo;
+            repoInterface.Insert(new GrabBudgetBatch { StartedAt = Now.AddMinutes(-10), Grabbed = 1 });
+            repoInterface.Insert(new GrabBudgetBatch { StartedAt = Now.AddMinutes(-5), Grabbed = 2 });
+            repoInterface.Insert(new GrabBudgetBatch { StartedAt = Now, Grabbed = 3 });
+
+            var latest = repoInterface.Latest(2);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(latest, Has.Count.EqualTo(2));
+                Assert.That(latest[0].Id, Is.EqualTo(3));
+                Assert.That(latest[1].Id, Is.EqualTo(2));
+            });
+        }
+
         private static ProcessDownloadDecisions BuildSubject(
             InMemoryGrabBudgetLogRepository repo,
             IConfigService config,
@@ -693,6 +764,7 @@ namespace Chaptarr.Core.Test.Download
             public int GrabBudgetMaxActiveQueue { get; set; }
             public bool GrabBudgetApplyToInteractive { get; set; }
             public int GrabBudgetMaxConsecutiveFailures { get; set; } = 3;
+            public bool GrabBudgetDryRun { get; set; }
 
             protected override object Invoke(MethodInfo targetMethod, object[] args)
             {
@@ -710,6 +782,8 @@ namespace Chaptarr.Core.Test.Download
                     case "set_GrabBudgetApplyToInteractive": GrabBudgetApplyToInteractive = (bool)args[0]; return null;
                     case "get_GrabBudgetMaxConsecutiveFailures": return GrabBudgetMaxConsecutiveFailures;
                     case "set_GrabBudgetMaxConsecutiveFailures": GrabBudgetMaxConsecutiveFailures = (int)args[0]; return null;
+                    case "get_GrabBudgetDryRun": return GrabBudgetDryRun;
+                    case "set_GrabBudgetDryRun": GrabBudgetDryRun = (bool)args[0]; return null;
                     default: throw new NotImplementedException($"Test proxy does not implement {targetMethod?.Name}");
                 }
             }
@@ -720,7 +794,8 @@ namespace Chaptarr.Core.Test.Download
                 int maxPerDay = 25,
                 int maxActiveQueue = 0,
                 bool applyToInteractive = false,
-                int maxConsecutiveFailures = 3)
+                int maxConsecutiveFailures = 3,
+                bool dryRun = false)
             {
                 var service = DispatchProxy.Create<IConfigService, GrabBudgetConfigProxy>();
                 var proxy = (GrabBudgetConfigProxy)service;
@@ -730,6 +805,7 @@ namespace Chaptarr.Core.Test.Download
                 proxy.GrabBudgetMaxActiveQueue = maxActiveQueue;
                 proxy.GrabBudgetApplyToInteractive = applyToInteractive;
                 proxy.GrabBudgetMaxConsecutiveFailures = maxConsecutiveFailures;
+                proxy.GrabBudgetDryRun = dryRun;
                 return service;
             }
         }
@@ -786,10 +862,18 @@ namespace Chaptarr.Core.Test.Download
                         var before = (DateTime)args[0];
                         Store.RemoveAll(r => r.StartedAt < before);
                         return null;
+                    case "Latest":
+                        var count = (int)args[0];
+                        return Store.OrderByDescending(b => b.StartedAt).ThenByDescending(b => b.Id).Take(count).ToList();
                     case "All":
                         return Store.ToList();
                     default: throw new NotImplementedException($"Test repository does not implement {targetMethod?.Name}");
                 }
+            }
+
+            public List<GrabBudgetBatch> Latest(int count)
+            {
+                return Store.OrderByDescending(b => b.StartedAt).ThenByDescending(b => b.Id).Take(count).ToList();
             }
 
             public static InMemoryGrabBudgetBatchRepository Create()

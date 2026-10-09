@@ -16,7 +16,8 @@ namespace NzbDrone.Core.Datastore.Migration
                     .WithColumn("Grabbed").AsInt32().NotNullable()
                     .WithColumn("Skipped").AsInt32().NotNullable()
                     .WithColumn("Failed").AsInt32().NotNullable()
-                    .WithColumn("StopReason").AsInt32().NotNullable();
+                    .WithColumn("StopReason").AsInt32().NotNullable()
+                    .WithColumn("Details").AsString().Nullable();
             }
 
             if (!Schema.Table("GrabBudgetBatch").Index("IX_GrabBudgetBatch_StartedAt").Exists())
