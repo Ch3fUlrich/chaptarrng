@@ -176,7 +176,7 @@ namespace Chaptarr.Core.Test.Download
             }
 
             var config = GrabBudgetConfigProxy.Create(enabled: true, maxPerRun: 50, maxPerDay: 25);
-            var service = new GrabBudgetService(repo, config, new FixedGrabBudgetClock(Now), LogManager.GetLogger("GrabBudgetFixture"));
+            var service = new GrabBudgetService((IGrabBudgetLogRepository)(object)repo, config, new FixedGrabBudgetClock(Now), LogManager.GetLogger("GrabBudgetFixture"));
 
             Assert.Multiple(() =>
             {
@@ -192,7 +192,7 @@ namespace Chaptarr.Core.Test.Download
             repo.Store.Add(new GrabBudgetLog { Id = 1, GrabbedAt = Now.AddHours(-30) });
 
             var config = GrabBudgetConfigProxy.Create(enabled: true);
-            var service = new GrabBudgetService(repo, config, new FixedGrabBudgetClock(Now), LogManager.GetLogger("GrabBudgetFixture"));
+            var service = new GrabBudgetService((IGrabBudgetLogRepository)(object)repo, config, new FixedGrabBudgetClock(Now), LogManager.GetLogger("GrabBudgetFixture"));
 
             service.RecordGrab();
 
@@ -204,7 +204,7 @@ namespace Chaptarr.Core.Test.Download
         }
 
         private static ProcessDownloadDecisions BuildSubject(
-            IGrabBudgetLogRepository repo,
+            InMemoryGrabBudgetLogRepository repo,
             IConfigService config,
             DateTime now,
             out RecordingDownloadService downloads,
@@ -213,7 +213,7 @@ namespace Chaptarr.Core.Test.Download
         {
             downloads = new RecordingDownloadService();
             queue = new RecordingQueueService(activeQueueCount);
-            var budget = new GrabBudgetService(repo, config, new FixedGrabBudgetClock(now), LogManager.GetLogger("GrabBudgetFixture"));
+            var budget = new GrabBudgetService((IGrabBudgetLogRepository)(object)repo, config, new FixedGrabBudgetClock(now), LogManager.GetLogger("GrabBudgetFixture"));
 
             return new ProcessDownloadDecisions(
                 downloads,
