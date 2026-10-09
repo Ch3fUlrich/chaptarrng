@@ -244,13 +244,23 @@ export const defaultState = {
     canRead: function(item, filterValue, type) {
       const predicate = filterTypePredicates[type];
 
-      return predicate(item.availability?.canRead === true, filterValue);
+      // Unknown availability must not match either true or false.
+      if (!item.availability) {
+        return false;
+      }
+
+      return predicate(item.availability.canRead === true, filterValue);
     },
 
     canListen: function(item, filterValue, type) {
       const predicate = filterTypePredicates[type];
 
-      return predicate(item.availability?.canListen === true, filterValue);
+      // Unknown availability must not match either true or false.
+      if (!item.availability) {
+        return false;
+      }
+
+      return predicate(item.availability.canListen === true, filterValue);
     },
 
     fileFormats: function(item, filterValue, type) {

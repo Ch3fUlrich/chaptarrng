@@ -25,6 +25,16 @@ namespace Chaptarr.Core.Test.Books
             return new Book { MediaType = type, BookFiles = files, Editions = editions };
         }
 
+        [TestCase("/x/a.aax")]
+        [TestCase("/x/a.AAXC")]
+        public void audible_formats_are_listen(string path)
+        {
+            var a = BookAvailabilityCalculator.Calculate(MakeBook(BookMediaType.Audiobook, new[] { path }, "eng"));
+
+            Assert.That(a.CanListen, Is.True);
+            Assert.That(a.CanRead, Is.False);
+        }
+
         [Test]
         public void ebook_only_is_read_not_listen()
         {
@@ -94,7 +104,12 @@ namespace Chaptarr.Core.Test.Books
         [Test]
         public void null_book_is_empty()
         {
-            Assert.That(BookAvailabilityCalculator.Calculate(null).CanRead, Is.False);
+            var a = BookAvailabilityCalculator.Calculate(null);
+
+            Assert.That(a.CanRead, Is.False);
+            Assert.That(a.CanListen, Is.False);
+            Assert.That(a.FileFormats, Is.Empty);
+            Assert.That(a.Languages, Is.Empty);
         }
     }
 }

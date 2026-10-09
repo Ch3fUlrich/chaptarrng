@@ -1676,7 +1676,8 @@ namespace Chaptarr.Api.V1.Books
         private void HydrateFilesForAvailability(List<Book> books, IReadOnlyDictionary<int, BookStatistics> statsByBookId)
         {
             var idsWithFiles = books
-                .Where(b => statsByBookId.TryGetValue(b.Id, out var stats) && stats.BookFileCount > 0)
+                // Books missing from the (possibly stale) statistics are hydrated too, so Availability is never left unknown.
+                .Where(b => !statsByBookId.TryGetValue(b.Id, out var stats) || stats.BookFileCount > 0)
                 .Select(b => b.Id)
                 .ToList();
 

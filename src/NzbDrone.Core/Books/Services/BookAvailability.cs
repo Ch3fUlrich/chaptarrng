@@ -18,7 +18,7 @@ namespace NzbDrone.Core.Books
     {
         private static readonly HashSet<string> AudioFormats = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "m4b", "m4a", "mp3", "flac", "opus", "ogg", "aac", "wav", "wma"
+            "m4b", "m4a", "mp3", "flac", "opus", "ogg", "aac", "wav", "wma", "aax", "aaxc"
         };
 
         private static readonly HashSet<string> EbookFormats = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
