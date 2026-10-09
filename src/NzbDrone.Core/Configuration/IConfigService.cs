@@ -21,6 +21,13 @@ namespace NzbDrone.Core.Configuration
         bool AutoRedownloadFailed { get; set; }
         bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
 
+        //Unattended grab budget (Download client)
+        bool GrabBudgetEnabled { get; set; }
+        int GrabBudgetMaxPerRun { get; set; }
+        int GrabBudgetMaxPerDay { get; set; }
+        int GrabBudgetMaxActiveQueue { get; set; }
+        bool GrabBudgetApplyToInteractive { get; set; }
+
         //Media Management
         bool AutoUnmonitorPreviouslyDownloadedBooks { get; set; }
         string RecycleBin { get; set; }

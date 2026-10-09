@@ -10,6 +10,12 @@ namespace Chaptarr.Api.V1.Config
         public bool EnableCompletedDownloadHandling { get; set; }
         public bool AutoRedownloadFailed { get; set; }
         public bool AutoRedownloadFailedFromInteractiveSearch { get; set; }
+
+        public bool GrabBudgetEnabled { get; set; }
+        public int GrabBudgetMaxPerRun { get; set; }
+        public int GrabBudgetMaxPerDay { get; set; }
+        public int GrabBudgetMaxActiveQueue { get; set; }
+        public bool GrabBudgetApplyToInteractive { get; set; }
     }
 
     public static class DownloadClientConfigResourceMapper
@@ -22,7 +28,13 @@ namespace Chaptarr.Api.V1.Config
 
                 EnableCompletedDownloadHandling = model.EnableCompletedDownloadHandling,
                 AutoRedownloadFailed = model.AutoRedownloadFailed,
-                AutoRedownloadFailedFromInteractiveSearch = model.AutoRedownloadFailedFromInteractiveSearch
+                AutoRedownloadFailedFromInteractiveSearch = model.AutoRedownloadFailedFromInteractiveSearch,
+
+                GrabBudgetEnabled = model.GrabBudgetEnabled,
+                GrabBudgetMaxPerRun = model.GrabBudgetMaxPerRun,
+                GrabBudgetMaxPerDay = model.GrabBudgetMaxPerDay,
+                GrabBudgetMaxActiveQueue = model.GrabBudgetMaxActiveQueue,
+                GrabBudgetApplyToInteractive = model.GrabBudgetApplyToInteractive
             };
         }
     }

@@ -14624,6 +14624,24 @@
           },
           "autoRedownloadFailedFromInteractiveSearch": {
             "type": "boolean"
+          },
+          "grabBudgetEnabled": {
+            "type": "boolean"
+          },
+          "grabBudgetMaxPerRun": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetMaxPerDay": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetMaxActiveQueue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetApplyToInteractive": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

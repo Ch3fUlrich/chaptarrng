@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NLog;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download.Clients;
+using NzbDrone.Core.Download.GrabBudget;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Common.Instrumentation;
+using NzbDrone.Core.Queue;
 
 namespace NzbDrone.Core.Download
 {
@@ -24,16 +27,27 @@ namespace NzbDrone.Core.Download
         private readonly IPrioritizeDownloadDecision _prioritizeDownloadDecision;
         private readonly IPendingReleaseService _pendingReleaseService;
         private readonly Logger _logger;
+        private readonly IConfigService _configService;
+        private readonly IGrabBudgetService _grabBudgetService;
+        private readonly IQueueService _queueService;
+
+        public GrabBudgetResult GrabBudgetResult { get; private set; } = GrabBudgetResult.Allow();
 
         public ProcessDownloadDecisions(IDownloadService downloadService,
                                         IPrioritizeDownloadDecision prioritizeDownloadDecision,
                                         IPendingReleaseService pendingReleaseService,
-                                        Logger logger)
+                                        Logger logger,
+                                        IConfigService configService = null,
+                                        IGrabBudgetService grabBudgetService = null,
+                                        IQueueService queueService = null)
         {
             _downloadService = downloadService;
             _prioritizeDownloadDecision = prioritizeDownloadDecision;
             _pendingReleaseService = pendingReleaseService;
             _logger = logger;
+            _configService = configService;
+            _grabBudgetService = grabBudgetService;
+            _queueService = queueService;
         }
 
         public async Task<ProcessedDecisions> ProcessDecisions(List<DownloadDecision> decisions)
@@ -49,8 +63,12 @@ namespace NzbDrone.Core.Download
             var usenetFailed = false;
             var torrentFailed = false;
 
-            foreach (var report in prioritizedDecisions)
+            var budgetEnabled = IsGrabBudgetEnabled();
+            var queueSnapshot = budgetEnabled ? GetActiveQueueCount() : 0;
+
+            for (var index = 0; index < prioritizedDecisions.Count; index++)
             {
+                var report = prioritizedDecisions[index];
                 var downloadProtocol = report.RemoteBook.Release.DownloadProtocol;
 
                 //Skip if already grabbed
@@ -72,6 +90,22 @@ namespace NzbDrone.Core.Download
                     continue;
                 }
 
+                if (budgetEnabled)
+                {
+                    var budget = _grabBudgetService.CheckBudget(grabbed.Count, queueSnapshot + grabbed.Count);
+
+                    if (!budget.Allowed)
+                    {
+                        GrabBudgetResult = budget;
+                        _logger.Info("Grab budget exhausted ({0}): {1} Leaving {2} of {3} prioritized decision(s) un-grabbed.",
+                            budget.StopReason,
+                            budget.Reason,
+                            prioritizedDecisions.Count - index,
+                            prioritizedDecisions.Count);
+                        break;
+                    }
+                }
+
                 var result = await ProcessDecisionInternal(report);
 
                 switch (result)
@@ -79,6 +113,12 @@ namespace NzbDrone.Core.Download
                     case ProcessedDecisionResult.Grabbed:
                         {
                             grabbed.Add(report);
+
+                            if (budgetEnabled)
+                            {
+                                _grabBudgetService.RecordGrab();
+                            }
+
                             break;
                         }
 
@@ -144,6 +184,19 @@ namespace NzbDrone.Core.Download
                 return ProcessedDecisionResult.Pending;
             }
 
+            if (IsGrabBudgetEnabled() && _configService.GrabBudgetApplyToInteractive)
+            {
+                var budget = _grabBudgetService.CheckBudget(0, GetActiveQueueCount());
+
+                if (!budget.Allowed)
+                {
+                    GrabBudgetResult = budget;
+                    _logger.Info("Grab budget exhausted ({0}): {1} Skipping interactive grab.", budget.StopReason, budget.Reason);
+
+                    return ProcessedDecisionResult.Skipped;
+                }
+            }
+
             var result = await ProcessDecisionInternal(decision, downloadClientId);
 
             if (result == ProcessedDecisionResult.Pending)
@@ -153,6 +206,10 @@ namespace NzbDrone.Core.Download
             else if (result == ProcessedDecisionResult.Failed)
             {
                 _pendingReleaseService.Add(decision, PendingReleaseReason.DownloadClientUnavailable);
+            }
+            else if (result == ProcessedDecisionResult.Grabbed && IsGrabBudgetEnabled())
+            {
+                _grabBudgetService.RecordGrab();
             }
 
             return result;
@@ -167,6 +224,26 @@ namespace NzbDrone.Core.Download
         {
             // Process both approved and temporarily rejected
             return (decision.Approved || decision.TemporarilyRejected) && decision.RemoteBook.Books.Any();
+        }
+
+        private bool IsGrabBudgetEnabled()
+        {
+            return _configService != null &&
+                   _grabBudgetService != null &&
+                   _configService.GrabBudgetEnabled;
+        }
+
+        private int GetActiveQueueCount()
+        {
+            try
+            {
+                return _queueService?.GetQueue()?.Count ?? 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to read active queue for grab budget; ignoring queue ceiling.");
+                return 0;
+            }
         }
 
         private bool IsBookProcessed(List<DownloadDecision> decisions, DownloadDecision report)
