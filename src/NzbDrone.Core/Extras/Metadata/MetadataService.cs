@@ -160,7 +160,7 @@ namespace NzbDrone.Core.Extras.Metadata
                         {
                             try
                             {
-                                _diskProvider.MoveFile(existingFileName, newFileName);
+                                MoveFileAfterRename(existingFileName, newFileName);
 
                                 if (!ExtraFilePathHelper.TryGetRelativePath(author, newFileName, out var relativePath, out _, preferredBase))
                                 {
@@ -192,7 +192,7 @@ namespace NzbDrone.Core.Extras.Metadata
                         {
                             try
                             {
-                                _diskProvider.MoveFile(existingFileName, newFileName);
+                                MoveFileAfterRename(existingFileName, newFileName);
 
                                 if (!ExtraFilePathHelper.TryGetRelativePath(author, newFileName, out var relativePath, out _, preferredBase))
                                 {
@@ -219,6 +219,17 @@ namespace NzbDrone.Core.Extras.Metadata
         public override ExtraFile Import(Author author, BookFile bookFile, string path, string extension, bool readOnly)
         {
             return null;
+        }
+
+        // The file is already at its new path when the whole audiobook folder was moved during the rename.
+        private void MoveFileAfterRename(string existingFileName, string newFileName)
+        {
+            if (!_diskProvider.FileExists(existingFileName) && _diskProvider.FileExists(newFileName))
+            {
+                return;
+            }
+
+            _diskProvider.MoveFile(existingFileName, newFileName);
         }
 
         private List<MetadataFile> GetMetadataFilesForConsumer(IMetadata consumer, List<MetadataFile> authorMetadata)

@@ -111,7 +111,7 @@ namespace NzbDrone.Core.Extras.Files
                 {
                     _logger.Trace("Renaming extra file: {0} to {1}", extraFile, newFileName);
 
-                    _diskProvider.MoveFile(existingFileName, newFileName);
+                    MoveFileAfterRename(existingFileName, newFileName);
 
                     if (!ExtraFilePathHelper.TryGetRelativePath(author, newFileName, out var relativePath, out _, preferredBase))
                     {
@@ -156,6 +156,17 @@ namespace NzbDrone.Core.Extras.Files
             }
 
             return null;
+        }
+
+        // The file is already at its new path when the whole audiobook folder was moved during the rename.
+        private void MoveFileAfterRename(string existingFileName, string newFileName)
+        {
+            if (!_diskProvider.FileExists(existingFileName) && _diskProvider.FileExists(newFileName))
+            {
+                return;
+            }
+
+            _diskProvider.MoveFile(existingFileName, newFileName);
         }
 
         private string GetAvailableFilename(string destinationPath)
