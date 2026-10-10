@@ -131,7 +131,7 @@ namespace NzbDrone.Core.Extras.Files
                         var availableName = GetAvailableFilename(newFileName);
                         _logger.Debug("Destination file exists, moving extra file to alternate name: {0}", availableName);
 
-                        _diskProvider.MoveFile(existingFileName, availableName);
+                        _diskProvider.MoveFile(ResolveCarriedFile(existingFileName, newFileName), availableName);
 
                         if (!ExtraFilePathHelper.TryGetRelativePath(author, availableName, out var relativePath, out _, preferredBase))
                         {
@@ -158,15 +158,28 @@ namespace NzbDrone.Core.Extras.Files
             return null;
         }
 
-        // The file is already at its new path when the whole audiobook folder was moved during the rename.
+        // When the whole audiobook folder was moved during the rename, the file already sits in the new folder
+        // under its old name: only rename it there if its name changes.
         private void MoveFileAfterRename(string existingFileName, string newFileName)
         {
-            if (!_diskProvider.FileExists(existingFileName) && _diskProvider.FileExists(newFileName))
+            var source = ResolveCarriedFile(existingFileName, newFileName);
+
+            if (source.PathNotEquals(newFileName))
             {
-                return;
+                _diskProvider.MoveFile(source, newFileName);
+            }
+        }
+
+        private string ResolveCarriedFile(string existingFileName, string newFileName)
+        {
+            if (_diskProvider.FileExists(existingFileName))
+            {
+                return existingFileName;
             }
 
-            _diskProvider.MoveFile(existingFileName, newFileName);
+            var carried = Path.Combine(Path.GetDirectoryName(newFileName), Path.GetFileName(existingFileName));
+
+            return _diskProvider.FileExists(carried) ? carried : existingFileName;
         }
 
         private string GetAvailableFilename(string destinationPath)

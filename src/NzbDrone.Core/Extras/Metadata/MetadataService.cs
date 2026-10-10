@@ -221,15 +221,28 @@ namespace NzbDrone.Core.Extras.Metadata
             return null;
         }
 
-        // The file is already at its new path when the whole audiobook folder was moved during the rename.
+        // When the whole audiobook folder was moved during the rename, the file already sits in the new folder
+        // under its old name: only rename it there if its name changes.
         private void MoveFileAfterRename(string existingFileName, string newFileName)
         {
-            if (!_diskProvider.FileExists(existingFileName) && _diskProvider.FileExists(newFileName))
+            var source = ResolveCarriedFile(existingFileName, newFileName);
+
+            if (source.PathNotEquals(newFileName))
             {
-                return;
+                _diskProvider.MoveFile(source, newFileName);
+            }
+        }
+
+        private string ResolveCarriedFile(string existingFileName, string newFileName)
+        {
+            if (_diskProvider.FileExists(existingFileName))
+            {
+                return existingFileName;
             }
 
-            _diskProvider.MoveFile(existingFileName, newFileName);
+            var carried = Path.Combine(Path.GetDirectoryName(newFileName), Path.GetFileName(existingFileName));
+
+            return _diskProvider.FileExists(carried) ? carried : existingFileName;
         }
 
         private List<MetadataFile> GetMetadataFilesForConsumer(IMetadata consumer, List<MetadataFile> authorMetadata)
