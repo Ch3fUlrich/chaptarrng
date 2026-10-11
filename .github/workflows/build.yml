@@ -196,9 +196,30 @@ jobs:
       run: pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
     
     - name: Test
+      id: validation
       env:
         DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT: ${{ runner.os == 'Linux' && 'true' || 'false' }}
-      run: dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore --no-build --verbosity normal
+        VALIDATION_NODE_ID: chaptarr-${{ matrix.platform }}-${{ runner.arch }}
+        VALIDATION_RECEIPT_EXPORT: ${{ runner.temp }}/chaptarr-validation/receipt.json
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/chaptarr-validation"
+        echo "started=true" >> "$GITHUB_OUTPUT"
+        set +e
+        node scripts/validation-engine/engine.mjs --tests-only
+        status=$?
+        set -e
+        exit "$status"
+
+    - name: Upload validation receipt
+      if: always() && steps.validation.outputs.started == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: chaptarr-validation-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.platform }}-${{ runner.arch }}
+        path: ${{ runner.temp }}/chaptarr-validation/receipt.json
+        retention-days: 7
+        if-no-files-found: error
     
     - name: Publish
       run: |
@@ -241,6 +262,12 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+    - name: Setup Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 26.10.0
+        package-manager-cache: false
+
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
       with:
@@ -270,43 +297,56 @@ jobs:
       run: dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 
     - name: Smoke - migrate up on fresh PostgreSQL
-      shell: bash
+      id: validation
       env:
-        Chaptarr__Postgres__Host: localhost
-        Chaptarr__Postgres__Port: 5432
-        Chaptarr__Postgres__User: chaptarr
-        Chaptarr__Postgres__Password: chaptarr
-        Chaptarr__Postgres__MainDb: chaptarr-main
-        Chaptarr__Postgres__LogDb: chaptarr-log
-        Chaptarr__Postgres__CacheDb: chaptarr-cache
-        Chaptarr__Server__BindAddress: 127.0.0.1
-        Chaptarr__Server__Port: 8789
+        VALIDATION_NODE_ID: chaptarr-postgres-linux-${{ runner.arch }}
+        VALIDATION_RECEIPT_EXPORT: ${{ runner.temp }}/chaptarr-validation/receipt.json
+      shell: bash
       run: |
         set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/chaptarr-validation"
+        echo "started=true" >> "$GITHUB_OUTPUT"
+        set +e
+        node scripts/validation-engine/engine.mjs --task postgres-migrations-smoke
+        status=$?
+        set -e
+        exit "$status"
 
-        DATA_DIR="$(mktemp -d)"
-        echo "Using data dir: $DATA_DIR"
+    - name: Upload validation receipt
+      if: always() && steps.validation.outputs.started == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: chaptarr-validation-${{ github.run_id }}-${{ github.run_attempt }}-postgres-${{ runner.arch }}
+        path: ${{ runner.temp }}/chaptarr-validation/receipt.json
+        retention-days: 7
+        if-no-files-found: error
 
-        dotnet run --project src/NzbDrone.Console/Chaptarr.Console.csproj -c Release --no-build --framework net10.0 -- \
-          /nobrowser "/data=$DATA_DIR" > app.log 2>&1 &
-        pid=$!
+  validation-reconcile:
+    name: Reconcile native runner receipts
+    needs: [build, postgres-migrations]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-        ready=""
-        for i in $(seq 1 90); do
-          if curl -fsS "http://127.0.0.1:8789/ping" >/dev/null 2>&1; then
-            ready="yes"
-            break
-          fi
-          sleep 1
-        done
+    - name: Setup Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 26.10.0
+        package-manager-cache: false
 
-        kill "$pid" >/dev/null 2>&1 || true
-        wait "$pid" >/dev/null 2>&1 || true
+    - name: Download receipts from this workflow attempt
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        pattern: chaptarr-validation-${{ github.run_id }}-${{ github.run_attempt }}-*
+        path: validation-receipts
+        merge-multiple: true
 
-        if [ "$ready" != "yes" ]; then
-          echo "Chaptarr failed to start or /ping did not become ready."
-          tail -n 400 app.log || true
-          exit 1
-        fi
-
-        echo "PostgreSQL migrations smoke test passed."
+    - name: Reconcile platform and migration receipts
+      env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        GITHUB_SHA: ${{ github.sha }}
+      run: node scripts/validation-engine/reconcile.mjs validation-receipts
