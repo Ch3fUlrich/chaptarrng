@@ -83,7 +83,11 @@ namespace Chaptarr.Core.Test.IndexerTests
             var tier3 = chain.GetTier(3).ToList();
             Assert.That(tier3, Has.Count.EqualTo(2));
             Assert.That(tier3[0].First().Url.FullUri, Does.Contain("q=Ernahrungskompass"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.EndWith("q=Ernahrungskompass"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.Not.Contain("Bas%20Kast"));
             Assert.That(tier3[1].First().Url.FullUri, Does.Contain("q=Ernaehrungskompass"));
+            Assert.That(tier3[1].First().Url.FullUri, Does.EndWith("q=Ernaehrungskompass"));
+            Assert.That(tier3[1].First().Url.FullUri, Does.Not.Contain("Bas%20Kast"));
         }
 
         [Test]
@@ -142,6 +146,75 @@ namespace Chaptarr.Core.Test.IndexerTests
             Assert.That(allUrls.Any(u => u.Contains("q=Dune+Frank%20Herbert")), Is.True);
             Assert.That(allUrls.Any(u => u.Contains("q=Frank%20Herbert+Dune")), Is.True);
             Assert.That(allUrls.Any(u => u.Contains("q=Dune")), Is.True);
+        }
+
+        [Test]
+        public void author_with_umlauts_and_ascii_title_should_only_duplicate_author_bearing_tiers()
+        {
+            var generator = CreateGenerator(maxPages: 1);
+
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Bäst" },
+                BookTitle = "Dune"
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+
+            // Tier 0: t=book author+title (author-bearing -> 2 sets)
+            var tier0 = chain.GetTier(0).ToList();
+            Assert.That(tier0, Has.Count.EqualTo(2));
+            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("author=Bast"));
+            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("title=Dune"));
+            Assert.That(tier0[1].First().Url.FullUri, Does.Contain("author=Baest"));
+            Assert.That(tier0[1].First().Url.FullUri, Does.Contain("title=Dune"));
+
+            // Tier 1: t=book title (title-only -> exactly 1 set)
+            var tier1 = chain.GetTier(1).ToList();
+            Assert.That(tier1, Has.Count.EqualTo(1));
+            Assert.That(tier1[0].First().Url.FullUri, Does.Contain("title=Dune"));
+            Assert.That(tier1[0].First().Url.FullUri, Does.Not.Contain("Bast"));
+            Assert.That(tier1[0].First().Url.FullUri, Does.Not.Contain("Baest"));
+
+            // Tier 2: q=title+author & q=author+title (author-bearing -> 2 sets each, total 4)
+            var tier2 = chain.GetTier(2).ToList();
+            Assert.That(tier2, Has.Count.EqualTo(4));
+            Assert.That(tier2[0].First().Url.FullUri, Does.Contain("q=Dune+Bast"));
+            Assert.That(tier2[1].First().Url.FullUri, Does.Contain("q=Dune+Baest"));
+            Assert.That(tier2[2].First().Url.FullUri, Does.Contain("q=Bast+Dune"));
+            Assert.That(tier2[3].First().Url.FullUri, Does.Contain("q=Baest+Dune"));
+
+            // Tier 3: q=title (title-only -> exactly 1 set)
+            var tier3 = chain.GetTier(3).ToList();
+            Assert.That(tier3, Has.Count.EqualTo(1));
+            Assert.That(tier3[0].First().Url.FullUri, Does.Contain("q=Dune"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.EndWith("q=Dune"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.Not.Contain("Bast"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.Not.Contain("Baest"));
+        }
+
+        [Test]
+        public void should_generate_transliterated_variant_with_both_author_and_title_transliterated()
+        {
+            var generator = CreateGenerator(maxPages: 1);
+
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Bäst" },
+                BookTitle = "Ernährungskompass"
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+
+            // Tier 2: q=title+author tier contains URL with q=Ernaehrungskompass+Baest
+            var tier2 = chain.GetTier(2).ToList();
+            Assert.That(tier2, Has.Count.EqualTo(4));
+
+            var tier2Urls = tier2.SelectMany(p => p).Select(r => r.Url.FullUri).ToList();
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Ernaehrungskompass+Baest")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Ernahrungskompass+Bast")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Baest+Ernaehrungskompass")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Bast+Ernahrungskompass")), Is.True);
         }
 
         [Test]
