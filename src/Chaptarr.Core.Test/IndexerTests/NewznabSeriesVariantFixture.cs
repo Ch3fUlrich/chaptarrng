@@ -56,14 +56,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1"
                     }
                 }
@@ -78,22 +78,22 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%201"));
-            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%201"));
+            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%201"));
 
             Assert.That(urls[0], Does.Contain("t=book"));
-            Assert.That(urls[0], Does.Contain("title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[0], Does.Contain("title=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
             Assert.That(urls[1], Does.Contain("t=book"));
-            Assert.That(urls[1], Does.Contain("title=Bibi%20Blocksberg%201"));
+            Assert.That(urls[1], Does.Contain("title=Hexe%20Hilda%201"));
 
             Assert.That(urls[2], Does.Contain("t=search"));
-            Assert.That(urls[2], Does.Contain("q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[2], Does.Contain("q=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
             Assert.That(urls[3], Does.Contain("t=search"));
-            Assert.That(urls[3], Does.Contain("q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[3], Does.Contain("q=Hexe%20Hilda%201"));
         }
 
         [Test]
@@ -102,8 +102,8 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
@@ -123,14 +123,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             Assert.That(allSets, Has.Count.EqualTo(5));
 
             var allUrls = allSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
-            Assert.That(allUrls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&author=Elfie%20Donnelly&title=Hexen%20gibt%20es%20doch"));
-            Assert.That(allUrls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexen%20gibt%20es%20doch"));
-            Assert.That(allUrls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexen%20gibt%20es%20doch+Elfie%20Donnelly"));
-            Assert.That(allUrls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Elfie%20Donnelly+Hexen%20gibt%20es%20doch"));
-            Assert.That(allUrls[4], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexen%20gibt%20es%20doch"));
+            Assert.That(allUrls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&author=Mara%20Lindqvist&title=Zauber%20im%20Garten"));
+            Assert.That(allUrls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Zauber%20im%20Garten"));
+            Assert.That(allUrls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Zauber%20im%20Garten+Mara%20Lindqvist"));
+            Assert.That(allUrls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Mara%20Lindqvist+Zauber%20im%20Garten"));
+            Assert.That(allUrls[4], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Zauber%20im%20Garten"));
 
-            Assert.That(allUrls.Any(u => u.Contains("Bibi", StringComparison.OrdinalIgnoreCase)), Is.False);
-            Assert.That(allUrls.Any(u => u.Contains("Blocksberg", StringComparison.OrdinalIgnoreCase)), Is.False);
+            Assert.That(allUrls.Any(u => u.Contains("Hexe", StringComparison.OrdinalIgnoreCase)), Is.False);
+            Assert.That(allUrls.Any(u => u.Contains("Hilda", StringComparison.OrdinalIgnoreCase)), Is.False);
         }
 
         [Test]
@@ -139,14 +139,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = null
                     }
                 }
@@ -161,17 +161,17 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
             Assert.That(urls[0], Does.Contain("t=book"));
-            Assert.That(urls[0], Does.Contain("title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[0], Does.Contain("title=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
             Assert.That(urls[1], Does.Contain("t=search"));
-            Assert.That(urls[1], Does.Contain("q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[1], Does.Contain("q=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
-            Assert.That(urls.Any(u => u.Contains("&title=Bibi%20Blocksberg%201")), Is.False);
-            Assert.That(urls.Any(u => u.Contains("&q=Bibi%20Blocksberg%201")), Is.False);
+            Assert.That(urls.Any(u => u.Contains("&title=Hexe%20Hilda%201")), Is.False);
+            Assert.That(urls.Any(u => u.Contains("&q=Hexe%20Hilda%201")), Is.False);
         }
 
         [Test]
@@ -180,14 +180,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Bibi Blocksberg - Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Hexe Hilda - Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1"
                     }
                 }
@@ -202,17 +202,17 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%201"));
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%201"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%201"));
 
             Assert.That(urls[0], Does.Contain("t=book"));
-            Assert.That(urls[0], Does.Contain("title=Bibi%20Blocksberg%201"));
+            Assert.That(urls[0], Does.Contain("title=Hexe%20Hilda%201"));
 
             Assert.That(urls[1], Does.Contain("t=search"));
-            Assert.That(urls[1], Does.Contain("q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[1], Does.Contain("q=Hexe%20Hilda%201"));
 
-            Assert.That(urls.Any(u => u.Contains("Hexen", StringComparison.OrdinalIgnoreCase)), Is.False);
-            Assert.That(urls.Any(u => u.Contains("Bibi%20Blocksberg%20Bibi%20Blocksberg", StringComparison.OrdinalIgnoreCase)), Is.False);
+            Assert.That(urls.Any(u => u.Contains("Zauber", StringComparison.OrdinalIgnoreCase)), Is.False);
+            Assert.That(urls.Any(u => u.Contains("Hexe%20Hilda%20Hexe%20Hilda", StringComparison.OrdinalIgnoreCase)), Is.False);
         }
 
         [Test]
@@ -221,14 +221,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateTorznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1"
                     }
                 }
@@ -243,22 +243,22 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%201"));
-            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%201"));
+            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%201"));
 
             Assert.That(urls[0], Does.Contain("t=book"));
-            Assert.That(urls[0], Does.Contain("title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[0], Does.Contain("title=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
             Assert.That(urls[1], Does.Contain("t=book"));
-            Assert.That(urls[1], Does.Contain("title=Bibi%20Blocksberg%201"));
+            Assert.That(urls[1], Does.Contain("title=Hexe%20Hilda%201"));
 
             Assert.That(urls[2], Does.Contain("t=search"));
-            Assert.That(urls[2], Does.Contain("q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[2], Does.Contain("q=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
             Assert.That(urls[3], Does.Contain("t=search"));
-            Assert.That(urls[3], Does.Contain("q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[3], Does.Contain("q=Hexe%20Hilda%201"));
         }
 
         [Test]
@@ -267,14 +267,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1.0"
                     }
                 }
@@ -289,11 +289,11 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%201"));
-            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%201"));
+            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%201"));
 
-            Assert.That(urls[1], Does.Contain("title=Bibi%20Blocksberg%201"));
-            Assert.That(urls[3], Does.Contain("q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[1], Does.Contain("title=Hexe%20Hilda%201"));
+            Assert.That(urls[3], Does.Contain("q=Hexe%20Hilda%201"));
             Assert.That(urls[1], Does.Contain("%201"));
             Assert.That(urls[3], Does.Contain("%201"));
             Assert.That(urls.Any(u => u.Contains("1.0")), Is.False);
@@ -305,15 +305,15 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
-                        SeriesPosition = "Special Episode"
+                        SeriesName = "Hexe Hilda",
+                        SeriesPosition = "Sonderfolge"
                     }
                 }
             };
@@ -327,10 +327,10 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%20Zauber%20im%20Garten"));
 
-            Assert.That(urls.Any(u => u.Contains("Special")), Is.False);
+            Assert.That(urls.Any(u => u.Contains("Sonder")), Is.False);
         }
 
         [TestCase("1", "1")]
@@ -352,23 +352,23 @@ namespace Chaptarr.Core.Test.IndexerTests
         {
             var criteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
-                    new Book { SeriesName = "Bibi Blocksberg", SeriesPosition = "1.0" },
-                    new Book { SeriesName = "Other Series", SeriesPosition = "2" }
+                    new Book { SeriesName = "Hexe Hilda", SeriesPosition = "1.0" },
+                    new Book { SeriesName = "Fuchs Frieda", SeriesPosition = "2" }
                 }
             };
 
-            Assert.That(criteria.SeriesName, Is.EqualTo("Bibi Blocksberg"));
+            Assert.That(criteria.SeriesName, Is.EqualTo("Hexe Hilda"));
             Assert.That(criteria.SeriesPosition, Is.EqualTo("1.0"));
-            Assert.That(criteria.SeriesQuery, Is.EqualTo("Bibi+Blocksberg"));
-            Assert.That(criteria.SeriesTitleQuery, Is.EqualTo("Bibi+Blocksberg+Hexen+gibt+es+doch"));
-            Assert.That(criteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1"));
+            Assert.That(criteria.SeriesQuery, Is.EqualTo("Hexe+Hilda"));
+            Assert.That(criteria.SeriesTitleQuery, Is.EqualTo("Hexe+Hilda+Zauber+im+Garten"));
+            Assert.That(criteria.SeriesPositionQuery, Is.EqualTo("Hexe+Hilda+1"));
 
             criteria.Books[0].SeriesPosition = "1.5";
-            Assert.That(criteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1.5"));
+            Assert.That(criteria.SeriesPositionQuery, Is.EqualTo("Hexe+Hilda+1.5"));
         }
 
         [Test]
@@ -377,14 +377,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1.5"
                     }
                 }
@@ -399,9 +399,9 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[1], Does.Contain("Bibi%20Blocksberg%201.5"));
-            Assert.That(urls[3], Does.Contain("Bibi%20Blocksberg%201.5"));
-            Assert.That(searchCriteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1.5"));
+            Assert.That(urls[1], Does.Contain("Hexe%20Hilda%201.5"));
+            Assert.That(urls[3], Does.Contain("Hexe%20Hilda%201.5"));
+            Assert.That(searchCriteria.SeriesPositionQuery, Is.EqualTo("Hexe+Hilda+1.5"));
         }
 
         [TestCase("")]
@@ -412,14 +412,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
+                Author = new Author { Name = "Mara Lindqvist" },
                 BookTitle = title,
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1"
                     }
                 }
@@ -428,26 +428,26 @@ namespace Chaptarr.Core.Test.IndexerTests
             Assert.DoesNotThrow(() =>
             {
                 Assert.That(searchCriteria.SeriesTitleQuery, Is.Null);
-                Assert.That(searchCriteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1"));
+                Assert.That(searchCriteria.SeriesPositionQuery, Is.EqualTo("Hexe+Hilda+1"));
             });
 
             var chain = generator.GetSearchRequests(searchCriteria);
             var allUrls = chain.GetAllTiers().Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(allUrls.Any(u => u.Contains("title=Bibi%20Blocksberg%201")), Is.True);
-            Assert.That(allUrls.Any(u => u.Contains("q=Bibi%20Blocksberg%201")), Is.True);
-            Assert.That(allUrls.Any(u => u.Contains("Hexen")), Is.False);
+            Assert.That(allUrls.Any(u => u.Contains("title=Hexe%20Hilda%201")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("q=Hexe%20Hilda%201")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("Zauber")), Is.False);
 
             var criteriaWithoutPosition = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
+                Author = new Author { Name = "Mara Lindqvist" },
                 BookTitle = title,
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = null
                     }
                 }
@@ -469,8 +469,8 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
                 Books = null
             };
 
@@ -482,11 +482,11 @@ namespace Chaptarr.Core.Test.IndexerTests
             Assert.That(allSets, Has.Count.EqualTo(5));
 
             var allUrls = allSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
-            Assert.That(allUrls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&author=Elfie%20Donnelly&title=Hexen%20gibt%20es%20doch"));
-            Assert.That(allUrls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexen%20gibt%20es%20doch"));
-            Assert.That(allUrls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexen%20gibt%20es%20doch+Elfie%20Donnelly"));
-            Assert.That(allUrls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Elfie%20Donnelly+Hexen%20gibt%20es%20doch"));
-            Assert.That(allUrls[4], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexen%20gibt%20es%20doch"));
+            Assert.That(allUrls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&author=Mara%20Lindqvist&title=Zauber%20im%20Garten"));
+            Assert.That(allUrls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Zauber%20im%20Garten"));
+            Assert.That(allUrls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Zauber%20im%20Garten+Mara%20Lindqvist"));
+            Assert.That(allUrls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Mara%20Lindqvist+Zauber%20im%20Garten"));
+            Assert.That(allUrls[4], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Zauber%20im%20Garten"));
 
             Assert.That(searchCriteria.SeriesName, Is.Null);
             Assert.That(searchCriteria.SeriesPosition, Is.Null);
@@ -501,14 +501,14 @@ namespace Chaptarr.Core.Test.IndexerTests
             var generator = CreateNewznabGenerator();
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Elfie Donnelly" },
-                BookTitle = "Hexen gibt es doch (Bibi Blocksberg)",
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten (Hexe Hilda)",
                 Books = new List<Book>
                 {
                     new Book
                     {
                         MediaType = BookMediaType.Audiobook,
-                        SeriesName = "Bibi Blocksberg",
+                        SeriesName = "Hexe Hilda",
                         SeriesPosition = "1"
                     }
                 }
@@ -523,13 +523,13 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
 
-            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%201"));
-            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexe%20Hilda%201"));
+            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexe%20Hilda%201"));
 
-            Assert.That(urls[0], Does.Contain("title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
-            Assert.That(urls[2], Does.Contain("q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[0], Does.Contain("title=Hexe%20Hilda%20Zauber%20im%20Garten"));
+            Assert.That(urls[2], Does.Contain("q=Hexe%20Hilda%20Zauber%20im%20Garten"));
         }
     }
 }

@@ -23,6 +23,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         // Search the main title section; the matcher still validates against the monitored edition title.
         // Including the author here can double-apply author terms (hurting recall) and breaks book-search endpoints
         // that expect a clean title (e.g., Newznab's t=book&author=...&title=...).
+        /// <summary>Main-title search query: the book title with any author prefix and parenthetical series removed, reduced to a compact query.</summary>
         public string BookQuery => GetQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
         /// <summary>Title query with German umlauts transliterated (ae/oe/ue/ss); null when the title has none.</summary>
         public string BookQueryTransliterated => GetTransliteratedQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
@@ -50,11 +51,15 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
             }
         }
 
+        /// <summary>Series name from the first book in the search, or null when no book has a series.</summary>
         public string SeriesName => Books?.FirstOrDefault()?.SeriesName;
+        /// <summary>Series position from the first book in the search, or null when no book has a position.</summary>
         public string SeriesPosition => Books?.FirstOrDefault()?.SeriesPosition;
 
+        /// <summary>Series name reduced to a compact search query, or null when the series name is missing.</summary>
         public string SeriesQuery => string.IsNullOrWhiteSpace(SeriesName) ? null : GetQueryTitle(SeriesName);
 
+        /// <summary>Series name joined with the book's main-title query, or null when the series or the main title is missing.</summary>
         public string SeriesTitleQuery
         {
             get
@@ -80,6 +85,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
             }
         }
 
+        /// <summary>Series name joined with the normalized position query, or null when the series or a plain number/decimal position is missing.</summary>
         public string SeriesPositionQuery
         {
             get
