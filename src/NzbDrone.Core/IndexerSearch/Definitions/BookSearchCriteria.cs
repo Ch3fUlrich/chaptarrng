@@ -59,27 +59,24 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(SeriesName) || string.IsNullOrWhiteSpace(BookTitle))
+                if (string.IsNullOrWhiteSpace(SeriesName))
                 {
                     return null;
                 }
 
-                string bookQuery;
-                try
-                {
-                    bookQuery = BookQuery;
-                }
-                catch (ArgumentException)
+                var mainTitle = GetMainSearchTitle(BookTitle, Author?.Name);
+                if (string.IsNullOrWhiteSpace(mainTitle))
                 {
                     return null;
                 }
 
-                if (string.IsNullOrWhiteSpace(bookQuery))
+                var seriesQuery = SeriesQuery;
+                if (string.IsNullOrWhiteSpace(seriesQuery))
                 {
                     return null;
                 }
 
-                return GetQueryTitle(SeriesName) + "+" + bookQuery;
+                return seriesQuery + "+" + BookQuery;
             }
         }
 
@@ -98,7 +95,13 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
                     return null;
                 }
 
-                return GetQueryTitle(SeriesName) + "+" + GetQueryTitle(normalizedPosition);
+                var seriesQuery = SeriesQuery;
+                if (string.IsNullOrWhiteSpace(seriesQuery))
+                {
+                    return null;
+                }
+
+                return seriesQuery + "+" + normalizedPosition;
             }
         }
 

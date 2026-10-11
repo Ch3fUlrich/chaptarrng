@@ -87,8 +87,10 @@ namespace NzbDrone.Core.Indexers.Newznab
             var bookQuery = searchCriteria.BookQuery;
             var transliteratedAuthor = searchCriteria.AuthorQueryTransliterated ?? authorQuery;
             var transliteratedBook = searchCriteria.BookQueryTransliterated ?? bookQuery;
+            var mainTitle = BookSearchCriteria.GetMainSearchTitle(searchCriteria.BookTitle, searchCriteria.Author?.Name);
+            var hasBookTitle = !string.IsNullOrWhiteSpace(mainTitle);
 
-            if (SupportsBookSearch)
+            if (SupportsBookSearch && hasBookTitle)
             {
                 pageableRequests.AddTier();
                 AddVariant(pageableRequests,
@@ -105,7 +107,7 @@ namespace NzbDrone.Core.Indexers.Newznab
                     $"&title={NewsnabifyTitle(transliteratedBook)}");
             }
 
-            if (SupportsSearch)
+            if (SupportsSearch && hasBookTitle)
             {
                 pageableRequests.AddTier();
 
@@ -158,14 +160,16 @@ namespace NzbDrone.Core.Indexers.Newznab
 
             if (searchCriteria.SeriesName.IsNotNullOrWhiteSpace())
             {
+                var supportsBookSearch = SupportsBookSearch;
+                var supportsSearch = SupportsSearch;
                 var includeTitleVariant = searchCriteria.SeriesTitleQuery.IsNotNullOrWhiteSpace() && !TitleQueryContainsSeries(searchCriteria);
                 var includePositionVariant = searchCriteria.SeriesPositionQuery.IsNotNullOrWhiteSpace();
 
-                if ((SupportsBookSearch || SupportsSearch) && (includeTitleVariant || includePositionVariant))
+                if ((supportsBookSearch || supportsSearch) && (includeTitleVariant || includePositionVariant))
                 {
                     pageableRequests.AddTier();
 
-                    if (SupportsBookSearch)
+                    if (supportsBookSearch)
                     {
                         if (includeTitleVariant)
                         {
@@ -184,7 +188,7 @@ namespace NzbDrone.Core.Indexers.Newznab
                         }
                     }
 
-                    if (SupportsSearch)
+                    if (supportsSearch)
                     {
                         if (includeTitleVariant)
                         {
@@ -305,42 +309,27 @@ namespace NzbDrone.Core.Indexers.Newznab
 
         private static bool TitleQueryContainsSeries(BookSearchCriteria searchCriteria)
         {
-            var seriesName = searchCriteria.SeriesName?.Trim();
-            if (string.IsNullOrWhiteSpace(seriesName))
+            if (string.IsNullOrWhiteSpace(searchCriteria.SeriesName))
             {
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(searchCriteria.BookTitle) &&
-                searchCriteria.BookTitle.Contains(seriesName, StringComparison.OrdinalIgnoreCase))
+            var mainTitle = BookSearchCriteria.GetMainSearchTitle(searchCriteria.BookTitle, searchCriteria.Author?.Name);
+            if (string.IsNullOrWhiteSpace(mainTitle))
             {
-                return true;
+                return false;
             }
 
-            try
+            var seriesQuery = searchCriteria.SeriesQuery;
+            if (string.IsNullOrWhiteSpace(seriesQuery))
             {
-                var seriesQuery = searchCriteria.SeriesQuery;
-                if (!string.IsNullOrWhiteSpace(seriesQuery) &&
-                    !string.IsNullOrWhiteSpace(searchCriteria.BookQuery) &&
-                    searchCriteria.BookQuery.Contains(seriesQuery, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(searchCriteria.BookQuery))
-                {
-                    var normalizedBookQuery = searchCriteria.BookQuery.Replace("+", " ");
-                    if (normalizedBookQuery.Contains(seriesName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception)
-            {
+                return false;
             }
 
-            return false;
+            var normalizedBookQuery = searchCriteria.BookQuery.Replace('+', ' ').ToLowerInvariant();
+            var normalizedSeriesQuery = seriesQuery.Replace('+', ' ').ToLowerInvariant();
+
+            return normalizedBookQuery.Contains(normalizedSeriesQuery);
         }
     }
 }

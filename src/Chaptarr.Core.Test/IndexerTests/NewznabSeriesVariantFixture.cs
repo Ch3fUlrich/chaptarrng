@@ -294,6 +294,8 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             Assert.That(urls[1], Does.Contain("title=Bibi%20Blocksberg%201"));
             Assert.That(urls[3], Does.Contain("q=Bibi%20Blocksberg%201"));
+            Assert.That(urls[1], Does.Contain("%201"));
+            Assert.That(urls[3], Does.Contain("%201"));
             Assert.That(urls.Any(u => u.Contains("1.0")), Is.False);
         }
 
@@ -364,6 +366,170 @@ namespace Chaptarr.Core.Test.IndexerTests
             Assert.That(criteria.SeriesQuery, Is.EqualTo("Bibi+Blocksberg"));
             Assert.That(criteria.SeriesTitleQuery, Is.EqualTo("Bibi+Blocksberg+Hexen+gibt+es+doch"));
             Assert.That(criteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1"));
+
+            criteria.Books[0].SeriesPosition = "1.5";
+            Assert.That(criteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1.5"));
+        }
+
+        [Test]
+        public void should_add_decimal_series_position_variant()
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                BookTitle = "Hexen gibt es doch",
+                Books = new List<Book>
+                {
+                    new Book
+                    {
+                        MediaType = BookMediaType.Audiobook,
+                        SeriesName = "Bibi Blocksberg",
+                        SeriesPosition = "1.5"
+                    }
+                }
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+
+            Assert.That(chain.Tiers, Is.EqualTo(5));
+
+            var lastTierSets = chain.GetTier(4).ToList();
+            Assert.That(lastTierSets, Has.Count.EqualTo(4));
+
+            var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
+
+            Assert.That(urls[1], Does.Contain("Bibi%20Blocksberg%201.5"));
+            Assert.That(urls[3], Does.Contain("Bibi%20Blocksberg%201.5"));
+            Assert.That(searchCriteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1.5"));
+        }
+
+        [TestCase("")]
+        [TestCase("   ")]
+        [TestCase(null)]
+        public void should_handle_empty_or_whitespace_book_title_with_series(string title)
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                BookTitle = title,
+                Books = new List<Book>
+                {
+                    new Book
+                    {
+                        MediaType = BookMediaType.Audiobook,
+                        SeriesName = "Bibi Blocksberg",
+                        SeriesPosition = "1"
+                    }
+                }
+            };
+
+            Assert.DoesNotThrow(() =>
+            {
+                Assert.That(searchCriteria.SeriesTitleQuery, Is.Null);
+                Assert.That(searchCriteria.SeriesPositionQuery, Is.EqualTo("Bibi+Blocksberg+1"));
+            });
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+            var allUrls = chain.GetAllTiers().Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
+
+            Assert.That(allUrls.Any(u => u.Contains("title=Bibi%20Blocksberg%201")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("q=Bibi%20Blocksberg%201")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("Hexen")), Is.False);
+
+            var criteriaWithoutPosition = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                BookTitle = title,
+                Books = new List<Book>
+                {
+                    new Book
+                    {
+                        MediaType = BookMediaType.Audiobook,
+                        SeriesName = "Bibi Blocksberg",
+                        SeriesPosition = null
+                    }
+                }
+            };
+
+            Assert.DoesNotThrow(() =>
+            {
+                Assert.That(criteriaWithoutPosition.SeriesTitleQuery, Is.Null);
+                Assert.That(criteriaWithoutPosition.SeriesPositionQuery, Is.Null);
+            });
+
+            var chainWithoutPosition = generator.GetSearchRequests(criteriaWithoutPosition);
+            Assert.That(chainWithoutPosition.GetAllTiers().Count(), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void should_not_add_series_tier_when_books_list_is_null()
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                BookTitle = "Hexen gibt es doch",
+                Books = null
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+
+            Assert.That(chain.Tiers, Is.EqualTo(4));
+
+            var allSets = chain.GetAllTiers().ToList();
+            Assert.That(allSets, Has.Count.EqualTo(5));
+
+            var allUrls = allSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
+            Assert.That(allUrls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&author=Elfie%20Donnelly&title=Hexen%20gibt%20es%20doch"));
+            Assert.That(allUrls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Hexen%20gibt%20es%20doch"));
+            Assert.That(allUrls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexen%20gibt%20es%20doch+Elfie%20Donnelly"));
+            Assert.That(allUrls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Elfie%20Donnelly+Hexen%20gibt%20es%20doch"));
+            Assert.That(allUrls[4], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Hexen%20gibt%20es%20doch"));
+
+            Assert.That(searchCriteria.SeriesName, Is.Null);
+            Assert.That(searchCriteria.SeriesPosition, Is.Null);
+            Assert.That(searchCriteria.SeriesQuery, Is.Null);
+            Assert.That(searchCriteria.SeriesTitleQuery, Is.Null);
+            Assert.That(searchCriteria.SeriesPositionQuery, Is.Null);
+        }
+
+        [Test]
+        public void should_emit_series_title_variant_when_parenthetical_series_is_stripped_by_book_query()
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                BookTitle = "Hexen gibt es doch (Bibi Blocksberg)",
+                Books = new List<Book>
+                {
+                    new Book
+                    {
+                        MediaType = BookMediaType.Audiobook,
+                        SeriesName = "Bibi Blocksberg",
+                        SeriesPosition = "1"
+                    }
+                }
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+
+            Assert.That(chain.Tiers, Is.EqualTo(5));
+
+            var lastTierSets = chain.GetTier(4).ToList();
+            Assert.That(lastTierSets, Has.Count.EqualTo(4));
+
+            var urls = lastTierSets.Select(s => s.Single().HttpRequest.Url.FullUri).ToList();
+
+            Assert.That(urls[0], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[1], Is.EqualTo("https://indexer.example.com/api?t=book&cat=3030&extended=1&apikey=k&offset=0&limit=100&title=Bibi%20Blocksberg%201"));
+            Assert.That(urls[2], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[3], Is.EqualTo("https://indexer.example.com/api?t=search&cat=3030&extended=1&apikey=k&offset=0&limit=100&q=Bibi%20Blocksberg%201"));
+
+            Assert.That(urls[0], Does.Contain("title=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
+            Assert.That(urls[2], Does.Contain("q=Bibi%20Blocksberg%20Hexen%20gibt%20es%20doch"));
         }
     }
 }
