@@ -38,14 +38,14 @@ namespace Chaptarr.Core.Test.IndexerTests
         }
 
         [Test]
-        public void should_generate_both_variants_for_german_title_ernaehrungskompass()
+        public void should_generate_both_variants_for_german_title_groessenwahnfuehrer()
         {
             var generator = CreateGenerator(maxPages: 1);
 
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Bas Kast" },
-                BookTitle = "Ernährungskompass"
+                Author = new Author { Name = "Jörg Übermann" },
+                BookTitle = "Größenwahnführer"
             };
 
             var chain = generator.GetSearchRequests(searchCriteria);
@@ -54,51 +54,51 @@ namespace Chaptarr.Core.Test.IndexerTests
                                .Select(r => r.Url.FullUri)
                                .ToList();
 
-            Assert.That(allUrls.Any(u => u.Contains("title=Ernahrungskompass")), Is.True, "Should contain original title variant");
-            Assert.That(allUrls.Any(u => u.Contains("title=Ernaehrungskompass")), Is.True, "Should contain transliterated title variant");
+            Assert.That(allUrls.Any(u => u.Contains("title=Gro%C3%9Fenwahnfuhrer")), Is.True, "Should contain original title variant");
+            Assert.That(allUrls.Any(u => u.Contains("title=Groessenwahnfuehrer")), Is.True, "Should contain transliterated title variant");
 
             // Tier 0: t=book author+title
             var tier0 = chain.GetTier(0).ToList();
             Assert.That(tier0, Has.Count.EqualTo(2));
-            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("author=Bas%20Kast"));
-            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("title=Ernahrungskompass"));
-            Assert.That(tier0[1].First().Url.FullUri, Does.Contain("author=Bas%20Kast"));
-            Assert.That(tier0[1].First().Url.FullUri, Does.Contain("title=Ernaehrungskompass"));
+            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("author=Jorg%20Ubermann"));
+            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("title=Gro%C3%9Fenwahnfuhrer"));
+            Assert.That(tier0[1].First().Url.FullUri, Does.Contain("author=Joerg%20Uebermann"));
+            Assert.That(tier0[1].First().Url.FullUri, Does.Contain("title=Groessenwahnfuehrer"));
 
             // Tier 1: t=book title
             var tier1 = chain.GetTier(1).ToList();
             Assert.That(tier1, Has.Count.EqualTo(2));
-            Assert.That(tier1[0].First().Url.FullUri, Does.Contain("title=Ernahrungskompass"));
-            Assert.That(tier1[1].First().Url.FullUri, Does.Contain("title=Ernaehrungskompass"));
+            Assert.That(tier1[0].First().Url.FullUri, Does.Contain("title=Gro%C3%9Fenwahnfuhrer"));
+            Assert.That(tier1[1].First().Url.FullUri, Does.Contain("title=Groessenwahnfuehrer"));
 
             // Tier 2: q=title+author; q=author+title
             var tier2 = chain.GetTier(2).ToList();
             Assert.That(tier2, Has.Count.EqualTo(4));
-            Assert.That(tier2[0].First().Url.FullUri, Does.Contain("q=Ernahrungskompass+Bas%20Kast"));
-            Assert.That(tier2[1].First().Url.FullUri, Does.Contain("q=Ernaehrungskompass+Bas%20Kast"));
-            Assert.That(tier2[2].First().Url.FullUri, Does.Contain("q=Bas%20Kast+Ernahrungskompass"));
-            Assert.That(tier2[3].First().Url.FullUri, Does.Contain("q=Bas%20Kast+Ernaehrungskompass"));
+            Assert.That(tier2[0].First().Url.FullUri, Does.Contain("q=Gro%C3%9Fenwahnfuhrer+Jorg%20Ubermann"));
+            Assert.That(tier2[1].First().Url.FullUri, Does.Contain("q=Groessenwahnfuehrer+Joerg%20Uebermann"));
+            Assert.That(tier2[2].First().Url.FullUri, Does.Contain("q=Jorg%20Ubermann+Gro%C3%9Fenwahnfuhrer"));
+            Assert.That(tier2[3].First().Url.FullUri, Does.Contain("q=Joerg%20Uebermann+Groessenwahnfuehrer"));
 
             // Tier 3: q=title
             var tier3 = chain.GetTier(3).ToList();
             Assert.That(tier3, Has.Count.EqualTo(2));
-            Assert.That(tier3[0].First().Url.FullUri, Does.Contain("q=Ernahrungskompass"));
-            Assert.That(tier3[0].First().Url.FullUri, Does.EndWith("q=Ernahrungskompass"));
-            Assert.That(tier3[0].First().Url.FullUri, Does.Not.Contain("Bas%20Kast"));
-            Assert.That(tier3[1].First().Url.FullUri, Does.Contain("q=Ernaehrungskompass"));
-            Assert.That(tier3[1].First().Url.FullUri, Does.EndWith("q=Ernaehrungskompass"));
-            Assert.That(tier3[1].First().Url.FullUri, Does.Not.Contain("Bas%20Kast"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.Contain("q=Gro%C3%9Fenwahnfuhrer"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.EndWith("q=Gro%C3%9Fenwahnfuhrer"));
+            Assert.That(tier3[0].First().Url.FullUri, Does.Not.Contain("Jorg%20Ubermann"));
+            Assert.That(tier3[1].First().Url.FullUri, Does.Contain("q=Groessenwahnfuehrer"));
+            Assert.That(tier3[1].First().Url.FullUri, Does.EndWith("q=Groessenwahnfuehrer"));
+            Assert.That(tier3[1].First().Url.FullUri, Does.Not.Contain("Joerg%20Uebermann"));
         }
 
         [Test]
-        public void should_generate_both_variants_for_der_ernaehrungskompass()
+        public void should_generate_both_variants_for_der_groessenwahnfuehrer()
         {
             var generator = CreateGenerator(maxPages: 1);
 
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Bas Kast" },
-                BookTitle = "Der Ernährungskompass"
+                Author = new Author { Name = "Jörg Übermann" },
+                BookTitle = "Der Größenwahnführer"
             };
 
             var chain = generator.GetSearchRequests(searchCriteria);
@@ -107,10 +107,10 @@ namespace Chaptarr.Core.Test.IndexerTests
                                .Select(r => r.Url.FullUri)
                                .ToList();
 
-            Assert.That(allUrls.Any(u => u.Contains("Ernahrungskompass")), Is.True);
-            Assert.That(allUrls.Any(u => u.Contains("Ernaehrungskompass")), Is.True);
-            Assert.That(allUrls.Any(u => u.Contains("title=Der%20Ernahrungskompass")), Is.True);
-            Assert.That(allUrls.Any(u => u.Contains("title=Der%20Ernaehrungskompass")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("Gro%C3%9Fenwahnfuhrer")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("Groessenwahnfuehrer")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("title=Der%20Gro%C3%9Fenwahnfuhrer")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("title=Der%20Groessenwahnfuehrer")), Is.True);
         }
 
         [Test]
@@ -201,20 +201,20 @@ namespace Chaptarr.Core.Test.IndexerTests
             var searchCriteria = new BookSearchCriteria
             {
                 Author = new Author { Name = "Bäst" },
-                BookTitle = "Ernährungskompass"
+                BookTitle = "Größenwahnführer"
             };
 
             var chain = generator.GetSearchRequests(searchCriteria);
 
-            // Tier 2: q=title+author tier contains URL with q=Ernaehrungskompass+Baest
+            // Tier 2: q=title+author tier contains URL with q=Groessenwahnfuehrer+Baest
             var tier2 = chain.GetTier(2).ToList();
             Assert.That(tier2, Has.Count.EqualTo(4));
 
             var tier2Urls = tier2.SelectMany(p => p).Select(r => r.Url.FullUri).ToList();
-            Assert.That(tier2Urls.Any(u => u.Contains("q=Ernaehrungskompass+Baest")), Is.True);
-            Assert.That(tier2Urls.Any(u => u.Contains("q=Ernahrungskompass+Bast")), Is.True);
-            Assert.That(tier2Urls.Any(u => u.Contains("q=Baest+Ernaehrungskompass")), Is.True);
-            Assert.That(tier2Urls.Any(u => u.Contains("q=Bast+Ernahrungskompass")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Groessenwahnfuehrer+Baest")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Gro%C3%9Fenwahnfuhrer+Bast")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Baest+Groessenwahnfuehrer")), Is.True);
+            Assert.That(tier2Urls.Any(u => u.Contains("q=Bast+Gro%C3%9Fenwahnfuhrer")), Is.True);
         }
 
         [Test]
@@ -249,7 +249,7 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var searchCriteria = new AuthorSearchCriteria
             {
-                Author = new Author { Name = "Bas Kast" }
+                Author = new Author { Name = "Jorg Ubermann" }
             };
 
             var chain = generator.GetSearchRequests(searchCriteria);
@@ -258,11 +258,11 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var tier0 = chain.GetTier(0).ToList();
             Assert.That(tier0, Has.Count.EqualTo(1));
-            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("author=Bas%20Kast"));
+            Assert.That(tier0[0].First().Url.FullUri, Does.Contain("author=Jorg%20Ubermann"));
 
             var tier1 = chain.GetTier(1).ToList();
             Assert.That(tier1, Has.Count.EqualTo(1));
-            Assert.That(tier1[0].First().Url.FullUri, Does.Contain("q=Bas%20Kast"));
+            Assert.That(tier1[0].First().Url.FullUri, Does.Contain("q=Jorg%20Ubermann"));
         }
 
         [Test]
@@ -282,8 +282,8 @@ namespace Chaptarr.Core.Test.IndexerTests
 
             var searchCriteria = new BookSearchCriteria
             {
-                Author = new Author { Name = "Bas Kast" },
-                BookTitle = "Ernährungskompass"
+                Author = new Author { Name = "Jörg Übermann" },
+                BookTitle = "Größenwahnführer"
             };
 
             var chain = generator.GetSearchRequests(searchCriteria);
@@ -292,8 +292,8 @@ namespace Chaptarr.Core.Test.IndexerTests
                                .Select(r => r.Url.FullUri)
                                .ToList();
 
-            Assert.That(allUrls.Any(u => u.Contains("title=Ernahrungskompass")), Is.True);
-            Assert.That(allUrls.Any(u => u.Contains("title=Ernaehrungskompass")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("title=Gro%C3%9Fenwahnfuhrer")), Is.True);
+            Assert.That(allUrls.Any(u => u.Contains("title=Groessenwahnfuehrer")), Is.True);
         }
     }
 }

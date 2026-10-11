@@ -21,6 +21,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         public List<Book> AuthorCatalog { get; set; }
 
         public string AuthorQuery => GetQueryTitle(Author.Name);
+        /// <summary>Author query with German umlauts transliterated (ae/oe/ue/ss); null when the author name has none.</summary>
         public string AuthorQueryTransliterated => Author?.Name == null ? null : GetTransliteratedQueryTitle(Author.Name);
 
         public static string GetQueryTitle(string title)
@@ -28,6 +29,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
             return CleanQueryTitle(title, transliterate: false);
         }
 
+        /// <summary>Title query with German umlauts transliterated (ae/oe/ue/ss); null when the title has none.</summary>
         public static string GetTransliteratedQueryTitle(string title)
         {
             if (string.IsNullOrWhiteSpace(title) || title.IndexOfAny(UmlautChars) < 0)
