@@ -83,15 +83,37 @@ namespace NzbDrone.Core.Indexers.Newznab
                     requestedMediaType.Value.ToString().ToLowerInvariant());
             }
 
+            var hasTransliteration = searchCriteria.AuthorQueryTransliterated != null || searchCriteria.BookQueryTransliterated != null;
+            var authorQuery = searchCriteria.AuthorQuery;
+            var bookQuery = searchCriteria.BookQuery;
+            var transliteratedAuthor = searchCriteria.AuthorQueryTransliterated ?? authorQuery;
+            var transliteratedBook = searchCriteria.BookQueryTransliterated ?? bookQuery;
+
             if (SupportsBookSearch)
             {
                 AddBookPageableRequests(pageableRequests,
                     searchCategories,
-                    $"&author={NewsnabifyTitle(searchCriteria.AuthorQuery)}&title={NewsnabifyTitle(searchCriteria.BookQuery)}");
+                    $"&author={NewsnabifyTitle(authorQuery)}&title={NewsnabifyTitle(bookQuery)}");
+
+                if (hasTransliteration)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        searchCategories,
+                        "book",
+                        $"&author={NewsnabifyTitle(transliteratedAuthor)}&title={NewsnabifyTitle(transliteratedBook)}"));
+                }
 
                 AddBookPageableRequests(pageableRequests,
                     searchCategories,
-                    $"&title={NewsnabifyTitle(searchCriteria.BookQuery)}");
+                    $"&title={NewsnabifyTitle(bookQuery)}");
+
+                if (hasTransliteration)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        searchCategories,
+                        "book",
+                        $"&title={NewsnabifyTitle(transliteratedBook)}"));
+                }
             }
 
             if (SupportsSearch)
@@ -101,19 +123,43 @@ namespace NzbDrone.Core.Indexers.Newznab
                 pageableRequests.Add(GetPagedRequests(MaxPages,
                     searchCategories,
                     "search",
-                    $"&q={NewsnabifyTitle(searchCriteria.BookQuery)}+{NewsnabifyTitle(searchCriteria.AuthorQuery)}"));
+                    $"&q={NewsnabifyTitle(bookQuery)}+{NewsnabifyTitle(authorQuery)}"));
+
+                if (hasTransliteration)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        searchCategories,
+                        "search",
+                        $"&q={NewsnabifyTitle(transliteratedBook)}+{NewsnabifyTitle(transliteratedAuthor)}"));
+                }
 
                 pageableRequests.Add(GetPagedRequests(MaxPages,
                     searchCategories,
                     "search",
-                    $"&q={NewsnabifyTitle(searchCriteria.AuthorQuery)}+{NewsnabifyTitle(searchCriteria.BookQuery)}"));
+                    $"&q={NewsnabifyTitle(authorQuery)}+{NewsnabifyTitle(bookQuery)}"));
+
+                if (hasTransliteration)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        searchCategories,
+                        "search",
+                        $"&q={NewsnabifyTitle(transliteratedAuthor)}+{NewsnabifyTitle(transliteratedBook)}"));
+                }
 
                 pageableRequests.AddTier();
 
                 pageableRequests.Add(GetPagedRequests(MaxPages,
                     searchCategories,
                     "search",
-                    $"&q={NewsnabifyTitle(searchCriteria.BookQuery)}"));
+                    $"&q={NewsnabifyTitle(bookQuery)}"));
+
+                if (hasTransliteration)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        searchCategories,
+                        "search",
+                        $"&q={NewsnabifyTitle(transliteratedBook)}"));
+                }
             }
 
             // Interactive search: a title like "..., Book 4" rarely appears in a release name, so every
@@ -154,6 +200,14 @@ namespace NzbDrone.Core.Indexers.Newznab
                 AddBookPageableRequests(pageableRequests,
                     Settings.Categories,
                     $"&author={NewsnabifyTitle(searchCriteria.AuthorQuery)}");
+
+                if (searchCriteria.AuthorQueryTransliterated != null)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        Settings.Categories,
+                        "book",
+                        $"&author={NewsnabifyTitle(searchCriteria.AuthorQueryTransliterated)}"));
+                }
             }
 
             if (SupportsSearch)
@@ -164,6 +218,14 @@ namespace NzbDrone.Core.Indexers.Newznab
                     Settings.Categories,
                     "search",
                     $"&q={NewsnabifyTitle(searchCriteria.AuthorQuery)}"));
+
+                if (searchCriteria.AuthorQueryTransliterated != null)
+                {
+                    pageableRequests.Add(GetPagedRequests(MaxPages,
+                        Settings.Categories,
+                        "search",
+                        $"&q={NewsnabifyTitle(searchCriteria.AuthorQueryTransliterated)}"));
+                }
             }
 
             return pageableRequests;

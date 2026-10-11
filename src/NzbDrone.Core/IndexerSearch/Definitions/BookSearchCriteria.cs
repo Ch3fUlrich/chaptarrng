@@ -21,6 +21,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         // Including the author here can double-apply author terms (hurting recall) and breaks book-search endpoints
         // that expect a clean title (e.g., Newznab's t=book&author=...&title=...).
         public string BookQuery => GetQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
+        public string BookQueryTransliterated => GetTransliteratedQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
 
         // Audible-style titles end in a series position ("..., Book 4") that release names almost never
         // carry. Null when the title has no such suffix, so callers can skip the extra search tier.

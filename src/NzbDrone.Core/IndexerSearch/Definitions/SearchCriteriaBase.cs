@@ -10,6 +10,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
     {
         private static readonly Regex NonWord = new Regex(@"[^\w`'’]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex BeginningThe = new Regex(@"^the\s", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly char[] UmlautChars = { 'ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß' };
 
         public virtual bool MonitoredBooksOnly { get; set; } = true;
         public virtual bool UserInvokedSearch { get; set; }
@@ -20,8 +21,24 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         public List<Book> AuthorCatalog { get; set; }
 
         public string AuthorQuery => GetQueryTitle(Author.Name);
+        public string AuthorQueryTransliterated => Author?.Name == null ? null : GetTransliteratedQueryTitle(Author.Name);
 
         public static string GetQueryTitle(string title)
+        {
+            return CleanQueryTitle(title, transliterate: false);
+        }
+
+        public static string GetTransliteratedQueryTitle(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title) || title.IndexOfAny(UmlautChars) < 0)
+            {
+                return null;
+            }
+
+            return CleanQueryTitle(title, transliterate: true);
+        }
+
+        private static string CleanQueryTitle(string title, bool transliterate)
         {
             Ensure.That(title, () => title).IsNotNullOrWhiteSpace();
 
@@ -40,6 +57,18 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
 
             //remove any repeating +s
             cleanTitle = Regex.Replace(cleanTitle, @"\+{2,}", "+");
+
+            if (transliterate)
+            {
+                cleanTitle = cleanTitle.Replace("ä", "ae")
+                                       .Replace("ö", "oe")
+                                       .Replace("ü", "ue")
+                                       .Replace("Ä", "Ae")
+                                       .Replace("Ö", "Oe")
+                                       .Replace("Ü", "Ue")
+                                       .Replace("ß", "ss");
+            }
+
             cleanTitle = cleanTitle.RemoveAccent();
             cleanTitle = cleanTitle.Trim('+', ' ');
 
