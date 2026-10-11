@@ -5,4 +5,4 @@ area: image-processing
 action: none
 breaking: false
 ---
-ChaptarrNG now uses ImageSharp 3.2.0, which includes the upstream fixes for recent image-processing vulnerabilities found by the required .NET restore checks. This also restores the repository's warnings-as-errors build gate.
+ChaptarrNG updates ImageSharp to v3.2.0 to include upstream v3 security backports; the current security audit still reports unresolved advisories, so another dependency update is required before release.
