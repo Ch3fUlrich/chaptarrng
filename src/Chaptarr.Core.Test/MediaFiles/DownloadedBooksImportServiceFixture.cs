@@ -3507,12 +3507,22 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(decisions[0].Approved, Is.True);
         }
 
+        [Test]
+        public void should_reject_same_work_pocket_without_its_format_root_with_an_actionable_reason()
+        {
+            var decisions = RunSameWorkPocketScenario("hc:514913", "hc:514913", 7, hasMatchedRoot: false);
+            Assert.That(decisions, Has.Count.EqualTo(1));
+            Assert.That(decisions[0].Approved, Is.False);
+            Assert.That(decisions[0].Rejections.Single().Reason, Does.Contain("root folder"));
+        }
+
         private static List<ImportDecision<LocalBook>> RunSameWorkPocketScenario(
             string grabbedWorkId,
             string matchedWorkId,
             int matchedAuthorId,
             BookMediaType grabbedMediaType = BookMediaType.Ebook,
-            bool alsoGrabUnrelatedBook = false)
+            bool alsoGrabUnrelatedBook = false,
+            bool hasMatchedRoot = true)
         {
             var tempDir = Path.Combine(Path.GetTempPath(), "chaptarr-tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempDir);
@@ -3530,6 +3540,8 @@ namespace Chaptarr.Core.Test.MediaFiles
                 var matchedAuthor = matchedAuthorId == grabbedAuthor.Id
                     ? new Author { Id = grabbedAuthor.Id, Name = grabbedAuthor.Name }
                     : new Author { Id = matchedAuthorId, Name = "Someone Else" };
+
+                matchedAuthor.AudiobookRootFolderPath = hasMatchedRoot ? tempDir : null;
 
                 // Grabbed target: the ebook pocket of the work.
                 var grabbedBook = new Book

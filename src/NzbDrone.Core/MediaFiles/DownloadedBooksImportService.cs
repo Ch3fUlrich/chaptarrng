@@ -298,7 +298,7 @@ namespace NzbDrone.Core.MediaFiles
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                     {
                         _logger.Error(ex, "[DOWNLOAD-IMPORT] Failed to auto-add author '{0}' ({1}) during downloaded import",
                             authorName ?? "<unknown>", authorProviderId ?? "<unknown>");
@@ -474,7 +474,7 @@ namespace NzbDrone.Core.MediaFiles
                                 }
                             }
                         }
-                        catch (Exception ex)
+                        catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                         {
                             _logger.Error(ex, "[DOWNLOAD-IMPORT] Failed to auto-add author '{0}' ({1}) during downloaded import",
                                 suggestion.AuthorName ?? "<unknown>", suggestion.ProviderId ?? "<unknown>");
@@ -748,6 +748,16 @@ namespace NzbDrone.Core.MediaFiles
 
                         if (IsSameWorkMediaPocketMatch(matchedBook, hydratedExpectedBooks, decision.Item))
                         {
+                            var matchedAuthor = decision.Item.Author ?? matchedBook.Author;
+                            var rootPath = matchedBook.MediaType == BookMediaType.Ebook
+                                ? matchedAuthor?.EbookRootFolderPath
+                                : matchedAuthor?.AudiobookRootFolderPath;
+                            if (string.IsNullOrWhiteSpace(rootPath))
+                            {
+                                decision.Reject(new Rejection($"The matched {matchedBook.MediaType} book has no root folder configured for its author. Set that format's root folder and retry the import."));
+                                continue;
+                            }
+
                             _logger.Debug("Accepting completed download '{0}' matched to same-work {1} pocket {2} instead of grabbed {3}",
                                 downloadClientItem?.Title ?? downloadClientItem?.DownloadId ?? "<unknown>",
                                 matchedBook.MediaType,
@@ -1330,7 +1340,7 @@ namespace NzbDrone.Core.MediaFiles
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                     {
                         _logger.Warn(ex, "Failed to import extra file: {0}", extraFile.Name);
                     }
@@ -1653,9 +1663,9 @@ namespace NzbDrone.Core.MediaFiles
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
-                _logger.Error(ex, "[DOWNLOAD-IMPORT] Local preview-parity matching pass failed for {0} leftover file(s)", leftovers.Length);
+                _logger.Debug(ex, "[DOWNLOAD-IMPORT] Local preview-parity matching pass failed for {0} leftover file(s)", leftovers.Length);
             }
         }
 
