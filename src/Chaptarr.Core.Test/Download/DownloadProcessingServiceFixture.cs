@@ -329,19 +329,19 @@ namespace Chaptarr.Core.Test.Download
 
             var perRun = new List<int>();
 
-            for (var run = 0; run < 4; run++)
+            for (var run = 0; run < 6; run++)
             {
                 var before = completed.ImportedDownloadIds.Count;
                 service.Execute(new ProcessMonitoredDownloadsCommand());
                 perRun.Add(completed.ImportedDownloadIds.Count - before);
             }
 
-            Assert.That(perRun, Has.All.GreaterThanOrEqualTo(1));
+            Assert.That(perRun, Has.All.EqualTo(1));
             Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c", "d", "e", "f" }));
         }
 
         [Test]
-        public void sweep_should_still_yield_to_a_waiting_disk_command_until_the_bound_is_reached()
+        public void sweep_should_yield_on_each_run_with_waiting_disk_commands()
         {
             var completed = new ProgressingCompletedDownloadService();
             var downloads = new List<TrackedDownload>
@@ -386,7 +386,9 @@ namespace Chaptarr.Core.Test.Download
             service.Execute(new ProcessMonitoredDownloadsCommand());
             Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c" }));
 
-            // The bound is exhausted, so this run finishes the whole backlog.
+            // Even later runs remain bounded while the disk command is waiting.
+            service.Execute(new ProcessMonitoredDownloadsCommand());
+            service.Execute(new ProcessMonitoredDownloadsCommand());
             service.Execute(new ProcessMonitoredDownloadsCommand());
             Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c", "d", "e", "f" }));
 
@@ -400,7 +402,7 @@ namespace Chaptarr.Core.Test.Download
         }
 
         [Test]
-        public void cancelled_sweep_should_neither_consume_nor_reset_the_yield_bound()
+        public void cancelled_sweep_should_preserve_the_resume_position()
         {
             var completed = new ProgressingCompletedDownloadService();
             var downloads = new List<TrackedDownload>
@@ -426,12 +428,36 @@ namespace Chaptarr.Core.Test.Download
 
             Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b" }));
 
-            // Third yield still counts as the third, the next run is the unbounded one.
+            // Cancellation does not restart the cursor or disable yielding.
             service.Execute(new ProcessMonitoredDownloadsCommand());
             Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c" }));
 
             service.Execute(new ProcessMonitoredDownloadsCommand());
-            Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c", "d", "e" }));
+            Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c", "d" }));
+        }
+
+        [Test]
+        public void permanently_pending_downloads_should_rotate_without_unbounded_sweeps()
+        {
+            var completed = new RecordingCompletedDownloadService(new ManualResetEventSlim(true));
+            var queue = DispatchProxy.Create<IManageCommandQueue, QueueProxy>();
+            ((QueueProxy)(object)queue).Commands = new List<CommandModel> { Queued(new ManualImportCommand()) };
+            var downloads = new List<TrackedDownload> { CreatePending("a"), CreatePending("b"), CreatePending("c") };
+            var service = new DownloadProcessingService(
+                DispatchProxy.Create<IConfigService, ConfigProxy>(), completed,
+                new NoOpFailedDownloadService(), new StaticTrackedDownloadService { Downloads = downloads },
+                new NoOpEventAggregator(), LogManager.GetCurrentClassLogger(), queue);
+
+            for (var run = 0; run < 8; run++)
+            {
+                service.Execute(new ProcessMonitoredDownloadsCommand());
+                Assert.That(completed.ImportedDownloadIds.Count, Is.EqualTo(run + 1));
+            }
+
+            Assert.That(completed.ImportedDownloadIds, Is.EqualTo(new[] { "a", "b", "c", "a", "b", "c", "a", "b" }));
+            downloads.RemoveAt(2);
+            service.Execute(new ProcessMonitoredDownloadsCommand());
+            Assert.That(completed.ImportedDownloadIds[^1], Is.EqualTo("a"));
         }
 
         [Test]

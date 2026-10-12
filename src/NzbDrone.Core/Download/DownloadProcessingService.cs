@@ -19,12 +19,9 @@ namespace NzbDrone.Core.Download
         private readonly Logger _logger;
         private readonly IManageCommandQueue _commandQueueManager;
 
-        // A client that keeps a ManualImport queued at all times makes the yield below fire on every run, so
-        // without a bound the sweep never gets past its first download and the queue is never refreshed. Give up
-        // the slot at most this many runs in a row, then let the next run finish the remaining downloads.
-        private const int MaxConsecutiveYields = 3;
-
-        private int _consecutiveYields;
+        // Resume at the next download so a blocked first entry cannot starve the backlog,
+        // while every run still releases the disk slot promptly for waiting commands.
+        private (int Client, string Id)? _nextDownload;
 
         public DownloadProcessingService(IConfigService configService,
                                          ICompletedDownloadService completedDownloadService,
@@ -97,11 +94,16 @@ namespace NzbDrone.Core.Download
                                                           .ToList();
 
             var worked = 0;
-            var yieldAllowed = _consecutiveYields < MaxConsecutiveYields;
-            var yielded = false;
+            var start = _nextDownload.HasValue
+                ? trackedDownloads.FindIndex(t => t.DownloadClient == _nextDownload.Value.Client &&
+                    t.DownloadItem.DownloadId == _nextDownload.Value.Id)
+                : 0;
+            start = Math.Max(start, 0);
 
-            foreach (var trackedDownload in trackedDownloads)
+            for (var offset = 0; offset < trackedDownloads.Count; offset++)
             {
+                var index = (start + offset) % trackedDownloads.Count;
+                var trackedDownload = trackedDownloads[index];
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var needsFailedProcessing = trackedDownload.State == TrackedDownloadState.DownloadFailedPending;
@@ -115,14 +117,15 @@ namespace NzbDrone.Core.Download
                 // Only downloads that need real work count. Each run does at least one before yielding, so a
                 // steady stream of waiting commands cannot starve the sweep, and no-op entries at the front
                 // of the list cannot use up that guarantee.
-                if (worked > 0 && yieldAllowed && DiskCommandIsWaitingForSameSlot(message))
+                if (worked > 0 && DiskCommandIsWaitingForSameSlot(message))
                 {
                     _logger.Debug("ProcessMonitoredDownloads yielding the disk slot to a waiting command after {0} downloads", worked);
-                    yielded = true;
                     break;
                 }
 
                 worked++;
+                var next = trackedDownloads[(index + 1) % trackedDownloads.Count];
+                _nextDownload = (next.DownloadClient, next.DownloadItem.DownloadId);
 
                 try
                 {
@@ -135,17 +138,10 @@ namespace NzbDrone.Core.Download
                         _completedDownloadService.Import(trackedDownload);
                     }
                 }
-                catch (Exception e)
+                catch (Exception e) when (e is not OperationCanceledException && e is not OutOfMemoryException)
                 {
                     _logger.Debug(e, "Failed to process download: {0}", trackedDownload.DownloadItem.Title);
                 }
-            }
-
-            _consecutiveYields = yielded ? _consecutiveYields + 1 : 0;
-
-            if (!yieldAllowed)
-            {
-                _logger.Debug("ProcessMonitoredDownloads ran {0} downloads without yielding after {1} consecutive yields", worked, MaxConsecutiveYields);
             }
 
             // Imported downloads are no longer trackable so process them after processing trackable downloads
