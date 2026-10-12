@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "59e8c7f",
+  "forkHead": "5ae1487",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -852,10 +852,16 @@
       "title": "[FEATURE] Add Emby/Jellyfin connection for library refresh on import",
       "url": "https://github.com/Chaptarr/chaptarr/issues/53",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Added the Emby / Jellyfin notification provider with configurable server type, host, port, SSL, URL base, and protected API key. On Release Import sends POST /Library/Refresh for both ebook and audiobook imports; Emby uses X-Emby-Token and Jellyfin uses the current MediaBrowser Authorization header.",
+        "Connection testing authenticates against /System/Info, and the API key is never added to the request URL."
+      ],
+      "validationEvidence": [
+        "Added EmbyJellyfinProxyFixture coverage for both authentication headers, the POST refresh route, key absence from the URL, and HTTPS with a reverse-proxy URL base. Tests were not run per the user's instruction.",
+        "Static review, JSON parsing, and git diff --check passed; no live Emby/Jellyfin server validation was performed."
+      ],
       "sourceUpdatedAt": "2026-08-16T10:36:33Z",
       "body": "**Is your feature request related to a problem? Please describe.**\nThere's no Emby/Jellyfin connection. Readarr had an Emby/Jellyfin connector if i'm not mistaken. Nothing tells Jellyfin to refresh when Chaptarr imports a book.\n\n**Describe the solution you'd like**\nA native Emby/Jellyfin connection next to the existing Plex/AudioBookShelf ones, firing on import.\n\n**Describe alternatives you've considered**\nWebhook to `/Library/Refresh?api_key=`. Works today, but Jellyfin will deprecate `api_key`\n\n**Additional context**\nJellyfin serves audiobooks well (Books library + Bookshelf plugin, M4B chapters), which pairs naturally with Chaptarr.\n\n**Media Type**\nDoes this feature apply to:\n- [ ] Audiobooks\n- [ ] eBooks\n- [x] Both\n\n**Use Case**\nProwlarr -> Chaptarr -> qBitorrent -> Jellyfin. Everything is automated except the last hop.\n",
       "comments": []
