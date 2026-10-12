@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:54:29+00:00",
-  "forkHead": "6ed1f89",
+  "snapshotAt": "2026-10-12T20:58:35+00:00",
+  "forkHead": "9fd105f",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -56,10 +56,14 @@
       "title": "[BUG] wanted section not showing correctly on mobile",
       "url": "https://github.com/Chaptarr/chaptarr/issues/3",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit 9fd105f reserves a toolbar slot for the More menu and moves actions that do not fit into it, fixing the shared toolbar overflow that clipped Manual Import on narrow screens."
+      ],
+      "validationEvidence": [
+        "Frontend typecheck, targeted ESLint, git diff --check, and a focused release-note preview passed. Isolated mobile browser QA could not run because the browser workspace timed out before its control socket started; its stale workspace was cleaned. Unit/integration tests were not run per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-08-08T07:52:11Z",
       "body": "When browsing chaptarr using mobile (iPhone/safari in my case) and going to the wanted section it doesn’t scale (is it called that?) as it should, so menu options are missing. Can’t see the ”manual import” option. \n\nAnd this is regardless of horizontal or vertical.\n\nAlso, this is something that happens on other places as well, so my guess is that it needs some ”mobile love” to work better with mobile browsers. :)\n\n**Screenshots**\n\n<img width=\"2868\" height=\"1320\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/70003515-5f43-4afa-bdfc-9a29a7fe26f5\" />\n\n**System Information:**\n - OS: Unraid\n - Chaptarr Version: 0.9.911.0\n - Installation Method: Docker\n - Browser: Safari",
       "comments": []
