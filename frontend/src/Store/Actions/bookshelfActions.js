@@ -27,6 +27,7 @@ let requestedBookKeys = new Set();
 let pendingFlushTimeout = null;
 let bookRequestGeneration = 0;
 let abortAuthorCountsRequest = null;
+let authorCountsGeneration = 0;
 
 //
 // State
@@ -40,6 +41,7 @@ export const defaultState = {
   authorBookCounts: {},
   authorBookCountsMediaType: null,
   loadedBookKeys: {},
+  failedBookKeys: {},
   sortKey: 'sortName',
   sortDirection: sortDirections.ASCENDING,
   secondarySortKey: 'sortName',
@@ -168,10 +170,13 @@ function requestBookshelfBooks(getState, dispatch, authorIds, mediaType, generat
       return;
     }
 
-    // Let the rows ask again the next time they render.
+    const failedBookKeys = { ...getState().bookshelf.failedBookKeys };
     authorIds.forEach((authorId) => {
-      requestedBookKeys.delete(getBookshelfBookKey(mediaType, authorId));
+      const key = getBookshelfBookKey(mediaType, authorId);
+      requestedBookKeys.delete(key);
+      failedBookKeys[key] = true;
     });
+    dispatch(set({ section, failedBookKeys }));
   });
 }
 
@@ -195,6 +200,7 @@ function flushBookshelfBookRequests(getState, dispatch) {
 export const actionHandlers = handleThunks({
   [FETCH_BOOKSHELF_AUTHORS]: function(getState, payload, dispatch) {
     const { mediaType } = payload;
+    const generation = ++authorCountsGeneration;
 
     if (abortAuthorCountsRequest) {
       abortAuthorCountsRequest();
@@ -218,6 +224,10 @@ export const actionHandlers = handleThunks({
     abortAuthorCountsRequest = abortRequest;
 
     request.done((data) => {
+      if (generation !== authorCountsGeneration) {
+        return;
+      }
+
       abortAuthorCountsRequest = null;
 
       const authorBookCounts = {};
@@ -236,6 +246,10 @@ export const actionHandlers = handleThunks({
     });
 
     request.fail((xhr) => {
+      if (generation !== authorCountsGeneration) {
+        return;
+      }
+
       abortAuthorCountsRequest = null;
 
       dispatch(set({
@@ -256,6 +270,9 @@ export const actionHandlers = handleThunks({
     }
 
     requestedBookKeys.add(key);
+    const failedBookKeys = { ...getState().bookshelf.failedBookKeys };
+    delete failedBookKeys[key];
+    dispatch(set({ section, failedBookKeys }));
     pendingAuthorIds[mediaType].add(authorId);
 
     if (!pendingFlushTimeout) {
@@ -268,6 +285,7 @@ export const actionHandlers = handleThunks({
   [CLEAR_BOOKSHELF]: function(getState, payload, dispatch) {
     // Responses from before the clear are dropped by the generation check.
     bookRequestGeneration++;
+    authorCountsGeneration++;
     clearTimeout(pendingFlushTimeout);
     pendingFlushTimeout = null;
     pendingAuthorIds = { audiobook: new Set(), ebook: new Set() };
@@ -285,7 +303,8 @@ export const actionHandlers = handleThunks({
       error: null,
       authorBookCounts: {},
       authorBookCountsMediaType: null,
-      loadedBookKeys: {}
+      loadedBookKeys: {},
+      failedBookKeys: {}
     }));
   },
 

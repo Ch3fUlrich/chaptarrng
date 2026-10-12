@@ -25,7 +25,8 @@ function createMapStateToProps() {
     getBookMap,
     (state, props) => props.selectedMediaType,
     (state, props) => state.bookshelf.loadedBookKeys[getBookshelfBookKey(props.selectedMediaType, props.authorId)] === true,
-    (author, bookMap, selectedMediaType, isBooksLoaded) => {
+    (state, props) => state.bookshelf.failedBookKeys[getBookshelfBookKey(props.selectedMediaType, props.authorId)] === true,
+    (author, bookMap, selectedMediaType, isBooksLoaded, hasBooksError) => {
       const booksInAuthor = bookMap.hasOwnProperty(author.id) ? bookMap[author.id] : [];
       const sortedBooks = _.orderBy(
         booksInAuthor.filter((book) => book.mediaType === selectedMediaType),
@@ -39,7 +40,8 @@ function createMapStateToProps() {
         authorName: author.authorName,
         status: author.status,
         books: sortedBooks,
-        isBooksLoaded
+        isBooksLoaded,
+        hasBooksError
       };
     }
   );
@@ -67,17 +69,25 @@ class BookshelfRowConnector extends Component {
     const {
       authorId,
       selectedMediaType,
-      isBooksLoaded
+      isBooksLoaded,
+      hasBooksError
     } = this.props;
 
     // Repeat calls are ignored until the author's books arrive.
-    if (!isBooksLoaded) {
+    if (!isBooksLoaded && !hasBooksError) {
       this.props.fetchBookshelfBooks({
         authorId,
         mediaType: selectedMediaType
       });
     }
   }
+
+  onRetryBooksPress = () => {
+    this.props.fetchBookshelfBooks({
+      authorId: this.props.authorId,
+      mediaType: this.props.selectedMediaType
+    });
+  };
 
   //
   // Listeners
@@ -96,6 +106,7 @@ class BookshelfRowConnector extends Component {
   render() {
     return (
       <BookshelfRow
+        onRetryBooksPress={this.onRetryBooksPress}
         {...this.props}
         onBookMonitoredPress={this.onBookMonitoredPress}
       />
@@ -107,6 +118,7 @@ BookshelfRowConnector.propTypes = {
   authorId: PropTypes.number.isRequired,
   selectedMediaType: PropTypes.oneOf(['audiobook', 'ebook']).isRequired,
   isBooksLoaded: PropTypes.bool.isRequired,
+  hasBooksError: PropTypes.bool.isRequired,
   toggleBooksMonitored: PropTypes.func.isRequired,
   fetchBookshelfBooks: PropTypes.func.isRequired
 };
