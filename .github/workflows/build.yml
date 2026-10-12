@@ -63,7 +63,8 @@ jobs:
           --head "$HEAD_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
 
   build:
-    runs-on: ${{ matrix.os }}
+    # Only validated main-branch code can use the local runner; PRs and other matrix legs stay hosted.
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && fromJSON('["self-hosted","Linux","X64","host"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -77,6 +78,51 @@ jobs:
             platform: osx
 
     steps:
+    - name: Configure private runner temporary storage
+      if: runner.environment == 'self-hosted'
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [[ -z "${RUNNER_TEMP:-}" || "$RUNNER_TEMP" != /* || "$RUNNER_TEMP" == *$'\n'* || "$RUNNER_TEMP" == *$'\r'* || ! -d "$RUNNER_TEMP" || ! -r "$RUNNER_TEMP" || ! -w "$RUNNER_TEMP" || ! -x "$RUNNER_TEMP" ]]; then
+          printf 'RUNNER_TEMP must be an absolute, readable, writable directory without line breaks\n' >&2
+          exit 1
+        fi
+
+        runner_temp_resolved="$(cd -- "$RUNNER_TEMP" && pwd -P)"
+        if [[ "$runner_temp_resolved" == *$'\n'* || "$runner_temp_resolved" == *$'\r'* ]]; then
+          printf 'RUNNER_TEMP must not resolve to a path containing line breaks\n' >&2
+          exit 1
+        fi
+        case "$runner_temp_resolved" in
+          /|/tmp|/tmp/*|/var/tmp|/var/tmp/*|/dev/shm|/dev/shm/*)
+            printf 'RUNNER_TEMP must not resolve to a shared or root temporary directory\n' >&2
+            exit 1
+            ;;
+        esac
+
+        if [[ ! -O "$runner_temp_resolved" ]]; then
+          printf 'RUNNER_TEMP must be owned by the workflow runner user\n' >&2
+          exit 1
+        fi
+        runner_temp_mode="$(stat -c '%a' -- "$runner_temp_resolved")"
+        if [[ ! "$runner_temp_mode" =~ ^[0-7]{3,4}$ ]]; then
+          printf 'Could not determine RUNNER_TEMP directory permissions\n' >&2
+          exit 1
+        fi
+        runner_temp_permissions=$((8#$runner_temp_mode))
+        if (( runner_temp_permissions & 0022 )); then
+          printf 'RUNNER_TEMP must not be writable by group or other users\n' >&2
+          exit 1
+        fi
+
+        : "${GITHUB_ENV:?GITHUB_ENV is required}"
+        umask 077
+        job_temp="$(mktemp -d -- "$runner_temp_resolved/chaptarrng-job.XXXXXX")"
+        mkdir -m 700 -- "$job_temp/dotnet"
+        printf 'TMPDIR=%s\nTMP=%s\nTEMP=%s\nDOTNET_INSTALL_DIR=%s/dotnet\n' \
+          "$job_temp" "$job_temp" "$job_temp" "$job_temp" >> "$GITHUB_ENV"
+
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         fetch-depth: 0
