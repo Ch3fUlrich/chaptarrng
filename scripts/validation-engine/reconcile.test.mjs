@@ -1,7 +1,10 @@
 // Copyright (C) ChaptarrNG contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reconcileReceipts } from './reconcile.mjs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { loadReceipts, reconcileReceipts } from './reconcile.mjs';
 
 const expected = { runId: '7421', runAttempt: '2', sha: 'commit-abc' };
 const nodes = [
@@ -45,6 +48,25 @@ function receipt([nodeId, platform, architecture, requiredTask], overrides = {})
 function complete(overrides = {}) {
   return nodes.map((node, index) => receipt(node, overrides[index] ?? {}));
 }
+
+test('loads one receipt from each isolated downloaded artifact directory', () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-receipts-'));
+  try {
+    for (const [index, value] of complete().entries()) {
+      const artifactDirectory = path.join(directory, `artifact-${index}`);
+      mkdirSync(artifactDirectory);
+      writeFileSync(path.join(artifactDirectory, 'receipt.json'), JSON.stringify(value));
+    }
+    const receipts = loadReceipts(directory);
+    assert.equal(receipts.length, nodes.length);
+    assert.deepEqual(
+      receipts.map((value) => value.executionContext.nodeId).sort(),
+      nodes.map(([nodeId]) => nodeId).sort(),
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('accepts all four passing nodes from one source and workflow attempt', () => {
   const result = reconcileReceipts(complete(), expected);

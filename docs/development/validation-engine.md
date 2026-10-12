@@ -74,8 +74,11 @@ and receipts are private under the system temporary directory, overlapping
 runs in one checkout are rejected, and child processes do not inherit
 credential-shaped environment variables.
 
-The reconciliation step requires one passing receipt for each expected node,
-from the same workflow run, attempt, commit, source fingerprint, and inventory.
+The artifact downloader preserves each runner receipt in its own subdirectory,
+and the reconciler finds `receipt.json` recursively so same-named artifacts do
+not overwrite one another. It requires one passing receipt for each expected
+node, from the same workflow run, attempt, commit, source fingerprint, and
+inventory.
 It rejects duplicate or missing platform nodes, test tasks with zero cases,
 runner identity mismatches, and stale artifacts. The CI build, frontend build,
 artifact publication, and release-note checks remain separate workflow gates.

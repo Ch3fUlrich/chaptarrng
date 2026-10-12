@@ -9,6 +9,22 @@ const REQUIRED_NODES = new Set(['linux-core', 'windows-core', 'macos-core', 'pos
 
 function fail(message) { throw new Error(message); }
 
+export function loadReceipts(directory) {
+  const files = [];
+  const visit = (current) => {
+    const entries = readdirSync(current, { withFileTypes: true }).sort((left, right) =>
+      left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+    );
+    for (const entry of entries) {
+      const file = path.join(current, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.isFile() && entry.name === 'receipt.json') files.push(file);
+    }
+  };
+  visit(directory);
+  return files.map((file) => JSON.parse(readFileSync(file, 'utf8')));
+}
+
 function nodeKind(receipt) {
   const nodeId = receipt.executionContext?.nodeId ?? '';
   if (nodeId.startsWith('chaptarr-linux-')) return 'linux-core';
@@ -86,8 +102,7 @@ export function reconcileReceipts(receipts, expected) {
 
 function main(argv) {
   const directory = path.resolve(ROOT, argv[0] ?? 'validation-receipts');
-  const files = readdirSync(directory).filter((file) => file.endsWith('.json')).sort();
-  const receipts = files.map((file) => JSON.parse(readFileSync(path.join(directory, file), 'utf8')));
+  const receipts = loadReceipts(directory);
   const result = reconcileReceipts(receipts, {
     runId: process.env.GITHUB_RUN_ID,
     runAttempt: process.env.GITHUB_RUN_ATTEMPT,

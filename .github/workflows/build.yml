@@ -377,7 +377,6 @@ jobs:
       with:
         pattern: chaptarr-validation-${{ github.run_id }}-${{ github.run_attempt }}-*
         path: validation-receipts
-        merge-multiple: true
 
     - name: Reconcile platform and migration receipts
       env:
