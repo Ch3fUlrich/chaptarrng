@@ -77,6 +77,12 @@ ChaptarrNG is not compatible with Readarr's metadata sources. It uses Chaptarr's
 
 > **Docker is currently the only supported way to run ChaptarrNG.** The fork is developed and tested in Docker. Releases do not include native install packages; native support is not currently offered.
 
+ChaptarrNG uses ImageSharp to resize cover images. ImageSharp 4 requires a
+Six Labors license when building this direct dependency from source. Published
+ChaptarrNG images already contain a licensed build, so running them does not
+require a license key. See the [ImageSharp build-license guide](docs/development/imagesharp-license.md)
+for license eligibility, acquisition, and build setup.
+
 ### Docker
 
 Pull the image:
@@ -250,6 +256,7 @@ Stable releases from the application repository's `main` branch publish the
 - Default ChaptarrNG web UI: http://localhost:8789
 - Default username/password: Set on first launch
 - [Fork changes and capabilities](docs/FORK_FEATURES.md): feature overview and links to detailed setup and API references
+- [ImageSharp build-license guide](docs/development/imagesharp-license.md): why source builds need a Six Labors license, how to obtain one, and where to configure it
 - [Changelog](CHANGELOG.md): release-by-release changes shipped by the fork
 - [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md): setup and request lifecycle
 - [SeerrNG integration contract](docs/SEERRNG_INTEGRATION.md): capabilities, service-key setup, and integration smoke test

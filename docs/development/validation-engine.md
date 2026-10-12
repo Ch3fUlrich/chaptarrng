@@ -20,7 +20,9 @@ processes intentionally do not inherit credential-shaped environment values.
 GitHub Actions reads the same value from the private `SIXLABORS_LICENSE_KEY`
 repository secret. Fork pull request workflows cannot read repository secrets;
 those builds need a locally supplied license or maintainer validation from a
-reviewed in-repository branch.
+reviewed in-repository branch. See the [ImageSharp build-license guide](imagesharp-license.md)
+for the licensing rationale, application steps, and full local, CI, and
+container setup instructions.
 
 ```sh
 yarn install --frozen-lockfile
