@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -7,6 +6,7 @@ using System.IO.Abstractions;
 using Newtonsoft.Json;
 using NLog;
 using NzbDrone.Common;
+using NzbDrone.Common.Cache;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles.Commands;
@@ -36,7 +36,7 @@ namespace NzbDrone.Core.MediaFiles
 
         private readonly IAudioTagService _audioTagService;
         private readonly IEBookTagService _eBookTagService;
-        private readonly ConcurrentDictionary<string, TagCacheEntry> _tagCache = new ConcurrentDictionary<string, TagCacheEntry>(PathEqualityComparer.Instance);
+        private readonly BoundedCache<TagCacheEntry> _tagCache = new(MaxCachedTagExtractions, PathEqualityComparer.Instance);
         private readonly IFileTagCacheRepository _fileTagCache;
         private readonly Logger _logger;
 
@@ -274,7 +274,7 @@ namespace NzbDrone.Core.MediaFiles
 
             // Store a copy to protect the cache from accidental caller mutations.
             var entry = new TagCacheEntry(CloneTags(tags), durationSeconds, disposition, file.LastWriteTimeUtc, file.Length);
-            _tagCache[key] = entry;
+            _tagCache.Set(key, entry);
 
             if (persist && _fileTagCache != null && TryGetFileIdentity(file, out var path, out var mtimeNs, out var sizeBytes))
             {
@@ -287,7 +287,6 @@ namespace NzbDrone.Core.MediaFiles
                     TagExtractionResult.ToStorageValue(disposition));
             }
 
-            TrimCacheIfNeeded();
         }
 
         private static string SerializeTags(Dictionary<string, List<string>> tags)
@@ -345,18 +344,6 @@ namespace NzbDrone.Core.MediaFiles
             mtimeNs = Math.Max(0, file.LastWriteTimeUtc.Ticks - UnixEpochTicks) * 100;
             sizeBytes = file.Length;
             return true;
-        }
-
-        private void TrimCacheIfNeeded()
-        {
-            if (_tagCache.Count <= MaxCachedTagExtractions)
-            {
-                return;
-            }
-
-            // Simple cap: clear the cache if it grows unbounded (most callers process a bounded set of files per session).
-            _logger.Debug("[TAG-EXTRACT] Tag extraction cache exceeded {0} entries, clearing", MaxCachedTagExtractions);
-            _tagCache.Clear();
         }
 
         private static Dictionary<string, List<string>> CloneTags(Dictionary<string, List<string>> tags)

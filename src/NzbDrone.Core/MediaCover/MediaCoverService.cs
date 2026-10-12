@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using NLog;
+using NzbDrone.Common.Cache;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
@@ -63,7 +64,7 @@ namespace NzbDrone.Core.MediaCover
         // and exhaust the shared HTTP connection pool (max 12 connections per
         // host - see ManagedHttpDispatcher) when many books share a blocked URL.
         private static readonly TimeSpan BlockedImageUrlBackoff = TimeSpan.FromHours(6);
-        private static readonly ConcurrentDictionary<string, DateTime> _blockedImageUrlsUntilUtc = new(StringComparer.OrdinalIgnoreCase);
+        private readonly BoundedCache<DateTime> _blockedImageUrlsUntilUtc = new(4096, StringComparer.Ordinal);
 
         // ImageSharp is slow on ARM (no hardware acceleration on mono yet)
         // So limit the number of concurrent resizing tasks
@@ -364,7 +365,6 @@ namespace NzbDrone.Core.MediaCover
                         throw new HttpException(skippedRequest, new HttpResponse(skippedRequest, new HttpHeader(), Array.Empty<byte>(), HttpStatusCode.Forbidden));
                     }
 
-                    _blockedImageUrlsUntilUtc.TryRemove(currentUrl, out _);
                 }
 
                 var request = new HttpRequest(currentUrl)
@@ -382,7 +382,7 @@ namespace NzbDrone.Core.MediaCover
                 }
                 catch (HttpException e) when (e.Response?.StatusCode == HttpStatusCode.Forbidden)
                 {
-                    _blockedImageUrlsUntilUtc[currentUrl] = DateTime.UtcNow.Add(BlockedImageUrlBackoff);
+                    _blockedImageUrlsUntilUtc.Set(currentUrl, DateTime.UtcNow.Add(BlockedImageUrlBackoff), BlockedImageUrlBackoff);
                     throw;
                 }
 

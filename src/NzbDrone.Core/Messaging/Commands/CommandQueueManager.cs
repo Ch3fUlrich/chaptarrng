@@ -96,7 +96,7 @@ namespace NzbDrone.Core.Messaging.Commands
 
             if (!string.IsNullOrWhiteSpace(value) && int.TryParse(value, out var parsed) && parsed > 0)
             {
-                return parsed;
+                return Math.Min(parsed, 32);
             }
 
             return DefaultDiskAccessLimit;
