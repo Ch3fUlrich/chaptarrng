@@ -221,13 +221,35 @@ namespace Chaptarr.Core.Test.MediaFiles
                     OutputPath = request.OutputPath,
                     TargetQualityId = request.TargetQualityId,
                     TargetQualityName = request.TargetQualityName,
-                    Progress = 55m,
+                    Progress = 0m,
                     Message = "Converting",
                     CreatedAt = DateTime.UtcNow.AddMinutes(-10),
                     UpdatedAt = DateTime.UtcNow.AddMinutes(-5),
                     StartedAt = DateTime.UtcNow.AddMinutes(-10),
                     HeartbeatAt = DateTime.UtcNow.AddMinutes(-5)
                 });
+
+                var connectionString = new SqliteConnectionStringBuilder
+                {
+                    DataSource = databasePath,
+                    Mode = SqliteOpenMode.ReadWrite
+                }.ToString();
+                using (var connection = new SqliteConnection(connectionString))
+                {
+                    connection.Open();
+                    foreach (var progress in new[] { 0, 1, 100 })
+                    {
+                        connection.Execute(
+                            "UPDATE ConversionJobs SET Progress = @Progress WHERE DownloadId = @DownloadId",
+                            new { request.DownloadId, Progress = progress });
+                        Assert.That(
+                            connection.ExecuteScalar<string>("SELECT typeof(Progress) FROM ConversionJobs WHERE DownloadId = @DownloadId", new { request.DownloadId }),
+                            Is.EqualTo("integer"));
+                        Assert.That(repository.NonCompleted().Single().Progress, Is.EqualTo((decimal)progress));
+                    }
+
+                    connection.Execute("UPDATE ConversionJobs SET Progress = 0 WHERE DownloadId = @DownloadId", new { request.DownloadId });
+                }
 
                 var eventAggregator = new StubEventAggregator();
                 var tracking = new ConversionTrackingService(eventAggregator);

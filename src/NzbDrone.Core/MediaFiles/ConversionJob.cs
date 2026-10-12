@@ -25,6 +25,7 @@ namespace NzbDrone.Core.MediaFiles
         public string OutputPath { get; set; }
         public int TargetQualityId { get; set; }
         public string TargetQualityName { get; set; }
+        // SQLite NUMERIC can return whole-number progress values as INTEGER (for example 0 or 100).
         public decimal? Progress { get; set; }
         public string Message { get; set; }
         public string Error { get; set; }

@@ -143,6 +143,12 @@ namespace NzbDrone.Core.Notifications
                 return true;
             }
 
+            if (author == null)
+            {
+                _logger.DebugSafe("Unable to match notification '{0}' tags because author metadata is unavailable", definition.Name);
+                return false;
+            }
+
             if (definition.Tags.Intersect(author.Tags).Any())
             {
                 _logger.Debug("Notification and author have one or more intersecting tags.");
@@ -563,16 +569,25 @@ namespace NzbDrone.Core.Notifications
         public void Handle(BookImportIncompleteEvent message)
         {
             // TODO: Build out this message so that we can pass on what failed and what was successful
+            var trackedDownload = message?.TrackedDownload;
+            var sourceTitle = trackedDownload?.DownloadItem?.Title ?? trackedDownload?.ImportItem?.Title;
+            if (string.IsNullOrWhiteSpace(sourceTitle))
+            {
+                sourceTitle = "an unknown download";
+            }
+
             var downloadMessage = new BookDownloadMessage
             {
-                Message = GetBookIncompleteImportMessage(message.TrackedDownload.DownloadItem.Title)
+                Message = GetBookIncompleteImportMessage(sourceTitle)
             };
+
+            var author = trackedDownload?.RemoteBook?.Author;
 
             foreach (var notification in _notificationFactory.OnImportFailureEnabled())
             {
                 try
                 {
-                    if (ShouldHandleAuthor(notification.Definition, message.TrackedDownload.RemoteBook.Author))
+                    if (ShouldHandleAuthor(notification.Definition, author))
                     {
                         notification.OnImportFailure(downloadMessage);
                         _notificationStatusService.RecordSuccess(notification.Definition.Id);
