@@ -43,6 +43,9 @@ namespace NzbDrone.Core.Notifications
             // Always enable AudioBookShelf for metadata search functionality
             (Implementation == "AudioBookShelf") ||
 
+            // MQTT can run from its own sensor/event switches without legacy notification triggers.
+            (Settings is MqttGateway.MqttGatewaySettings mqtt && (mqtt.PublishSensors || mqtt.PublishEvents || mqtt.PublishHomeAssistantDiscovery)) ||
+
             // Grimmory pushes and edit forwarding run without any event trigger
             (Settings is Grimmory.GrimmorySettings grimmory && (grimmory.PushMetadata || grimmory.PushCovers || grimmory.ForwardEdits)) ||
 
