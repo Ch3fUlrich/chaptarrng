@@ -130,6 +130,7 @@ function inspectRuntime(runtime) {
 
 function runnerContext(candidate) {
   const platform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux';
+  const nodePlatform = platform === 'macos' ? 'osx' : platform === 'windows' ? 'win' : 'linux';
   const github = process.env.GITHUB_ACTIONS === 'true';
   return {
     executor: github ? 'github-actions' : 'local',
@@ -137,7 +138,7 @@ function runnerContext(candidate) {
     architecture: process.arch,
     nodeVersion: process.version,
     runner: process.env.RUNNER_NAME ?? os.hostname(),
-    nodeId: process.env.VALIDATION_NODE_ID ?? `chaptarr-${platform}-${process.arch}`,
+    nodeId: process.env.VALIDATION_NODE_ID ?? `chaptarr-${nodePlatform}-${process.arch}`,
     github: github ? {
       runId: process.env.GITHUB_RUN_ID ?? null,
       runAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,

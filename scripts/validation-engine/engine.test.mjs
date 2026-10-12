@@ -68,7 +68,9 @@ test('test-only planning distinguishes local and hosted tasks regardless of ambi
   ]);
   assert.ok(localPlan.missingArtifacts.length === 0 || localPlan.missingArtifacts.includes('_tests/net10.0/Chaptarr.Core.Test.dll'));
   const expectedPlatform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux';
+  const expectedNodePlatform = expectedPlatform === 'macos' ? 'osx' : expectedPlatform === 'windows' ? 'win' : 'linux';
   assert.equal(localPlan.executionContext.platform, expectedPlatform);
+  assert.equal(localPlan.executionContext.nodeId.toLowerCase(), `chaptarr-${expectedNodePlatform}-${process.arch}`.toLowerCase());
   assert.equal(localPlan.executionContext.github, null);
   assert.match(localPlan.candidate.sourceSha256, /^[a-f0-9]{64}$/);
 
