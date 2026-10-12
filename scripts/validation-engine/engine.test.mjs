@@ -118,6 +118,31 @@ test('task environments use an allowlist and run-owned user and temporary direct
   }
 });
 
+test('only the NUnit browser task receives its explicit Playwright cache path', (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-browser-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const env = isolatedChildEnvironment({
+    id: 'dotnet-core-tests',
+    kind: 'test',
+    passEnv: ['PLAYWRIGHT_BROWSERS_PATH'],
+  }, root, {
+    PATH: '/toolchain/bin',
+    HOME: '/operator/home',
+    PLAYWRIGHT_BROWSERS_PATH: '/runner/temp/playwright-browsers',
+    GITHUB_TOKEN: 'synthetic-token',
+    NODE_OPTIONS: '--require=/operator/injected.cjs',
+  });
+  assert.equal(env.PLAYWRIGHT_BROWSERS_PATH, '/runner/temp/playwright-browsers');
+  assert.equal(env.HOME, path.join(root, 'dotnet-core-tests-environment', 'home'));
+  assert.equal(env.GITHUB_TOKEN, undefined);
+  assert.equal(env.NODE_OPTIONS, undefined);
+  assert.throws(() => isolatedChildEnvironment({
+    id: 'engine-contract-tests',
+    passEnv: ['PLAYWRIGHT_BROWSERS_PATH'],
+  }, root, { PLAYWRIGHT_BROWSERS_PATH: '/runner/temp/playwright-browsers' }),
+  /unapproved inherited environment variable/);
+});
+
 test('test-only planning distinguishes local and hosted tasks regardless of ambient workflow environment', () => {
   const localPlan = withEnvironmentVariable('GITHUB_ACTIONS', undefined, () =>
     withEnvironmentVariable('VALIDATION_NODE_ID', undefined, () =>
