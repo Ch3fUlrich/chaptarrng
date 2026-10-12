@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "076b539",
+  "forkHead": "1de1ef7",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -767,9 +767,12 @@
         66
       ],
       "implementationEvidence": [
-        "Reviewed requirement addressed by integrated PR #66; see its implementation evidence and final integration validation."
+        "Reviewed requirement addressed by integrated PR #66; see its implementation evidence and final integration validation.",
+        "Commit 1de1ef7 extends the real-SQLite unique-index fixture to include RanobeDB, the sixth provider ID added in this fork, and asserts both handoff and rollback across all six IDs."
       ],
-      "validationEvidence": [],
+      "validationEvidence": [
+        "The expanded regression fixture was reviewed against migrations 063 and 114; git diff --check passed. Tests remain unrun per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-08-16T08:04:59Z",
       "body": "**Describe the bug**\n\nAutomatic duplicate-author merging repeatedly fails when the source author owns an Audnexus ID that is copied to the survivor before the source row is deleted.\n\nObserved with two Lee Child author records:\n\n- Source: `[416][Lee Child]`\n- Survivor: `[1577][Lee Child]`\n- Audnexus ID: `az:B000APO0PQ`\n\n**To Reproduce**\n\n1. Have two local author rows resolve to the same canonical author.\n2. Let the source row own an Audnexus ID that the survivor does not yet have.\n3. Run bulk author sync so automatic consolidation is attempted.\n4. Observe the unique-constraint exception.\n5. Run later refreshes and observe the same blocked merge being attempted again.\n\n**Actual behavior**\n\n```text\n[BULK-SYNC] Failed to merge author [416][Lee Child] into [1577][Lee Child]\nMicrosoft.Data.Sqlite.SqliteException: SQLite Error 19:\n'UNIQUE constraint failed: Authors.AudnexusAuthorId'.\n\n[BULK-SYNC] Failed auto-merge hc:1221318 -> hc:71527:\nSQLite Error 19: 'UNIQUE constraint failed: Authors.AudnexusAuthorId'.\n\n[BULK-SYNC] Skipping refresh for hc:1221318 -> hc:71527;\nmerge resolution was blocked to avoid data loss\n```\n\nThe failure was recorded repeatedly on 2026-08-14 and 2026-08-15, including multiple attempts on August 15.\n\n**Expected behavior**\n\nThe duplicate author should be merged without violating unique provider-ID constraints:\n\n1. Reassign dependent rows to the survivor.\n2. Remove or clear the provider ID from the source author.\n3. Delete the duplicate source row.\n4. Apply the merged provider IDs and metadata to the survivor.\n\nThe operation should complete once, and subsequent refreshes should not retry the same merge.\n\n**Impact**\n\n- Duplicate author rows remain in the database.\n- Books and existing book files can remain associated with different local author identities.\n- Library scans and searches may treat an existing book as missing.\n- Every bulk refresh retries the same blocked merge and logs another exception.\n\n**Technical analysis**\n\nIn `RefreshAuthorService.TryMergeAuthorsWithoutDataLoss`, the current sequence calls:\n\n```csharp\nMergeIntoSurvivor(target, source, canonicalId);\n_authorService.UpdateAuthor(target);\n```\n\nbefore the transaction deletes `source`.\n\n`MergeIntoSurvivor` copies `source.AudnexusAuthorId` to `target`. At that point the source row still owns the same value, so the unique index on `Authors.AudnexusAuthorId` rejects the target update.\n\nThe merge should transfer relationships and delete or clear the source author before saving the copied unique provider IDs on the survivor, while preserving the existing data-loss protections.\n\n**System Information**\n\n- Chaptarr Version: `v0.9.925.0`\n- Host OS: Unraid\n- Installation Method: Docker container on Unraid\n- Browser: Not applicable\n\n**Additional context**\n\nThis issue is intentionally limited to the repeated duplicate-author merge failure. The downstream import collision is tracked separately.\n",
       "comments": []
@@ -5327,9 +5330,12 @@
       ],
       "implementationEvidence": [
         "840a6a6ff9bf50650e8135ef041d4a5013d0a86d",
-        "Integrated reviewed upstream patch at fork commit 840a6a6ff9bf50650e8135ef041d4a5013d0a86d; subsequent integration fixes are retained in branch history."
+        "Integrated reviewed upstream patch at fork commit 840a6a6ff9bf50650e8135ef041d4a5013d0a86d; subsequent integration fixes are retained in branch history.",
+        "Commit 1de1ef7 extends the real-SQLite unique-index fixture to cover all six provider IDs in this fork, including RanobeDB, and asserts that rollback leaves all source IDs intact."
       ],
-      "validationEvidence": [],
+      "validationEvidence": [
+        "The expanded regression fixture was reviewed against migrations 063 and 114; git diff --check passed. Tests remain unrun per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-08-17T21:58:31Z",
       "body": "Fixes #49\n\n## The bug\n\nExactly as diagnosed in the issue: `TryMergeAuthorsWithoutDataLoss` copies the source's provider ids onto the survivor and calls `UpdateAuthor(target)` **before** the transaction deletes the source row — so the source still owns the same values and the save trips the unique index. All five provider-id columns are covered by unique indexes (`UX_Authors_HardcoverAuthorId`, `GoodreadsAuthorId`, `AudnexusAuthorId`, `OpenLibraryAuthorId`, `GoogleBooksAuthorId`), so any of them can block the merge, and every bulk sync retries and fails the same way.\n\n## Fix\n\nThe existing early `UpdateAuthor(target)` isn't accidental — it's the method's abort-safety (a failure leaves the source intact), so the fix keeps it rather than reordering it away:\n\n1. `MergeIntoSurvivor` computes the merged state as before\n2. The survivor is persisted **without** the contested provider ids (collision-free; a failure here still aborts cleanly with the source untouched)\n3. Inside the existing merge transaction, a new helper `ReleaseAndTransferUniqueProviderIds` clears the ids on the source row and applies the merged ids to the survivor via SQL, then the children are reassigned and the source deleted — all committed atomically, so the unique indexes never see two rows holding the same value and any failure rolls the whole handoff back\n\n## Tests\n\nNew `AuthorMergeUniqueProviderIdFixture` running against a real SQLite database with the real five unique indexes and the issue's exact data shape (source `416` owning `az:B000APO0PQ`, survivor `1577`):\n\n- `saving_the_survivor_while_the_source_still_owns_the_id_reproduces_issue_49` — pins the failure mode: `UNIQUE constraint failed: Authors.AudnexusAuthorId`\n- `handoff_should_transfer_all_unique_provider_ids_without_violating_the_indexes` — clean transfer + source deletion\n- `rollback_should_leave_the_source_untouched` — abort-safety preserved\n\nBooks suite: 568/568 passing.",
       "comments": [],
