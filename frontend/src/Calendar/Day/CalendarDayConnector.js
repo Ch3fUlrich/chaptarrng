@@ -1,10 +1,10 @@
 import filter from 'lodash/filter';
 import sortBy from 'lodash/sortBy';
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import CalendarDay from './CalendarDay';
 
 function createCalendarEventsConnector() {

@@ -11,14 +11,15 @@
 // This file is processed by workbox-webpack-plugin at build time.
 // self.__WB_MANIFEST is injected by InjectManifest but intentionally unused
 // (see "no precache" note above).
+// eslint-disable-next-line no-underscore-dangle, no-unused-vars
 const _WB_MANIFEST = self.__WB_MANIFEST || [];
 
-import { cleanupOutdatedCaches } from 'workbox-precaching';
-import { registerRoute, NavigationRoute } from 'workbox-routing';
-import { CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
-import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { setCacheNameDetails } from 'workbox-core';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { cleanupOutdatedCaches } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
 
 // ── Cache naming ──────────────────────────────────────────────
 // Use a well-known prefix so chunkCleanup's cache wipe and any
@@ -28,7 +29,7 @@ setCacheNameDetails({
   prefix: 'chaptarr',
   precache: 'precache-v2',
   runtime: 'runtime',
-  googleAnalytics: 'ga',
+  googleAnalytics: 'ga'
 });
 
 // Remove old precache entries from previous workbox versions.
@@ -71,11 +72,11 @@ registerRoute(
       networkTimeoutSeconds: 3,
       cacheName: 'chaptarr-navigation',
       plugins: [
-        new CacheableResponsePlugin({ statuses: [0, 200] }),
-      ],
+        new CacheableResponsePlugin({ statuses: [0, 200] })
+      ]
     }),
     {
-      denylist: [/^\/api\//, /\/signalr/i, /\/hub/i],
+      denylist: [/^\/api\//, /\/signalr/i, /\/hub/i]
     }
   )
 );
@@ -87,9 +88,9 @@ registerRoute(
 // (e.g. matching a path like /apiology).
 registerRoute(
   ({ url }) =>
-    /^\/api\//.test(url.pathname) ||
-    /\/signalr/i.test(url.pathname) ||
-    /\/hub/i.test(url.pathname),
+    (/^\/api\//).test(url.pathname) ||
+    (/\/signalr/i).test(url.pathname) ||
+    (/\/hub/i).test(url.pathname),
   new NetworkOnly()
 );
 
@@ -100,13 +101,19 @@ registerRoute(
 registerRoute(
   ({ url, request }) => {
     // Only cache same-origin requests (respects urlBase prefix).
-    if (url.origin !== self.location.origin) return false;
+    if (url.origin !== self.location.origin) {
+      return false;
+    }
 
     const ext = url.pathname.match(/\.(js|css|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|gif|webp|ico)$/i);
-    if (!ext) return false;
+    if (!ext) {
+      return false;
+    }
 
     // Skip the service worker itself.
-    if (url.pathname.endsWith('/sw.js')) return false;
+    if (url.pathname.endsWith('/sw.js')) {
+      return false;
+    }
 
     return true;
   },
@@ -116,8 +123,8 @@ registerRoute(
       new CacheableResponsePlugin({ statuses: [0, 200] }),
       new ExpirationPlugin({
         maxEntries: 120,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-      }),
-    ],
+        maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+      })
+    ]
   })
 );

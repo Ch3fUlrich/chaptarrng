@@ -1,5 +1,4 @@
 import classNames from 'classnames';
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import CalendarEventQueueDetails from 'Calendar/Events/CalendarEventQueueDetails';
@@ -7,6 +6,7 @@ import getStatusStyle from 'Calendar/getStatusStyle';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import formatTime from 'Utilities/Date/formatTime';
 import translate from 'Utilities/String/translate';
 import styles from './AgendaEvent.css';
@@ -42,7 +42,6 @@ class AgendaEvent extends Component {
       id,
       author,
       title,
-      titleSlug,
       releaseDate,
       monitored,
       statistics,

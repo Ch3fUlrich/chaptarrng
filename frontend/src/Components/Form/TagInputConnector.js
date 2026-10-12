@@ -112,9 +112,9 @@ class TagInputConnector extends Component {
     } = this.props;
 
     const currentValue = value || [];
-    const newValue = id != null
-      ? currentValue.filter((tagId) => tagId !== id)
-      : currentValue.slice();
+    const newValue = id != null ?
+      currentValue.filter((tagId) => tagId !== id) :
+      currentValue.slice();
 
     if (id == null) {
       newValue.splice(index, 1);
@@ -167,6 +167,7 @@ TagInputConnector.propTypes = {
   value: PropTypes.arrayOf(PropTypes.number).isRequired,
   tags: PropTypes.arrayOf(PropTypes.object).isRequired,
   allTags: PropTypes.arrayOf(PropTypes.object).isRequired,
+  values: PropTypes.array,
   onChange: PropTypes.func.isRequired,
   addTag: PropTypes.func.isRequired
 };

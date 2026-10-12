@@ -3,8 +3,8 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { metadataProfileNames } from 'Helpers/Props';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
 import sortByName from 'Utilities/Array/sortByName';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import translate from 'Utilities/String/translate';
 import SelectInput from './SelectInput';
 
@@ -41,12 +41,12 @@ class MetadataProfileSelectInputConnector extends Component {
     const { profileType } = this.props;
 
     this.setState({ isFetching: true });
-    
+
     let url = '/metadataprofile';
     if (profileType) {
       url += `?mediaType=${encodeURIComponent(profileType)}`;
     }
-    
+
     const { request } = createAjaxRequest({
       url,
       traditional: true
@@ -55,7 +55,7 @@ class MetadataProfileSelectInputConnector extends Component {
     request.then((profiles) => {
       this.setState({
         profiles: profiles.sort(sortByName),
-        isFetching: false 
+        isFetching: false
       });
 
       setTimeout(() => this.checkAndSetDefaultValue(), 0);
@@ -84,7 +84,7 @@ class MetadataProfileSelectInputConnector extends Component {
     const valueExists = values.some((option) => option.key === valueStr);
 
     if (value == null || value === 0 || !valueExists) {
-      const firstValue = values.find((option) => !isNaN(parseInt(option.key, 10)));
+      const firstValue = values.find((option) => !isNaN(parseInt(option.key)));
 
       if (firstValue) {
         this.onChange({ name, value: firstValue.key });
@@ -101,11 +101,11 @@ class MetadataProfileSelectInputConnector extends Component {
     } = this.props;
 
     const { profiles } = this.state;
-    
+
     // Filter out "None" profile from regular list (we'll add it separately if needed)
     const filteredProfiles = profiles.filter((item) => item.name !== metadataProfileNames.NONE);
     const noneProfile = profiles.find((item) => item.name === metadataProfileNames.NONE);
-    
+
     const values = map(filteredProfiles, (metadataProfile) => {
       return {
         key: metadataProfile.id.toString(),
@@ -148,7 +148,7 @@ class MetadataProfileSelectInputConnector extends Component {
       return;
     }
 
-    this.props.onChange({ name, value: parseInt(value, 10) });
+    this.props.onChange({ name, value: parseInt(value) });
   };
 
   //

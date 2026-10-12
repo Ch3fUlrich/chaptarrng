@@ -1,8 +1,8 @@
 import classNames from 'classnames';
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import * as calendarViews from 'Calendar/calendarViews';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import isToday from 'Utilities/Date/isToday';
 import CalendarDayConnector from './CalendarDayConnector';
 import styles from './CalendarDays.css';

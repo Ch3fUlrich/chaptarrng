@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
@@ -59,12 +59,18 @@ function SettingsBackupModal({ isOpen, onModalClose }) {
       // Locations are fetched once per modal open; staleTime keeps cached data
       // if the user closes and reopens quickly.
       staleTime: 0,
-      retry: 0,
+      retry: 0
     }
   );
 
-  const locations = Array.isArray(locationsData) ? locationsData : [];
-  const firstWritable = locations.find((l) => l && l.writable && l.exists);
+  const locations = useMemo(
+    () => (Array.isArray(locationsData) ? locationsData : []),
+    [locationsData]
+  );
+  const firstWritable = useMemo(
+    () => locations.find((location) => location && location.writable && location.exists),
+    [locations]
+  );
   const { rootFolder, fileName, passphrase, passphraseConfirm, categories, overwriteExistingFile, isSaving, saveError, saveResult } = formState;
 
   // Sync rootFolder from fetched locations (only when locations change or on reset)

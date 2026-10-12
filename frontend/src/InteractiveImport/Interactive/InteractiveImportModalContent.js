@@ -2,7 +2,6 @@ import cloneDeep from 'lodash/cloneDeep';
 import difference from 'lodash/difference';
 import filter from 'lodash/filter';
 import find from 'lodash/find';
-import forEach from 'lodash/forEach';
 import groupBy from 'lodash/groupBy';
 import includes from 'lodash/includes';
 import intersection from 'lodash/intersection';

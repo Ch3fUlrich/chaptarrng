@@ -29,7 +29,6 @@ const MediaManagementConnector = lazy(() => import('Settings/MediaManagement/Med
 const MetadataSettings = lazy(() => import('Settings/Metadata/MetadataSettings'));
 const NotificationSettings = lazy(() => import('Settings/Notifications/NotificationSettings'));
 const Profiles = lazy(() => import('Settings/Profiles/Profiles'));
-const QualityConnector = lazy(() => import('Settings/Quality/QualityConnector'));
 const Settings = lazy(() => import('Settings/Settings'));
 const TagSettings = lazy(() => import('Settings/Tags/TagSettings'));
 const UISettingsConnector = lazy(() => import('Settings/UI/UISettingsConnector'));

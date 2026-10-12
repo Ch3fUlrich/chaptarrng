@@ -1,5 +1,5 @@
-import dayjs from 'Utilities/Date/dayjsSetup';
 import * as filterTypes from 'Helpers/Props/filterTypes';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import isAfter from 'Utilities/Date/isAfter';
 import isBefore from 'Utilities/Date/isBefore';
 

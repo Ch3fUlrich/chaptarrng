@@ -1,9 +1,9 @@
 import classNames from 'classnames';
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { memo } from 'react';
 import * as calendarViews from 'Calendar/calendarViews';
 import CalendarEventConnector from 'Calendar/Events/CalendarEventConnector';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import styles from './CalendarDay.css';
 
 function CalendarDay(props) {

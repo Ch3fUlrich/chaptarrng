@@ -8,8 +8,18 @@ import remove from 'lodash/remove';
 // Helper to normalize field values to the expected wrapped shape
 function normalizeFieldValue(raw) {
   // Helper to convert any value to array (handles string, null, undefined)
-  const toArray = (v) => v == null ? [] : Array.isArray(v) ? v : [v];
-  
+  const toArray = (value) => {
+    if (value == null) {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    return [value];
+  };
+
   // Already wrapped with value/errors/warnings structure
   if (raw && typeof raw === 'object' && Object.prototype.hasOwnProperty.call(raw, 'value')) {
     // Normalize undefined to null for controlled components
@@ -47,16 +57,16 @@ function mapFailure(failure) {
 
 function selectSettings(item, pendingChanges, saveError) {
   const validationFailures = getValidationFailures(saveError);
-  
+
   // Ensure item and pendingChanges are objects
   const safeItem = item || {};
   const safePendingChanges = pendingChanges || {};
 
   // First, get all properties from the item to ensure we don't miss any
   const allProperties = Object.keys(safeItem);
-  
+
   // Then add any properties from pending changes that aren't in the item
-  Object.keys(safePendingChanges).forEach(key => {
+  Object.keys(safePendingChanges).forEach((key) => {
     if (!allProperties.includes(key)) {
       allProperties.push(key);
     }
@@ -76,18 +86,18 @@ function selectSettings(item, pendingChanges, saveError) {
 
     // Normalize the field value to ensure consistent shape
     const normalizedField = normalizeFieldValue(safeItem[key]);
-    
+
     // Extract server validation messages for this field
     // Note: _.remove mutates the array and returns removed elements - this is intentional
     // to prevent the same validation from being matched by multiple fields
     const serverErrors = map(remove(validationFailures, (failure) => {
       return (failure.propertyName || '').toLowerCase() === key.toLowerCase() && !failure.isWarning;
     }), mapFailure);
-    
+
     const serverWarnings = map(remove(validationFailures, (failure) => {
       return (failure.propertyName || '').toLowerCase() === key.toLowerCase() && failure.isWarning;
     }), mapFailure);
-    
+
     const setting = {
       value: normalizedField.value,
       errors: serverErrors.concat(normalizedField.errors),

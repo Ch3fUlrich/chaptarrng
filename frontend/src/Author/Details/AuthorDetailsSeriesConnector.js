@@ -13,8 +13,8 @@ import createAuthorSelector from 'Store/Selectors/createAuthorSelector';
 import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
-import AuthorDetailsSeries from './AuthorDetailsSeries';
 import getAuthorMediaTypeRootFolderStatus from 'Utilities/Author/getAuthorMediaTypeRootFolderStatus';
+import AuthorDetailsSeries from './AuthorDetailsSeries';
 
 function createMapStateToProps() {
   return createSelector(
@@ -75,7 +75,7 @@ function createMapStateToProps() {
           hasRootFolder
         };
       }
-      
+
       // Apply search filter first if there's a value
       if (typeof filterValue === 'string' && filterValue.trim()) {
         const searchTerm = filterValue.toLowerCase().trim();
@@ -116,19 +116,19 @@ function createMapStateToProps() {
           return false;
         });
       }
-      
+
       // Apply hide unmonitored/missing filter ONLY if not searching
       // When searching, show all results regardless of monitored/missing status
       if (hideUnmonitoredMissing && !filterValue && booksInSeries.length > 0) {
-        const selectedMediaType = effectiveMediaType;
-        booksInSeries = booksInSeries.filter(book => {
+        const mediaType = effectiveMediaType;
+        booksInSeries = booksInSeries.filter((book) => {
           // Show the book if:
           // 1. It's monitored for the current media type, OR
           // 2. It has files (not missing)
           // Hide only if: unmonitored AND missing
-          const isMonitored = selectedMediaType === 'audiobook' 
-            ? book.audiobookMonitored 
-            : book.ebookMonitored;
+          const isMonitored = mediaType === 'audiobook' ?
+            book.audiobookMonitored :
+            book.ebookMonitored;
           const hasFiles = book.statistics && book.statistics.bookFileCount > 0;
           return isMonitored || hasFiles;
         });

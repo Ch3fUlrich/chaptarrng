@@ -1,5 +1,4 @@
 import last from 'lodash/last';
-import dayjs from 'Utilities/Date/dayjsSetup';
 import React from 'react';
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
@@ -10,6 +9,7 @@ import { createThunk, handleThunks } from 'Store/thunks';
 import getBookAuthorPath from 'Utilities/Book/getBookAuthorPath';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import coerceMonitoredBoolean from 'Utilities/Monitoring/coerceMonitoredBoolean';
 import translate from 'Utilities/String/translate';
 import { removeItem, set, update, updateItem } from './baseActions';
@@ -711,7 +711,7 @@ export const actionHandlers = handleThunks({
     }).request;
 
     promise.then((data) => {
-      const books = Array.isArray(data) ? data : (data && data.books ? data.books : null);
+      const books = Array.isArray(data) ? data : data?.books;
 
       if (books && Array.isArray(books) && books.length) {
         const bookData = books[0];
@@ -783,8 +783,8 @@ export const actionHandlers = handleThunks({
 
     promise.then((data) => {
       // Handle different response formats - data might be the array directly or wrapped in a response object
-      const books = Array.isArray(data) ? data : (data && data.books ? data.books : null);
-      
+      const books = Array.isArray(data) ? data : data?.books;
+
       if (books && Array.isArray(books)) {
         dispatch(batchActions(
           books.map((bookData) => {
@@ -857,22 +857,22 @@ export const reducers = createHandleActions({
 
   [SET_BOOKS_TABLE_OPTION]: (state, { payload }) => {
     const { mediaType, ...tableOptions } = payload;
-    
+
     // If no mediaType specified, update the legacy columns for backward compatibility
     if (!mediaType) {
       return createSetTableOptionReducer(section)(state, { payload: tableOptions });
     }
-    
+
     // Update media-type specific columns
     const columnKey = mediaType === 'audiobook' ? 'audiobookColumns' : 'ebookColumns';
-    
+
     // Handle column updates
     if (tableOptions.columns) {
       return Object.assign({}, state, {
         [columnKey]: tableOptions.columns
       });
     }
-    
+
     // Handle other table options
     return Object.assign({}, state, tableOptions);
   },
