@@ -30,6 +30,7 @@ jobs:
     secrets:
       SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
     permissions:
+      actions: read
       contents: read
 
   release:
