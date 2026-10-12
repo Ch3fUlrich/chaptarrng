@@ -145,12 +145,11 @@ namespace NzbDrone.Core.Messaging.Commands
                     };
 
                     commandModels.Add(commandModel);
-                }
-
-                _repo.InsertMany(commandModels);
-
-                foreach (var commandModel in commandModels)
-                {
+                    // InsertMany binds Dapper parameters from each command body's runtime type, which has no
+                    // handler for derived commands such as RefreshAuthorCommand. Insert maps through the declared
+                    // Body column type. Queue each successful insert immediately so a later insert failure cannot
+                    // leave earlier rows persisted but invisible to the in-memory executor.
+                    _repo.Insert(commandModel);
                     _commandQueue.Add(commandModel);
                 }
 

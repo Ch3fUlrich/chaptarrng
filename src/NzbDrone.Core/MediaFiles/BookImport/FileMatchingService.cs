@@ -44,6 +44,86 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         private readonly IPendingAuthorImportService _pendingAuthorImportService;
         private readonly IManageCommandQueue _commandQueue;
         private readonly IAuthorFolderMatchingService _authorFolderMatchingService;
+        // Negative-result cache: folders whose files just exhausted the full
+        // matching pipeline with no result. Sibling fragment files share this
+        // verdict instead of re-running ~10s of staged FTS each. Entries are
+        // scope-keyed and expire quickly, so rescans after author adds and
+        // identifier-bearing files are unaffected.
+        // Instance-scoped (the service is a singleton in production) so test fixtures
+        // that build their own service instances cannot see each other's entries.
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> _negativeUnitCache = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
+        private static readonly TimeSpan _negativeUnitCacheTtl = TimeSpan.FromMinutes(10);
+        private readonly System.Threading.AsyncLocal<bool> _negativeUnitCacheSuppressed = new System.Threading.AsyncLocal<bool>();
+        private long _lastNegativeUnitCacheSweepTicks;
+
+        private static string BuildNegativeUnitCacheKey(
+            DiscoveredFileWithMetadata file,
+            BookMediaType mediaType,
+            int? restrictToAuthorId,
+            bool unscoped,
+            bool disablePathFallback,
+            bool inferAuthorFromPathDuringPathFallback,
+            IReadOnlySet<int> hardAllowedBookIds)
+        {
+            string Tag(string name)
+            {
+                if (file.AllTags != null && file.AllTags.TryGetValue(name, out var v) && v is { Count: > 0 })
+                {
+                    return v[0] ?? string.Empty;
+                }
+
+                return string.Empty;
+            }
+
+            var album = Tag("album").Trim();
+            var artist = Tag("artist").Trim();
+
+            // Without book and author evidence, files in one folder may have different
+            // identities that only their individual filenames can establish.
+            if (string.IsNullOrWhiteSpace(album) || string.IsNullOrWhiteSpace(artist))
+            {
+                return null;
+            }
+
+            var folder = Path.GetDirectoryName(file.Path) ?? string.Empty;
+            return string.Join("|",
+                folder.ToLowerInvariant(),
+                (int)mediaType,
+                restrictToAuthorId?.ToString() ?? "-",
+                unscoped,
+                disablePathFallback,
+                inferAuthorFromPathDuringPathFallback,
+                hardAllowedBookIds == null ? string.Empty : string.Join(",", hardAllowedBookIds.OrderBy(id => id)),
+                album.ToLowerInvariant(),
+                artist.ToLowerInvariant());
+        }
+
+        private void SweepExpiredNegativeUnitCache(DateTime now)
+        {
+            if (_negativeUnitCache.Count <= 1024)
+            {
+                return;
+            }
+
+            var nowTicks = now.Ticks;
+            var lastSweepTicks = System.Threading.Interlocked.Read(ref _lastNegativeUnitCacheSweepTicks);
+            if (nowTicks - lastSweepTicks < TimeSpan.FromMinutes(1).Ticks ||
+                System.Threading.Interlocked.CompareExchange(ref _lastNegativeUnitCacheSweepTicks, nowTicks, lastSweepTicks) != lastSweepTicks)
+            {
+                return;
+            }
+
+            var expiredBefore = now - _negativeUnitCacheTtl;
+            var entries = (System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<string, DateTime>>)_negativeUnitCache;
+            foreach (var entry in _negativeUnitCache)
+            {
+                if (entry.Value < expiredBefore)
+                {
+                    // Remove only the value we inspected so a concurrent refresh survives the sweep.
+                    entries.Remove(entry);
+                }
+            }
+        }
         private readonly IRootFolderService _rootFolderService;
         private readonly IConfigService _configService;
         private readonly IAuthorService _authorService;
@@ -661,6 +741,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var cancellationToken = context.CancellationToken;
             cancellationToken.ThrowIfCancellationRequested();
             _matchingTraceSink.Value = context.TraceSink;
+            _negativeUnitCacheSuppressed.Value = context.SuppressNegativeUnitCache;
 
             var allowV5Identification = context.AllowV5Identification;
             var allowAuthorImport = context.AllowAuthorImport;
@@ -4453,6 +4534,35 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 };
             }
 
+            var negativeUnitKey = BuildNegativeUnitCacheKey(
+                file,
+                mediaType,
+                restrictToAuthorId,
+                unscoped,
+                disablePathFallback,
+                inferAuthorFromPathDuringPathFallback,
+                hardAllowedBookIds);
+            var cacheNow = DateTime.UtcNow;
+            SweepExpiredNegativeUnitCache(cacheNow);
+            if (negativeUnitKey != null && !_negativeUnitCacheSuppressed.Value && _negativeUnitCache.TryGetValue(negativeUnitKey, out var negativeSeenAt))
+            {
+                if (cacheNow - negativeSeenAt < _negativeUnitCacheTtl)
+                {
+                    _logger.Debug("[HOLY-GRAIL] Sibling file in '{0}' already exhausted all fallbacks moments ago - skipping duplicate pipeline for '{1}'",
+                        Path.GetDirectoryName(file.Path),
+                        Path.GetFileName(file.Path));
+                    return new HolyGrailEvaluation
+                    {
+                        Match = null,
+                        WinningTags = embeddedTags,
+                        PathFallbackUsed = false,
+                        PathFallbackSuppressedReason = pathFallbackSuppressedReason
+                    };
+                }
+
+                _negativeUnitCache.TryRemove(negativeUnitKey, out _);
+            }
+
             _logger.Debug("[HOLY-GRAIL] === Starting match{0} for '{1}' ===",
                 unscoped ? " (unscoped)" : "",
                 Path.GetFileName(file.Path));
@@ -4620,14 +4730,18 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 Path.GetFileName(file.Path),
                 unscoped ? " (unscoped)" : "",
                 stopwatch.ElapsedMilliseconds);
-                return new HolyGrailEvaluation
-                {
-                    Match = null,
-                    WinningTags = embeddedTags,
-                    PathFallbackUsed = false,
-                    PathFallbackSuppressedReason = usePathAsTagsFallback ? null : pathFallbackSuppressedReason
-                };
+            if (negativeUnitKey != null && !_negativeUnitCacheSuppressed.Value)
+            {
+                _negativeUnitCache[negativeUnitKey] = cacheNow;
             }
+            return new HolyGrailEvaluation
+            {
+                Match = null,
+                WinningTags = embeddedTags,
+                PathFallbackUsed = false,
+                PathFallbackSuppressedReason = usePathAsTagsFallback ? null : pathFallbackSuppressedReason
+            };
+        }
 
         /// <summary>
         /// Checks if a candidate passes the leftover token gate.

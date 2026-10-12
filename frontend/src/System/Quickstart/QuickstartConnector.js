@@ -2,24 +2,24 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import { 
-  fetchIndexers, 
-  fetchNotifications,
-  fetchDownloadClients,
-  fetchRootFolders,
-  fetchQualityProfiles,
-  fetchMetadataProfiles,
-  fetchIndexerSchema,
-  selectIndexerSchema,
-  fetchNotificationSchema,
-  selectNotificationSchema,
-  fetchDownloadClientSchema,
-  selectDownloadClientSchema,
-  fetchGeneralSettings,
-  fetchProxies
-} from 'Store/Actions/settingsActions';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
 import { loadQuickstartState, markSectionInteracted } from 'Store/Actions/quickstartActions';
+import {
+  fetchDownloadClients,
+  fetchDownloadClientSchema,
+  fetchGeneralSettings,
+  fetchIndexers,
+  fetchIndexerSchema,
+  fetchMetadataProfiles,
+  fetchNotifications,
+  fetchNotificationSchema,
+  fetchProxies,
+  fetchQualityProfiles,
+  fetchRootFolders,
+  selectDownloadClientSchema,
+  selectIndexerSchema,
+  selectNotificationSchema } from 'Store/Actions/settingsActions';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
+import queryClient from 'Store/queryClient';
 import Quickstart from './Quickstart';
 
 function createMapStateToProps() {
@@ -37,14 +37,10 @@ function createMapStateToProps() {
     (indexersState, notificationsState, downloadClientsState, rootFoldersState, qualityProfilesState, metadataProfilesState, quickstartState, generalSettings, proxiesState, hardcoverConfig) => {
       const { items: indexers = [] } = indexersState || {};
       const { items: notifications = [] } = notificationsState || {};
-      const { items: downloadClients = [] } = downloadClientsState || {};
-      const { rootFolders = [] } = rootFoldersState || {};
-      const { items: qualityProfiles = [] } = qualityProfilesState || {};
-      const { items: metadataProfiles = [] } = metadataProfilesState || {};
-      
+
       // Find first MAM indexer
-      const mamIndexer = indexers.find((indexer) => 
-        indexer.implementationName && 
+      const mamIndexer = indexers.find((indexer) =>
+        indexer.implementationName &&
         indexer.implementationName.toLowerCase().includes('myanona')
       );
 
@@ -70,9 +66,9 @@ function createMapStateToProps() {
         (!!globalProxyId || (proxyHostname && proxyPort));
 
       const { isPopulated, error, item } = hardcoverConfig;
-      const isHardcoverConfigured = (!isPopulated && !error)
-        ? null
-        : !!(item?.enabled && item?.hasToken);
+      const isHardcoverConfigured = (!isPopulated && !error) ?
+        null :
+        !!(item?.enabled && item?.hasToken);
 
       return {
         hasActiveMAMIndexer: !!(mamIndexer && mamIndexer.enable),
@@ -134,12 +130,16 @@ class QuickstartConnector extends Component {
   }
 
   fetchInstallationId = () => {
-    const request = createAjaxRequest({
-      url: '/system/status',
-      method: 'GET'
-    });
-
-    request.request.done((data) => {
+    // Use react-query's fetchQuery for caching: if /system/status was already
+    // fetched elsewhere (e.g., SystemStatus page), we get the cached response
+    // instantly instead of hitting the API again.
+    queryClient.fetchQuery(
+      ['systemStatus'],
+      () => createAjaxRequest({
+        url: '/system/status',
+        method: 'GET'
+      }).request
+    ).then((data) => {
       const installationId = data?.installationId;
 
       if (installationId) {
@@ -147,9 +147,7 @@ class QuickstartConnector extends Component {
       } else {
         this.props.loadQuickstartState();
       }
-    });
-
-    request.request.fail(() => {
+    }).catch(() => {
       this.props.loadQuickstartState();
     });
   };
