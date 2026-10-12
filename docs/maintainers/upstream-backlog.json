@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:52:12+00:00",
-  "forkHead": "e3c9eff",
+  "snapshotAt": "2026-10-12T20:53:53+00:00",
+  "forkHead": "6ed1f89",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -1341,12 +1341,19 @@
       "title": "Manual import reports no match confidence, so a wrong match is indistinguishable from a right one",
       "url": "https://github.com/Chaptarr/chaptarr/issues/105",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         262
       ],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit 6ed1f89 carries the existing FileMatchingService MatchProvenance through ManualImportItem into the ManualImportResource API response for automatic local matches.",
+        "The API field exposes matchedVia, route, selection source, supporting/conflicting/neutral/excluded signals, and evidence values. The matcher does not compute a calibrated numeric confidence score, so callers can inspect the actual evidence and reject conflicting or weak matches instead of receiving an unexplained clean suggestion.",
+        "The issue’s optional alternative-candidate list is not part of this change; the existing suggested book/edition fields remain unchanged."
+      ],
+      "validationEvidence": [
+        "git diff --check and a focused release-note preview for commit 6ed1f89 passed. Source mapping was reviewed through both initial manual-import results and update/recalculation results.",
+        "No unit or integration tests were run, per the earlier instruction. Backend compilation remains blocked by the existing Six Labors ImageSharp licensing target because no license file/key is available in this environment."
+      ],
       "sourceUpdatedAt": "2026-10-03T19:45:17Z",
       "body": "**Version:** 0.9.936 (Docker, `chaptarr/chaptarr:0.9.936`)\n\n## What happens\n\n`GET /api/v1/manualimport?folder=...` returns `suggestedBookTitle`,\n`suggestedForeignBookId` and `suggestedEditionTitle`, but `rejections` and\n`warnings` are empty arrays on every candidate, and there is no score,\nconfidence or match-quality field anywhere in the response.\n\nAcross 503 ebook files and 1,464 audiobook units scanned in one library,\n**not one candidate carried a rejection or a warning**.\n\n## Why that matters\n\nSome of those suggestions are wrong, and nothing in the response distinguishes\nthem. Measured against the folder each file came from, 4.2% of ebook matches and\n12.4% of audiobook matches disagreed with both the suggested book title and the\nsuggested edition title. Hand-checked examples:\n\n```\nfolder: Percy Jackson and the Titan's Curse (#3)  ->  \"The Last Olympian\" (#5)\nfolder: Silo #2 - Shift                           ->  \"Wool 2: Proper Gauge\",\n                                                       suggestedEditionTitle \"Silo #2\"\nfolder: Eye and Talon (Blade Runner #4)           ->  \"Blade Runner3: Replicant Night\"\nfolder: Red Country (standalone)                  ->  \"The First Law Trilogy\" (boxed set)\nfolder: The Complete Short Stories Volume 1       ->  \"Concrete Island\" (a novel)\n```\n\nThe `Shift` case suggests the mechanism: `suggestedEditionTitle` came back as the\nseries token `Silo #2`, so the match keyed on the series rather than the title.\n\nFor anyone importing at scale this is the difference between a review queue and\nsilent misfiling. A wrong shelf looks finished; a flagged one does not.\n\n## What would help\n\nExpose whatever internal confidence the matcher already computes -- a score, a\n`matchQuality` enum, or a rejection when the parsed title and the matched title\ndisagree beyond a threshold. Readarr's `CloseAlbumMatchSpecification` emitted\n`Book match is not close enough: X % vs 80 %`, which was noisy but actionable;\nanything equivalent would let callers gate their own imports.\n\nAlso useful: the candidate list behind an ambiguous match, so a caller can pick\nrather than accept or discard.",
       "comments": []
