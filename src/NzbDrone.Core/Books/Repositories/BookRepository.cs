@@ -533,30 +533,63 @@ namespace NzbDrone.Core.Books
 
         //x.Id == null is converted to SQL, so warning incorrect
 #pragma warning disable CS0472
-        private SqlBuilder BooksWithoutFilesBuilder(DateTime currentTime) => Builder()
-            .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
-            .Join<Book, Edition>((b, e) => b.Id == e.BookId)
-            .LeftJoin<Edition, BookFile>((t, f) => t.Id == f.EditionId)
-            .Where<BookFile>(f => f.Id == null)
-            .Where<Edition>(e => e.Monitored == true)
-            .Where<Book>(a => a.ReleaseDate <= currentTime);
+        private SqlBuilder BooksWithoutFilesBuilder(DateTime currentTime)
+        {
+            var effectiveReleaseDate = BuildEffectiveReleaseDateExpression("\"Books\"");
+
+            return Builder()
+                .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
+                .Join<Book, Edition>((b, e) => b.Id == e.BookId)
+                .LeftJoin<Edition, BookFile>((t, f) => t.Id == f.EditionId)
+                .Where<BookFile>(f => f.Id == null)
+                .Where<Edition>(e => e.Monitored == true)
+                .Where($"{effectiveReleaseDate} <= @currentTime", new { currentTime });
+        }
 #pragma warning restore CS0472
 
         // A semi-join answers "does this book have a monitored edition without files" without
         // materialising and sorting one row per edition just to count distinct books.
-        private SqlBuilder BooksWithoutFilesCountBuilder(DateTime currentTime) => Builder()
-            .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
-            .Where("EXISTS (SELECT 1 FROM \"Editions\" \"CountEditions\" WHERE \"CountEditions\".\"BookId\" = \"Books\".\"Id\" AND \"CountEditions\".\"Monitored\" = true AND NOT EXISTS (SELECT 1 FROM \"BookFiles\" \"CountFiles\" WHERE \"CountFiles\".\"EditionId\" = \"CountEditions\".\"Id\"))")
-            .Where<Book>(a => a.ReleaseDate <= currentTime);
+        private SqlBuilder BooksWithoutFilesCountBuilder(DateTime currentTime)
+        {
+            var effectiveReleaseDate = BuildEffectiveReleaseDateExpression("\"Books\"");
+
+            return Builder()
+                .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
+                .Where("EXISTS (SELECT 1 FROM \"Editions\" \"CountEditions\" WHERE \"CountEditions\".\"BookId\" = \"Books\".\"Id\" AND \"CountEditions\".\"Monitored\" = true AND NOT EXISTS (SELECT 1 FROM \"BookFiles\" \"CountFiles\" WHERE \"CountFiles\".\"EditionId\" = \"CountEditions\".\"Id\"))")
+                .Where($"{effectiveReleaseDate} <= @currentTime", new { currentTime });
+        }
 
         public PagingSpec<Book> BooksWithoutFiles(PagingSpec<Book> pagingSpec)
         {
             var currentTime = DateTime.UtcNow;
+            var sortColumnOverride = IsReleaseDateSort(pagingSpec.SortKey)
+                ? BuildEffectiveReleaseDateExpression("\"Books\"")
+                : null;
 
-            pagingSpec.Records = GetPagedRecords(BooksWithoutFilesBuilder(currentTime), pagingSpec, QueryBooksWithAuthor);
+            pagingSpec.Records = GetPagedRecords(BooksWithoutFilesBuilder(currentTime), pagingSpec, QueryBooksWithAuthor, sortColumnOverride);
             pagingSpec.TotalRecords = GetPagedRecordCount(BooksWithoutFilesCountBuilder(currentTime).SelectCount(), pagingSpec);
 
             return pagingSpec;
+        }
+
+        private string BuildEffectiveReleaseDateExpression(string bookReference)
+        {
+            var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
+
+            return $@"COALESCE(
+                        (SELECT ""Editions"".""ReleaseDate""
+                         FROM ""Editions""
+                         WHERE ""Editions"".""BookId"" = {bookReference}.""Id""
+                           AND ""Editions"".""Monitored"" = {trueIndicator}
+                         ORDER BY ""Editions"".""Id""
+                         LIMIT 1),
+                        {bookReference}.""ReleaseDate"")";
+        }
+
+        private static bool IsReleaseDateSort(string sortKey)
+        {
+            return string.Equals(sortKey, nameof(Book.ReleaseDate), StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(sortKey, $"Books.{nameof(Book.ReleaseDate)}", StringComparison.OrdinalIgnoreCase);
         }
 
         public List<BookSearchTarget> GetMissingBookSearchTargets(BookMediaType? mediaType, int? authorId)
@@ -1055,7 +1088,7 @@ namespace NzbDrone.Core.Books
 
             if (wanted == true)
             {
-                whereConditions.Add("b.\"ReleaseDate\" <= @wantedCutoff");
+                whereConditions.Add(BuildEffectiveReleaseDateExpression("b") + " <= @wantedCutoff");
                 parameters.Add("wantedCutoff", DateTime.UtcNow);
             }
 
@@ -1177,6 +1210,8 @@ namespace NzbDrone.Core.Books
             string normalizedMediaTypeForFiles = null;
             var normalizedMediaType = mediaType?.Trim().ToLowerInvariant();
             var tableName = TableMapping.Mapper.TableNameMapping(typeof(Book));
+            var bookReference = $"\"{tableName}\"";
+            var effectiveReleaseDate = BuildEffectiveReleaseDateExpression(bookReference);
             var missingOrWanted = missing == true || wanted == true;
             var effectiveMonitored = missingOrWanted ? true : monitored;
 
@@ -1243,7 +1278,7 @@ namespace NzbDrone.Core.Books
 
             if (wanted == true)
             {
-                builder.Where($@"""{tableName}"".""ReleaseDate"" <= @wantedCutoff", new { wantedCutoff = DateTime.UtcNow });
+                builder.Where($"{effectiveReleaseDate} <= @wantedCutoff", new { wantedCutoff = DateTime.UtcNow });
             }
 
             return builder;
@@ -1296,7 +1331,7 @@ namespace NzbDrone.Core.Books
                 ["cleantitle"] = titleSortExpression,
                 ["title"] = titleSortExpression,
                 ["authortitle"] = "LOWER(\"Authors\".\"Name\")",
-                ["releasedate"] = $"\"{tableName}\".\"ReleaseDate\"",
+                ["releasedate"] = BuildEffectiveReleaseDateExpression(bookReference),
                 ["added"] = $"\"{tableName}\".\"Added\"",
                 ["id"] = $"\"{tableName}\".\"Id\"",
                 ["sizeondisk"] = "COALESCE(\"FileStatistics\".\"SizeOnDisk\", 0)",

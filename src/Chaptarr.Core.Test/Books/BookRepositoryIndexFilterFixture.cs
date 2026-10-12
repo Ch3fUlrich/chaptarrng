@@ -274,6 +274,68 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void wanted_lists_should_filter_and_sort_by_the_monitored_edition_release_date()
+        {
+            WithRepository((sut, connectionString) =>
+            {
+                using (var connection = new SqliteConnection(connectionString))
+                {
+                    connection.Open();
+                    connection.Execute(@"
+INSERT INTO ""Authors"" (""Id"", ""EbookMonitored"") VALUES (40, 1);
+INSERT INTO ""Books"" (""Id"", ""AuthorId"", ""Title"", ""CleanTitle"", ""MediaType"", ""AudiobookMonitored"", ""EbookMonitored"", ""ReleaseDate"") VALUES
+    (101, 40, 'Future edition', 'future edition', 1, 0, 1, '2000-01-01'),
+    (102, 40, 'Later edition date', 'later edition date', 1, 0, 1, '2025-07-01'),
+    (103, 40, 'Earlier edition date', 'earlier edition date', 1, 0, 1, '2010-01-01');
+INSERT INTO ""Editions"" (""Id"", ""BookId"", ""Monitored"", ""ReleaseDate"") VALUES
+    (1010, 101, 1, '2099-01-01'),
+    (1020, 102, 1, '2024-03-01'),
+    (1030, 103, 1, '2025-04-01');
+");
+                }
+
+                PagingSpec<Book> Page(SortDirection direction)
+                {
+                    var spec = new PagingSpec<Book>
+                    {
+                        Page = 1,
+                        PageSize = 100,
+                        SortKey = nameof(Book.ReleaseDate),
+                        SortDirection = direction
+                    };
+                    spec.FilterExpressions.Add(AuthorExtensions.GetBookMonitoringFilter(BookMediaType.Ebook, monitored: true));
+                    spec.FilterExpressions.Add(book => book.AuthorId == 40);
+                    return spec;
+                }
+
+                var descending = sut.BooksWithoutFiles(Page(SortDirection.Descending));
+                var ascending = sut.BooksWithoutFiles(Page(SortDirection.Ascending));
+                var missingSearchTargets = sut.GetMissingBookSearchTargets(BookMediaType.Ebook, authorId: 40);
+                var wantedIds = sut.GetBookIds(includeUnmonitored: true, mediaType: "ebook", wanted: true);
+                var wantedBuckets = sut.GetBookBuckets(
+                    sortKey: "title",
+                    sortDirection: "ASC",
+                    includeUnmonitored: true,
+                    mediaType: "ebook",
+                    downloaded: null,
+                    monitored: null,
+                    wanted: true);
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(descending.Records.Select(book => book.Id), Is.EqualTo(new[] { 103, 102 }));
+                    Assert.That(ascending.Records.Select(book => book.Id), Is.EqualTo(new[] { 102, 103 }));
+                    Assert.That(descending.TotalRecords, Is.EqualTo(2));
+                    Assert.That(missingSearchTargets.Select(target => target.BookId), Is.EqualTo(new[] { 102, 103 }));
+                    Assert.That(wantedIds, Does.Not.Contain(101));
+                    Assert.That(wantedIds, Does.Contain(102));
+                    Assert.That(wantedIds, Does.Contain(103));
+                    Assert.That(wantedBuckets.TotalCount, Is.EqualTo(4));
+                });
+            });
+        }
+
+        [Test]
         public void find_existing_should_return_partial_results_without_weakening_strict_get()
         {
             WithRepository(sut =>
@@ -401,6 +463,11 @@ namespace Chaptarr.Core.Test.Books
 
         private static void WithRepository(Action<BookRepository> action)
         {
+            WithRepository((repository, _) => action(repository));
+        }
+
+        private static void WithRepository(Action<BookRepository, string> action)
+        {
             var databasePath = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"book_index_filter_{Guid.NewGuid():N}.db");
             var connectionString = new SqliteConnectionStringBuilder
             {
@@ -426,7 +493,7 @@ namespace Chaptarr.Core.Test.Books
                     return conn;
                 });
 
-                action(new BookRepository(new MainDatabase(database), new StubEventAggregator()));
+                action(new BookRepository(new MainDatabase(database), new StubEventAggregator()), connectionString);
             }
             finally
             {
@@ -481,6 +548,7 @@ namespace Chaptarr.Core.Test.Books
                     ""Id"" INTEGER PRIMARY KEY,
                     ""BookId"" INTEGER NOT NULL,
                     ""Monitored"" INTEGER NOT NULL,
+                    ""ReleaseDate"" TEXT NULL,
                     ""Title"" TEXT NULL,
                     ""Narrator"" TEXT NULL,
                     ""NarratorNames"" TEXT NULL DEFAULT '[]'
