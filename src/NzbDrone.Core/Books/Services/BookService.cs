@@ -1784,16 +1784,10 @@ namespace NzbDrone.Core.Books
                     ? hintForAuthor
                     : _bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>();
                 PreloadEditions(authorBooks.Key, repositoryBooks);
-                var authorStoredById = repositoryBooks.ToDictionary(book => book.Id, CloneStoredBook);
                 var authorBooksById = repositoryBooks.ToDictionary(book => book.Id);
 
                 foreach (var changedBook in authorBooks)
                 {
-                    if (storedById.TryGetValue(changedBook.Id, out var storedBook))
-                    {
-                        authorStoredById[changedBook.Id] = CloneStoredBook(storedBook);
-                    }
-
                     authorBooksById[changedBook.Id] = changedBook;
                 }
 
@@ -1802,7 +1796,6 @@ namespace NzbDrone.Core.Books
                 PreloadEditionsByBook(authorBooks);
 
                 var changedBookIds = authorBooks.Select(book => book.Id).ToHashSet();
-                var baseStates = authorBooksById.ToDictionary(pair => pair.Key, pair => SnapshotMonitoredState(pair.Value));
 
                 // PERF (chaptarr #163/#172): BuildWorkGroups is itself O(N^2) internally (pairwise
                 // WorkIdMatcher.CrossFormatSafeMatches over every remaining book), and this whole method
@@ -1818,12 +1811,18 @@ namespace NzbDrone.Core.Books
                     ? authorBooksHint.GetWorkGroups(authorBooksById, BuildWorkGroups)
                     : BuildWorkGroups(authorBooksById.Values.ToList());
 
-                foreach (var workGroup in workGroups)
+                var affectedGroups = workGroups.Where(group => group.Any(book => changedBookIds.Contains(book.Id))).ToList();
+                var affectedBooks = affectedGroups.SelectMany(group => group).DistinctBy(book => book.Id).ToDictionary(book => book.Id);
+                var baseStates = affectedBooks.ToDictionary(pair => pair.Key, pair => SnapshotMonitoredState(pair.Value));
+                var authorStoredById = affectedBooks.ToDictionary(pair => pair.Key, pair =>
+                    CloneStoredBook(storedById.TryGetValue(pair.Key, out var stored) ? stored : pair.Value));
+
+                foreach (var workGroup in affectedGroups)
                 {
                     ApplyMutationSyncForWorkGroup(author, workGroup, changedBookIds, authorStoredById, rootFolders);
                 }
 
-                foreach (var pair in authorBooksById)
+                foreach (var pair in affectedBooks)
                 {
                     if (changedBookIds.Contains(pair.Key) || !HasMonitoringChanged(pair.Value, baseStates[pair.Key]))
                     {
