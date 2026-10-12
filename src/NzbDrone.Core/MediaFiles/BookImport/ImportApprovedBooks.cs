@@ -1835,15 +1835,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     };
                 }
 
-                if (!TryInspectFile(destinationPath, out var destinationInspection))
-                {
-                    return new OccupiedDestinationCheck
-                    {
-                        DestinationPath = destinationPath,
-                        RejectionReason = rejectionReason + "; the existing file is empty or cannot be inspected"
-                    };
-                }
-
                 var allowNonIdenticalAdoption = false;
                 if (_configService != null)
                 {
@@ -1855,6 +1846,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         // Older test doubles may not yet expose this optional setting; preserve the safe default.
                     }
+                }
+
+                if (!TryInspectFile(destinationPath, !allowNonIdenticalAdoption, out var destinationInspection))
+                {
+                    return new OccupiedDestinationCheck
+                    {
+                        DestinationPath = destinationPath,
+                        RejectionReason = rejectionReason + "; the existing file is empty or cannot be inspected"
+                    };
                 }
 
                 if (allowNonIdenticalAdoption)
@@ -1869,7 +1869,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 if (TryGetFileSize(localBook.Path, out var sourceSize) &&
                     sourceSize > 0 &&
                     sourceSize == destinationInspection.Size &&
-                    TryInspectFile(localBook.Path, out var sourceInspection) &&
+                    TryInspectFile(localBook.Path, true, out var sourceInspection) &&
                     sourceInspection.Size == destinationInspection.Size &&
                     CryptographicOperations.FixedTimeEquals(sourceInspection.Sha256, destinationInspection.Sha256))
                 {
@@ -1924,7 +1924,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
         }
 
-        private bool TryInspectFile(string path, out FileInspection inspection)
+        private bool TryInspectFile(string path, bool computeHash, out FileInspection inspection)
         {
             inspection = null;
 
@@ -1942,7 +1942,19 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return false;
                 }
 
-                var sha256 = SHA256.HashData(stream);
+                byte[] sha256;
+                if (computeHash)
+                {
+                    sha256 = SHA256.HashData(stream);
+                }
+                else if (stream.ReadByte() >= 0)
+                {
+                    sha256 = null;
+                }
+                else
+                {
+                    return false;
+                }
                 if (!TryGetFileSize(path, out var sizeAfter))
                 {
                     return false;
