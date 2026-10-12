@@ -304,7 +304,10 @@ class InteractiveSearchRow extends Component {
           </div>
         </TableRowCell>
 
-        <TableRowCell className={styles.indexer}>
+        <TableRowCell
+          className={styles.indexer}
+          title={indexer}
+        >
           {indexer}
         </TableRowCell>
 
