@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:39:27+00:00",
-  "forkHead": "95b56be",
+  "snapshotAt": "2026-10-12T20:45:05+00:00",
+  "forkHead": "1ab2354",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -2353,7 +2353,8 @@
       "kind": "issue",
       "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
-        185
+        185,
+        300
       ],
       "implementationEvidence": [
         "Reviewed requirement addressed by integrated PR #185; see its implementation evidence and final integration validation."
@@ -3702,10 +3703,20 @@
       "title": "[BUG] External EPUB renames create duplicate records and leave monitored originals missing",
       "url": "https://github.com/Chaptarr/chaptarr/issues/300",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        184,
+        185
+      ],
+      "implementationEvidence": [
+        "Commit 1ab2354 keeps the .epub suffix in the ebook unit key and recognizes a renamed standalone EPUB only when exactly one vanished EPUB row belongs to the same edition and both paths resolve to the same accessible non-Calibre root.",
+        "A per-stale-file reservation lets only one incoming unit reuse that vanished row; a second file, a live copy, another edition, another root, or a Calibre root remains a separate destination.",
+        "This extends the in-fork #185 replacement handling for audiobook containers. Release note 20261012-external-epub-renames.md records the behavior."
+      ],
+      "validationEvidence": [
+        "Release-note preview and git diff --check passed. Source path and root/edition constraints were reviewed against the report and the existing destination resolver.",
+        "Backend build was attempted but stopped at the existing ImageSharp licensing target because no Six Labors license file/key is available in this environment. No tests were run."
+      ],
       "sourceUpdatedAt": "2026-10-08T18:19:44Z",
       "body": "**Describe the bug**\n\nAn external EPUB filename change within the same library root causes Rescan Folders to attach the file to a new book/edition record. The original monitored book then appears in Wanted → Missing even though the same matched edition remains in the library. A plain filesystem rename reproduces it; no BookOrbit integration is required.\n\n**To reproduce**\n\n1. Import a correctly matched EPUB and enable ebook monitoring on its book.\n2. Rename the file without changing its contents or root:\n\n   ```sh\n   mv \"/books/Author/Book/Original.epub\" \"/books/Author/Book/Renamed.epub\"\n   ```\n\n3. Run Rescan Folders on the library root.\n4. Inspect the original book's file association and Wanted → Missing.\n\n**Expected behavior**\n\nThe renamed file remains on the original monitored book and edition. Genuine additional copies remain separate.\n\n**Actual behavior**\n\nThe new path is attached to another book/edition record. The original has no files and is reported missing.\n\n**Controls**\n\n- The filesystem-rename reproduction retained file contents and the same provider edition identity.\n- English title correction and author display reordering with automatic renaming disabled preserved IDs, path and the Missing list.\n- Polish metadata saves, including a work also present in English, preserved separate ownership with renaming disabled. Rename-on controls reproduced false Missing status for both languages.\n- A real BookOrbit metadata save also reproduces it when it renames the file.\n\n**System information**\n\nLinux, local filesystem, official Docker image, Chaptarr `0.9.965.0` (`develop`), standalone EPUBs.\n\n**Additional context**\n\nRelated to #184 and #185; EPUB unit identity includes the directory and filename stem. A tested fix is prepared, and I would like to coordinate it with #185 before submitting a separate PR.\n",
       "comments": []
@@ -7795,10 +7806,12 @@
       "kind": "pullRequest",
       "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
-        184
+        184,
+        300
       ],
       "implementationEvidence": [
-        "Integrated reviewed upstream patch at fork commit b25cb84e25e2d30a17a30c885a56a06fedf7ff4b; subsequent integration fixes are retained in branch history."
+        "Integrated reviewed upstream patch at fork commit b25cb84e25e2d30a17a30c885a56a06fedf7ff4b; subsequent integration fixes are retained in branch history.",
+        "Commit 1ab2354 extends the same destination resolver for related issue #300: renamed EPUBs can reclaim one vanished same-edition file under the same accessible non-Calibre root."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-08T18:25:10Z",
