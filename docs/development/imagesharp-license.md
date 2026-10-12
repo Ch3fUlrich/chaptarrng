@@ -9,20 +9,31 @@ direct dependency of `src/NzbDrone.Core/Chaptarr.Core.csproj`.
 Starting with ImageSharp 4.0, Six Labors validates licenses at build time for
 projects that directly reference ImageSharp. ChaptarrNG uses ImageSharp 4.1.3,
 so source builds must provide a valid Six Labors license. This is a build-time
-dependency requirement; it is not a ChaptarrNG runtime setting. People running
-the published ChaptarrNG images do not need to obtain or configure a license.
+dependency requirement; the application does not read the build key at
+runtime. Official ChaptarrNG images contain a build made with a valid license,
+so running one does not require configuring a build key. The Six Labors Split
+License still governs use of ImageSharp; review its current terms and confirm
+that your use qualifies.
 
-The Six Labors license is separate from ChaptarrNG's GPL license. Community
-licenses may be scoped to the exact assembly names listed in the application;
-check that your license covers the ChaptarrNG assemblies produced by your build.
+The Six Labors license is separate from ChaptarrNG's GPL license. When
+requesting an open-source or source-available community license, provide the
+case-sensitive assembly name for every project that directly references
+ImageSharp. Include a test project only if it also references ImageSharp
+directly. Use the project's `AssemblyName`, or its project filename without
+`.csproj` when `AssemblyName` is unset; do not include `.dll` or `.csproj`.
+The direct reference in this repository is in
+`src/NzbDrone.Core/Chaptarr.Core.csproj`.
 
 ## Obtain a license
 
 Apply through the [Six Labors licensing portal](https://licensing.sixlabors.com/).
-Review the current [ImageSharp license terms and options](https://docs.sixlabors.com/articles/imagesharp/index.html#license)
-and request a license that covers your use and the required assembly names.
+Review the current [ImageSharp license terms and options](https://docs.sixlabors.com/articles/imagesharp/index.html#license),
+select the option that matches your use, and enter the required assembly names.
 Six Labors sends the issued license as `sixlabors.lic`. Use the complete file
-contents when configuring builds; do not extract only its `Key` field.
+contents when configuring builds; do not extract only its `Key` field. Since
+this repository does not publish its license file or share the Actions secret
+with fork pull requests, contributors building from source need to provide an
+eligible license for their own build.
 
 ChaptarrNG does not commit the license file or key. Keep the file outside the
 repository, and keep `.env.sixlabors` private. The repository ignores that env

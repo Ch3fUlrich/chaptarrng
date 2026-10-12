@@ -874,7 +874,7 @@
   "IllRestartLater": "I'll restart later",
   "Images": "Images",
   "ImageSharpBuildLicense": "ImageSharp Build License",
-  "ImageSharpBuildLicenseDescription": "ImageSharp resizes cover images and requires a Six Labors license at build time. Published images already include a licensed build, so only source builders need one.",
+  "ImageSharpBuildLicenseDescription": "ImageSharp resizes cover images and requires a Six Labors license when building from source. Official images need no build key at runtime; all use remains subject to Six Labors' license terms.",
   "ImageSharpLicenseGuide": "View License Setup Guide",
   "Implementation": "Implementation",
   "Import": "Import",

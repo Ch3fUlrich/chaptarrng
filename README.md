@@ -78,10 +78,11 @@ ChaptarrNG is not compatible with Readarr's metadata sources. It uses Chaptarr's
 > **Docker is currently the only supported way to run ChaptarrNG.** The fork is developed and tested in Docker. Releases do not include native install packages; native support is not currently offered.
 
 ChaptarrNG uses ImageSharp to resize cover images. ImageSharp 4 requires a
-Six Labors license when building this direct dependency from source. Published
-ChaptarrNG images already contain a licensed build, so running them does not
-require a license key. See the [ImageSharp build-license guide](docs/development/imagesharp-license.md)
-for license eligibility, acquisition, and build setup.
+valid Six Labors license when building this direct dependency from source.
+Official ChaptarrNG images contain a licensed build and do not need a build key
+configured at runtime. All use remains subject to Six Labors' license terms.
+See the [ImageSharp build-license guide](docs/development/imagesharp-license.md)
+for eligibility, acquisition, and build setup.
 
 ### Docker
 
