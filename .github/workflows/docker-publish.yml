@@ -10,6 +10,9 @@ on:
       branch:
         required: true
         type: string
+    secrets:
+      SIXLABORS_LICENSE_KEY:
+        required: true
 
 env:
   REGISTRY: ghcr.io
@@ -118,6 +121,8 @@ jobs:
           org.opencontainers.image.revision=${{ inputs.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        secrets: |
+          SIXLABORS_LICENSE_KEY=${{ secrets.SIXLABORS_LICENSE_KEY }}
         sbom: true
         provenance: mode=max
 

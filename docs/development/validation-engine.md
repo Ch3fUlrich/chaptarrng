@@ -11,17 +11,42 @@ Windows, macOS, and PostgreSQL smoke receipts before the workflow is complete.
 Use Node.js `26.10.0` and .NET SDK `10.0.401`, matching the CI toolchain. Build
 the existing CI outputs first:
 
+ImageSharp 3.2.0 requires the complete Six Labors license at build time. Store
+it as a single shell-quoted `SIXLABORS_LICENSE_KEY` assignment in the ignored
+`.env.sixlabors` file; use the full contents of `sixlabors.lic`, not only its
+`Key` field. Do not commit either file. Source it before restore/build commands
+and unset the variable before starting the validation engine, whose child
+processes intentionally do not inherit credential-shaped environment values.
+GitHub Actions reads the same value from the private `SIXLABORS_LICENSE_KEY`
+repository secret. Fork pull request workflows cannot read repository secrets;
+those builds need a locally supplied license or maintainer validation from a
+reviewed in-repository branch.
+
 ```sh
 yarn install --frozen-lockfile
 yarn typecheck
 yarn build
+set -a
+. ./.env.sixlabors
+set +a
 dotnet restore src/Chaptarr.NoTests.sln
 dotnet restore src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj
 dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 dotnet build src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore -p:UseSharedCompilation=false
+unset SIXLABORS_LICENSE_KEY
 node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node scripts/validation-engine/engine.mjs --tests-only
 ```
+
+For BuildKit container builds, source the same file and pass the value as a
+BuildKit secret, for example:
+
+```sh
+docker buildx build --secret id=SIXLABORS_LICENSE_KEY,env=SIXLABORS_LICENSE_KEY -f Dockerfile.cross .
+```
+
+The Dockerfiles consume the secret only in the restore/publish instruction; it
+does not enter the build context, image layers, or image metadata.
 
 The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same

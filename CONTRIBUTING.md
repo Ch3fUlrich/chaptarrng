@@ -42,6 +42,14 @@ Thanks for your interest in contributing to ChaptarrNG.
 - Git
 
 ### Building ChaptarrNG
+
+The direct ImageSharp dependency requires a Six Labors license at build time.
+Use the full license contents from a local, ignored `.env.sixlabors` file or
+your own secure environment, and configure the repository's GitHub Actions
+secret for trusted builds. See [the validation engine guide](docs/development/validation-engine.md)
+for the local setup and container instructions. Never commit the license file
+or its contents.
+
 ```bash
 # Clone ChaptarrNG
 git clone https://github.com/snapetech/chaptarrng.git

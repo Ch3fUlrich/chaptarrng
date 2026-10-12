@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
   workflow_call:
+    secrets:
+      SIXLABORS_LICENSE_KEY:
+        required: true
   workflow_dispatch:
 
 # Tests only, never publishes. PRs and merges are both validated automatically, but
@@ -77,6 +80,16 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         fetch-depth: 0
+
+    - name: Require ImageSharp build license
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+      shell: bash
+      run: |
+        if [[ -z "${SIXLABORS_LICENSE_KEY:-}" ]]; then
+          echo "::error::Configure the SIXLABORS_LICENSE_KEY Actions secret to build this repository's direct ImageSharp dependency."
+          exit 1
+        fi
 
     - name: Guard (repo) - no merge-conflict markers
       shell: bash
@@ -181,14 +194,20 @@ jobs:
     # native packaging owns bundled-tool acquisition and validation.
 
     - name: Restore dependencies
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: |
         dotnet restore src/Chaptarr.NoTests.sln
         dotnet restore src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj
     
     - name: Build
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 
     - name: Build test assembly
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: dotnet build src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore -p:UseSharedCompilation=false
 
     - name: Install Chromium for direct-download browser tests
@@ -222,6 +241,8 @@ jobs:
         if-no-files-found: error
     
     - name: Publish
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: |
         dotnet publish src/NzbDrone.Console/Chaptarr.Console.csproj -c Release -f net10.0 -o ./publish/Chaptarr
         dotnet publish src/NzbDrone.Update/Chaptarr.Update.csproj -c Release -f net10.0 -o ./publish/Chaptarr/Chaptarr.Update
@@ -262,6 +283,16 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+    - name: Require ImageSharp build license
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+      shell: bash
+      run: |
+        if [[ -z "${SIXLABORS_LICENSE_KEY:-}" ]]; then
+          echo "::error::Configure the SIXLABORS_LICENSE_KEY Actions secret to build this repository's direct ImageSharp dependency."
+          exit 1
+        fi
+
     - name: Setup Node.js
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
@@ -291,9 +322,13 @@ jobs:
         psql -h localhost -U chaptarr -d postgres -c 'CREATE DATABASE "chaptarr-cache";'
 
     - name: Restore dependencies
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: dotnet restore src/Chaptarr.NoTests.sln
 
     - name: Build (migrations smoke)
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 
     - name: Smoke - migrate up on fresh PostgreSQL
