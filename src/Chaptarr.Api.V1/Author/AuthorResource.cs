@@ -53,8 +53,9 @@ namespace Chaptarr.Api.V1.Author
         public int? AudiobookMetadataProfileId { get; set; }
         public int? EbookMetadataProfileId { get; set; }
 
-        //Editing Only
-        public bool Monitored { get; set; }
+        // Editing only. Responses always populate this legacy aggregate; nullable
+        // input distinguishes an explicit monitor choice from an omitted field.
+        public bool? Monitored { get; set; }
         // Author-level monitoring gates. NULL means unconfigured; false is an explicit pause.
         public bool? AudiobookMonitored { get; set; }
         // One-time action for the catalog in an add/import request; not persisted on Author.
@@ -478,12 +479,12 @@ namespace Chaptarr.Api.V1.Author
 
             if (facadeContext?.MediaType == "audiobook")
             {
-                audiobookMonitored = resource.Monitored;
+                audiobookMonitored = resource.Monitored ?? false;
                 audiobookMonitorNewItems = ParseMonitorNewItems(resource.MonitorNewItems) ?? audiobookMonitorNewItems;
             }
             else if (facadeContext?.MediaType == "ebook")
             {
-                ebookMonitored = resource.Monitored;
+                ebookMonitored = resource.Monitored ?? false;
                 ebookMonitorNewItems = ParseMonitorNewItems(resource.MonitorNewItems) ?? ebookMonitorNewItems;
             }
 
@@ -524,7 +525,9 @@ namespace Chaptarr.Api.V1.Author
                 AudiobookMetadataProfileId = resource.AudiobookMetadataProfileId,
                 EbookMetadataProfileId = resource.EbookMetadataProfileId,
 
-                Monitored = resource.Monitored,
+                // The persisted legacy field is non-nullable. The service recomputes
+                // it from media-specific gates on save; retain the old default here.
+                Monitored = resource.Monitored ?? false,
                 AudiobookMonitored = audiobookMonitored,
                 AudiobookMonitorNewItems = audiobookMonitorNewItems,
                 EbookMonitored = ebookMonitored,
@@ -595,7 +598,7 @@ namespace Chaptarr.Api.V1.Author
                     resource.AudiobookMetadataProfileId ??= resource.MetadataProfileId;
                     resource.AudiobookRootFolderPath ??= resource.RootFolderPath;
                     resource.AudiobookTags ??= resource.Tags;
-                    resource.AudiobookMonitored = resource.Monitored;
+                    resource.AudiobookMonitored = resource.Monitored ?? false;
                     resource.AudiobookMonitorNewItems = facadeMonitorNewItems ?? resource.AudiobookMonitorNewItems;
                 }
                 else if (facadeContext.MediaType == "ebook")
@@ -604,7 +607,7 @@ namespace Chaptarr.Api.V1.Author
                     resource.EbookMetadataProfileId ??= resource.MetadataProfileId;
                     resource.EbookRootFolderPath ??= resource.RootFolderPath;
                     resource.EbookTags ??= resource.Tags;
-                    resource.EbookMonitored = resource.Monitored;
+                    resource.EbookMonitored = resource.Monitored ?? false;
                     resource.EbookMonitorNewItems = facadeMonitorNewItems ?? resource.EbookMonitorNewItems;
                 }
 
@@ -633,7 +636,7 @@ namespace Chaptarr.Api.V1.Author
                 resource.AudiobookQualityProfileId ??= resource.QualityProfileId;
                 resource.AudiobookMetadataProfileId ??= resource.MetadataProfileId;
                 resource.AudiobookRootFolderPath ??= resource.RootFolderPath;
-                resource.AudiobookMonitored ??= resource.Monitored;
+                resource.AudiobookMonitored ??= resource.Monitored ?? false;
                 resource.AudiobookMonitorNewItems ??= monitorNewItems;
                 if (resource.Tags != null)
                 {
@@ -646,7 +649,7 @@ namespace Chaptarr.Api.V1.Author
                 resource.EbookQualityProfileId ??= resource.QualityProfileId;
                 resource.EbookMetadataProfileId ??= resource.MetadataProfileId;
                 resource.EbookRootFolderPath ??= resource.RootFolderPath;
-                resource.EbookMonitored ??= resource.Monitored;
+                resource.EbookMonitored ??= resource.Monitored ?? false;
                 resource.EbookMonitorNewItems ??= monitorNewItems;
                 if (resource.Tags != null)
                 {

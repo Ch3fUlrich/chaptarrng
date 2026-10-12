@@ -12929,7 +12929,8 @@
             "nullable": true
           },
           "monitored": {
-            "type": "boolean"
+            "type": "boolean",
+            "nullable": true
           },
           "audiobookMonitored": {
             "type": "boolean",
