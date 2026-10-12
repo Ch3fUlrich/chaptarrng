@@ -151,6 +151,46 @@ namespace Chaptarr.Core.Test.Indexers
         }
 
         [Test]
+        public async Task should_use_alternate_title_without_primary_isbn_for_direct_download_search()
+        {
+            var transport = new DirectDownloadTestHttp();
+            DirectDownloadSourceProbeFixtureSupport.RegisterCatalogSource(
+                transport,
+                "https://primary.example",
+                "9780441172719",
+                "Pretty Girls",
+                "9780441172719",
+                "https://downloads.primary.example/files/pretty-girls.epub");
+            var probeService = new DirectDownloadSourceProbeService(transport.CreateClient(), NLog.LogManager.GetCurrentClassLogger());
+            var provider = new DirectDownloadIndexer(null, null, null, null, probeService)
+            {
+                Definition = new NzbDrone.Core.Indexers.IndexerDefinition
+                {
+                    Id = 41,
+                    Name = "Direct Download Test",
+                    Settings = new DirectDownloadSettings
+                    {
+                        Urls = "https://primary.example",
+                        ApiKey = "real-secret"
+                    }
+                }
+            };
+
+            await provider.Fetch(new BookSearchCriteria
+            {
+                Author = new Author { Name = "Karin Slaughter" },
+                Books = new List<Book> { new() { MediaType = BookMediaType.Ebook } },
+                BookTitle = "Mooie Meisjes",
+                SearchTitleOverride = "Pretty Girls",
+                BookIsbn = "9780441172719"
+            });
+
+            var searchUrl = transport.RequestedUrls.First(url => url.StartsWith("https://primary.example/search", StringComparison.Ordinal));
+            Assert.That(searchUrl, Does.Contain("Pretty"));
+            Assert.That(searchUrl, Does.Not.Contain("9780441172719"));
+        }
+
+        [Test]
         public async Task should_reject_audiobook_book_search_without_probning_sources()
         {
             var transport = new DirectDownloadTestHttp();

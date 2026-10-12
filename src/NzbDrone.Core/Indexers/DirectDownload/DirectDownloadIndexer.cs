@@ -58,7 +58,11 @@ namespace NzbDrone.Core.Indexers.DirectDownload
                 return Array.Empty<ReleaseInfo>();
             }
 
-            var request = BuildProbeRequest(searchCriteria?.Author?.Name, searchCriteria?.BookTitle, searchCriteria?.BookIsbn);
+            var hasAlternateTitle = !string.IsNullOrWhiteSpace(searchCriteria?.SearchTitleOverride);
+            var request = BuildProbeRequest(
+                searchCriteria?.Author?.Name,
+                searchCriteria?.SearchTitleOverride ?? searchCriteria?.BookTitle,
+                hasAlternateTitle ? null : searchCriteria?.BookIsbn);
             return await ProbeAsync(request);
         }
 

@@ -905,6 +905,16 @@ namespace NzbDrone.Core.Parser
             AddTitleVariants(context.PrimaryVariants, primaryTitle);
             context.PrimaryTitle = primaryTitle;
 
+            // Other editions belong to this same work. Searching their names should
+            // still pass identity matching without changing the monitored edition
+            // used by language, format, and profile decisions.
+            AddTitleVariants(context.PrimaryVariants, book?.Title);
+            AddTitleVariants(context.PrimaryVariants, book?.OriginalTitle);
+            foreach (var edition in book?.Editions ?? Enumerable.Empty<Edition>())
+            {
+                AddTitleVariants(context.PrimaryVariants, BookEditionTitle.GetTitleForBook(book, edition));
+            }
+
             // Keep "series" in this variant so a bare title or an individual volume
             // cannot stand in for the set. Explicit counts and extra titles are checked
             // before scoring this variant, including in relaxed matching modes.

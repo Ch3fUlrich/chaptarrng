@@ -125,6 +125,31 @@ namespace Chaptarr.Core.Test.Parser
         }
 
         [Test]
+        public void should_match_a_known_alternate_edition_title_while_preserving_the_monitored_title()
+        {
+            var author = new Author { Name = "Karin Slaughter" };
+            var book = new Book
+            {
+                Title = "Mooie Meisjes",
+                OriginalTitle = "Pretty Girls",
+                Author = author,
+                Editions = new List<Edition>
+                {
+                    new Edition { Id = 1, Title = "Mooie Meisjes", Language = "nld", Monitored = true },
+                    new Edition { Id = 2, Title = "Pretty Girls", Language = "eng" }
+                }
+            };
+
+            var result = ReleaseTitleMatchScorer.FindBestMatch(
+                "Karin Slaughter - Pretty Girls - M4B", author.Name, new[] { book }, null, new[] { book });
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsMatch, Is.True);
+            Assert.That(result.PrimaryTitle, Is.EqualTo("Mooie Meisjes"));
+            Assert.That(result.MatchedVariant, Is.EqualTo("Pretty Girls"));
+        }
+
+        [Test]
         public void should_match_exact_title_with_bracketed_series_counter_metadata()
         {
             var author = new Author { Name = "J. K. Rowling" };
