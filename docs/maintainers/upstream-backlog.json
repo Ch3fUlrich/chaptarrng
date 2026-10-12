@@ -1,6 +1,6 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T21:16:54+00:00",
+  "snapshotAt": "2026-10-12T21:17:51+00:00",
   "forkHead": "0f3050c",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
@@ -110,10 +110,17 @@
       "title": "[BUG] \"Added\" Column is empty",
       "url": "https://github.com/Chaptarr/chaptarr/issues/5",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        13,
+        146
+      ],
+      "implementationEvidence": [
+        "Merged PR #13 (commit ace9b31, present in this fork) exposes Book.Added on the v1 BookResource and maps the model timestamp into the API response consumed by the Books table's Added column. The PR also adds BookResourceMapperFixture.should_map_book_added_timestamp_to_resource."
+      ],
+      "validationEvidence": [
+        "Verified the mapping in BookResource.cs and the table's added-field renderer in BookIndexRow.js; the existing mapper fixture was added in ace9b31 but was not run per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-08-09T06:11:27Z",
       "body": "Books added are missing information in the \"Date Added\" column, this makes it difficult to see new book that have been added and disables the ability to filter based of when books are added\n\n<img width=\"1628\" height=\"680\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/22e3c549-84b5-42b3-9176-832fcfc67feb\" />",
       "comments": []
@@ -1906,10 +1913,17 @@
       "title": "[BUG] Books > Table view - Added column is empty",
       "url": "https://github.com/Chaptarr/chaptarr/issues/146",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        5,
+        13
+      ],
+      "implementationEvidence": [
+        "Upstream closed #146 as a duplicate of #5 and confirmed PR #13 fixed the empty Added column. The same merged PR #13 mapper change is present in this fork at ace9b31."
+      ],
+      "validationEvidence": [
+        "Reviewed the duplicate closure, PR #13's merged diff, current BookResource mapping, and the existing regression fixture. Tests were not run per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-10-03T15:36:47Z",
       "body": "**Describe the bug**\nWHen in table view, the Added column is not populated.\n\n**To Reproduce**\nSteps to reproduce the behavior:\n1. Go to Books\n2. Select the Table view\n3. Use Table Options to add the `Added` column\n4. Observe column is entirely null\n\n**Expected behavior**\nShow column data\n\n**Screenshots**\n\n<img width=\"1352\" height=\"661\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/60750d25-fa31-4bb0-8c53-53a14e0c5ad9\" />\n\n**System Information:**\n\n<img width=\"289\" height=\"224\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/5d28e426-ea68-4d97-b045-823782a9ae3a\" />\n\n**Additional context**\nAdd any other context about the problem here.\n\n**Logs**\nPlease include relevant logs from:\n- Chaptarr logs (System → Logs → Files in the UI; `/config/logs/` in Docker)\n- Browser console (F12)\n- Docker logs (`docker logs chaptarr`), if running in Docker\n",
       "comments": [
@@ -4095,12 +4109,17 @@
       "title": "fix: expose book added timestamps",
       "url": "https://github.com/Chaptarr/chaptarr/pull/13",
       "kind": "pullRequest",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
-        5
+        5,
+        146
       ],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Merged PR #13's BookResource.Added property and model-to-resource mapping are already present in this fork in commit ace9b31. The accompanying mapper regression fixture is also present."
+      ],
+      "validationEvidence": [
+        "Compared the current BookResource mapping and fixture against the merged upstream change. The original PR reported 2,725 passing tests; no tests were run in this fork per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-10-03T15:36:59Z",
       "body": "## Summary\n- expose the existing Book.Added timestamp on the v1 book resource\n- map the timestamp for both rich and lean book responses\n- add a regression test for the resource mapper\n\nFixes #5\n\n## Testing\n- dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj (2,725 passed)\n\n## AI assistance\nThis pull request was generated with AI assistance and reviewed locally before submission.",
       "comments": [
