@@ -1,0 +1,4796 @@
+{
+  "repository": "Chaptarr/chaptarr",
+  "snapshotAt": "2026-10-12T18:59:32.484077+00:00",
+  "forkHead": "552b1982f471a14cbe1db3521d9c5c94a204efe2",
+  "scope": "Inventory of all visible issues and PRs, including closed history. Implementation and verification have not yet been audited.",
+  "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
+  "counts": {
+    "issues": 150,
+    "openIssues": 127,
+    "pullRequests": 155,
+    "openPullRequests": 122
+  },
+  "items": [
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 2,
+      "state": "CLOSED",
+      "title": "[BUG] error when using unpackerr, something that could be solved in chaptarr?",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/2",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 3,
+      "state": "OPEN",
+      "title": "[BUG] wanted section not showing correctly on mobile",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/3",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 4,
+      "state": "OPEN",
+      "title": "[BUG] interactive search shows hidden items (or no items) on valid items",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/4",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 5,
+      "state": "CLOSED",
+      "title": "[BUG] \"Added\" Column is empty",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/5",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 6,
+      "state": "OPEN",
+      "title": "[FEATURE] ranobedb support for light novel metadata",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/6",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 7,
+      "state": "OPEN",
+      "title": "[BUG] Webhook triggers \"When a grabbed download finishes importing into the library\" do not fire",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/7",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 12,
+      "state": "OPEN",
+      "title": "[BUG] SQLite: memory grows to 8.2 GiB during initial library scan until the app stops answering HTTP",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/12",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 14,
+      "state": "OPEN",
+      "title": "Native build artifacts omit the web UI",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/14",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 15,
+      "state": "CLOSED",
+      "title": "Bookshelf \u201cMonitor Author\u201d changes silently monitor every existing book",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/15",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 16,
+      "state": "CLOSED",
+      "title": "Bookshelf \u201cMonitor New Books\u201d is ignored and can change existing books instead",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/16",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 17,
+      "state": "OPEN",
+      "title": "Book search finds indexer releases but 0 ever download - V5MatchingService rejects every candidate",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/17",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 18,
+      "state": "OPEN",
+      "title": "[FEATURE] Add to UnRaid CA store",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/18",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 22,
+      "state": "CLOSED",
+      "title": "[BUG] Different `Standard Book Format` config for audiobooks and eBooks is not respected.",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/22",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 23,
+      "state": "OPEN",
+      "title": "ImportList minRefreshInterval cannot be changed via the API (PUT is silently ignored)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/23",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 24,
+      "state": "CLOSED",
+      "title": "RSS-sync auto-grab silently relocates files for a torrent it didn't download, even when already organized elsewhere",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/24",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 27,
+      "state": "OPEN",
+      "title": "[FEATURE] Proxmox Script Support",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/27",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 28,
+      "state": "OPEN",
+      "title": "[BUG] Can't change the Path setting for an author",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/28",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 31,
+      "state": "CLOSED",
+      "title": "POST /api/v1/rootfolder allows creating a root folder with no audiobook/ebook monitor defaults, causing silent DiscoveryWorker failures",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/31",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 32,
+      "state": "CLOSED",
+      "title": "[BUG] Cannot delete book file",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/32",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmofA",
+          "name": "question",
+          "description": "Further information is requested",
+          "color": "d876e3"
+        }
+      ],
+      "number": 33,
+      "state": "OPEN",
+      "title": "[BUG] Readarr/Seerr book add does not preserve monitoring or automatic search",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/33",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 34,
+      "state": "OPEN",
+      "title": "Series name/position come from stale denormalized fields (wrong language, wrong numbers, mismatched pairs)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/34",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 40,
+      "state": "OPEN",
+      "title": "[BUG]  UI issues in ABS connection window",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/40",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 41,
+      "state": "CLOSED",
+      "title": "[BUG] Not downloading due to author metadata api call returning 522",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/41",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 42,
+      "state": "OPEN",
+      "title": "[BUG] Deleting an author with files unlinks BookFile rows and allows the author to be recreated",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/42",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 43,
+      "state": "OPEN",
+      "title": "[BUG] Author and book filters reuse stale memoized collection results",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/43",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 49,
+      "state": "OPEN",
+      "title": "[BUG] Duplicate author merge repeatedly fails on unique AudnexusAuthorId",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/49",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 50,
+      "state": "OPEN",
+      "title": "[BUG] Completed download remains ImportBlocked when destination file already exists",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/50",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 51,
+      "state": "CLOSED",
+      "title": "[BUG] Author progress bar counts monitored future releases as missing",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/51",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 53,
+      "state": "OPEN",
+      "title": "[FEATURE] Add Emby/Jellyfin connection for library refresh on import",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/53",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 54,
+      "state": "OPEN",
+      "title": "[FEATURE] MQTT gateway with Home Assistant sensors and standardized webhook events",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/54",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 60,
+      "state": "CLOSED",
+      "title": "[BUG] \"Skip Secondary Series Books\" never filters anything \u2014 every SeriesBookLink is written IsPrimary = true",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/60",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 64,
+      "state": "CLOSED",
+      "title": "[BUG] authors are shown as Monitored on the author index even though the author details page shows the monitoring status as None",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/64",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 65,
+      "state": "OPEN",
+      "title": "[BUG] \"Wanted\" section has books that have not been released",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/65",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 67,
+      "state": "OPEN",
+      "title": "Book lookup returns only audiobook editions, so the /ebook facade scope is always empty",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/67",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 68,
+      "state": "OPEN",
+      "title": "[BUG] No audiobook edition survived metadata profile filtering for this book.",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/68",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 69,
+      "state": "OPEN",
+      "title": "[BUG] Title Column Squished in Manual Search",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/69",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 72,
+      "state": "OPEN",
+      "title": "[BUG] {Book SeriesPosition} ignores :customFormat, can't zero-pad",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/72",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 74,
+      "state": "OPEN",
+      "title": "[BUG] Completed SABnzbd download is processed twice after successful import, causing false \"path does not exist\" error",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/74",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 75,
+      "state": "OPEN",
+      "title": "[FEATURE] Add low-cardinality Prometheus metrics for operational health",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/75",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 76,
+      "state": "OPEN",
+      "title": "[FEATURE] Add import-list dry-run preview and per-list sync history",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/76",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 77,
+      "state": "OPEN",
+      "title": "[FEATURE] Add controlled unattended grab budgets and queue limits",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/77",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 78,
+      "state": "OPEN",
+      "title": "[FEATURE] Add configurable PostgreSQL TLS certificate verification",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/78",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 79,
+      "state": "OPEN",
+      "title": "[FEATURE] Add PostgreSQL database backup and verified restore support",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/79",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 80,
+      "state": "CLOSED",
+      "title": "[FEATURE] Add a read-only Readarr and Bookshelf migration assistant",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/80",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 81,
+      "state": "OPEN",
+      "title": "[FEATURE] Add end-to-end metadata and release decision explanations",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/81",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 83,
+      "state": "CLOSED",
+      "title": "[BUG]  percentOfBooks exceeds 100% for multi-file audiobooks",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/83",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 84,
+      "state": "OPEN",
+      "title": "[BUG] Prowlarr Readarr-app integration gets 500 on GET /api/v1/indexer/schema; identical curl request succeeds",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/84",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 88,
+      "state": "OPEN",
+      "title": "PUT /api/v1/author/{id} silently clears root folder paths (and Path) when a request omits them",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/88",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 99,
+      "state": "OPEN",
+      "title": "[FEATURE] Add Grimmory Connect integration for library synchronization",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/99",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 100,
+      "state": "CLOSED",
+      "title": "POST /api/v1/author returns unsubstituted 'Invalid Path: {path}' error and rejects a valid quality profile",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/100",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 103,
+      "state": "OPEN",
+      "title": "Add New Author fails with \"ForeignAuthorId: Invalid provider ID format\" even when search/match succeeds",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/103",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoVw",
+          "name": "documentation",
+          "description": "Improvements or additions to documentation",
+          "color": "0075ca"
+        }
+      ],
+      "number": 104,
+      "state": "OPEN",
+      "title": "docs: mention OpenTofu & Terraform provider in Documentation / Ecosystem",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/104",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 105,
+      "state": "OPEN",
+      "title": "Manual import reports no match confidence, so a wrong match is indistinguishable from a right one",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/105",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 106,
+      "state": "OPEN",
+      "title": "[BUG] RescanAuthor only walks the author's single Path, so the other format's root folder is never scanned",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/106",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 107,
+      "state": "OPEN",
+      "title": "RescanFolders silently imports unknown authors and blocks the command queue with no progress reporting",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/107",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 108,
+      "state": "OPEN",
+      "title": "[BUG] ManualImport requires numeric editionId but the error names no field; foreignEditionId is silently ignored",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/108",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 109,
+      "state": "OPEN",
+      "title": "MP3 to M4B conversion cannot be applied to an existing library, only to new downloads",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/109",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 110,
+      "state": "CLOSED",
+      "title": "Goodreads import list never monitors a book that already exists as an unmonitored stub",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/110",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 111,
+      "state": "OPEN",
+      "title": "Duplicate book row (from author-bibliography re-discovery) hijacks import matching for the correctly-monitored row",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/111",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 112,
+      "state": "CLOSED",
+      "title": "Ebook and audiobook editions of the same book land in different (narrator-suffixed) folders instead of the same item folder",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/112",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 115,
+      "state": "CLOSED",
+      "title": "POST /api/v1/author silently drops all ebook settings (profiles, monitor flags) and lastSelectedMediaType \u2014 author ends up with \"Ebook monitoring is disabled\"",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/115",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 116,
+      "state": "OPEN",
+      "title": "Unhandled ArgumentException (invalid Unicode code points) in ReleaseTitleMatchScorer during RSS sync",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/116",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 119,
+      "state": "OPEN",
+      "title": "[BUG] PendingAuthorImport infinite retry + SQLite lock cascade + DiscoveryWorker ebook settings inheritance failure - bug discovered during large library migration (3,600+ authors)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/119",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 126,
+      "state": "OPEN",
+      "title": "Ebook colocation handler moves ebook files even when the colocation planner declines",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/126",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 128,
+      "state": "OPEN",
+      "title": "Interactive search silently issues no indexer query when the media-type category filter leaves no categories",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/128",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 130,
+      "state": "OPEN",
+      "title": "[FEATURE] Add ebook-only copy export to a CWA/watch folder",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/130",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 131,
+      "state": "OPEN",
+      "title": "[BUG] Indexer save rejected when query-less browse can't filter by category, and forceSave doesn't override",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/131",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 138,
+      "state": "OPEN",
+      "title": "[FEATURE] SLSKD Support",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/138",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 139,
+      "state": "OPEN",
+      "title": "[BUG] Audiobook conversion scheduler crashes reading ConversionJobs.Progress as Int64 instead of Double",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/139",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 140,
+      "state": "OPEN",
+      "title": "[BUG] Failed Usenet releases can be repeatedly re-grabbed when the indexer varies publish dates",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/140",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 143,
+      "state": "OPEN",
+      "title": "[BUG] Deleted root folder still appears in Add New book section",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/143",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 144,
+      "state": "OPEN",
+      "title": "Add a recurring \"Search for Missing Books\" scheduled task",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/144",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 145,
+      "state": "OPEN",
+      "title": "[BUG] Multiple UI issues on Books page when using mobile",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/145",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoXA",
+          "name": "duplicate",
+          "description": "This issue or pull request already exists",
+          "color": "cfd3d7"
+        }
+      ],
+      "number": 146,
+      "state": "CLOSED",
+      "title": "[BUG] Books > Table view - Added column is empty",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/146",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 148,
+      "state": "OPEN",
+      "title": "[BUG] Import Mixed Content checkbox doesn't reflect that root folders with assigned authors can't change type",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/148",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 150,
+      "state": "OPEN",
+      "title": "Notifications: OnUpgrade never enables a provider on its own; Discord posts empty username and gets rejected",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/150",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 152,
+      "state": "OPEN",
+      "title": "Rename/refresh commands can hang indefinitely: unthrottled retries of 403-blocked cover URLs exhaust the shared HTTP connection pool",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/152",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 154,
+      "state": "OPEN",
+      "title": "[FEATURE] Paginate GET /api/v1/book",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/154",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 157,
+      "state": "OPEN",
+      "title": "Cached<T> leaks a Task.Delay/timer per Set()/rolling-expiry touch on the same key",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/157",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 159,
+      "state": "OPEN",
+      "title": "Import list \"specific book\" add ends up monitoring (and grabbing) the author's entire catalog within hours",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/159",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 161,
+      "state": "OPEN",
+      "title": "[BUG] Bulk-enabling Sync Monitored Audio/eBooks silently skips authors missing one root folder, with no way to see which or fix it",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/161",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 163,
+      "state": "OPEN",
+      "title": "[PERF] RefreshAuthor runs per-book Authors/Editions queries (N+1); ~1.3M statements in 204 s on a large library",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/163",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 164,
+      "state": "OPEN",
+      "title": "[PERF] Postgres receives DISCARD ALL after nearly every query (646k of 1.3M statements)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/164",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 165,
+      "state": "OPEN",
+      "title": "[PERF] ConversionJobs looked up once per download per pass (100k queries in 204 s)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/165",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 170,
+      "state": "OPEN",
+      "title": "[BUG] Slow pages, and an out-of-memory crash, on a large library: per-row lazy loading in a few API endpoints",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/170",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 172,
+      "state": "OPEN",
+      "title": "[PERF] SaveEntity/GetSyncUpdatesForMutations re-fetches an author's whole catalogue once per book saved when SyncMonitoredAcrossFormats is on (#163)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/172",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 173,
+      "state": "OPEN",
+      "title": "[PERF] Author-refresh N+1/O(N^2) query cluster (tracking issue for #166, #167, #168, #172)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/173",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmofA",
+          "name": "question",
+          "description": "Further information is requested",
+          "color": "d876e3"
+        }
+      ],
+      "number": 175,
+      "state": "OPEN",
+      "title": "[BUG] Books requested via a Hardcover list will not get set to \"Monitored\" if there is an existing book entry by the same author",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/175",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 176,
+      "state": "OPEN",
+      "title": "[FEATURE] Metadata profile can't filter by genre (e.g. exclude comics/graphic novels) even though Genres data is already fetched and stored",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/176",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 183,
+      "state": "OPEN",
+      "title": "[FEATURE] add ebook download link within chaptarr UI",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/183",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 184,
+      "state": "OPEN",
+      "title": "[BUG] Converting a book in place with an outside tool (e.g. Audiobookshelf MP3\u2192M4B) creates a duplicate copy and leaves the original book monitored with no files",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/184",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 186,
+      "state": "OPEN",
+      "title": "Goodreads eBook import skips books for existing audiobook-only authors",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/186",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 193,
+      "state": "CLOSED",
+      "title": "Unsatisfied-slot guard blocks all grabs from the native [indexer]: account status refresh fails with \"did not include a valid unsatisfied-torrent summary\"",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/193",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 198,
+      "state": "OPEN",
+      "title": "Manual Import: \"Will add from metadata\" suggestions without an edition id can never be added for an existing author",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/198",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 205,
+      "state": "OPEN",
+      "title": "[BUG] Download imports to a Calibre root folder skip Calibre and copy the file directly",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/205",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 223,
+      "state": "OPEN",
+      "title": "[BUG] HTTP response cache: non-unique Url index and find-then-insert race create duplicate rows",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/223",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 224,
+      "state": "OPEN",
+      "title": "[BUG] QueueService keeps a static _queue list that a concurrent refresh can overwrite with an older snapshot",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/224",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 225,
+      "state": "OPEN",
+      "title": "[BUG] Manual import execution aborts the whole batch when one selected file has vanished",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/225",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 226,
+      "state": "OPEN",
+      "title": "[LOG] Manual import decision maker logs an Error with a stack trace for every file that vanished or fails to read",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/226",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 227,
+      "state": "OPEN",
+      "title": "[BUG] BasicRepository.InsertMany binds parameters by runtime type, so polymorphic handler-typed columns fail on Postgres",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/227",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 228,
+      "state": "OPEN",
+      "title": "[BUG] CommandQueueManager.PushMany only dedupes against the queue snapshot, not within its own batch",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/228",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 229,
+      "state": "OPEN",
+      "title": "[PERF] Blocked completed downloads are re-matched from scratch on every retry, with no backoff",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/229",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 230,
+      "state": "OPEN",
+      "title": "[LOG] Auto-import retry logs an Error with a stack trace every time local matching throws",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/230",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 231,
+      "state": "OPEN",
+      "title": "[BUG] EBook tag readers catch Exception and turn cancellation and out-of-memory into TagExtractionException",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/231",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 232,
+      "state": "OPEN",
+      "title": "[BUG] EBookTagService.Truncate mis-sizes a lone surrogate character",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/232",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 233,
+      "state": "OPEN",
+      "title": "[BUG] Import into a same-work pocket fails with an exception when the author has no root folder for that media type",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/233",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 234,
+      "state": "OPEN",
+      "title": "[PERF] After three yields the sweep runs the whole backlog while holding the disk slot, so manual imports can wait for a full sweep",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/234",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 235,
+      "state": "OPEN",
+      "title": "[BUG] On a profile with UpgradeAllowed false, an equal-or-worse automatic re-download creates an additional-copy Book instance instead of being rejected as already imported",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/235",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 236,
+      "state": "OPEN",
+      "title": "[UX] Downloads rejected as 'Already imported' stay importBlocked in the queue forever",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/236",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 238,
+      "state": "OPEN",
+      "title": "[FEATURE] Adopt an identical untracked file at the managed destination instead of rejecting the import",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/238",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 239,
+      "state": "OPEN",
+      "title": "[BUG] A forced import onto an occupied destination still throws DestinationAlreadyExistsException",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/239",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 240,
+      "state": "OPEN",
+      "title": "[UX] Manual import occupied-destination rejection does not say how to proceed",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/240",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 241,
+      "state": "OPEN",
+      "title": "[PERF] SaveEntity still clones every book of the author on each single-book save (authorStoredById)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/241",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 242,
+      "state": "OPEN",
+      "title": "[FEATURE] Backfill missing root folders for existing authors, or a bulk 'set default roots' editor action",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/242",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 243,
+      "state": "OPEN",
+      "title": "[FEATURE] Let an import list or author be explicitly single-format so default root filling and profile inheritance are skipped",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/243",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 244,
+      "state": "OPEN",
+      "title": "[PERF] Manual import preview matches every file of a multi-file group independently; memoize the match by identical tag evidence",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/244",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 245,
+      "state": "OPEN",
+      "title": "[PERF] The tag cache clears itself completely at 1,000 entries instead of evicting",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/245",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 246,
+      "state": "OPEN",
+      "title": "[BUG] Per-refresh state on singleton services is shared between concurrent RefreshAuthor commands (plain Dictionary/HashSet fields)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/246",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 247,
+      "state": "OPEN",
+      "title": "[PERF] Long per-author refreshes can occupy every command thread and starve short commands",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/247",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 254,
+      "state": "OPEN",
+      "title": "[BUG] A multi-part audiobook with one vanished part can still be marked Imported when previewFiles is absent",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/254",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 255,
+      "state": "OPEN",
+      "title": "[BUG] A failed cache-database migration blocks startup instead of recreating the cache",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/255",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 256,
+      "state": "OPEN",
+      "title": "[PERF] Manual import preview loads up to 20 full Book entities per file (GetBooks in EvaluateHolyGrailMatchFileInternal); cache per preview call by book id",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/256",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 257,
+      "state": "OPEN",
+      "title": "[BUG] Chaptarr drops still valid mam_id",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/257",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 258,
+      "state": "OPEN",
+      "title": "Release search only uses the localized/current edition title, no fallback to other-language editions",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/258",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 262,
+      "state": "OPEN",
+      "title": "[BUG] Import matches a sibling book when the file title carries a subtitle the edition title lacks",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/262",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 263,
+      "state": "CLOSED",
+      "title": "[BUG]",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/263",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 264,
+      "state": "OPEN",
+      "title": "[BUG] Infinite pending-import retry recreates user-deleted authors as monitored and ignores ImportListExclusions",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/264",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoXA",
+          "name": "duplicate",
+          "description": "This issue or pull request already exists",
+          "color": "cfd3d7"
+        }
+      ],
+      "number": 270,
+      "state": "CLOSED",
+      "title": "[BUG] 'Specific Book' Hardcover Import List monitors and searches all Author's books when 'Search for New Items' is selected",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/270",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 271,
+      "state": "OPEN",
+      "title": "perf: post-scan metadata-file cleanup probes every MetadataFiles row across up to 3 base paths, with directory-enumeration fallback on misses",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/271",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 274,
+      "state": "CLOSED",
+      "title": "[BUG] Unmapped files are re-matched with no backoff on every author-import completion, sustaining pegged CPU indefinitely",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/274",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 275,
+      "state": "OPEN",
+      "title": "[BUG] POST /api/v1/book/import can crash with `SQLite Error 19: 'NOT NULL constraint failed: Books.CleanTitle'` while saving the \"Pending Import\" stub",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/275",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 276,
+      "state": "OPEN",
+      "title": "[BUG] \"Cannot add book: one or more editions are missing Title \u2014 retry the add so Chaptarr can hydrate edition metadata from the metadata server\" never converges for many works the server knows",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/276",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 279,
+      "state": "OPEN",
+      "title": "[BUG] Root folder dialog sends null quality/metadata profile when picked from the dropdown",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/279",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 284,
+      "state": "OPEN",
+      "title": "[BUG] Multi-file M4B conversion runs before the destination conflict is detected",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/284",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 285,
+      "state": "OPEN",
+      "title": "[BUG] ManualImport: explicitly-specified bookId/editionId silently remapped onto editions of refresh-created duplicate book records",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/285",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 286,
+      "state": "OPEN",
+      "title": "[BUG] Multi-narrator 'Full Cast' naming collapse + tag-dependent IsGraphicAudio detection make regular and dramatized editions path-identical, and upgrade-delete silently removes the other product",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/286",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 288,
+      "state": "OPEN",
+      "title": "[BUG] {MediaInfo AudioBitRate} naming token always renders \"0 kbps\"",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/288",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmocA",
+          "name": "help wanted",
+          "description": "Extra attention is needed",
+          "color": "008672"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmofA",
+          "name": "question",
+          "description": "Further information is requested",
+          "color": "d876e3"
+        }
+      ],
+      "number": 289,
+      "state": "OPEN",
+      "title": "[BUG] Audiobook rename preview uses unexpected edition year and omits narrator",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/289",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 290,
+      "state": "OPEN",
+      "title": "[BUG] /books and /shelf page time out repeatedly and might be cause of high memory usage",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/290",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        },
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmofA",
+          "name": "question",
+          "description": "Further information is requested",
+          "color": "d876e3"
+        }
+      ],
+      "number": 297,
+      "state": "OPEN",
+      "title": "Interactive Search: Title column collapses to zero width and overlaps Indexer column",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/297",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 300,
+      "state": "OPEN",
+      "title": "[BUG] External EPUB renames create duplicate records and leave monitored originals missing",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/300",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 301,
+      "state": "OPEN",
+      "title": "Restore fails on develop: SixLabors.ImageSharp 3.1.12 flagged by NuGet audit (high severity advisories)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/301",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 302,
+      "state": "OPEN",
+      "title": "Docker healthcheck uses curl but image doesn't ship curl \u2014 container permanently 'unhealthy'",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/302",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 304,
+      "state": "OPEN",
+      "title": "[BUG] Renaming audiobook folders leaves untracked sidecars behind and races AudioBookShelf's watcher",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/304",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 306,
+      "state": "OPEN",
+      "title": "[FEATURE] Configurable Audible marketplace (audible.fr, .de, .co.uk\u2026) instead of hardcoded audible.com",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/306",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 307,
+      "state": "OPEN",
+      "title": "[BUG] Metadata server merges distinct Audible volumes of a series into one work (Solo Leveling FR tomes 2\u20134 under gr:183187350)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/307",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoYg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        }
+      ],
+      "number": 309,
+      "state": "OPEN",
+      "title": "[FEATURE] Quality color of red is so dark I can't read the black text it's highlighting...",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/309",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 310,
+      "state": "OPEN",
+      "title": "[BUG] The Indexer column during Interactive Search seems to cut names longer than 6 characters",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/310",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [
+        {
+          "id": "LA_kwDOTIAif88AAAACpVmoTw",
+          "name": "bug",
+          "description": "Something isn't working",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 311,
+      "state": "OPEN",
+      "title": "[BUG] Upgrading from 0.9.911\u20130.9.928 re-monitors every author that was unmonitored (migration 104)",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/311",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "labels": [],
+      "number": 312,
+      "state": "OPEN",
+      "title": "Upstream the remaining ChaptarrNG features needed by SeerrNG",
+      "url": "https://github.com/Chaptarr/chaptarr/issues/312",
+      "kind": "issue",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "feature/readme-badges",
+      "number": 1,
+      "state": "MERGED",
+      "title": "Add badges for Discord, license, and Ko-fi link to README",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/1",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "api-use-baseurl",
+      "number": 8,
+      "state": "MERGED",
+      "title": "Fix: ensure api requests follow the baseURL",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/8",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/frontend-more-info-links",
+      "number": 9,
+      "state": "MERGED",
+      "title": "fix: links in MoreInfo component for Wiki and GitHub references",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/9",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "main",
+      "number": 10,
+      "state": "MERGED",
+      "title": "Windows build from source instruction fixes.",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/10",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "codex/fix-book-added-column",
+      "number": 13,
+      "state": "MERGED",
+      "title": "fix: expose book added timestamps",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/13",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feat/frontend-bundle-optimization",
+      "number": 19,
+      "state": "OPEN",
+      "title": "feat(frontend): major bundle optimization and performance improvements",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/19",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "patch-1",
+      "number": 20,
+      "state": "MERGED",
+      "title": "Move Unraid section in README.md",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/20",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/postgres-book-recall-index-usage",
+      "number": 21,
+      "state": "MERGED",
+      "title": "Recall Postgres book candidates per table so the GIN indexes are used",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/21",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "codex/calibre-import-fix",
+      "number": 25,
+      "state": "CLOSED",
+      "title": "Withdrawn",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/25",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "upstream-pr-rescan-fix",
+      "number": 26,
+      "state": "CLOSED",
+      "title": "Fix: single-author Rescan Folders silently scans the entire library",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/26",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "upstream-pr-unmapped-files-fix",
+      "number": 29,
+      "state": "CLOSED",
+      "title": "Fix: GET /api/v1/bookFile?unmapped=true crashes on every call (duplicated SELECT columns)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/29",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "upstream-pr-toolbar-button-width",
+      "number": 30,
+      "state": "CLOSED",
+      "title": "Fix: toolbar button labels with a dynamic count render unreadable",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/30",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "bug/file-deletion",
+      "number": 35,
+      "state": "MERGED",
+      "title": "Fix: File delete method to use proper root path",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/35",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feat/direct-download-grab-flow",
+      "number": 36,
+      "state": "OPEN",
+      "title": "Direct download Indexer",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/36",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/only-this-book-catalog",
+      "number": 37,
+      "state": "CLOSED",
+      "title": "Fix Only This Book catalog imports",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/37",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/book-index-size-on-disk-sort",
+      "number": 38,
+      "state": "MERGED",
+      "title": "Fix sorting the book index by Size on Disk",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/38",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "negative-match-cache",
+      "number": 44,
+      "state": "OPEN",
+      "title": "Cache negative match results so sibling fragment files skip the full pipeline",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/44",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-unmapped-duplicate-select",
+      "number": 45,
+      "state": "MERGED",
+      "title": "Fix: unmapped book files query duplicates every SELECT column and crashes",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/45",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "opt-in-concurrency",
+      "number": 46,
+      "state": "OPEN",
+      "title": "Allow opt-in command concurrency via environment variables (high-latency storage)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/46",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-inverted-selector-equality",
+      "number": 47,
+      "state": "OPEN",
+      "title": "Fix inverted equality in memoized author/book collection selectors (#43)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/47",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/series-title-from-links",
+      "number": 48,
+      "state": "OPEN",
+      "title": "Derive series labels from series links instead of stale snapshots",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/48",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "agent/fix-author-progress-future-releases",
+      "number": 52,
+      "state": "CLOSED",
+      "title": "Fix author progress for future releases",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/52",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-ebook-format-selection-allowed",
+      "number": 55,
+      "state": "MERGED",
+      "title": "Fix: multi-format ebook downloads import a format the profile has disabled",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/55",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/narrator-parenthetical-extraction",
+      "number": 56,
+      "state": "OPEN",
+      "title": "Fix: narrator custom formats never match \"Title (Narrator Name)\" releases",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/56",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-unmapped-grouping-case-duplicates",
+      "number": 57,
+      "state": "OPEN",
+      "title": "Fix: one case-duplicate path collapses the entire unmapped page to per-file units",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/57",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/multiple-narrator-variants",
+      "number": 58,
+      "state": "OPEN",
+      "title": "Track multiple narrations of the same audiobook",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/58",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/write-ebook-tags-without-calibre",
+      "number": 59,
+      "state": "OPEN",
+      "title": "Save series information into ebook files so readers group them correctly",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/59",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/series-secondary-flag",
+      "number": 61,
+      "state": "MERGED",
+      "title": "\"Skip Secondary Series Books\" never filters anything",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/61",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-mam-reservation-livelock",
+      "number": 62,
+      "state": "OPEN",
+      "title": "Fix: unsatisfied-slot safety pause can live-lock and permanently over-count",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/62",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-author-media-path-save",
+      "number": 63,
+      "state": "OPEN",
+      "title": "Fix #28: author audiobook/ebook path edits are silently dropped",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/63",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-author-merge-unique-provider-id",
+      "number": 66,
+      "state": "OPEN",
+      "title": "Fix #49: author merge trips the unique provider-id indexes while the source still owns them",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/66",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/omnibus-edition-search-query",
+      "number": 70,
+      "state": "OPEN",
+      "title": "Searching for a book in a 2-in-1 edition never returns anything",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/70",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/hardcover-graphql-batching",
+      "number": 71,
+      "state": "CLOSED",
+      "title": "Hardcover search never returns any results",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/71",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/parts-and-sets-series-position",
+      "number": 73,
+      "state": "OPEN",
+      "title": "\"Skip Parts and Sets\" never skips split volumes",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/73",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/rootfolder-missing-media-type-defaults",
+      "number": 85,
+      "state": "CLOSED",
+      "title": "Add health check for root folders missing media type defaults",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/85",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/importlist-minrefreshinterval-immutable",
+      "number": 86,
+      "state": "OPEN",
+      "title": "Reject PUT changes to ImportList.MinRefreshInterval instead of discarding them",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/86",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/author-monitored-false-not-persisting",
+      "number": 87,
+      "state": "CLOSED",
+      "title": "Cascade explicit PUT monitored into tri-state fields so it actually persists",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/87",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "calibre-content-server",
+      "number": 89,
+      "state": "CLOSED",
+      "title": "Calibre content server",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/89",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-v5-suggested-author-existing-link",
+      "number": 90,
+      "state": "OPEN",
+      "title": "Fix: V5-suggested authors already in the library are not linked when author import is disallowed",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/90",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "multipart-m4b-merge",
+      "number": 91,
+      "state": "CLOSED",
+      "title": "Merge multi-part M4B downloads into a single file",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/91",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-import-quality-downgrade-guard",
+      "number": 92,
+      "state": "OPEN",
+      "title": "Fix: approved imports silently delete higher-quality files of the same book",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/92",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-percent-of-books-file-count",
+      "number": 93,
+      "state": "MERGED",
+      "title": "Fix: percentOfBooks counts files instead of available books (multi-file audiobooks exceed 100%)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/93",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/author-search-entity-type",
+      "number": 94,
+      "state": "CLOSED",
+      "title": "Fix SearchForNewAuthor routing provider-prefixed IDs to the work endpoint",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/94",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/quality-findbyid-guard",
+      "number": 95,
+      "state": "CLOSED",
+      "title": "Fix off-by-one bound check in Quality.FindById",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/95",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/dotted-scene-year-tokenization",
+      "number": 96,
+      "state": "CLOSED",
+      "title": "Release matching: don't fuse numbers with dotted scene years; match zero-padded numbers by value",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/96",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/author-put-clears-paths",
+      "number": 97,
+      "state": "OPEN",
+      "title": "fix(author): ApplyChanges wipes stored paths when an update omits them",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/97",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/import-button-invalid-rows",
+      "number": 98,
+      "state": "MERGED",
+      "title": "Fix: Import button disabled by unselected invalid rows",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/98",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf/import-list-sync-optimization",
+      "number": 101,
+      "state": "OPEN",
+      "title": "perf(import-lists): optimize local library lookup and defer Hardcover cursor commit",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/101",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feat/import-archive-extraction",
+      "number": 102,
+      "state": "OPEN",
+      "title": "feat(media): extract archive downloads on import and handle missing root folder",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/102",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/111-cross-provider-duplicate-retarget",
+      "number": 113,
+      "state": "OPEN",
+      "title": "Retarget cross-provider duplicate book rows to the grabbed book on shared edition identity",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/113",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "main",
+      "number": 114,
+      "state": "OPEN",
+      "title": "fix(api): preserve media type for scoped book lookup",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/114",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/rss-sync-crash-on-supplementary-plane-characters",
+      "number": 117,
+      "state": "OPEN",
+      "title": "Fix crash on supplementary-plane characters (emoji, astral CJK) in release/catalog titles",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/117",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/m4b-merge-multi-part",
+      "number": 120,
+      "state": "OPEN",
+      "title": "feature: multi-part m4b merging",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/120",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/qbt-reuse-existing-torrent",
+      "number": 121,
+      "state": "OPEN",
+      "title": "fix: qbt reuse existing torrent",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/121",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/goodreads-refresh-interval",
+      "number": 122,
+      "state": "OPEN",
+      "title": "feature: gr import list refresh interval",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/122",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/calibre-content-server-connector",
+      "number": 123,
+      "state": "OPEN",
+      "title": "feature: calibre content server connector",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/123",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/dark-mode-placeholder-contrast",
+      "number": 124,
+      "state": "OPEN",
+      "title": "UI: Fix input placeholder contrast and focus styling in dark mode",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/124",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/add-new-search-layout",
+      "number": 125,
+      "state": "MERGED",
+      "title": "UI: Adjust \"Add New\" search bar layout and provider dropdown caret styling",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/125",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/colocation-skip-when-not-applicable",
+      "number": 127,
+      "state": "OPEN",
+      "title": "Don't move ebook files when no colocated destination applies",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/127",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "clarify-indexer-seed-settings",
+      "number": 129,
+      "state": "OPEN",
+      "title": "UI: Clarify indexer seed time and client torrent preservation settings for My Anonamouse",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/129",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/calibre-root-folder",
+      "number": 132,
+      "state": "OPEN",
+      "title": "feature: calibre root folder",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/132",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/abs-propagation",
+      "number": 133,
+      "state": "OPEN",
+      "title": "feature: abs propagation",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/133",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/bulk-delete-author-files",
+      "number": 134,
+      "state": "OPEN",
+      "title": "fix: bulk delete author files",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/134",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/grimmory-connector",
+      "number": 136,
+      "state": "OPEN",
+      "title": "feature: grimmory connector",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/136",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "codex/fix-interactive-title-matching",
+      "number": 137,
+      "state": "OPEN",
+      "title": "Fix author-name collisions and series-set release searches",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/137",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/issue-140-usenet-failed-release-dedupe",
+      "number": 141,
+      "state": "OPEN",
+      "title": "Fix repeated grabs of failed Usenet releases",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/141",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/edition-language-preference-tiebreak",
+      "number": 142,
+      "state": "OPEN",
+      "title": "Prefer English edition in ratings-based edition selection tiebreak",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/142",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "lock-mixed-root-folder-type-ui",
+      "number": 149,
+      "state": "OPEN",
+      "title": "Disable Import Mixed Content checkbox once a root folder has assigned authors",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/149",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-notification-onupgrade-discord-username",
+      "number": 151,
+      "state": "OPEN",
+      "title": "Fix OnUpgrade-only notifications never enabling and Discord empty username",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/151",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-cover-download-403-retry-storm",
+      "number": 153,
+      "state": "OPEN",
+      "title": "Back off retrying cover URLs that a CDN just rejected with 403",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/153",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/import-same-work-twins",
+      "number": 155,
+      "state": "OPEN",
+      "title": "Downloads fail to import when Chaptarr holds the same book twice",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/155",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/cached-expiry-timer-leak",
+      "number": 156,
+      "state": "OPEN",
+      "title": "Fix: Cached<T> leaks a Task.Delay timer per Set()/rolling-expiry touch on the same key",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/156",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/search-title-series-suffix",
+      "number": 158,
+      "state": "OPEN",
+      "title": "Interactive search finds nothing for a book titled \"\u2026, Book 4\"",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/158",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/convert-existing-library-files",
+      "number": 160,
+      "state": "OPEN",
+      "title": "Allow conversion to be applied to books already in the library",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/160",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/actionable-sync-skip-warning",
+      "number": 162,
+      "state": "OPEN",
+      "title": "Tell users how to fix authors skipped by bulk sync-monitoring",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/162",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-163-refresh-book-n-plus-1",
+      "number": 166,
+      "state": "OPEN",
+      "title": "perf(refresh): stop refetching Book+Author+Editions+Files per book during author refresh (#163)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/166",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-163-clonestoredbook-author-n-plus-1",
+      "number": 167,
+      "state": "OPEN",
+      "title": "perf(books): stop CloneStoredBook eagerly loading Author on every book save (#163)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/167",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-163-rootfolders-refetch-per-workgroup",
+      "number": 168,
+      "state": "OPEN",
+      "title": "perf(books): stop re-fetching RootFolders per work group during monitoring sync (#163)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/168",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf/sqlite-indexes",
+      "number": 169,
+      "state": "OPEN",
+      "title": "Speed up the slowest library queries on large databases",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/169",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/queue-preservation-policy",
+      "number": 171,
+      "state": "OPEN",
+      "title": "fix(queue): respect torrent preservation when removing downloads",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/171",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-163-buildworkgroups-union-find",
+      "number": 174,
+      "state": "OPEN",
+      "title": "perf(books): replace BuildWorkGroups's O(N^2) pairwise matching with a token-bucketed union-find (#163, #173)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/174",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature-176-ignored-genres-metadata-profile",
+      "number": 177,
+      "state": "OPEN",
+      "title": "feature(metadata-profile): add IgnoredGenres filter (e.g. exclude comics/graphic novels)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/177",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/sync-formats-on-add",
+      "number": 178,
+      "state": "OPEN",
+      "title": "Requesting one format doesn't monitor the sibling, even with format sync on",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/178",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-covers-skip-unchanged-refresh",
+      "number": 179,
+      "state": "OPEN",
+      "title": "perf(covers): skip per-book cover reconciliation when a refresh made no changes",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/179",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-179-stable-book-match-order",
+      "number": 180,
+      "state": "OPEN",
+      "title": "fix(books): make remote-item match-claim order deterministic during author refresh",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/180",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-182-unify-book-refresh-matching",
+      "number": 181,
+      "state": "OPEN",
+      "title": "fix(books): use the author-refresh match instead of independently re-deriving it",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/181",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-183-coalesced-fields-equality-mismatch",
+      "number": 182,
+      "state": "OPEN",
+      "title": "fix(books): compare against the simulated update result, not the raw remote payload",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/182",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/in-place-replaced-files-duplicate",
+      "number": 185,
+      "state": "OPEN",
+      "title": "Don't split a book when its files were replaced in place",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/185",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-184-manual-import-existing-file-warning",
+      "number": 187,
+      "state": "OPEN",
+      "title": "fix(import): warn about existing-file conflict in Manual Import preview",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/187",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-188-disk-access-group-cross-blocking",
+      "number": 188,
+      "state": "OPEN",
+      "title": "fix(commands): stop disk-access groups from globally blocking each other",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/188",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/mam-snatch-summary",
+      "number": 189,
+      "state": "MERGED",
+      "title": "Fix MAM account refresh after snatch_summary response change",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/189",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-cancel-process-monitored-downloads",
+      "number": 190,
+      "state": "OPEN",
+      "title": "fix(download): make ProcessMonitoredDownloads honor cancellation",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/190",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-manual-import-report-failures",
+      "number": 191,
+      "state": "OPEN",
+      "title": "fix(import): report why a manual import imported nothing",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/191",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-sweep-yield-to-waiting-commands",
+      "number": 192,
+      "state": "OPEN",
+      "title": "fix(download): let ProcessMonitoredDownloads yield the disk slot to waiting commands",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/192",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-manual-import-blank-confirm",
+      "number": 194,
+      "state": "OPEN",
+      "title": "fix(ui): don't open a blank confirmation when a manual import replaces no local book",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/194",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-explicit-move-on-seeding-torrent",
+      "number": 195,
+      "state": "OPEN",
+      "title": "fix(import): don't let an explicit Move override \"this torrent's files cannot be moved\"",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/195",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-cancel-keeps-started-until-handler-exits",
+      "number": 196,
+      "state": "OPEN",
+      "title": "fix(commands): keep a cancelled running command Started until its handler exits",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/196",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-preview-warn-unresolvable-suggestion",
+      "number": 197,
+      "state": "CLOSED",
+      "title": "fix(import): warn in the Manual Import preview when a suggestion cannot be added from metadata",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/197",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-fts-recall-skip-stopword-tokens",
+      "number": 199,
+      "state": "OPEN",
+      "title": "perf(matching): don't use bare function words as Postgres FTS recall keys",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/199",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-upgrade-deletes-new-files",
+      "number": 200,
+      "state": "OPEN",
+      "title": "fix(import): stop multi-file upgrade imports from deleting their own new files",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/200",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-suggested-work-infer-edition",
+      "number": 201,
+      "state": "OPEN",
+      "title": "fix(manual-import): materialize a suggested work when the suggestion has no edition id",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/201",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-remote-books-no-editions-log-level",
+      "number": 202,
+      "state": "OPEN",
+      "title": "log: report per-book 'no editions' skips at debug; keep the per-author warning summary",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/202",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-ui-author-list",
+      "number": 203,
+      "state": "OPEN",
+      "title": "perf: batch the author-list N+1 queries and the queue conversion-job lookups; scope the FTS recall candidates",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/203",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-missing-count-author-stats",
+      "number": 204,
+      "state": "OPEN",
+      "title": "perf: count missing books with a semi-join and bound per-author file statistics",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/204",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-http-cache-duplicate-rows",
+      "number": 206,
+      "state": "OPEN",
+      "title": "Fix Goodreads searches failing on duplicate HTTP cache rows",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/206",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-queue-quality-cache-race",
+      "number": 207,
+      "state": "OPEN",
+      "title": "Fix IndexOutOfRangeException pruning the inferred-quality queue cache",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/207",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-manualimport-preview-missing-file",
+      "number": 208,
+      "state": "OPEN",
+      "title": "Do not fail the manual import preview when a file has vanished",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/208",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-log-noise-no-editions",
+      "number": 209,
+      "state": "CLOSED",
+      "title": "Log per-book 'no editions' skips at debug level",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/209",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-pushmany-command-insert",
+      "number": 210,
+      "state": "OPEN",
+      "title": "Fix bulk author editor returning 500 when it queues refresh commands",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/210",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-auto-import-local-preview-parity",
+      "number": 211,
+      "state": "OPEN",
+      "title": "fix(import): retry unmatched completed downloads with the manual preview matching context",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/211",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-ebook-tag-unreadable-metadata-field",
+      "number": 212,
+      "state": "OPEN",
+      "title": "fix(tags): don't fail ebook tag reading on a null tag value (unparseable AZW3/MOBI ISBN)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/212",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-same-work-media-type-pocket-match",
+      "number": 213,
+      "state": "OPEN",
+      "title": "fix(import): accept a same-work different-media-type pocket match for a completed download",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/213",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-sweep-yield-bound",
+      "number": 214,
+      "state": "OPEN",
+      "title": "fix(download): bound how long ProcessMonitoredDownloads yields the disk slot",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/214",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-equal-quality-duplicate-guard",
+      "number": 215,
+      "state": "OPEN",
+      "title": "fix(import): treat equal-quality automatic imports as duplicates instead of replacing files",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/215",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-auto-import-occupied-destination",
+      "number": 216,
+      "state": "OPEN",
+      "title": "fix(import): reject an automatic import onto an occupied destination instead of throwing",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/216",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-manual-import-occupied-destination",
+      "number": 217,
+      "state": "OPEN",
+      "title": "fix(import): reject a manual import onto an occupied destination instead of throwing",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/217",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-163-reuse-author-books-cache-workgroups",
+      "number": 218,
+      "state": "OPEN",
+      "title": "perf(books): reuse the author book list and cache BuildWorkGroups per author (#163, #172)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/218",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-author-default-root-folders",
+      "number": 219,
+      "state": "OPEN",
+      "title": "fix(authors): fill the missing format root folder from the default when an author is added",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/219",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-manualimport-preview",
+      "number": 220,
+      "state": "OPEN",
+      "title": "perf(import): read tags for a multi-file manual import preview in parallel",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/220",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-book-update-slug-check",
+      "number": 221,
+      "state": "OPEN",
+      "title": "perf: stop loading the author's whole catalogue on every single-book update",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/221",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-command-executor-threads",
+      "number": 222,
+      "state": "OPEN",
+      "title": "Make the command executor thread count configurable",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/222",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-book-list-author-slow",
+      "number": 237,
+      "state": "OPEN",
+      "title": "perf(covers): stop enumerating MediaCover/Books for every book without a cover folder",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/237",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-refresh-singleton-shared-state",
+      "number": 248,
+      "state": "OPEN",
+      "title": "fix(refresh): keep per-refresh state per refresh, not on singleton services",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/248",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-manualimport-execute-vanished-file",
+      "number": 249,
+      "state": "OPEN",
+      "title": "fix(import): reject a vanished file on manual import execute instead of aborting the batch",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/249",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-insertmany-declared-type-binding",
+      "number": 250,
+      "state": "OPEN",
+      "title": "fix(datastore): batch insert of command rows fails on Postgres for derived command types",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/250",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-forced-import-occupied-destination",
+      "number": 251,
+      "state": "OPEN",
+      "title": "fix(import): reject a forced import onto an occupied destination instead of throwing",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/251",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-http-cache-unique-url",
+      "number": 252,
+      "state": "OPEN",
+      "title": "fix(cache): unique HTTP cache URL and race-safe upsert to stop duplicate rows",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/252",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-manualimport-per-file-match-memo",
+      "number": 253,
+      "state": "OPEN",
+      "title": "perf(import): memoize file-match recall and ranking by identical evidence within one manual import preview",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/253",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-async-delete-notifications",
+      "number": 259,
+      "state": "OPEN",
+      "title": "Dispatch OnBookDelete/OnAuthorDelete notifications off the delete path",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/259",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "async-author-delete-command",
+      "number": 260,
+      "state": "OPEN",
+      "title": "Run author delete as a background command instead of inline in the HTTP request",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/260",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-author-delete-files-not-applied",
+      "number": 261,
+      "state": "OPEN",
+      "title": "Fix three bugs that left \"delete files\" author deletes with unmapped/orphaned files",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/261",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-workgroups-bulk-load-editions",
+      "number": 265,
+      "state": "OPEN",
+      "title": "perf(books): bulk-load editions before format-sync work grouping (N+1 per save)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/265",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-throttle-command-progress-message",
+      "number": 266,
+      "state": "OPEN",
+      "title": "perf(commands): throttle progress-message DB writes to once per second per command",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/266",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-extrafiles-author-book-index",
+      "number": 267,
+      "state": "OPEN",
+      "title": "perf(db): index MetadataFiles/ExtraFiles by (AuthorId, BookId)",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/267",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-provider-alias-replace-race",
+      "number": 268,
+      "state": "OPEN",
+      "title": "fix(aliases): retry ReplaceAliases when a concurrent writer wins the unique-index race",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/268",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-delete-author-modal-format-paths",
+      "number": 269,
+      "state": "OPEN",
+      "title": "fix(ui): delete-author dialog lists every author folder, not only the legacy path",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/269",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-book-page-refetch-loop",
+      "number": 272,
+      "state": "OPEN",
+      "title": "fix(ui): stop the book page refetching forever for a book that does not exist",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/272",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "perf-clean-metadata-files-batch",
+      "number": 273,
+      "state": "OPEN",
+      "title": "perf(extras): batch the post-scan metadata-file cleanup and probe the right base path first",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/273",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/identifier-filter-select",
+      "number": 277,
+      "state": "CLOSED",
+      "title": "Replace identifier skip checkboxes with a select that matches the filter's behavior",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/277",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/identifier-skip-help-text",
+      "number": 278,
+      "state": "OPEN",
+      "title": "Clarify that both identifier skip settings together require ISBN and ASIN",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/278",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/profile-select-numeric-id",
+      "number": 280,
+      "state": "OPEN",
+      "title": "Fix profile selects sending string ids, which root folder save drops",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/280",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/author-book-table-narrow-screens",
+      "number": 281,
+      "state": "OPEN",
+      "title": "Scroll the author book table on narrow screens instead of squeezing titles",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/281",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "docs/docker-develop-tag",
+      "number": 282,
+      "state": "OPEN",
+      "title": "Point Docker instructions at the develop image tag",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/282",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/oidc-ticket-rejection-loop",
+      "number": 283,
+      "state": "OPEN",
+      "title": "Stop OIDC sign-in when Chaptarr's own policy rejects the ticket",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/283",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/conversion-destination-preview-parts",
+      "number": 287,
+      "state": "OPEN",
+      "title": "Check the merged M4B destination before converting multi-file downloads",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/287",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/containment-numeric-token-order",
+      "number": 291,
+      "state": "OPEN",
+      "title": "Preserve numeric title token order during matching",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/291",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "feature/edition-audible-asin-token",
+      "number": 292,
+      "state": "OPEN",
+      "title": "Add selected-edition Audible ASIN naming token",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/292",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/release-year-default",
+      "number": 293,
+      "state": "OPEN",
+      "title": "Allow missing Release Year to collapse conditional naming segments",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/293",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/book-list-oom",
+      "number": 294,
+      "state": "OPEN",
+      "title": "Filter the general book list by media type in SQL",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/294",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/bookshelf-lazy-load",
+      "number": 295,
+      "state": "OPEN",
+      "title": "Load Bookshelf books per author as rows scroll into view",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/295",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/book-index-paged-views",
+      "number": 296,
+      "state": "OPEN",
+      "title": "Page the book index Table and Overview views on the server",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/296",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix-kavita-notification-path",
+      "number": 299,
+      "state": "OPEN",
+      "title": "Fix Kavita notification sending title prefix instead of folder path",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/299",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/series-position-custom-format",
+      "number": 303,
+      "state": "OPEN",
+      "title": "Apply custom format to {Book SeriesPosition}",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/303",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/rename-carry-audiobook-sidecars",
+      "number": 305,
+      "state": "OPEN",
+      "title": "Keep untracked sidecars with audiobooks when renaming folders",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/305",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    },
+    {
+      "baseRefName": "develop",
+      "headRefName": "fix/mam-cookie-refresh",
+      "number": 308,
+      "state": "OPEN",
+      "title": "fix(MyAnonaMouse): persist refreshed mam_id so sessions don't expire after 30 days",
+      "url": "https://github.com/Chaptarr/chaptarr/pull/308",
+      "kind": "pullRequest",
+      "auditStatus": "unreviewed",
+      "relatedItems": [],
+      "implementationEvidence": [],
+      "validationEvidence": []
+    }
+  ]
+}
