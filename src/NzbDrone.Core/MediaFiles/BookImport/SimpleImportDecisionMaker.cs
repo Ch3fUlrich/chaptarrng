@@ -82,7 +82,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         _metadataTagService.ReadAllTagsAndDuration(file);
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                     {
                         _logger.Trace(ex, "Tag prefetch failed for '{0}'", file?.FullName);
                     }

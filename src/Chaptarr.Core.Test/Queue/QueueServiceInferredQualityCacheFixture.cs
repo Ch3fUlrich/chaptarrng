@@ -52,6 +52,27 @@ namespace Chaptarr.Core.Test.Queue
             return new QueueService(new NullEventAggregator(), DispatchProxy.Create<IHistoryService, HistoryServiceProxy>());
         }
 
+        [Test]
+        public void queue_snapshots_should_belong_to_the_service_instance()
+        {
+            var first = CreateService();
+            var second = CreateService();
+            first.Handle(new TrackedDownloadUpdatedEvent(CreateCompletedDownload("first", new[] { "/downloads/first.m4b" })));
+
+            Assert.That(first.GetQueue(), Has.Count.EqualTo(1));
+            Assert.That(second.GetQueue(), Is.Empty);
+        }
+
+        [Test]
+        public void concurrent_incremental_updates_should_not_lose_other_downloads()
+        {
+            var service = CreateService();
+            Parallel.For(0, 100, i => service.Handle(new TrackedDownloadUpdatedEvent(
+                CreateCompletedDownload($"item-{i}", new[] { $"/downloads/item-{i}.m4b" }))));
+
+            Assert.That(service.GetQueue().Select(item => item.DownloadId), Is.EquivalentTo(Enumerable.Range(0, 100).Select(i => $"item-{i}")));
+        }
+
         private static TrackedDownload CreateCompletedDownload(string downloadId, IEnumerable<string> filePaths, params Book[] books)
         {
             return new TrackedDownload

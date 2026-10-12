@@ -77,7 +77,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 {
                     fullKey = kind + "\u001e" + keyFactory();
                 }
-                catch (Exception)
+                catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                 {
                     return compute();
                 }
@@ -88,7 +88,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         return System.Text.Json.JsonSerializer.Deserialize<T>(json);
                     }
-                    catch (Exception)
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                     {
                         // fall through and recompute
                     }
@@ -99,7 +99,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 {
                     _entries[fullKey] = System.Text.Json.JsonSerializer.Serialize(value);
                 }
-                catch (Exception)
+                catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                 {
                     // not cacheable; return the freshly computed value
                 }

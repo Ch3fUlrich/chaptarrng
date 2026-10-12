@@ -31,7 +31,8 @@ namespace NzbDrone.Core.Queue
                                 IHandle<TrackedDownloadUpdatedEvent>
     {
         private readonly IEventAggregator _eventAggregator;
-        private static List<Queue> _queue = new();
+        private volatile List<Queue> _queue = new();
+        private readonly object _queueUpdateLock = new();
         private readonly IHistoryService _historyService;
         private readonly IConversionTrackingService _conversionTrackingService;
         private readonly IConversionJobService _conversionJobService;
@@ -69,9 +70,10 @@ namespace NzbDrone.Core.Queue
 
         public void Remove(int id)
         {
-            _queue = _queue
-                .Where(q => q.Id != id)
-                .ToList();
+            lock (_queueUpdateLock)
+            {
+                _queue = _queue.Where(q => q.Id != id).ToList();
+            }
         }
 
         private IEnumerable<Queue> MapQueue(TrackedDownload trackedDownload, IReadOnlyDictionary<string, List<EntityHistory>> grabbedHistoryByDownloadId)
@@ -655,6 +657,16 @@ namespace NzbDrone.Core.Queue
 
         public void Handle(TrackedDownloadRefreshedEvent message)
         {
+            // Serialize writers from mapping through publication so a slow refresh cannot
+            // replace a more recent incremental update with its older snapshot.
+            lock (_queueUpdateLock)
+            {
+                RefreshQueue(message);
+            }
+        }
+
+        private void RefreshQueue(TrackedDownloadRefreshedEvent message)
+        {
             var trackedCount = message.TrackedDownloads?.Count ?? 0;
             if (Logger.IsDebugEnabled)
             {
@@ -683,6 +695,16 @@ namespace NzbDrone.Core.Queue
         }
 
         public void Handle(TrackedDownloadUpdatedEvent message)
+        {
+            // Serialize writers from mapping through publication so a slow refresh cannot
+            // replace a more recent incremental update with its older snapshot.
+            lock (_queueUpdateLock)
+            {
+                UpdateQueue(message);
+            }
+        }
+
+        private void UpdateQueue(TrackedDownloadUpdatedEvent message)
         {
             var trackedDownload = message.TrackedDownload;
             var downloadId = trackedDownload?.DownloadItem?.DownloadId;
