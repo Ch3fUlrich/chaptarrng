@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "f3d8105",
+  "forkHead": "076b539",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -792,6 +792,7 @@
       "relatedItems": [216, 238],
       "implementationEvidence": [
         "Commit f3d8105 adds opt-in adoption of non-identical untracked destinations, default adoption of byte-identical destinations, refusal for empty/uninspectable, tracked, upgrade/replacement, and generated-conversion cases, and a no-transfer database-registration path that leaves the destination unchanged.",
+        "Commit 076b539 verifies an opted-in destination is non-empty and readable without hashing the entire file; byte-identical default adoption still compares SHA-256.",
         "Commit f3d8105 serializes library-dependent release-search commands against active disk-access work and queues a newly-added root folder's initial scan at high priority."
       ],
       "validationEvidence": [
