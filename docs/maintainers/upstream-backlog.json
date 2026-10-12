@@ -1047,10 +1047,10 @@
       "title": "[BUG] Title Column Squished in Manual Search",
       "url": "https://github.com/Chaptarr/chaptarr/issues/69",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": ["Existing fork commit c5beffe (fix(frontend): keep search columns usable on mobile) sets the interactive search table to a 1280px minimum width and the Title header to 280px so the mobile results layout scrolls horizontally instead of collapsing the title column."],
+      "validationEvidence": ["Static review confirmed Table enables horizontal scrolling and the responsive table container preserves a 100% viewport width. A mobile-browser visual check was not performed."],
       "sourceUpdatedAt": "2026-08-20T12:56:05Z",
       "body": "**Describe the bug**\nOn a mobile browser, the manual book search dialog has a squished Title Column, limiting ability to see any title information on the search results. This is also true when viewing in landscape and when using \"desktop mode\".\n\n**To Reproduce**\nSteps to reproduce the behavior:\n1. Use a mobile browser\n2. Initiate a manual book search\n\n**Expected behavior**\nBe able to view the search results titles.\n\n**Screenshots**\nIf applicable, add screenshots to help explain your problem.\n\n**System Information:**\n - OS: TrueNAS Scale 25.10.5\n - Chaptarr Version: 0.9.911.0\n - Installation Method: Docker\n - Browser: Android Brave and Android Chrome\n\n**Docker Information (if applicable):**\n - Docker version: 28.3.1\n - Docker Compose version: 2.38.1\n\n<img width=\"1344\" height=\"2610\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8e660f22-a43c-4bcb-a98e-ada63b5d9dc5\" />\n\n<img width=\"2992\" height=\"1089\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/6a9419c5-6543-4435-9cba-10126c803189\" />\n\n<img width=\"1344\" height=\"2620\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/a0693827-e68b-4642-93ae-c8949f547ea1\" />",
       "comments": []
