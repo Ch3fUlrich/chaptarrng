@@ -28,6 +28,7 @@ export const validation = {
     'release-notes/20261011-validation-engine.md',
     'release-notes/20261011-imagesharp-license-secret.md',
     'release-notes/20261012-validation-environment-isolation.md',
+    'release-notes/20261012-validation-playwright-cache.md',
   ],
   runtimes: [
     { command: process.execPath, args: ['--version'], versionPattern: '^v26\\.10\\.0$' },
@@ -77,6 +78,7 @@ export const validation = {
         '--configuration', 'Release', '--no-restore', '--no-build', '--verbosity', 'normal',
         '--logger:nunit;LogFilePath={RESULTS}',
       ],
+      passEnv: ['PLAYWRIGHT_BROWSERS_PATH'],
       env: { DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT: process.platform === 'linux' ? 'true' : 'false' },
       inventory: ['core-dotnet-test-sources'],
       nodeIds: ['chaptarr-linux-X64', 'chaptarr-win-X64', 'chaptarr-osx-ARM64'],

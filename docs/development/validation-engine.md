@@ -36,6 +36,8 @@ dotnet restore src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj
 dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 dotnet build src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore -p:UseSharedCompilation=false
 unset SIXLABORS_LICENSE_KEY
+export PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright"
+pwsh ./_tests/net10.0/playwright.ps1 install chromium
 node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node scripts/validation-engine/engine.mjs --tests-only
 ```
@@ -58,9 +60,12 @@ does not enter the build context, image layers, or image metadata.
 
 The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same
-checkout. Linux also requires the Playwright Chromium setup from CI when direct
-download tests run. The PostgreSQL task is GitHub-only and assigned to the
-dedicated PostgreSQL node: CI supplies three throwaway databases from its
+checkout. Linux direct-download tests require the Playwright Chromium cache
+installed by CI. Set PLAYWRIGHT_BROWSERS_PATH for both installation and the
+engine invocation; the engine passes that path only to the Core test task while
+keeping its home, temporary, and XDG directories private. The PostgreSQL task is
+GitHub-only and assigned to the dedicated PostgreSQL node: CI supplies three
+throwaway databases from its
 PostgreSQL service, while ordinary platform nodes select only the NUnit task.
 
 ## Receipt contract
