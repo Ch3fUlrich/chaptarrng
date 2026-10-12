@@ -5,6 +5,7 @@ namespace Chaptarr.Api.V1.Config
 {
     public class MetadataProviderConfigResource : RestResource
     {
+        public string AudibleMarketplace { get; set; }
         public WriteAudioTagsType WriteAudioTags { get; set; }
         public bool ScrubAudioTags { get; set; }
         public WriteBookTagsType WriteBookTags { get; set; }
@@ -18,6 +19,7 @@ namespace Chaptarr.Api.V1.Config
         {
             return new MetadataProviderConfigResource
             {
+                AudibleMarketplace = model.AudibleMarketplace,
                 WriteAudioTags = model.WriteAudioTags,
                 ScrubAudioTags = model.ScrubAudioTags,
                 WriteBookTags = model.WriteBookTags,

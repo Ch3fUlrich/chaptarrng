@@ -452,6 +452,7 @@ namespace NzbDrone.Core.Configuration.SettingsBackups
             {
                 package.MetadataServerUrl = _configService.MetadataServerUrl;
                 package.MetadataSource = _configService.MetadataSource;
+                package.AudibleMarketplace = _configService.AudibleMarketplace;
                 package.Counts["metadataServer"] = 1;
             }
 
@@ -1015,6 +1016,7 @@ namespace NzbDrone.Core.Configuration.SettingsBackups
             }
 
             _configService.MetadataSource = package.MetadataSource ?? string.Empty;
+            _configService.AudibleMarketplace = package.AudibleMarketplace ?? AudibleMarketplaceOptions.Default;
         }
 
         private void RestoreHardcover(SettingsBackupPackage package, SettingsBackupRestoreResult result)

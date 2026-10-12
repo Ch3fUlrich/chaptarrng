@@ -86,6 +86,7 @@ namespace NzbDrone.Core.Configuration
         string PlexClientIdentifier { get; }
 
         //Metadata
+        string AudibleMarketplace { get; set; }
         string MetadataSource { get; set; }
         string MetadataServerUrl { get; set; }
         string HardcoverApiToken { get; set; }

@@ -4807,24 +4807,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 });
             }
 
-            // Prefer an Audible deep-link; some upstream sources return Amazon links in `resource.Link`.
-            var audibleUrl = string.Empty;
-            if (!string.IsNullOrWhiteSpace(resource.Link))
-            {
-                var candidate = resource.Link.Trim();
-                if (candidate.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-                {
-                    candidate = "https://" + candidate.Substring("http://".Length);
-                }
-                if (candidate.StartsWith("https://audible.com", StringComparison.OrdinalIgnoreCase))
-                {
-                    candidate = "https://www.audible.com" + candidate.Substring("https://audible.com".Length);
-                }
-                if (candidate.StartsWith("https://www.audible.com", StringComparison.OrdinalIgnoreCase))
-                {
-                    audibleUrl = candidate;
-                }
-            }
+            // Build the deep-link from the selected marketplace instead of forcing every result to .com.
+            var marketplace = AudibleMarketplaceOptions.Get(_configService?.AudibleMarketplace);
+            var audibleUrl = $"{marketplace.StorefrontBaseUrl}/pd/{Uri.EscapeDataString(resource.Asin)}";
 
             if (!string.IsNullOrWhiteSpace(audibleUrl))
             {

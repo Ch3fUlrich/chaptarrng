@@ -40,6 +40,7 @@ namespace NzbDrone.Core.Configuration.SettingsBackups
         public MediaManagementBackup MediaManagement { get; set; }
         public string MetadataServerUrl { get; set; }
         public string MetadataSource { get; set; }
+        public string AudibleMarketplace { get; set; }
         public HardcoverSettingsBackup Hardcover { get; set; }
 
         public List<RemotePathMappingBackup> RemotePathMappings { get; set; } = new();

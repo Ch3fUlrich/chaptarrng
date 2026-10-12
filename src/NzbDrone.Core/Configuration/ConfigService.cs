@@ -395,6 +395,16 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("ChownGroup", value); }
         }
 
+        public string AudibleMarketplace
+        {
+            get
+            {
+                return AudibleMarketplaceOptions.Normalize(GetValue("AudibleMarketplace", AudibleMarketplaceOptions.Default));
+            }
+
+            set { SetValue("AudibleMarketplace", AudibleMarketplaceOptions.Normalize(value)); }
+        }
+
         public string MetadataSource
         {
             get { return GetValue("MetadataSource", ""); }

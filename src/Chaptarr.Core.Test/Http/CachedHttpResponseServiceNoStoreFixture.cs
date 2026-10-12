@@ -286,7 +286,7 @@ namespace Chaptarr.Core.Test.Http
             var client = new RecordingHttpClient(request =>
                 new HttpResponse(request, new HttpHeader(), "{\"products\":[]}", HttpStatusCode.OK));
             var service = new CachedHttpResponseService(repository, client, LogManager.GetCurrentClassLogger());
-            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger());
+            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger(), null);
 
             Assert.That(proxy.SearchBooks("missing"), Is.Empty);
             Assert.That(proxy.SearchBooks("missing"), Is.Empty);
@@ -302,7 +302,7 @@ namespace Chaptarr.Core.Test.Http
             var client = new RecordingHttpClient(request =>
                 new HttpResponse(request, new HttpHeader(), "{\"product\":null}", HttpStatusCode.OK));
             var service = new CachedHttpResponseService(repository, client, LogManager.GetCurrentClassLogger());
-            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger());
+            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger(), null);
 
             Assert.That(proxy.GetBookInfo("B000MISSING"), Is.Null);
             Assert.That(proxy.GetBookInfo("B000MISSING"), Is.Null);
@@ -333,7 +333,7 @@ namespace Chaptarr.Core.Test.Http
             var client = new RecordingHttpClient(request =>
                 new HttpResponse(request, new HttpHeader(), "{\"products\":[{\"asin\":\"A1\",\"title\":\"Positive\"}]}", HttpStatusCode.OK));
             var service = new CachedHttpResponseService(repository, client, LogManager.GetCurrentClassLogger());
-            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger());
+            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger(), null);
 
             Assert.That(proxy.SearchBooks("positive"), Has.Count.EqualTo(1));
             Assert.That(proxy.SearchBooks("positive"), Has.Count.EqualTo(1));
@@ -349,7 +349,7 @@ namespace Chaptarr.Core.Test.Http
             var client = new RecordingHttpClient(request =>
                 new HttpResponse(request, new HttpHeader(), "{\"product\":{\"asin\":\"A1\",\"title\":\"Positive\"}}", HttpStatusCode.OK));
             var service = new CachedHttpResponseService(repository, client, LogManager.GetCurrentClassLogger());
-            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger());
+            var proxy = new AudibleCatalogProxy(service, LogManager.GetCurrentClassLogger(), null);
 
             Assert.That(proxy.GetBookInfo("A1"), Is.Not.Null);
             Assert.That(proxy.GetBookInfo("A1"), Is.Not.Null);
