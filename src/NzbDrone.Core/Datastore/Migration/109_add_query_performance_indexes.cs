@@ -20,7 +20,7 @@ namespace NzbDrone.Core.Datastore.Migration
     //   than the sort it replaces.
     // - IX_Editions_Monitored_BookId: Wanted (missing and cutoff unmet) starts from the
     //   monitored editions and needs only their BookId. This replaces IX_Editions_Monitored.
-    [Migration(108)]
+    [Migration(109)]
     public class add_query_performance_indexes : NzbDroneMigrationBase
     {
         protected override void MainDbUpgrade()
