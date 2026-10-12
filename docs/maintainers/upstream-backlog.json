@@ -1,6 +1,6 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:53:53+00:00",
+  "snapshotAt": "2026-10-12T20:54:29+00:00",
   "forkHead": "6ed1f89",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
@@ -7013,11 +7013,16 @@
       "url": "https://github.com/Chaptarr/chaptarr/pull/142",
       "kind": "pullRequest",
       "auditStatus": "implemented-awaiting-final-validation",
-      "relatedItems": [],
+      "relatedItems": [
+        289
+      ],
       "implementationEvidence": [
         "Integrated reviewed upstream patch at fork commit ed05115d650feec7b9e2af1696ae3bda097a6bb3; subsequent integration fixes are retained in branch history."
       ],
-      "validationEvidence": [],
+      "validationEvidence": [
+        "EditionSelector.SelectMostRated and SelectRepresentativeFallback apply the English > unknown/unset > other-language soft tiebreak after native-format filtering and before vote count. EditionSelectorLanguageFilteringFixture contains audiobooks/ebooks where English wins over a more-voted foreign edition and confirms the foreign-only vote fallback.",
+        "The existing regression tests were inspected but not rerun, per the earlier instruction. Backend compilation remains blocked by the existing Six Labors ImageSharp licensing target because no license file/key is available in this environment."
+      ],
       "sourceUpdatedAt": "2026-09-14T01:34:14Z",
       "body": "## Bug\n\nWhen an import list discovers a new author from one shelved book, Chaptarr pulls in that author's entire back-catalog as unmonitored stub `Book` rows. For each work, `EditionSelector` has to pick one edition to represent it in the local catalog — and that pick had no language preference at all: it ranked candidates purely by native-format match, then per-edition vote count.\n\n`MetadataProfile.AllowedLanguages` only filters the candidate pool when it's explicitly configured. On the common unconfigured profile, every language passes through untouched, and a translated edition can end up with more votes on its own edition row than the original English one for the same work (e.g. all Spanish-reader votes on one edition row, while English votes are split across several English edition rows). The higher-voted foreign edition then wins and gets stored as the book's sole representative edition.\n\nConcretely, this produced local catalog rows like:\n- A book whose local title became `\"<Title> [Spanish Edition]\"`, its stored edition carrying Spanish narrator credits, despite an English edition of the same work being available\n- A book whose local title became `\"<Title> – <German subtitle>\"`, similarly mismatched\n\nBoth cases trace to the same author-bibliography-refresh timestamp in the DB, confirming the bulk back-catalog path, not a one-off manual add.\n\nThis selector (`EditionSelector.SelectByNativeFormatThenRatings`, via `SelectMostRated`/`SelectRepresentativeFallback`) is shared by two call sites:\n- `BookInfoProxy.SelectBestEditionAsMonitored` — the provisional pick made when converting an author's full back-catalog from provider data, explicitly commented as provisional (\"Language ... filtering happen[s] later once the metadata profile is available\")\n- `AuthorLibraryService.SelectMonitoredEditionsForMediaType` — the later, profile-aware pick\n\nUnmonitored bibliography stub books never get promoted to the second pass, so they stay stuck with whatever the language-blind provisional pick chose — permanently.\n\n## Fix\n\nAdd a language-preference tiebreak ahead of vote count in `SelectMostRated` and `SelectRepresentativeFallback`: an edition with explicit English language wins, an edition with no language tag is treated neutrally (not punished for missing metadata), and any other explicit language loses. It's a soft default ordering key, not an exclusionary filter — a foreign-only candidate pool still falls back to picking by votes exactly as before, and a library where `AllowedLanguages` is explicitly restricted to something else still narrows correctly upstream in `EditionMetadataProfileFilter`.\n\nAdded tests in `EditionSelectorLanguageFilteringFixture` covering: English winning over a more-voted foreign edition for both audiobook and ebook media types, and the no-English-available fallback still picking by votes.\n\n## Testing\n\nRan `dotnet test` (net10.0) locally: full suite passes, 3023/3023, 0 failures — including the 3 new tests in `EditionSelectorLanguageFilteringFixture`.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
       "comments": [],
