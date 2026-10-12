@@ -5,7 +5,7 @@ import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
 import DeleteBookModal from 'Book/Delete/DeleteBookModal';
 import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
-import GrimmoryPushModal from 'Grimmory/GrimmoryPushModal';
+import CalibrePushModal from 'Calibre/CalibrePushModal';
 import IconButton from 'Components/Link/IconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
@@ -14,9 +14,9 @@ import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
-import CalibrePushModal from 'Calibre/CalibrePushModal';
 import SwipeHeaderConnector from 'Components/Swipe/SwipeHeaderConnector';
 import ConvertPreviewModalConnector from 'Convert/ConvertPreviewModalConnector';
+import GrimmoryPushModal from 'Grimmory/GrimmoryPushModal';
 import { icons } from 'Helpers/Props';
 import InteractiveSearchFilterMenuConnector from 'InteractiveSearch/InteractiveSearchFilterMenuConnector';
 import InteractiveSearchTable from 'InteractiveSearch/InteractiveSearchTable';
@@ -241,38 +241,38 @@ class BookDetails extends Component {
 
             {
               showRePush &&
-                  <PageToolbarButton
-                    label={translate('ResendToCalibre')}
-                    title={translate('ResendToCalibreContentServerConnections')}
-                    iconName={icons.EXPORT}
-                    isDisabled={!hasBookFiles}
-                    isSpinning={isRePushing}
-                    onPress={onRePushPress}
-                  />
+                <PageToolbarButton
+                  label={translate('ResendToCalibre')}
+                  title={translate('ResendToCalibreContentServerConnections')}
+                  iconName={icons.EXPORT}
+                  isDisabled={!hasBookFiles}
+                  isSpinning={isRePushing}
+                  onPress={onRePushPress}
+                />
             }
 
             {
               showPushToCalibre &&
-                  <PageToolbarButton
-                    label={translate('CalibrePush')}
-                    title={translate('PushMetadataToCalibre')}
-                    iconName={icons.TAGS}
-                    isDisabled={!hasBookFiles}
-                    isSpinning={isPushingToCalibre}
-                    onPress={this.onCalibrePushPress}
-                  />
+                <PageToolbarButton
+                  label={translate('CalibrePush')}
+                  title={translate('PushMetadataToCalibre')}
+                  iconName={icons.TAGS}
+                  isDisabled={!hasBookFiles}
+                  isSpinning={isPushingToCalibre}
+                  onPress={this.onCalibrePushPress}
+                />
             }
 
             {
               showPushToGrimmory &&
-                  <PageToolbarButton
-                    label={translate('GrimmoryPush')}
-                    title={translate('PushChaptarrMetadataToGrimmory')}
-                    iconName={icons.EXPORT}
-                    isDisabled={!hasBookFiles}
-                    isSpinning={isPushingToGrimmory}
-                    onPress={this.onGrimmoryPushPress}
-                  />
+                <PageToolbarButton
+                  label={translate('GrimmoryPush')}
+                  title={translate('PushChaptarrMetadataToGrimmory')}
+                  iconName={icons.EXPORT}
+                  isDisabled={!hasBookFiles}
+                  isSpinning={isPushingToGrimmory}
+                  onPress={this.onGrimmoryPushPress}
+                />
             }
 
             {(showRePush || showPushToCalibre || showPushToGrimmory) && <PageToolbarSeparator />}

@@ -1752,6 +1752,7 @@
   "RetagTipPreviewBefore": "Tip: To preview the tags that will be written... select \"Cancel\" then click any author name and use the",
   "Retention": "Retention",
   "RetentionHelpText": "Usenet only: Set to zero to set for unlimited retention",
+  "Retry": "Retry",
   "RetryImport": "Retry import",
   "RetryImportSelected": "Retry Imports",
   "RetryingDownloadInterp": "Retrying download {0} at {1}",
