@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:20:41+00:00",
-  "forkHead": "ef6fec6",
+  "snapshotAt": "2026-10-12T20:21:35+00:00",
+  "forkHead": "1c9f53a",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -4436,10 +4436,16 @@
       "title": "Direct download Indexer",
       "url": "https://github.com/Chaptarr/chaptarr/pull/36",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "ChaptarrNG already contains the ebook-only Direct Download indexer, ordered URL mirrors, API-key fast downloads, optional Playwright slow-download resolution, built-in transfer/import lifecycle, and updated source-safety controls.",
+        "The fork documents required runtime support and architecture limits in README.md and docs/FORK_FEATURES.md."
+      ],
+      "validationEvidence": [
+        "yarn check-direct-download passed after its documentation contract was updated to match current API-key verification behavior.",
+        "The optional live API smoke was skipped because DIRECT_DOWNLOAD_SMOKE_URL is not configured."
+      ],
       "sourceUpdatedAt": "2026-08-13T09:27:38Z",
       "body": "#### Description\r\nThis PR adds an ebook-only Direct Download Indexer and workflow. \r\nFor each indexer, multiple mirro URLs can be added, with the first having priority and the rest being used as a fallback. The type of direct download site is detected with a probing when saving the Indexer. RSS is not yet supported, since I didnt find a method to check for new uploads. \r\nAn optioenal API-Key can be added for Fast downloads. Also, a slow-download fallback is implemented, which is using playwright. This will be used, when activated, if all fast downloads in the last 24 hours are already used or if no API key for fast downloads is set.\r\nAfter grabbing, the download is downloaded without an additional Download Client and will be imported accordingly\r\n\r\n#### Fixes\r\nNone (Some Feature requests)\r\n\r\n#### Database Migration\r\nNO\r\n\r\n#### How was this tested?\r\nWhat you ran and on what setup (OS, Docker or native). Include steps to\r\nreproduce if it's a fix.\r\nDotNet-tests, manual testing (Server running in Docker), with productive usage over multiple days\r\n\r\n#### Screenshots (UI changes only)\r\n<img width=\"1311\" height=\"274\" alt=\"image\" src=\"https://github.com/user-attachments/assets/886dc23c-b5a2-4c13-a28c-635d3e28828e\" />\r\n<img width=\"866\" height=\"1247\" alt=\"image\" src=\"https://github.com/user-attachments/assets/8baf417d-d888-4129-b7ed-683fd31f3aa4\" />",
       "comments": [],
