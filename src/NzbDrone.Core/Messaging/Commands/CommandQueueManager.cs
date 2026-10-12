@@ -93,7 +93,7 @@ namespace NzbDrone.Core.Messaging.Commands
 
                 foreach (var command in commands)
                 {
-                    var existing = existingCommands.FirstOrDefault(c => c.Name == command.Name && CommandEqualityComparer.Instance.Equals(c.Body, command));
+                    var existing = existingCommands.Concat(commandModels).FirstOrDefault(c => c.Name == command.Name && CommandEqualityComparer.Instance.Equals(c.Body, command));
 
                     if (existing != null)
                     {
