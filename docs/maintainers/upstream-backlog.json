@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:33:57+00:00",
-  "forkHead": "75e9bb8",
+  "snapshotAt": "2026-10-12T20:39:27+00:00",
+  "forkHead": "95b56be",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -3777,10 +3777,19 @@
       "title": "[FEATURE] Configurable Audible marketplace (audible.fr, .de, .co.uk…) instead of hardcoded audible.com",
       "url": "https://github.com/Chaptarr/chaptarr/issues/306",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        307
+      ],
+      "implementationEvidence": [
+        "Commit 95b56be adds a per-instance Audible marketplace setting for all 11 requested regions and routes direct catalog searches and ASIN lookups through the selected API host, locale headers, and storefront links.",
+        "The marketplace setting is exposed in Metadata settings and included in encrypted Metadata Server settings backups.",
+        "The metadata service author catalog and az: edition selection remain US-backed because that service is external to this application repository; no metadata-server source or supported marketplace API contract is available here."
+      ],
+      "validationEvidence": [
+        "Frontend typecheck, targeted ESLint, translation-key validation, production webpack build, git diff --check, and release-note preview passed. Webpack reported 18 existing non-fatal CSS-order warnings.",
+        "Backend build was attempted but stopped at the existing ImageSharp licensing target because no Six Labors license file/key is available in this environment. No tests were run."
+      ],
       "sourceUpdatedAt": "2026-10-10T19:45:28Z",
       "body": "**Is your feature request related to a problem? Please describe.**\n\n`AudibleCatalogProxy` hardcodes `https://api.audible.com` (plus `www.audible.com` for links, `Origin` and `Referer`, and `Accept-Language: en-US`). For a non-US library, the Audible search provider and ASIN lookups query the wrong catalog, and local-language audiobooks simply aren't found.\n\nExample with a French library:\n\n| ASIN | api.audible.fr | api.audible.com |\n|---|---|---|\n| `B0H417971Y` (Solo Leveling, French audiobook, tome 1) | ✅ found, with series \"Solo Leveling (French Edition) #1\" | ❌ absent |\n\nThe same catalog endpoints (`/1.0/catalog/products/{asin}`, product search) work unchanged on the other marketplaces; only the domain differs.\n\n**Describe the solution you'd like**\n\nA setting for the Audible marketplace (us, uk, fr, de, it, es, ca, au, in, jp, br) that drives:\n- the API host (`api.audible.<tld>`);\n- the generated product links (`www.audible.<tld>/pd/<asin>`);\n- the `Origin`/`Referer`/`Accept-Language` headers.\n\nIdeally the setting would also reach the metadata server, so that author catalogs and `az:` editions come from the user's marketplace. Today they also come from the US catalog, which mixes in editions that don't exist locally and misses local-only audiobooks.\n\n**Describe alternatives you've considered**\n\nAs a local patch, I read the marketplace from an environment variable (`CHAPTARR_AUDIBLE_REGION=fr`) in `AudibleCatalogProxy`. It works: the Audible search provider then returns `az:B0H417971Y`. But a proper setting (per instance, or tied to the metadata profile's language) would be cleaner, and it wouldn't cover the server side.\n\n**Additional context**\n\nRunning two instances (French and English audiobooks), so a per-instance setting is enough.\n",
       "comments": []
@@ -3792,10 +3801,18 @@
       "title": "[BUG] Metadata server merges distinct Audible volumes of a series into one work (Solo Leveling FR tomes 2–4 under gr:183187350)",
       "url": "https://github.com/Chaptarr/chaptarr/issues/307",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "external-service-fix-required",
+      "relatedItems": [
+        306
+      ],
+      "implementationEvidence": [
+        "The reported grouping occurs in the metadata API response before Chaptarr maps V5 books into local author catalog entries. The client preserves distinct V5 book pockets, but the reported response gives multiple Audible ASIN editions one shared Goodreads work identity.",
+        "The current V5 edition contract does not provide a separate series sequence/work identity for each Audible ASIN. Splitting those editions locally would risk separating ordinary editions of the same audiobook without enough identity evidence.",
+        "A complete fix requires the external metadata service to emit distinct work identities and series positions for distinct Audible volumes, followed by client mapping support for that API response."
+      ],
+      "validationEvidence": [
+        "Reviewed upstream issue #307 and the client V5 author/edition mapping path. The public Chaptarr organization repositories available in this session do not include metadata-server source; a read-only request to api2.chaptarr.com returned HTTP 403."
+      ],
       "sourceUpdatedAt": "2026-10-10T19:58:55Z",
       "body": "**Describe the bug**\n\nThe author catalog returned by the metadata server folds several **distinct volumes** of an Audible series into a single work. Each volume is a separate product on Audible, with its own ASIN, release date and series sequence, but Chaptarr only shows one book for all of them, and the remaining volumes can't be added at all.\n\nExample: author CHUGONG (`hc:245256`), French audiobook series **Solo Leveling (French Edition)**, Audible series `B0H474JJ3H` on audible.fr.\n\n| Audible.fr | ASIN | Release | In Chaptarr |\n|---|---|---|---|\n| Solo Leveling, Tome 1 (#1) | B0H417971Y | 2026-06-25 | own work `gr:293868336` ✅ |\n| Solo Leveling, Tome 2 (#2) | B0H8T336DS | 2026-07-16 | edition `az:B0H8SY91X1` of work `gr:183187350` |\n| Solo Leveling, Tome 3 (#3) | B0H95GR62X | 2026-08-06 | edition `az:B0H955RL6J` of work `gr:183187350` |\n| Solo Leveling, Tome 4 (#4) | B0H958PYZH | 2026-08-27 | edition `az:B0H958PYZH` of work `gr:183187350`, plus a separate duplicate work `az:B0H954CH5Z` |\n\nSo `gr:183187350` (\"Solo Leveling\", shown as volume 2 of the Korean novel series) carries three audiobook editions that are really volumes 2, 3 and 4.\n\n**Consequences**\n- Only one book appears for volumes 2–4, so they can't be monitored, searched or imported separately.\n- Adding volume 3 explicitly (Audible search → `az:B0H95GR62X` → Add) doesn't create a book: it resolves to the existing `gr:183187350` because the ASIN is an alias of that work.\n- Importing files for two of those volumes would put them on the same book, and Rename would put them in the same folder.\n\n**Expected behavior**\n\nEditions with different series sequences (or different Audible product ASINs in the same series) shouldn't be clustered into one work. Volumes 2, 3 and 4 should be three books in the series, with positions 2–4.\n\n**Environment**\n\nChaptarr 0.9.965 (Docker). The data above comes from `GET /api/v1/edition?bookId=…` and from `api.audible.fr/1.0/catalog/products/<asin>`.\n",
       "comments": []
