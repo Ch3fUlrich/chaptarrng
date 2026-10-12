@@ -193,7 +193,7 @@ namespace NzbDrone.Core.MediaFiles
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 SetFailure(result, ConversionFailureCategory.Unknown, ex.Message, ex.ToString());
                 _logger.Error(ex, "M4B conversion failed");
@@ -372,7 +372,7 @@ namespace NzbDrone.Core.MediaFiles
 
                 return probe;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Debug(ex, "Unable to probe multi-part M4B source {0}", inputFile);
                 return null;
@@ -591,7 +591,7 @@ namespace NzbDrone.Core.MediaFiles
                         return;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
                 {
                     _logger.Debug(ex, "Could not extract embedded source cover art from {0}", inputFile);
                 }
@@ -737,7 +737,7 @@ namespace NzbDrone.Core.MediaFiles
             {
                 options.ProgressHandler(update);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Debug(ex, "M4B conversion progress handler failed");
             }
@@ -853,7 +853,7 @@ namespace NzbDrone.Core.MediaFiles
                     .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Any(line => line.Trim().Equals("audio", StringComparison.OrdinalIgnoreCase)) == true;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Debug(ex, "Failed to validate audio stream for converted M4B: {0}", filePath);
                 return false;
@@ -906,7 +906,7 @@ namespace NzbDrone.Core.MediaFiles
 	                    return true;
 	                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Debug(ex, "Failed to inspect converted M4B stream layout: {0}", filePath);
             }
@@ -941,7 +941,7 @@ namespace NzbDrone.Core.MediaFiles
                     return true;
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Debug(ex, "Failed to read ffprobe duration for converted M4B validation: {0}", filePath);
             }
