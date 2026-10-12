@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:19:01+00:00",
-  "forkHead": "1261261",
+  "snapshotAt": "2026-10-12T20:20:41+00:00",
+  "forkHead": "ef6fec6",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -3704,10 +3704,16 @@
       "title": "Restore fails on develop: SixLabors.ImageSharp 3.1.12 flagged by NuGet audit (high severity advisories)",
       "url": "https://github.com/Chaptarr/chaptarr/issues/301",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "The fork pins SixLabors.ImageSharp 4.1.3, beyond the vulnerable 3.1.12 reported upstream; release note 0.9.968 records the dependency update and removal of the old audit suppressions.",
+        "The fork documents the separate source-build requirement for a valid Six Labors license key; this does not restore the vulnerable package."
+      ],
+      "validationEvidence": [
+        "Verified the central package pin is 4.1.3 and the shipped security release note identifies that version.",
+        "A local backend restore/build was not run because this environment has no valid Six Labors build license."
+      ],
       "sourceUpdatedAt": "2026-10-09T12:06:56Z",
       "body": "On current `develop` (e67374f), `dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj` fails at restore with\nNU1902/NU1903 \"Warning As Error\" for `SixLabors.ImageSharp` 3.1.12 (pinned in `src/Directory.Packages.props`):\n\n- high: GHSA-j3p4-wp97-rph4, GHSA-j9gm-c75j-xc9q, GHSA-jjfr-hcj7-qf5w\n- moderate: GHSA-gwg2-r3hj-4w44, GHSA-wmxv-xphr-5c9g\n\n3.1.12 is the newest 3.1.x on NuGet; the next releases are 4.0.0 … 4.1.2, so the fix is a major-version upgrade\n(API and licence terms to check), not a patch bump. Workaround for local builds only: `-p:NuGetAudit=false`.\n\nSDK 10.0.400, Linux. Happy to test a PR.\n",
       "comments": []
@@ -3719,10 +3725,15 @@
       "title": "Docker healthcheck uses curl but image doesn't ship curl — container permanently 'unhealthy'",
       "url": "https://github.com/Chaptarr/chaptarr/issues/302",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit ef6fec6 adds a wget-based /ping Docker healthcheck to Dockerfile.cross and both local build Dockerfiles; each runtime stage already installs wget, and /ping is anonymous."
+      ],
+      "validationEvidence": [
+        "Docker BuildKit --check passed for Dockerfile.cross, Dockerfile.build, and Dockerfile.build.optimized with no warnings.",
+        "Static inspection confirmed wget is installed before each healthcheck. The full image was not built."
+      ],
       "sourceUpdatedAt": "2026-10-10T13:57:36Z",
       "body": "## Bug\n\nThe Docker image's built-in healthcheck uses `curl`, but the image doesn't ship `curl` (or `wget`/`node`). The healthcheck therefore fails on **every** interval even when the app is perfectly healthy, and the container sits permanently at `(unhealthy)`  1000+ consecutive failed checks in my case.\n\n## Impact\n\n- False `unhealthy` status in `docker ps`.\n- Any watchdog/auto-restart tool keyed on container health (autoheal, watchtower healthcheck mode, etc.) will bounce a perfectly healthy container on a loop.\n\n## Reproduction\n\n```bash\ndocker inspect chaptarr --format '{{json .Config.Healthcheck}}'\n# {\"Test\":[\"CMD-SHELL\",\"curl -sf -o /dev/null http://localhost:8789/ping || exit 1\"],...}\n\ndocker exec chaptarr sh -c 'command -v curl wget node'\n# (nothing — none installed)\n\n# from the host, the app itself is fine:\ncurl -s -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:8789/ping\n# 200\n```\n\nVersion: chaptarr/chaptarr:latest (0.9.911.0, branch develop, build 2026-08-08).\n\n## Suggested fix\n\nThe image does include `bash`, so a dependency-free check works:\n\n```yaml\nhealthcheck:\n  test: [\"CMD\", \"bash\", \"-c\", \"echo > /dev/tcp/localhost/8789\"]\n```\n\n(or install curl in the image, or use the actual healthcheck endpoint via a tool that's present).\n\nWorkaround applied on my side: compose-level healthcheck override with the bash /dev/tcp form — container reports `healthy` on the first cycle.\n",
       "comments": []
@@ -9694,12 +9705,14 @@
       "title": "Point Docker instructions at the develop image tag",
       "url": "https://github.com/Chaptarr/chaptarr/pull/282",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "not-applicable-fork-specific",
       "relatedItems": [],
       "implementationEvidence": [
-        "Not applied: this fork intentionally publishes ghcr.io/snapetech/chaptarrng:latest, rather than upstream chaptarr/chaptarr:develop. Replacing the fork image with the upstream image would point users to the wrong project."
+        "Not applied: the fork intentionally publishes ghcr.io/snapetech/chaptarrng:latest, rather than upstream chaptarr/chaptarr:develop. Changing its instructions to the upstream image would direct users to a different project."
       ],
-      "validationEvidence": [],
+      "validationEvidence": [
+        "Verified docker-compose.yml, README installation instructions, and .github/workflows/docker-publish.yml all consistently use the fork-owned GHCR image."
+      ],
       "sourceUpdatedAt": "2026-10-04T14:44:02Z",
       "body": "#### Description\nThe README and `docker-compose.yml` tell users to pull `chaptarr/chaptarr:latest`, but `latest` is only published from `main` (`docker-publish.yml`) and was last pushed 2026-08-08 (0.9.911). Releases ship from `develop`, so this switches both to `chaptarr/chaptarr:develop` (currently 0.9.965).\n\n#### Database Migration\nNO\n\n#### How was this tested?\nDocs only. Confirmed via Docker Hub tag list that `develop` tracks the latest release and `latest` is stale.\n\n#### Screenshots (UI changes only)\nN/A\n",
       "comments": [],
