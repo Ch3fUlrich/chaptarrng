@@ -2220,5 +2220,8 @@
   "Year": "Year",
   "Yes": "Yes",
   "YesCancel": "Yes, Cancel",
-  "Yesterday": "Yesterday"
+  "Yesterday": "Yesterday",
+  "BookLoreBaseUrlHelpText": "Base URL of your BookLore server, such as http://booklore:6060.",
+  "BookLoreUsernameHelpText": "BookLore account with permission to upload files.",
+  "BookLorePasswordHelpText": "Password for the BookLore account. New imports are uploaded to BookLore BookDrop for review."
 }

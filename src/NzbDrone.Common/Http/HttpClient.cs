@@ -81,6 +81,13 @@ namespace NzbDrone.Common.Http
 
             if (request.AllowAutoRedirect && response.HasHttpRedirect)
             {
+                // A streamed body may already be consumed and disposed by the dispatcher.
+                // Never replay it to another endpoint, especially with upload credentials.
+                if (request.Content != null)
+                {
+                    throw new WebException("Automatic redirects are not supported for streamed request bodies.", WebExceptionStatus.ProtocolError);
+                }
+
                 var autoRedirectChain = new List<string> { request.Url.ToString() };
 
                 do
