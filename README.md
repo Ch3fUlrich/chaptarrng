@@ -8,6 +8,7 @@ A Snapetech-maintained Chaptarr fork for audiobook and eBook libraries.
 
 [![License](https://img.shields.io/github/license/snapetech/chaptarrng)](https://github.com/snapetech/chaptarrng/blob/main/LICENSE)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/platform/support/policy)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/nqFGsGUug2)
 
 </div>
 
@@ -219,6 +220,21 @@ Only absolute HTTP and HTTPS URLs are accepted. URLs with embedded credentials a
 
 The feature is not a general-purpose web downloader. It depends on a source returning a supported, bounded response and a usable direct file URL. Access controls, rate limits, expiring links, changed page formats, unavailable mirrors, and licensing restrictions can cause a previously working URL to fail. A provider Test cannot detect those runtime conditions. Monitor the queue and failed items, keep backups of the configuration and library, and remove stale staging data after confirming that no queued or import-pending item references it.
 
+### Unraid Community Applications
+
+ChaptarrNG's Unraid template is maintained in the dedicated
+[ChaptarrNG Unraid package repository](https://github.com/snapetech/chaptarrng-unraid).
+It installs the maintained fork image, maps the web interface on port `8789`,
+and provides separate paths for appdata, audiobooks, ebooks, and downloads.
+The image uses `PUID=99` and `PGID=100` by default; change those values to match
+the ownership of your media shares.
+
+To make ChaptarrNG searchable in Community Applications, submit the package
+repository URL `https://github.com/snapetech/chaptarrng-unraid` through
+Unraid's Community Apps submission flow and complete its validation scan.
+Stable releases from the application repository's `main` branch publish the
+`latest` image to GHCR.
+
 ## Building from Source
 Building from source requires the .NET 10 SDK, Node.js, and Yarn. When running ChaptarrNG natively, install FFmpeg for your operating system and make sure both `ffmpeg` and `ffprobe` are available on the `PATH` used to start the application. Normal source builds do not bundle them automatically; the ChaptarrNG Docker image already includes them.
 
@@ -259,22 +275,6 @@ dotnet _output/publish/Chaptarr.Console.dll
 ```
 
 Note: the inherited assembly is named `Chaptarr.dll` on Linux/macOS and `Chaptarr.Console.dll` on Windows.
-
-### Unraid Community Applications
-
-ChaptarrNG's Unraid template is maintained in the dedicated
-[ChaptarrNG Unraid package repository](https://github.com/snapetech/chaptarrng-unraid).
-It installs the maintained fork image, maps the web interface on port `8789`,
-and provides separate paths for appdata, audiobooks, ebooks, and downloads.
-The image uses `PUID=99` and `PGID=100` by default; change those values to match
-the ownership of your media shares.
-
-To make ChaptarrNG searchable in Community Applications, submit the package
-repository URL `https://github.com/snapetech/chaptarrng-unraid` through
-Unraid's Community Apps submission flow and complete its validation scan.
-Stable releases from the application repository's `main` branch publish the
-`latest` image to GHCR.
-
 
 ## Documentation
 
