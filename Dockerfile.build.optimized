@@ -133,5 +133,7 @@ COPY --from=build /app .
 RUN chown -R abc:users /app
 
 EXPOSE 8789
+HEALTHCHECK --interval=30s --timeout=10s --start-period=2m --retries=3 \
+    CMD wget --quiet --output-document=/dev/null http://127.0.0.1:8789/ping || exit 1
 USER abc
 CMD ["dotnet", "/app/Chaptarr.dll", "-nobrowser", "-data=/config"]
