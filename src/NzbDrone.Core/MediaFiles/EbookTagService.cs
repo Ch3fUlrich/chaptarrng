@@ -596,7 +596,7 @@ namespace NzbDrone.Core.MediaFiles
 
                 }
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not OperationCanceledException && e is not OutOfMemoryException)
             {
                 _logger.Error(e, "[METADATA-EXTRACTION] Error reading EPUB tags");
                 throw new TagExtractionException(file, e);
@@ -674,7 +674,7 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not OperationCanceledException && e is not OutOfMemoryException)
             {
                 _logger.Error(e, "[METADATA-EXTRACTION] Error reading AZW3/MOBI tags");
                 throw new TagExtractionException(file, e);
@@ -750,7 +750,7 @@ namespace NzbDrone.Core.MediaFiles
                     _logger.Debug("[METADATA-EXTRACTION] No metadata found in PDF");
                 }
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not OperationCanceledException && e is not OutOfMemoryException)
             {
                 _logger.Error(e, "[METADATA-EXTRACTION] Error reading PDF tags");
                 throw new TagExtractionException(file, e);
