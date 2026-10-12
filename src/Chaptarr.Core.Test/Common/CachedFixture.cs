@@ -46,5 +46,35 @@ namespace Chaptarr.Core.Test.Common
             Assert.That(cache.Find("key"), Is.Null);
             Assert.That(PendingExpiryCount(cache), Is.EqualTo(0));
         }
+
+        [Test]
+        public void parallel_refreshes_should_keep_one_expiry_and_clear_should_release_it()
+        {
+            var cache = new Cached<string>(TimeSpan.FromMinutes(5), rollingExpiry: true);
+            Parallel.For(0, 2000, i =>
+            {
+                cache.Set("key", "value");
+                cache.Find("key");
+            });
+
+            Assert.That(PendingExpiryCount(cache), Is.EqualTo(1));
+            cache.Clear();
+            Assert.That(PendingExpiryCount(cache), Is.Zero);
+            Assert.That(cache.Count, Is.Zero);
+        }
+
+        [Test]
+        public void removing_or_replacing_with_a_permanent_value_should_cancel_expiry()
+        {
+            var cache = new Cached<string>();
+            cache.Set("key", "temporary", TimeSpan.FromMinutes(5));
+            cache.Set("key", "permanent");
+            Assert.That(PendingExpiryCount(cache), Is.Zero);
+            Assert.That(cache.Find("key"), Is.EqualTo("permanent"));
+
+            cache.Set("key", "temporary", TimeSpan.FromMinutes(5));
+            cache.Remove("key");
+            Assert.That(PendingExpiryCount(cache), Is.Zero);
+        }
     }
 }

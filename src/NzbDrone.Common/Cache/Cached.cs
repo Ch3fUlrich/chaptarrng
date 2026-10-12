@@ -46,11 +46,15 @@ namespace NzbDrone.Common.Cache
         {
             Ensure.That(key, () => key).IsNotNullOrWhiteSpace();
 
-            _store[key] = new CacheItem(value, lifeTime ?? _defaultLifeTime);
-
-            if (lifeTime != null)
+            lifeTime ??= _defaultLifeTime;
+            lock (_pendingExpiry)
             {
-                ScheduleTryRemove(key, lifeTime.Value);
+                _store[key] = new CacheItem(value, lifeTime);
+                CancelExpiry(key);
+                if (lifeTime.HasValue)
+                {
+                    ScheduleTryRemove(key);
+                }
             }
         }
 
@@ -77,7 +81,7 @@ namespace NzbDrone.Common.Cache
             if (_rollingExpiry && _defaultLifeTime.HasValue)
             {
                 _store.TryUpdate(key, new CacheItem(cacheItem.Object, _defaultLifeTime.Value), cacheItem);
-                ScheduleTryRemove(key, _defaultLifeTime.Value);
+                ScheduleTryRemove(key);
             }
 
             return cacheItem.Object;
@@ -85,7 +89,11 @@ namespace NzbDrone.Common.Cache
 
         public void Remove(string key)
         {
-            _store.TryRemove(key, out _);
+            lock (_pendingExpiry)
+            {
+                _store.TryRemove(key, out _);
+                CancelExpiry(key);
+            }
         }
 
         public int Count => _store.Count;
@@ -101,7 +109,7 @@ namespace NzbDrone.Common.Cache
                 if (_rollingExpiry && lifeTime.HasValue)
                 {
                     _store.TryUpdate(key, new CacheItem(cacheItem.Object, lifeTime), cacheItem);
-                    ScheduleTryRemove(key, lifeTime.Value);
+                    ScheduleTryRemove(key);
                 }
             }
             else
@@ -115,6 +123,11 @@ namespace NzbDrone.Common.Cache
                 {
                     cacheItem = _store.GetOrAdd(key, newCacheItem);
                 }
+
+                if (cacheItem.ExpiryTime.HasValue)
+                {
+                    ScheduleTryRemove(key);
+                }
             }
 
             return cacheItem.Object;
@@ -122,7 +135,14 @@ namespace NzbDrone.Common.Cache
 
         public void Clear()
         {
-            _store.Clear();
+            lock (_pendingExpiry)
+            {
+                _store.Clear();
+                foreach (var key in _pendingExpiry.Keys)
+                {
+                    CancelExpiry(key);
+                }
+            }
         }
 
         public void ClearExpired()
@@ -150,44 +170,58 @@ namespace NzbDrone.Common.Cache
             return collection.Remove(new KeyValuePair<string, CacheItem>(key, value));
         }
 
-        private void ScheduleTryRemove(string key, TimeSpan lifeTime)
+        // Call while holding _pendingExpiry's lock so cancellation cannot race disposal.
+        private void CancelExpiry(string key)
         {
-            // Each Set()/rolling-expiry Find()/Get() call used to schedule a brand new
-            // Task.Delay(lifeTime) here without cancelling any delay already pending for
-            // the same key. On a long-lived cache (e.g. MediaCoverProxy's 24h cover-url
-            // cache) touched more often than its lifetime, orphaned delays never got
-            // cancelled and piled up indefinitely - tens of thousands of live
-            // TimerQueueTimer/Task chains sitting idle, driving continuous GC/ThreadPool
-            // overhead. Track one pending removal per key and cancel the previous one
-            // before scheduling a new one so re-touching a key doesn't add another timer.
-            var cts = new CancellationTokenSource();
-
-            if (_pendingExpiry.TryRemove(key, out var previous))
+            if (_pendingExpiry.TryRemove(key, out var pending))
             {
-                previous.Cancel();
-                previous.Dispose();
+                pending.Cancel();
+                pending.Dispose();
             }
+        }
 
-            _pendingExpiry[key] = cts;
-
-            Task.Delay(lifeTime, cts.Token).ContinueWith(t =>
+        private void ScheduleTryRemove(string key)
+        {
+            lock (_pendingExpiry)
             {
-                if (t.IsCanceled)
+                CancelExpiry(key);
+                if (!_store.TryGetValue(key, out var scheduledItem) || !scheduledItem.ExpiryTime.HasValue)
                 {
                     return;
                 }
 
-                if (_store.TryGetValue(key, out var cacheItem) && cacheItem.IsExpired())
+                var lifeTime = scheduledItem.ExpiryTime.Value - DateTime.UtcNow;
+                var cts = new CancellationTokenSource();
+                _pendingExpiry[key] = cts;
+                var delay = lifeTime > TimeSpan.Zero ? lifeTime : TimeSpan.Zero;
+                Task.Delay(delay, cts.Token).ContinueWith(task =>
                 {
-                    _store.TryRemove(key, out _);
-                }
+                    lock (_pendingExpiry)
+                    {
+                        if (task.IsCanceled || !_pendingExpiry.TryGetValue(key, out var current) || current != cts)
+                        {
+                            return;
+                        }
 
-                if (_pendingExpiry.TryGetValue(key, out var current) && current == cts)
-                {
-                    _pendingExpiry.TryRemove(key, out _);
-                    cts.Dispose();
-                }
-            }, TaskScheduler.Default);
+                        _pendingExpiry.TryRemove(key, out _);
+                        cts.Dispose();
+                        if (!_store.TryGetValue(key, out var cacheItem))
+                        {
+                            return;
+                        }
+
+                        if (cacheItem.IsExpired())
+                        {
+                            // Do not delete a replacement published after the expiry check.
+                            TryRemove(key, cacheItem);
+                        }
+                        else if (cacheItem.ExpiryTime.HasValue)
+                        {
+                            ScheduleTryRemove(key);
+                        }
+                    }
+                }, TaskScheduler.Default);
+            }
         }
     }
 }
