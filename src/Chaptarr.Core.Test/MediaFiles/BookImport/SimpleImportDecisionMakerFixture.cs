@@ -224,7 +224,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                 {
                     var p = Path.Combine(dir, $"part-{i}.mp3");
                     File.WriteAllText(p, "audio");
-                    return (IFileInfo)new FileSystem().FileInfo.FromFileName(p);
+                    return (IFileInfo)new FileSystem().FileInfo.New(p);
                 }).ToList();
 
                 var tagService = DispatchProxy.Create<IMetadataTagService, PrefetchThreadCountingTagServiceProxy>();
@@ -265,7 +265,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                 {
                     var p = Path.Combine(dir, $"part-{i}.mp3");
                     File.WriteAllText(p, "audio");
-                    return (IFileInfo)new FileSystem().FileInfo.FromFileName(p);
+                    return (IFileInfo)new FileSystem().FileInfo.New(p);
                 }).ToList();
 
                 var tagService = DispatchProxy.Create<IMetadataTagService, SlowCountingTagServiceProxy>();
