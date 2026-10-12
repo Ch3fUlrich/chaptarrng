@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using NLog;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
@@ -26,13 +27,14 @@ namespace Chaptarr.Core.Test.Notifications
 
         private class EmptyOnBookDeleteNotificationFactoryProxy : DispatchProxy
         {
-            public int OnBookDeleteEnabledCalls { get; private set; }
+            private int _calls;
+            public int OnBookDeleteEnabledCalls => Volatile.Read(ref _calls);
 
             protected override object Invoke(MethodInfo targetMethod, object[] args)
             {
                 if (string.Equals(targetMethod?.Name, nameof(INotificationFactory.OnBookDeleteEnabled), StringComparison.Ordinal))
                 {
-                    OnBookDeleteEnabledCalls++;
+                    Interlocked.Increment(ref _calls);
                     return new List<INotification>();
                 }
 
@@ -54,7 +56,7 @@ namespace Chaptarr.Core.Test.Notifications
             var book = new Book { Id = 1, Author = new Author { Id = 1, Name = "Jim Butcher" } };
 
             Assert.DoesNotThrow(() =>
-                service.Handle(new BookDeletedEvent(book, deleteFiles: true, addImportListExclusion: false, partOfAuthorDelete: true)));
+                service.HandleAsync(new BookDeletedEvent(book, deleteFiles: true, addImportListExclusion: false, partOfAuthorDelete: true)));
         }
 
         [Test]
@@ -71,9 +73,9 @@ namespace Chaptarr.Core.Test.Notifications
 
             var book = new Book { Id = 1, Author = new Author { Id = 1, Name = "Jim Butcher" } };
 
-            service.Handle(new BookDeletedEvent(book, deleteFiles: true, addImportListExclusion: false, partOfAuthorDelete: false));
+            service.HandleAsync(new BookDeletedEvent(book, deleteFiles: true, addImportListExclusion: false, partOfAuthorDelete: false));
 
-            Assert.That(factoryRecorder.OnBookDeleteEnabledCalls, Is.EqualTo(1));
+            Assert.That(SpinWait.SpinUntil(() => factoryRecorder.OnBookDeleteEnabledCalls == 1, TimeSpan.FromSeconds(5)), Is.True);
         }
     }
 }

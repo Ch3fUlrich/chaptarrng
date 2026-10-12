@@ -232,7 +232,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
                 // The same check the scan's cleanup uses to decide which rows to delete.
                 return _diskProvider.FileExistsCanonical(path);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 // If it can't be checked, keep counting it, which is the behaviour before this check existed.
                 _logger.Debug(ex, "[UNIT-REPLACED] Could not check whether '{0}' is on disk; treating it as present", path);
@@ -382,7 +382,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
                 book.UnitKeyHash = unitKeyHash;
                 _bookService.UpdateMany(new List<Book> { book });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Debug(ex, "[UNIT-CLONE] Failed to persist UnitKeyHash for BookId={0}", book?.Id ?? 0);
             }

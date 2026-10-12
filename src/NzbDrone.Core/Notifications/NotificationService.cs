@@ -376,7 +376,14 @@ namespace NzbDrone.Core.Notifications
             {
                 while (_bookDeleteNotificationQueue.Reader.TryRead(out var deleteMessage))
                 {
-                    SendBookDeleteNotifications(deleteMessage);
+                    try
+                    {
+                        SendBookDeleteNotifications(deleteMessage);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
+                    {
+                        _logger.Error(ex, "Unable to dispatch book deletion notifications");
+                    }
                 }
 
                 Interlocked.Exchange(ref _bookDeleteWorkerRunning, 0);
