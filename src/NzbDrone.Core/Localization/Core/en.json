@@ -916,6 +916,8 @@
   "ImportCustomFormatUnableToLoad": "Unable to load custom formats",
   "ImportExtraFiles": "Import Extra Files",
   "ImportExtraFilesHelpText": "Import matching extra files (covers, cue sheets, metadata, etc) after importing a book file",
+  "KeepExistingLibraryFileOnImportConflict": "Keep Existing Library File on Import Conflict",
+  "KeepExistingLibraryFileOnImportConflictHelpText": "When an untracked, non-empty destination already exists, register it instead of replacing it. Identical files are adopted automatically; this setting also allows different existing files. Tracked files, upgrades, and generated conversions are never adopted.",
   "ImportFailedInterp": "Import failed: {0}",
   "ImportFailures": "Import failures",
   "ImportListExclusions": "Import List Exclusions",

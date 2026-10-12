@@ -1,6 +1,9 @@
 using System;
 using NUnit.Framework;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.IndexerSearch;
+using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Messaging.Commands;
 
@@ -47,6 +50,62 @@ namespace Chaptarr.Core.Test.Commands
 
             Assert.That(found, Is.False);
             Assert.That(selected, Is.Null);
+        }
+
+        [TestCaseSource(nameof(LibrarySearchCommands))]
+        public void library_search_should_wait_for_active_disk_work(Command searchCommand)
+        {
+            var queue = new CommandQueue(_ => 8);
+            queue.Add(BuildModel(new RescanFoldersCommand(), CommandStatus.Started, CommandPriority.Normal, DateTime.UtcNow.AddMinutes(-1), id: 1));
+            queue.Add(BuildModel(searchCommand, CommandStatus.Queued, CommandPriority.High, DateTime.UtcNow, id: 2));
+
+            var found = queue.TryGet(out var selected);
+
+            Assert.That(found, Is.False);
+            Assert.That(selected, Is.Null);
+        }
+
+        [Test]
+        public void disk_work_should_wait_for_active_library_search()
+        {
+            var queue = new CommandQueue(_ => 8);
+            queue.Add(BuildModel(new BookSearchCommand(new System.Collections.Generic.List<int> { 42 }), CommandStatus.Started, CommandPriority.Normal, DateTime.UtcNow.AddMinutes(-1), id: 1));
+            queue.Add(BuildModel(new RescanFoldersCommand(), CommandStatus.Queued, CommandPriority.High, DateTime.UtcNow, id: 2));
+
+            var found = queue.TryGet(out var selected);
+
+            Assert.That(found, Is.False);
+            Assert.That(selected, Is.Null);
+        }
+
+        [Test]
+        public void high_priority_initial_scan_should_be_selected_before_a_queued_library_search()
+        {
+            var queue = new CommandQueue(_ => 8);
+            queue.Add(BuildModel(new BookSearchCommand(new System.Collections.Generic.List<int> { 42 }), CommandStatus.Queued, CommandPriority.Normal, DateTime.UtcNow, id: 1));
+            queue.Add(BuildModel(
+                new RescanFoldersCommand(new System.Collections.Generic.List<string> { "/library" }, FilterFilesType.None, null, true),
+                CommandStatus.Queued,
+                CommandPriority.High,
+                DateTime.UtcNow.AddSeconds(1),
+                id: 2));
+
+            var found = queue.TryGet(out var selected);
+
+            Assert.That(found, Is.True);
+            Assert.That(selected.Body, Is.TypeOf<RescanFoldersCommand>());
+        }
+
+        private static System.Collections.Generic.IEnumerable<TestCaseData> LibrarySearchCommands()
+        {
+            yield return new TestCaseData(new BookSearchCommand(new System.Collections.Generic.List<int> { 42 }))
+                .SetName("BookSearchCommand waits for disk work");
+            yield return new TestCaseData(new MissingBookSearchCommand(42))
+                .SetName("MissingBookSearchCommand waits for disk work");
+            yield return new TestCaseData(new CutoffUnmetBookSearchCommand(42))
+                .SetName("CutoffUnmetBookSearchCommand waits for disk work");
+            yield return new TestCaseData(new AuthorSearchCommand { AuthorId = 42 })
+                .SetName("AuthorSearchCommand waits for disk work");
         }
 
         private static CommandModel BuildModel(

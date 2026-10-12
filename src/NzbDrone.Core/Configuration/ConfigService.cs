@@ -241,6 +241,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("CopyUsingHardlinks", value); }
         }
 
+        public bool KeepExistingLibraryFileOnImportConflict
+        {
+            get { return GetValueBoolean("KeepExistingLibraryFileOnImportConflict", false); }
+
+            set { SetValue("KeepExistingLibraryFileOnImportConflict", value); }
+        }
+
         public bool ImportExtraFiles
         {
             get { return GetValueBoolean("ImportExtraFiles", false); }

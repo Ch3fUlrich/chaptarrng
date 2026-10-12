@@ -517,6 +517,21 @@ namespace Chaptarr.Core.Test.MediaFiles
                     return File.Exists((string)args[0]);
                 }
 
+                if (targetMethod?.Name == nameof(IDiskProvider.GetFileSize))
+                {
+                    return new FileInfo((string)args[0]).Length;
+                }
+
+                if (targetMethod?.Name == nameof(IDiskProvider.FileGetLastWrite))
+                {
+                    return File.GetLastWriteTimeUtc((string)args[0]);
+                }
+
+                if (targetMethod?.Name == nameof(IDiskProvider.OpenReadStream))
+                {
+                    return File.OpenRead((string)args[0]);
+                }
+
                 if (targetMethod?.Name == nameof(IDiskProvider.FolderExists))
                 {
                     return Directory.Exists((string)args[0]);
@@ -558,6 +573,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         private class ConfigServiceProxy : DispatchProxy
         {
             public bool SkipFreeSpaceCheckWhenImporting { get; set; }
+            public bool KeepExistingLibraryFileOnImportConflict { get; set; }
             public int MinimumFreeSpaceWhenImporting { get; set; } = 100;
             public int AudiobookConversionConcurrentConversions { get; set; } = 1;
             public int AudiobookConversionMaxCpuThreads { get; set; } = 4;
@@ -567,6 +583,11 @@ namespace Chaptarr.Core.Test.MediaFiles
                 if (targetMethod?.Name == "get_SkipFreeSpaceCheckWhenImporting")
                 {
                     return SkipFreeSpaceCheckWhenImporting;
+                }
+
+                if (targetMethod?.Name == "get_KeepExistingLibraryFileOnImportConflict")
+                {
+                    return KeepExistingLibraryFileOnImportConflict;
                 }
 
                 if (targetMethod?.Name == "get_MinimumFreeSpaceWhenImporting")
@@ -677,12 +698,16 @@ namespace Chaptarr.Core.Test.MediaFiles
             return DispatchProxy.Create<T, ThrowingProxy<T>>();
         }
 
-        private static IConfigService CreateConfigService(int concurrentConversions = 1, int maxCpuThreads = 4)
+        private static IConfigService CreateConfigService(
+            int concurrentConversions = 1,
+            int maxCpuThreads = 4,
+            bool keepExistingLibraryFileOnImportConflict = false)
         {
             var proxy = DispatchProxy.Create<IConfigService, ConfigServiceProxy>();
             var config = (ConfigServiceProxy)(object)proxy;
             config.AudiobookConversionConcurrentConversions = concurrentConversions;
             config.AudiobookConversionMaxCpuThreads = maxCpuThreads;
+            config.KeepExistingLibraryFileOnImportConflict = keepExistingLibraryFileOnImportConflict;
             return proxy;
         }
 
@@ -1812,6 +1837,85 @@ namespace Chaptarr.Core.Test.MediaFiles
         }
 
         [Test]
+        public void automatic_import_should_adopt_an_identical_untracked_destination_without_touching_it()
+        {
+            const string identicalContent = "the exact same epub bytes";
+            var outcome = RunDuplicateImportScenario(
+                Quality.EPUB,
+                Quality.EPUB,
+                existingAtDestination: true,
+                existingUntracked: true,
+                existingContent: identicalContent,
+                incomingContent: identicalContent);
+
+            Assert.That(outcome.Results.Single().Result, Is.EqualTo(ImportResultType.Imported));
+            Assert.That(outcome.TransferCalls, Is.Zero);
+            Assert.That(outcome.DestinationContent, Is.EqualTo(identicalContent));
+            Assert.That(outcome.SourceFilesOnDisk, Is.True);
+            Assert.That(outcome.MediaFileService.FilesByBook, Has.Count.EqualTo(1));
+            Assert.That(outcome.MediaFileService.FilesByBook.Single().Path, Is.EqualTo(outcome.DestinationPath));
+            Assert.That(outcome.MediaFileService.FilesByBook.Single().Size, Is.EqualTo(identicalContent.Length));
+        }
+
+        [Test]
+        public void opt_in_should_adopt_a_non_identical_untracked_destination_without_touching_it()
+        {
+            var outcome = RunDuplicateImportScenario(
+                Quality.EPUB,
+                Quality.EPUB,
+                existingAtDestination: true,
+                existingUntracked: true,
+                keepExistingLibraryFileOnImportConflict: true,
+                existingContent: "keep this existing file",
+                incomingContent: "different downloaded file");
+
+            Assert.That(outcome.Results.Single().Result, Is.EqualTo(ImportResultType.Imported));
+            Assert.That(outcome.TransferCalls, Is.Zero);
+            Assert.That(outcome.DestinationContent, Is.EqualTo("keep this existing file"));
+            Assert.That(outcome.SourceFilesOnDisk, Is.True);
+            Assert.That(outcome.MediaFileService.FilesByBook, Has.Count.EqualTo(1));
+            Assert.That(outcome.MediaFileService.FilesByBook.Single().Path, Is.EqualTo(outcome.DestinationPath));
+        }
+
+        [Test]
+        public void opt_in_should_not_adopt_an_empty_untracked_destination()
+        {
+            var outcome = RunDuplicateImportScenario(
+                Quality.EPUB,
+                Quality.EPUB,
+                existingAtDestination: true,
+                existingUntracked: true,
+                keepExistingLibraryFileOnImportConflict: true,
+                existingContent: string.Empty);
+
+            Assert.That(outcome.Results.Single().Result, Is.EqualTo(ImportResultType.Skipped));
+            Assert.That(outcome.Results.Single().Errors.Single(), Does.Contain("empty or cannot be inspected"));
+            Assert.That(outcome.TransferCalls, Is.Zero);
+            Assert.That(outcome.DestinationContent, Is.Empty);
+            Assert.That(outcome.MediaFileService.FilesByBook, Is.Empty);
+        }
+
+        [Test]
+        public void opt_in_should_not_adopt_an_untracked_destination_during_a_normal_upgrade()
+        {
+            var outcome = RunDuplicateImportScenario(
+                Quality.EPUB,
+                Quality.EPUB,
+                incomingRevision: new Revision(2),
+                existingFileCount: 2,
+                existingAtDestination: true,
+                existingUntracked: true,
+                keepExistingLibraryFileOnImportConflict: true,
+                existingContent: "existing collision");
+
+            Assert.That(outcome.Results.Single().Result, Is.EqualTo(ImportResultType.Skipped));
+            Assert.That(outcome.Results.Single().Errors.Single(), Does.Contain("cannot be adopted during an upgrade or replacement"));
+            Assert.That(outcome.TransferCalls, Is.Zero);
+            Assert.That(outcome.DestinationContent, Is.EqualTo("existing collision"));
+            Assert.That(outcome.MediaFileService.FilesByBook, Has.Count.EqualTo(1));
+        }
+
+        [Test]
         public void manual_import_without_replace_onto_an_occupied_destination_should_be_rejected_not_throw()
         {
             var outcome = RunDuplicateImportScenario(Quality.EPUB, Quality.EPUB, isManualImport: true, existingAtDestination: true, existingUntracked: true, replaceExisting: false);
@@ -1907,6 +2011,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             public List<ImportResult> Results { get; init; }
             public StubMediaFileService MediaFileService { get; init; }
             public StubRecycleBinProvider RecycleBin { get; init; }
+            public string DestinationPath { get; init; }
             public bool ExistingFilesOnDisk { get; init; }
             public bool SourceFilesOnDisk { get; init; }
             public int TransferCalls { get; init; }
@@ -1943,7 +2048,11 @@ namespace Chaptarr.Core.Test.MediaFiles
             bool existingUntracked = false,
             bool destinationFolderMissing = false,
             bool replaceExisting = true,
-            bool downloadForced = false)
+            bool downloadForced = false,
+            bool keepExistingLibraryFileOnImportConflict = false,
+            bool isGeneratedConversion = false,
+            string existingContent = "existing",
+            string incomingContent = "incoming")
         {
             var tempDir = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"duplicate-import-{Guid.NewGuid():N}");
             var libraryDir = Path.Combine(tempDir, "library");
@@ -2046,10 +2155,10 @@ namespace Chaptarr.Core.Test.MediaFiles
                     var existingPath = existingAtDestination && i == 0
                         ? destinationPath
                         : Path.Combine(libraryDir, $"The Vines - Part {i + 1}{ExtensionForQuality(existingQuality)}");
-                    File.WriteAllText(existingPath, "existing");
+                    File.WriteAllText(existingPath, existingContent);
                     existingPaths.Add(existingPath);
 
-                    if (existingUntracked)
+                    if (existingUntracked && (!existingAtDestination || i == 0))
                     {
                         continue;
                     }
@@ -2074,7 +2183,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                 for (var i = 0; i < fileCount; i++)
                 {
                     var sourcePath = Path.Combine(incomingDir, $"part-{i + 1}{ExtensionForQuality(incomingQuality)}");
-                    File.WriteAllText(sourcePath, "incoming");
+                    File.WriteAllText(sourcePath, incomingContent);
                     sourcePaths.Add(sourcePath);
                     decisions.Add(new ImportDecision<LocalBook>(new LocalBook
                     {
@@ -2086,6 +2195,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                         PartCount = fileCount,
                         Quality = new QualityModel { Quality = incomingQuality, Revision = incomingRevision ?? new Revision() },
                         IsManualImport = isManualImport,
+                        IsGeneratedConversion = isGeneratedConversion,
                         Size = new FileInfo(sourcePath).Length,
                         Modified = File.GetLastWriteTimeUtc(sourcePath)
                     }));
@@ -2131,6 +2241,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                     Proxy<IM4bConversionService>(),
                     LogManager.GetLogger("ImportApprovedBooksAdditionalCopyFixture"),
                     diskProvider: duplicateScenarioDisk,
+                    configService: CreateConfigService(keepExistingLibraryFileOnImportConflict: keepExistingLibraryFileOnImportConflict),
                     customFormatCalculationService: customFormats);
 
                 var results = service.Import(
@@ -2145,6 +2256,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                     Results = results,
                     MediaFileService = mediaFileService,
                     RecycleBin = recycleBin,
+                    DestinationPath = destinationPath,
                     ExistingFilesOnDisk = existingPaths.All(File.Exists),
                     SourceFilesOnDisk = sourcePaths.All(File.Exists),
                     TransferCalls = mover.CopyCalls + mover.MoveCalls,

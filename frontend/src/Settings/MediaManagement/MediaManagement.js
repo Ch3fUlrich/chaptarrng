@@ -208,6 +208,20 @@ class MediaManagement extends Component {
                         />
                       </FormGroup>
 
+                      <FormGroup size={sizes.MEDIUM}>
+                        <FormLabel>
+                          {translate('KeepExistingLibraryFileOnImportConflict')}
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.CHECK}
+                          name="keepExistingLibraryFileOnImportConflict"
+                          helpText={translate('KeepExistingLibraryFileOnImportConflictHelpText')}
+                          onChange={onInputChange}
+                          {...settings.keepExistingLibraryFileOnImportConflict}
+                        />
+                      </FormGroup>
+
                       {
                         settings.importExtraFiles.value ?
                           <FormGroup

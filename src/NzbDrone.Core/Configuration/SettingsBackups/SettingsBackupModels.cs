@@ -262,6 +262,7 @@ namespace NzbDrone.Core.Configuration.SettingsBackups
         public bool SkipFreeSpaceCheckWhenImporting { get; set; }
         public int MinimumFreeSpaceWhenImporting { get; set; }
         public bool CopyUsingHardlinks { get; set; }
+        public bool KeepExistingLibraryFileOnImportConflict { get; set; }
         public bool ImportExtraFiles { get; set; }
         public string ExtraFileExtensions { get; set; }
 

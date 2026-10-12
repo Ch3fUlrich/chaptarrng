@@ -16910,6 +16910,9 @@
           "copyUsingHardlinks": {
             "type": "boolean"
           },
+          "keepExistingLibraryFileOnImportConflict": {
+            "type": "boolean"
+          },
           "importExtraFiles": {
             "type": "boolean"
           },

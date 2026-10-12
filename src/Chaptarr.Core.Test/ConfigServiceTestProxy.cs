@@ -13,6 +13,7 @@ namespace Chaptarr.Core.Test
         public string DefaultAudiobookRootFolderPath { get; set; } = string.Empty;
         public string DefaultEbookRootFolderPath { get; set; } = string.Empty;
         public bool ImportExtraFiles { get; set; }
+        public bool KeepExistingLibraryFileOnImportConflict { get; set; }
         public ProperDownloadTypes DownloadPropersAndRepacks { get; set; } = ProperDownloadTypes.PreferAndUpgrade;
         public bool AudioProductionCustomFormatsSeeded { get; set; }
         public string SeededBuiltInCustomFormatKeys { get; set; } = string.Empty;
@@ -67,6 +68,11 @@ namespace Chaptarr.Core.Test
                 return ImportExtraFiles;
             }
 
+            if (targetMethod?.Name == "get_KeepExistingLibraryFileOnImportConflict")
+            {
+                return KeepExistingLibraryFileOnImportConflict;
+            }
+
             if (targetMethod?.Name == "get_AudioProductionCustomFormatsSeeded")
             {
                 return AudioProductionCustomFormatsSeeded;
@@ -109,6 +115,12 @@ namespace Chaptarr.Core.Test
             if (targetMethod?.Name == "set_ImportExtraFiles")
             {
                 ImportExtraFiles = (bool)args[0];
+                return null;
+            }
+
+            if (targetMethod?.Name == "set_KeepExistingLibraryFileOnImportConflict")
+            {
+                KeepExistingLibraryFileOnImportConflict = (bool)args[0];
                 return null;
             }
 

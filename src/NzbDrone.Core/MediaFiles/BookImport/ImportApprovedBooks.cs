@@ -70,6 +70,21 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             public List<BookFile> DatabaseRowsToReplace { get; } = new();
         }
 
+        private sealed class FileInspection
+        {
+            public long Size { get; init; }
+            public DateTime Modified { get; init; }
+            public byte[] Sha256 { get; init; }
+        }
+
+        private sealed class OccupiedDestinationCheck
+        {
+            public string DestinationPath { get; init; }
+            public string RejectionReason { get; init; }
+            public FileInspection AdoptedFile { get; init; }
+            public bool ShouldAdopt => AdoptedFile != null;
+        }
+
         // Files already written or displaced by the batch currently being imported. A multi-file
         // release re-reads the book's existing rows for every file, so without this the second file
         // of a batch sees the first file's freshly written destination as an "old file to replace".
@@ -1037,6 +1052,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             string relocateOriginalPath = null;
             var existingFileAlreadyAtDestination = false;
             var existingFileWasUnmapped = false;
+            var adoptedUntrackedDestination = false;
             int? existingFileOriginalEditionId = null;
             var publishBookFileAddedEventAfterMonitoring = false;
             var writeTagsForAdoptedFileAfterMonitoring = false;
@@ -1157,9 +1173,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     existingFiles.Count);
 
                     var manualReplaceExisting = replaceExisting && (localBook.IsManualImport || downloadForced);
-                    var filesToReplace = existingFiles
-                        .Where(f => IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState))
-                        .ToList();
 
                     // The files this conversion consumed are the ones it is meant to supersede. They
                     // are named explicitly rather than swept up by manualReplaceExisting, which takes
@@ -1171,9 +1184,26 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             .ToHashSet(StringComparer.OrdinalIgnoreCase)
                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                    var filesToReplace = existingFiles.Where(f =>
-                        !f.Path.Equals(localBook.Path, StringComparison.OrdinalIgnoreCase) &&
-                        (f.EditionId == edition.Id || manualReplaceExisting || conversionSourcePaths.Contains(f.Path))).ToList();
+                    var filesToReplace = existingFiles
+                        .Where(f =>
+                        {
+                            if (IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState))
+                            {
+                                return true;
+                            }
+
+                            if (f?.Path.IsNullOrWhiteSpace() != false ||
+                                f.Path.PathEquals(localBook.Path) ||
+                                !conversionSourcePaths.Contains(f.Path))
+                            {
+                                return false;
+                            }
+
+                            return batchState == null ||
+                                   (!batchState.ProtectedDestinationPaths.Contains(f.Path) &&
+                                    (f.Id <= 0 || !batchState.ProtectedFileIds.Contains(f.Id)));
+                        })
+                        .ToList();
 
                     // A library conversion replaces what it converted and nothing else. Same-edition
                     // files that were not part of the conversion (an eBook filed against the same
@@ -1395,16 +1425,29 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
                 else
                 {
-                    // An import must not reach the transfer with an occupied destination: the transfer never
-                    // overwrites and only reports that as DestinationAlreadyExistsException, after staging began.
-                    // A tracked file this import replaces is exempt (it is staged aside first), so this also applies to
-                    // a manual import that replaces: an untracked or other-edition file at the destination is not staged.
-                    //
-                    // A forced import overrides quality and duplicate rejections, but it cannot make the transfer
-                    // overwrite a file, so it gets the same classification with a message that says how to proceed.
+                    // The transfer never overwrites an occupied destination. An untracked destination can instead be
+                    // adopted when it is byte-identical to the incoming file, or when the user explicitly enabled
+                    // adoption of non-identical files. Adoption only creates a BookFile row; it never edits the file.
                     if (relocateExistingFile == null)
                     {
-                        var occupiedDestinationRejection = GetOccupiedDestinationRejectionReason(bookFile, localBook, edition, filesToReplace);
+                        var occupiedDestinationCheck = GetOccupiedDestinationCheck(bookFile, localBook, edition, filesToReplace);
+                        if (occupiedDestinationCheck.ShouldAdopt)
+                        {
+                            adoptedUntrackedDestination = true;
+                            bookFile.Path = occupiedDestinationCheck.DestinationPath;
+                            bookFile.Size = occupiedDestinationCheck.AdoptedFile.Size;
+                            bookFile.Modified = occupiedDestinationCheck.AdoptedFile.Modified;
+                            bookFile.MediaInfo = MediaDuration.CreateMediaInfo(
+                                _mediaInfoExtractor,
+                                occupiedDestinationCheck.DestinationPath,
+                                durationSeconds);
+
+                            _logger.Info("[IMPORT-ADOPT] Keeping the existing destination file and registering it for edition {0}: {1}",
+                                edition.Id,
+                                occupiedDestinationCheck.DestinationPath);
+                        }
+
+                        var occupiedDestinationRejection = occupiedDestinationCheck.RejectionReason;
                         if (occupiedDestinationRejection != null && downloadForced && occupiedDestinationRejection != AlreadyImportedRejectionReason)
                         {
                             occupiedDestinationRejection += ". A forced import cannot overwrite it: remove or track that file first, or replace the tracked file.";
@@ -1418,194 +1461,197 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         }
                     }
 
-                    // Handle file move/copy for new downloads
-                    bool copyOnly = !localBook.IsGeneratedConversion &&
-                                    (importMode == ImportMode.Copy || !ShouldMoveFile(localBook, author));
-                    // Relocation of an already-tracked library file must not create duplicates; force move semantics.
-                    if (relocateExistingFile != null)
+                    if (!adoptedUntrackedDestination)
                     {
-                        copyOnly = false;
-                    }
-
-                    // Upgrade safety: never delete/recycle existing files before the new file is successfully transferred.
-                    // Stage existing files by renaming them out of the way, transfer the new file, then recycle/delete DB records.
-                    var stagedReplacements = new List<(BookFile OldFile, string BackupPath)>();
-                    if (filesToReplace.Any())
-                    {
-                        var stageStopwatch = Stopwatch.StartNew();
-                        foreach (var oldFile in filesToReplace)
+                        // Handle file move/copy for new downloads
+                        bool copyOnly = !localBook.IsGeneratedConversion &&
+                                        (importMode == ImportMode.Copy || !ShouldMoveFile(localBook, author));
+                        // Relocation of an already-tracked library file must not create duplicates; force move semantics.
+                        if (relocateExistingFile != null)
                         {
-                            // Preserve CalibreId from the replaced file when applicable.
-                            if (bookFile.CalibreId == 0 && oldFile.CalibreId != 0)
-                            {
-                                bookFile.CalibreId = oldFile.CalibreId;
-                            }
-
-                            if (!File.Exists(oldFile.Path))
-                            {
-                                continue;
-                            }
-
-                            // Never stage a path this same batch already imported into; that file is new content.
-                            if (batchState != null && batchState.ProtectedDestinationPaths.Contains(oldFile.Path))
-                            {
-                                continue;
-                            }
-
-                            var backupPath = GetUniqueUpgradeBackupPath(oldFile.Path);
-                            try
-                            {
-                                File.Move(oldFile.Path, backupPath);
-                                stagedReplacements.Add((oldFile, backupPath));
-                                if (oldFile.Id > 0)
-                                {
-                                    batchState?.ProtectedFileIds.Add(oldFile.Id);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.Error(ex, "[CLEAN-IMPORT] Failed to stage existing file for upgrade: {0}", oldFile.Path);
-                                RollbackStagedReplacements(stagedReplacements);
-                                return (new ImportResult(decision, $"Failed to stage existing file for upgrade: {ex.Message}"), null);
-                            }
+                            copyOnly = false;
                         }
-                        stageStopwatch.Stop();
-                        _logger.Debug("[PERFORMANCE] Old file staging took {0}ms", stageStopwatch.ElapsedMilliseconds);
-                    }
 
-                    try
-                    {
-                        var transferStopwatch = Stopwatch.StartNew();
-                        // Calibre only manages ebooks; audiobooks in a mixed calibre root are plain
-                        // file transfers.
-                        var importExtension = (Path.GetExtension(bookFile.Path) ?? string.Empty).ToLowerInvariant();
-                        var isAudioImport = MediaFileExtensions.AudioExtensions.Contains(importExtension);
-                        var mediaRootPath = isAudioImport
-                            ? localBook.Author?.AudiobookPath
-                            : localBook.Author?.EbookPath;
-                        mediaRootPath = mediaRootPath.IsNotNullOrWhiteSpace() ? mediaRootPath : localBook.Author?.Path;
-                        var calibreRoot = _rootFolderService != null && _calibre != null && mediaRootPath.IsNotNullOrWhiteSpace()
-                            ? _rootFolderService.GetBestRootFolder(mediaRootPath)
-                            : null;
-
-                        if (!isAudioImport && calibreRoot?.IsCalibreLibrary == true && calibreRoot.CalibreSettings != null)
+                        // Upgrade safety: never delete/recycle existing files before the new file is successfully transferred.
+                        // Stage existing files by renaming them out of the way, transfer the new file, then recycle/delete DB records.
+                        var stagedReplacements = new List<(BookFile OldFile, string BackupPath)>();
+                        if (filesToReplace.Any())
                         {
-                            if (bookFile.CalibreId == 0 && bookFile.EditionId > 0)
+                            var stageStopwatch = Stopwatch.StartNew();
+                            foreach (var oldFile in filesToReplace)
                             {
-                                var siblingCalibreId = 0;
+                                // Preserve CalibreId from the replaced file when applicable.
+                                if (bookFile.CalibreId == 0 && oldFile.CalibreId != 0)
+                                {
+                                    bookFile.CalibreId = oldFile.CalibreId;
+                                }
+
+                                if (!File.Exists(oldFile.Path))
+                                {
+                                    continue;
+                                }
+
+                                // Never stage a path this same batch already imported into; that file is new content.
+                                if (batchState != null && batchState.ProtectedDestinationPaths.Contains(oldFile.Path))
+                                {
+                                    continue;
+                                }
+
+                                var backupPath = GetUniqueUpgradeBackupPath(oldFile.Path);
                                 try
                                 {
-                                    siblingCalibreId = _mediaFileService.GetFilesByBook(localBook.Book.Id)
-                                        .Where(f => f.EditionId == bookFile.EditionId && f.CalibreId > 0)
-                                        .Select(f => f.CalibreId)
-                                        .FirstOrDefault();
+                                    File.Move(oldFile.Path, backupPath);
+                                    stagedReplacements.Add((oldFile, backupPath));
+                                    if (oldFile.Id > 0)
+                                    {
+                                        batchState?.ProtectedFileIds.Add(oldFile.Id);
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.Debug(ex, "Unable to look up sibling calibre ids for edition {0}", bookFile.EditionId);
-                                }
-
-                                if (siblingCalibreId == 0 &&
-                                    _recentCalibreIdsByEditionId.TryGetValue(bookFile.EditionId, out var recentCalibreId) &&
-                                    recentCalibreId.Added > DateTime.UtcNow.AddMinutes(-10))
-                                {
-                                    siblingCalibreId = recentCalibreId.CalibreId;
-                                }
-
-                                if (siblingCalibreId > 0)
-                                {
-                                    _logger.Debug("[CLEAN-IMPORT] Adding {0} as another format of calibre book {1} (edition {2})", bookFile.Path, siblingCalibreId, bookFile.EditionId);
-                                    bookFile.CalibreId = siblingCalibreId;
+                                    _logger.Error(ex, "[CLEAN-IMPORT] Failed to stage existing file for upgrade: {0}", oldFile.Path);
+                                    RollbackStagedReplacements(stagedReplacements);
+                                    return (new ImportResult(decision, $"Failed to stage existing file for upgrade: {ex.Message}"), null);
                                 }
                             }
+                            stageStopwatch.Stop();
+                            _logger.Debug("[PERFORMANCE] Old file staging took {0}ms", stageStopwatch.ElapsedMilliseconds);
+                        }
 
-                            var calibreSource = bookFile.Path;
-                            bookFile = _calibre.AddAndConvert(bookFile, calibreRoot.CalibreSettings);
+                        try
+                        {
+                            var transferStopwatch = Stopwatch.StartNew();
+                            // Calibre only manages ebooks; audiobooks in a mixed calibre root are plain
+                            // file transfers.
+                            var importExtension = (Path.GetExtension(bookFile.Path) ?? string.Empty).ToLowerInvariant();
+                            var isAudioImport = MediaFileExtensions.AudioExtensions.Contains(importExtension);
+                            var mediaRootPath = isAudioImport
+                                ? localBook.Author?.AudiobookPath
+                                : localBook.Author?.EbookPath;
+                            mediaRootPath = mediaRootPath.IsNotNullOrWhiteSpace() ? mediaRootPath : localBook.Author?.Path;
+                            var calibreRoot = _rootFolderService != null && _calibre != null && mediaRootPath.IsNotNullOrWhiteSpace()
+                                ? _rootFolderService.GetBestRootFolder(mediaRootPath)
+                                : null;
 
-                            if (bookFile.CalibreId > 0 && bookFile.EditionId > 0)
+                            if (!isAudioImport && calibreRoot?.IsCalibreLibrary == true && calibreRoot.CalibreSettings != null)
                             {
-                                foreach (var stale in _recentCalibreIdsByEditionId.Where(p => p.Value.Added < DateTime.UtcNow.AddMinutes(-10)).Select(p => p.Key).ToList())
+                                if (bookFile.CalibreId == 0 && bookFile.EditionId > 0)
                                 {
-                                    _recentCalibreIdsByEditionId.TryRemove(stale, out _);
+                                    var siblingCalibreId = 0;
+                                    try
+                                    {
+                                        siblingCalibreId = _mediaFileService.GetFilesByBook(localBook.Book.Id)
+                                            .Where(f => f.EditionId == bookFile.EditionId && f.CalibreId > 0)
+                                            .Select(f => f.CalibreId)
+                                            .FirstOrDefault();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.Debug(ex, "Unable to look up sibling calibre ids for edition {0}", bookFile.EditionId);
+                                    }
+
+                                    if (siblingCalibreId == 0 &&
+                                        _recentCalibreIdsByEditionId.TryGetValue(bookFile.EditionId, out var recentCalibreId) &&
+                                        recentCalibreId.Added > DateTime.UtcNow.AddMinutes(-10))
+                                    {
+                                        siblingCalibreId = recentCalibreId.CalibreId;
+                                    }
+
+                                    if (siblingCalibreId > 0)
+                                    {
+                                        _logger.Debug("[CLEAN-IMPORT] Adding {0} as another format of calibre book {1} (edition {2})", bookFile.Path, siblingCalibreId, bookFile.EditionId);
+                                        bookFile.CalibreId = siblingCalibreId;
+                                    }
                                 }
 
-                                _recentCalibreIdsByEditionId[bookFile.EditionId] = (bookFile.CalibreId, DateTime.UtcNow);
+                                var calibreSource = bookFile.Path;
+                                bookFile = _calibre.AddAndConvert(bookFile, calibreRoot.CalibreSettings);
+
+                                if (bookFile.CalibreId > 0 && bookFile.EditionId > 0)
+                                {
+                                    foreach (var stale in _recentCalibreIdsByEditionId.Where(p => p.Value.Added < DateTime.UtcNow.AddMinutes(-10)).Select(p => p.Key).ToList())
+                                    {
+                                        _recentCalibreIdsByEditionId.TryRemove(stale, out _);
+                                    }
+
+                                    _recentCalibreIdsByEditionId[bookFile.EditionId] = (bookFile.CalibreId, DateTime.UtcNow);
+                                }
+
+                                PushCalibreIdentity(bookFile, localBook, calibreRoot.CalibreSettings);
+
+                                if (!copyOnly && !calibreSource.PathEquals(bookFile.Path))
+                                {
+                                    _diskProvider.DeleteFile(calibreSource);
+                                }
                             }
-
-                            PushCalibreIdentity(bookFile, localBook, calibreRoot.CalibreSettings);
-
-                            if (!copyOnly && !calibreSource.PathEquals(bookFile.Path))
+                            else if (copyOnly)
                             {
-                                _diskProvider.DeleteFile(calibreSource);
+                                bookFile = _bookFileMover.CopyBookFile(bookFile, localBook);
+                            }
+                            else
+                            {
+                                bookFile = _bookFileMover.MoveBookFile(bookFile, localBook);
+                            }
+                            transferStopwatch.Stop();
+                            _logger.Debug("[PERFORMANCE] File transfer took {0}ms", transferStopwatch.ElapsedMilliseconds);
+                        }
+                        catch
+                        {
+                            RollbackStagedReplacements(stagedReplacements);
+                            throw;
+                        }
+
+                        if (bookFile.Id == 0)
+                        {
+                            pendingFileCommit = new PendingFileCommit
+                            {
+                                BookFile = bookFile,
+                                LocalBook = localBook,
+                                Author = author,
+                                SourcePath = localBook.Path,
+                                DestinationPath = bookFile.Path,
+                                CopyOnly = copyOnly,
+                                StagedReplacements = stagedReplacements
+                            };
+
+                            pendingFileCommit.DatabaseRowsToReplace.AddRange(stagedReplacements.Select(replacement => replacement.OldFile));
+                        }
+
+                        // If the destination path is already tracked, either include it in the staged
+                        // upgrade transaction or preserve the established stale-row adoption path.
+                        bookFile = ResolveBookFilePathConflict(bookFile, localBook, pendingFileCommit, batchState);
+                        if (pendingFileCommit != null)
+                        {
+                            pendingFileCommit.DestinationPath = bookFile.Path;
+                        }
+
+                        if (pendingFileCommit == null || pendingFileCommit.DatabaseCommitted)
+                        {
+                            if (relocateExistingFile != null)
+                            {
+                                writeTagsForRelocatedFileAfterPersistence = true;
+                            }
+                            else
+                            {
+                                TryWriteTags(bookFile, true, "TRANSFER");
                             }
                         }
-                        else if (copyOnly)
+
+                        // Import extras (best-effort; do not fail the core import if extras post-processing fails)
+                        var extrasStopwatch = Stopwatch.StartNew();
+                        try
                         {
-                            bookFile = _bookFileMover.CopyBookFile(bookFile, localBook);
+                            _extraService.ImportTrack(localBook, bookFile, copyOnly);
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            bookFile = _bookFileMover.MoveBookFile(bookFile, localBook);
+                            _logger.Warn(ex, "[CLEAN-IMPORT] Failed to import extras for: {0}", localBook.Path);
                         }
-                        transferStopwatch.Stop();
-                        _logger.Debug("[PERFORMANCE] File transfer took {0}ms", transferStopwatch.ElapsedMilliseconds);
-                    }
-                    catch
-                    {
-                        RollbackStagedReplacements(stagedReplacements);
-                        throw;
-                    }
-
-                    if (bookFile.Id == 0)
-                    {
-                        pendingFileCommit = new PendingFileCommit
+                        finally
                         {
-                            BookFile = bookFile,
-                            LocalBook = localBook,
-                            Author = author,
-                            SourcePath = localBook.Path,
-                            DestinationPath = bookFile.Path,
-                            CopyOnly = copyOnly,
-                            StagedReplacements = stagedReplacements
-                        };
-
-                        pendingFileCommit.DatabaseRowsToReplace.AddRange(stagedReplacements.Select(replacement => replacement.OldFile));
-                    }
-
-                    // If the destination path is already tracked, either include it in the staged
-                    // upgrade transaction or preserve the established stale-row adoption path.
-                    bookFile = ResolveBookFilePathConflict(bookFile, localBook, pendingFileCommit, batchState);
-                    if (pendingFileCommit != null)
-                    {
-                        pendingFileCommit.DestinationPath = bookFile.Path;
-                    }
-
-                    if (pendingFileCommit == null || pendingFileCommit.DatabaseCommitted)
-                    {
-                        if (relocateExistingFile != null)
-                        {
-                            writeTagsForRelocatedFileAfterPersistence = true;
+                            extrasStopwatch.Stop();
+                            _logger.Debug("[PERFORMANCE] Extras import took {0}ms", extrasStopwatch.ElapsedMilliseconds);
                         }
-                        else
-                        {
-                            TryWriteTags(bookFile, true, "TRANSFER");
-                        }
-                    }
-
-                    // Import extras (best-effort; do not fail the core import if extras post-processing fails)
-                    var extrasStopwatch = Stopwatch.StartNew();
-                    try
-                    {
-                        _extraService.ImportTrack(localBook, bookFile, copyOnly);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Warn(ex, "[CLEAN-IMPORT] Failed to import extras for: {0}", localBook.Path);
-                    }
-                    finally
-                    {
-                        extrasStopwatch.Stop();
-                        _logger.Debug("[PERFORMANCE] Extras import took {0}ms", extrasStopwatch.ElapsedMilliseconds);
                     }
                 }
 
@@ -1734,19 +1780,19 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             return null;
         }
 
-        private string GetOccupiedDestinationRejectionReason(BookFile bookFile, LocalBook localBook, Edition edition, List<BookFile> filesToReplace)
+        private OccupiedDestinationCheck GetOccupiedDestinationCheck(BookFile bookFile, LocalBook localBook, Edition edition, List<BookFile> filesToReplace)
         {
             var destinationPath = _bookFileMover.GetImportDestinationPath(bookFile, localBook);
 
             if (destinationPath.IsNullOrWhiteSpace() || destinationPath.PathEquals(localBook.Path))
             {
-                return null;
+                return new OccupiedDestinationCheck();
             }
 
             // A file this import is about to stage aside is an upgrade, not a duplicate.
             if (filesToReplace.Any(f => f.Path.IsNotNullOrWhiteSpace() && f.Path.PathEquals(destinationPath)))
             {
-                return null;
+                return new OccupiedDestinationCheck();
             }
 
             // FileExists on a missing path falls back to enumerating each directory along it for a
@@ -1755,27 +1801,174 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var destinationDirectory = Path.GetDirectoryName(destinationPath);
             if (destinationDirectory.IsNotNullOrWhiteSpace() && !DestinationFolderExists(destinationDirectory))
             {
-                return null;
+                return new OccupiedDestinationCheck();
             }
 
             if (!DestinationFileExists(destinationPath))
             {
-                return null;
+                return new OccupiedDestinationCheck();
             }
 
             var trackedAtDestination = _mediaFileService.GetFileWithPath(destinationPath);
 
             if (trackedAtDestination == null)
             {
-                return $"An untracked file already occupies the managed destination: {destinationPath}";
+                var rejectionReason = $"An untracked file already occupies the managed destination: {destinationPath}";
+
+                // Adoption is not a shortcut around normal upgrade/replacement semantics. Existing files that
+                // this import would replace must still go through the staged transfer path.
+                if (filesToReplace.Any())
+                {
+                    return new OccupiedDestinationCheck
+                    {
+                        DestinationPath = destinationPath,
+                        RejectionReason = rejectionReason + " and cannot be adopted during an upgrade or replacement"
+                    };
+                }
+
+                if (localBook.IsGeneratedConversion || localBook.IsLibraryConversion)
+                {
+                    return new OccupiedDestinationCheck
+                    {
+                        DestinationPath = destinationPath,
+                        RejectionReason = rejectionReason + "; generated conversion output cannot be adopted"
+                    };
+                }
+
+                if (!TryInspectFile(destinationPath, out var destinationInspection))
+                {
+                    return new OccupiedDestinationCheck
+                    {
+                        DestinationPath = destinationPath,
+                        RejectionReason = rejectionReason + "; the existing file is empty or cannot be inspected"
+                    };
+                }
+
+                var allowNonIdenticalAdoption = false;
+                if (_configService != null)
+                {
+                    try
+                    {
+                        allowNonIdenticalAdoption = _configService.KeepExistingLibraryFileOnImportConflict;
+                    }
+                    catch (NotImplementedException)
+                    {
+                        // Older test doubles may not yet expose this optional setting; preserve the safe default.
+                    }
+                }
+
+                if (allowNonIdenticalAdoption)
+                {
+                    return new OccupiedDestinationCheck
+                    {
+                        DestinationPath = destinationPath,
+                        AdoptedFile = destinationInspection
+                    };
+                }
+
+                if (TryGetFileSize(localBook.Path, out var sourceSize) &&
+                    sourceSize > 0 &&
+                    sourceSize == destinationInspection.Size &&
+                    TryInspectFile(localBook.Path, out var sourceInspection) &&
+                    sourceInspection.Size == destinationInspection.Size &&
+                    CryptographicOperations.FixedTimeEquals(sourceInspection.Sha256, destinationInspection.Sha256))
+                {
+                    return new OccupiedDestinationCheck
+                    {
+                        DestinationPath = destinationPath,
+                        AdoptedFile = destinationInspection
+                    };
+                }
+
+                return new OccupiedDestinationCheck
+                {
+                    DestinationPath = destinationPath,
+                    RejectionReason = rejectionReason
+                };
             }
 
             if (trackedAtDestination.EditionId == edition.Id)
             {
-                return AlreadyImportedRejectionReason;
+                return new OccupiedDestinationCheck
+                {
+                    DestinationPath = destinationPath,
+                    RejectionReason = AlreadyImportedRejectionReason
+                };
             }
 
-            return $"A file tracked for another edition already occupies the managed destination: {destinationPath}";
+            return new OccupiedDestinationCheck
+            {
+                DestinationPath = destinationPath,
+                RejectionReason = $"A file tracked for another edition already occupies the managed destination: {destinationPath}"
+            };
+        }
+
+        private bool TryGetFileSize(string path, out long size)
+        {
+            size = 0;
+
+            if (!DestinationFileExists(path))
+            {
+                return false;
+            }
+
+            try
+            {
+                size = _diskProvider?.GetFileSize(path) ?? new FileInfo(path).Length;
+                return size > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to inspect file size at {0}", path);
+                return false;
+            }
+        }
+
+        private bool TryInspectFile(string path, out FileInspection inspection)
+        {
+            inspection = null;
+
+            if (!TryGetFileSize(path, out var sizeBefore))
+            {
+                return false;
+            }
+
+            try
+            {
+                var modifiedBefore = _diskProvider?.FileGetLastWrite(path) ?? File.GetLastWriteTimeUtc(path);
+                using var stream = _diskProvider?.OpenReadStream(path) ?? File.OpenRead(path);
+                if (!stream.CanRead || (stream.CanSeek && stream.Length != sizeBefore))
+                {
+                    return false;
+                }
+
+                var sha256 = SHA256.HashData(stream);
+                if (!TryGetFileSize(path, out var sizeAfter))
+                {
+                    return false;
+                }
+
+                var modifiedAfter = _diskProvider?.FileGetLastWrite(path) ?? File.GetLastWriteTimeUtc(path);
+                if (sizeBefore != sizeAfter ||
+                    modifiedBefore != modifiedAfter ||
+                    (stream.CanSeek && stream.Length != sizeAfter))
+                {
+                    return false;
+                }
+
+                inspection = new FileInspection
+                {
+                    Size = sizeAfter,
+                    Modified = modifiedAfter,
+                    Sha256 = sha256
+                };
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to inspect existing import destination {0}", path);
+                return false;
+            }
         }
 
         private void PushCalibreIdentity(BookFile bookFile, LocalBook localBook, CalibreSettings settings)
