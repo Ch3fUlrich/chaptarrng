@@ -4,6 +4,50 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.968](https://github.com/snapetech/chaptarrng/compare/v0.9.967..v0.9.968) - 2026-10-12
+
+### User-facing changes
+
+#### Changed
+
+- **Build:** **Breaking:** ImageSharp 4.1.3 requires a valid Six Labors license when ChaptarrNG is built from source. Official images already include a licensed build, so no build key must be configured at runtime. All use remains subject to Six Labors' license terms.
+  - **Action required:** Configure SIXLABORS_LICENSE_KEY when building from source; official images need no build key at runtime.
+- **Validation:** ChaptarrNG CI reconciles source-bound receipts across Linux, Windows, macOS, and disposable PostgreSQL runners before completing validation. Fingerprints remain consistent across Git-normalized Windows line endings.
+
+#### Fixed
+
+- **Validation:** Local validation selects macOS and Windows test tasks correctly, and hosted reconciliation preserves receipts from every runner.
+- **Distribution:** Manual ChaptarrNG releases now forward the private ImageSharp build license to validation and image publishing, allowing both reusable build workflows to run under this repository's account settings.
+- **Release Workflow:** Grant release validation the read-only Actions permission needed to reconcile its test receipts, allowing GitHub to start the reusable workflow.
+
+#### Security
+
+- **Image Processing:** ChaptarrNG updates the licensed ImageSharp dependency to v4.1.3 and removes the audit suppressions previously required for v3.2.0 advisories.
+
+### Security
+- *(release-notes)* Update ImageSharp security note - ([93718b9](https://github.com/snapetech/chaptarrng/commit/93718b92baf0bdc48995466b493a4f4554f0bffb))
+
+### Features
+- *(testing)* Add source-bound validation engine - ([7c3637d](https://github.com/snapetech/chaptarrng/commit/7c3637d025af7307bcc28040cccb3094400375e0))
+
+### Bug Fixes
+- *(deps)* Update ImageSharp to 4.1.3 - ([6613a51](https://github.com/snapetech/chaptarrng/commit/6613a51d35f60b75fec42d88d2df5224e05f74de))
+- *(release)* Pass receipt read permission - ([9b180d5](https://github.com/snapetech/chaptarrng/commit/9b180d5818b42906eaab25d185f04bb1af105bf7))
+- *(release)* Forward ImageSharp license explicitly - ([2b202d8](https://github.com/snapetech/chaptarrng/commit/2b202d884cff0b777b2adf0f8fd608b17373bb1c))
+- *(security)* Update ImageSharp to patched 3.2.0 - ([f5096e3](https://github.com/snapetech/chaptarrng/commit/f5096e3323b86c3ff85d4a45316fef9151f098f2))
+- *(validation)* Preserve runner receipts during reconciliation - ([5308ac7](https://github.com/snapetech/chaptarrng/commit/5308ac7a28c5686b76fa0c35750bf948bf8a4fa0))
+- *(validation)* Map local platforms to CI node IDs - ([cf3e111](https://github.com/snapetech/chaptarrng/commit/cf3e11142ce493e55928c98f52b4847e54a647d6))
+- *(validation)* Assign test tasks to CI nodes - ([fd59dd3](https://github.com/snapetech/chaptarrng/commit/fd59dd3666aca541c5c184007193f398295360e7))
+- *(validation)* Normalize fingerprints across platforms - ([6ced970](https://github.com/snapetech/chaptarrng/commit/6ced9702b30abe58dd70fac46a1a4d20926d795d))
+
+### Documentation
+- *(imagesharp)* Clarify runtime license terms - ([91d63f5](https://github.com/snapetech/chaptarrng/commit/91d63f584d0022f98e583045dce2ba09f7868be3))
+- *(imagesharp)* Explain build licensing - ([733a6de](https://github.com/snapetech/chaptarrng/commit/733a6dea7b16202a6f212cc93f2e1a98cce22f1c))
+- *(security)* Clarify remaining ImageSharp advisories - ([a1754ee](https://github.com/snapetech/chaptarrng/commit/a1754ee2f37bcbc8a0fbbb094e9842e89ab7c01b))
+
+### Testing
+- *(validation)* Isolate local plan node fixtures - ([db048b5](https://github.com/snapetech/chaptarrng/commit/db048b54a0cdb62f808a4610ba4b5f9295b04348))
+
 ## [0.9.967](https://github.com/snapetech/chaptarrng/compare/v0.9.966..v0.9.967) - 2026-10-07
 
 ### User-facing changes
