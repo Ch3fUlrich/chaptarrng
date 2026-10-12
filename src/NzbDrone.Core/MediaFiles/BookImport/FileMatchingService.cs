@@ -9386,9 +9386,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = a.HasDirectEditionTitleProof.CompareTo(b.HasDirectEditionTitleProof);
                 if (cmp != 0) return cmp;
 
-                cmp = a.RepresentativeRank.CompareTo(b.RepresentativeRank);
-                if (cmp != 0) return cmp;
-
                 cmp = a.NarratorTier.CompareTo(b.NarratorTier);
                 if (cmp != 0) return cmp;
 
@@ -9404,7 +9401,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = a.SeriesPositionMatch.CompareTo(b.SeriesPositionMatch);
                 if (cmp != 0) return cmp;
 
+                // When the evidence is otherwise tied, an audio file should stay linked to a native
+                // audiobook edition. Representative ebook/print editions remain the fallback when
+                // no equally supported audiobook candidate is available.
                 cmp = a.ReadingFormatMatch.CompareTo(b.ReadingFormatMatch);
+                if (cmp != 0) return cmp;
+
+                cmp = a.RepresentativeRank.CompareTo(b.RepresentativeRank);
                 if (cmp != 0) return cmp;
 
                 cmp = (a.DurationDiff == 0).CompareTo(b.DurationDiff == 0);
