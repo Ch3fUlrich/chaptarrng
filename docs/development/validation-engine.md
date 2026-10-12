@@ -40,6 +40,12 @@ node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node scripts/validation-engine/engine.mjs --tests-only
 ```
 
+During a run, the engine writes a compact task summary to stderr when each task
+starts and finishes, then once per minute while a task is still running. The
+counts cover completed tasks; the active task and its elapsed time are shown
+separately. GitHub renders `GITHUB_STEP_SUMMARY` only after its workflow step
+finishes, so these updates appear in the live step log instead.
+
 For BuildKit container builds, source the same file and pass the value as a
 BuildKit secret, for example:
 

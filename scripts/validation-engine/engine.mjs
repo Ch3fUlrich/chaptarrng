@@ -21,6 +21,7 @@ import { validation } from './config.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SECRET_ENV = /(?:TOKEN|PASSWORD|SECRET|API[_-]?KEY|CREDENTIAL|COOKIE|AUTH|DATABASE_URL|DB_PASS)/i;
 const MAX_OUTPUT = 1024 * 1024;
+const PROGRESS_INTERVAL_MS = 60_000;
 
 function hash(value) { return createHash('sha256').update(value).digest('hex'); }
 
@@ -270,6 +271,37 @@ export function parseNUnitSummary(xml) {
   return summary;
 }
 
+function formatElapsed(milliseconds) {
+  const seconds = Math.floor(milliseconds / 1000);
+  return `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, '0')}s`;
+}
+
+export function formatValidationProgress(repository, tasks, results, currentTask = null, elapsedMs = 0) {
+  const receipts = tasks.map((task) => results.get(task.id)).filter(Boolean);
+  const passed = receipts.filter((receipt) => receipt.status === 'passed').length;
+  const failed = receipts.filter((receipt) => ['failed', 'incomplete'].includes(receipt.status)).length;
+  const blocked = receipts.filter((receipt) => ['blocked', 'not-run'].includes(receipt.status)).length;
+  const completed = passed + failed;
+  const pending = Math.max(0, tasks.length - completed - blocked);
+  const active = currentTask
+    ? `; running ${currentTask.name ?? currentTask.id} (${formatElapsed(elapsedMs)})`
+    : '';
+  return `[validation] ${repository}: ${completed}/${tasks.length} selected tasks complete (${passed} passed, ${failed} failed, ${blocked} blocked, ${pending} pending)${active}`;
+}
+
+function writeValidationProgress(tasks, results, currentTask = null, startedAt = 0, state = null) {
+  const summary = formatValidationProgress(
+    validation.repository,
+    tasks,
+    results,
+    currentTask,
+    currentTask ? Date.now() - startedAt : 0,
+  );
+  if (state?.last === summary) return;
+  if (state) state.last = summary;
+  process.stderr.write(`${summary}\n`);
+}
+
 function hashArtifacts(task) {
   return (task.artifacts ?? []).map((file) => {
     const full = path.join(ROOT, file);
@@ -413,6 +445,7 @@ async function execute(plan) {
       plan.missingArtifacts.length > 0 ||
       (plan.executionContext.github && plan.executionContext.github.sha !== plan.candidate.commit);
     const selected = plan.tasks.filter((task) => task.selected);
+    const progressState = {};
     if (missing) {
       for (const task of selected) results.set(task.id, { taskId: task.id, status: 'not-run', reason: 'runtime, test artifact, or workflow SHA prerequisite is missing' });
     } else {
@@ -428,8 +461,21 @@ async function execute(plan) {
           results.set(task.id, { taskId: task.id, status: 'blocked', reason: 'candidate changed after planning' });
           break;
         }
-        const taskResult = await runTask(task, runRoot);
+        const taskStartedAt = Date.now();
+        writeValidationProgress(selected, results, task, taskStartedAt, progressState);
+        const heartbeat = setInterval(
+          () => writeValidationProgress(selected, results, task, taskStartedAt, progressState),
+          PROGRESS_INTERVAL_MS,
+        );
+        heartbeat.unref();
+        let taskResult;
+        try {
+          taskResult = await runTask(task, runRoot);
+        } finally {
+          clearInterval(heartbeat);
+        }
         results.set(task.id, taskResult);
+        writeValidationProgress(selected, results, null, 0, progressState);
         if (captureCandidate(discoverInventory()).sourceSha256 !== plan.candidate.sourceSha256) {
           sourceChanged = true;
           results.set(task.id, { ...taskResult, status: 'blocked', error: 'source changed during execution' });
@@ -445,6 +491,7 @@ async function execute(plan) {
         reason: task.selected ? 'a prerequisite task did not pass' : task.reason,
       });
     }
+    writeValidationProgress(selected, results, null, 0, progressState);
     const tasks = plan.tasks.map((task) => results.get(task.id));
     const totals = {
       planned: plan.tasks.filter((task) => task.selected).length,

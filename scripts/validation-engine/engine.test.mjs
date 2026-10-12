@@ -1,7 +1,7 @@
 // Copyright (C) ChaptarrNG contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlan, discoverInventory, globRegex, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
+import { createPlan, discoverInventory, formatValidationProgress, globRegex, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
 
 function withEnvironmentVariable(name, value, action) {
   const previous = process.env[name];
@@ -51,6 +51,22 @@ test('NUnit summary refuses missing, malformed, and zero-case results', () => {
   assert.throws(() => parseNUnitSummary('<test-suite total="4"/>'), /missing its test-run/);
   assert.throws(() => parseNUnitSummary('<test-run total="bad" passed="0" failed="0"/>'), /invalid, or zero/);
   assert.throws(() => parseNUnitSummary('<test-run total="0" passed="0" failed="0"/>'), /invalid, or zero/);
+});
+
+test('live progress summary distinguishes completed, blocked, pending, and running tasks', () => {
+  const tasks = [
+    { id: 'passed', name: 'Passed task' },
+    { id: 'blocked', name: 'Blocked task' },
+    { id: 'running', name: 'Long task' },
+  ];
+  const results = new Map([
+    ['passed', { status: 'passed', startedAt: '2026-10-12T00:00:00.000Z' }],
+    ['blocked', { status: 'blocked' }],
+  ]);
+  assert.equal(
+    formatValidationProgress('sample', tasks, results, tasks[2], 65_000),
+    '[validation] sample: 1/3 selected tasks complete (1 passed, 0 failed, 1 blocked, 1 pending); running Long task (1m05s)',
+  );
 });
 
 test('source fingerprints normalize Git text line endings across runner operating systems', () => {
