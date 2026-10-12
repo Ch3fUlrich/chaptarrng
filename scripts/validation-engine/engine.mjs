@@ -151,10 +151,18 @@ export function createPlan(options = {}) {
   const inventory = discoverInventory();
   const candidate = captureCandidate(inventory);
   const github = process.env.GITHUB_ACTIONS === 'true';
+  const executionContext = runnerContext(candidate);
+  const taskRunsOnNode = (task) => !task.nodeIds || task.nodeIds.some(
+    (nodeId) => nodeId.toLowerCase() === executionContext.nodeId.toLowerCase(),
+  );
   const selected = new Set(validation.tasks.filter((task) => {
-    if (options.task) return task.id === options.task;
-    return task.kind === 'test' && (!task.githubOnly || github) && !task.optIn;
+    if (options.task) return task.id === options.task && taskRunsOnNode(task);
+    return task.kind === 'test' && (!task.githubOnly || github) && taskRunsOnNode(task) && !task.optIn;
   }).map((task) => task.id));
+  if (options.task && !selected.has(options.task)) {
+    const task = validation.tasks.find((item) => item.id === options.task);
+    throw new Error(`Task ${options.task} is assigned to validation node(s): ${task.nodeIds.join(', ')}`);
+  }
   const queue = [...selected];
   while (queue.length) {
     const id = queue.pop();
@@ -175,7 +183,12 @@ export function createPlan(options = {}) {
     name: task.name,
     kind: task.kind,
     selected: selected.has(task.id),
-    reason: selected.has(task.id) ? null : task.githubOnly ? 'requires the ephemeral GitHub PostgreSQL service' : 'not selected for this run',
+    reason: selected.has(task.id) ? null : task.githubOnly && !github
+      ? 'requires the ephemeral GitHub PostgreSQL service'
+      : !taskRunsOnNode(task)
+        ? `assigned to validation node: ${task.nodeIds.join(', ')}`
+        : 'not selected for this run',
+    nodeIds: task.nodeIds ?? [],
     dependsOn: task.dependsOn ?? [],
     inventory: (task.inventory ?? []).map((lane) => ({ lane, count: inventory.counts[lane], sha256: inventory.laneDigests[lane] })),
     artifacts: task.artifacts ?? [],
@@ -190,7 +203,7 @@ export function createPlan(options = {}) {
     inventorySha256: inventory.sha256,
     runtimes: runtimeResults,
     missingArtifacts,
-    executionContext: runnerContext(candidate),
+    executionContext,
     tasks,
   };
   return { ...body, planSha256: hash(stable(body)) };

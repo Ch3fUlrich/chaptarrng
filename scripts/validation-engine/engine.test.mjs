@@ -71,16 +71,30 @@ test('test-only planning distinguishes local and hosted tasks regardless of ambi
   assert.equal(localPlan.executionContext.github, null);
   assert.match(localPlan.candidate.sourceSha256, /^[a-f0-9]{64}$/);
 
-  const hostedPlan = withEnvironmentVariable('GITHUB_ACTIONS', 'true', () => createPlan({ testsOnly: true }));
+  const hostedPlan = withEnvironmentVariable('GITHUB_ACTIONS', 'true', () =>
+    withEnvironmentVariable('VALIDATION_NODE_ID', 'chaptarr-linux-X64', () => createPlan({ testsOnly: true })));
   assert.deepEqual(hostedPlan.tasks.filter((task) => task.selected).map((task) => task.id), [
-    'engine-contract-tests', 'dotnet-core-tests', 'postgres-migrations-smoke',
+    'engine-contract-tests', 'dotnet-core-tests',
   ]);
   assert.equal(hostedPlan.executionContext.executor, 'github-actions');
+
+  const postgresPlan = withEnvironmentVariable('GITHUB_ACTIONS', 'true', () =>
+    withEnvironmentVariable('VALIDATION_NODE_ID', 'chaptarr-postgres-linux-X64', () => createPlan({ testsOnly: true })));
+  assert.deepEqual(postgresPlan.tasks.filter((task) => task.selected).map((task) => task.id), [
+    'engine-contract-tests', 'postgres-migrations-smoke',
+  ]);
+  assert.match(postgresPlan.executionContext.nodeId, /postgres/);
 });
 
 test('explicit PostgreSQL task planning includes only its contract dependency', () => {
-  const plan = createPlan({ task: 'postgres-migrations-smoke' });
+  const plan = withEnvironmentVariable('GITHUB_ACTIONS', 'true', () =>
+    withEnvironmentVariable('VALIDATION_NODE_ID', 'chaptarr-postgres-linux-X64', () =>
+      createPlan({ task: 'postgres-migrations-smoke' })));
   assert.deepEqual(plan.tasks.filter((task) => task.selected).map((task) => task.id), [
     'engine-contract-tests', 'postgres-migrations-smoke',
   ]);
+  assert.throws(
+    () => withEnvironmentVariable('VALIDATION_NODE_ID', 'chaptarr-linux-X64', () => createPlan({ task: 'postgres-migrations-smoke' })),
+    /assigned to validation node/,
+  );
 });
