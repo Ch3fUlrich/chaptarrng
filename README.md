@@ -30,13 +30,11 @@ runtime, while source builds require the .NET 10 SDK.
 
 ### What makes this fork different
 
-- **Format-scoped requests and monitoring:** SeerrNG can configure one service for ebooks and another for audiobooks, both pointing to one ChaptarrNG instance. Adds, lookups, and monitoring preserve the selected format and book.
-- **Durable pending imports:** When author metadata preparation delays an add, the API returns a pending import ID and supports reading, retrying, and cancelling that work. SeerrNG can show the request waiting and resume it after the import completes.
-- **Safe shared-request handling:** Retry and cancellation are fenced against concurrent work, so cancelling one SeerrNG request does not cancel a pending import still used by another request.
-- **Discovered integration contract:** SeerrNG can negotiate format routes, provider identity, paged library scans, and pending-import support through `GET /api/v1/system/capabilities`, while the app keeps its `Chaptarr` API identity for compatible clients.
-- **Restricted service access:** ChaptarrNG `0.9.941` and later can use a SeerrNG-only API key for book requests, searches, library status, and pending imports without granting global administration or destructive access.
-- **Direct ebook downloads:** An optional built-in indexer and download client can search configured sources, use API-key downloads, and optionally fall back to browser-assisted links. Chaptarr tracks and imports supported files without requiring a separate download-client service.
-- **Protected backups and maintained distributions:** Full backups can use passphrase-based authenticated encryption. Fork-owned releases publish container images and maintain Unraid and YunoHost packages.
+- **SeerrNG contract:** SeerrNG can discover provider IDs, format routes, paged library scans, and pending-import operations through `GET /api/v1/system/capabilities`. Both format services can use one ChaptarrNG instance while requests retain the selected format and provider identity.
+- **Pending-import integration:** Chaptarr's current development branch also has pending author imports. ChaptarrNG exposes that asynchronous work through the SeerrNG capability contract and keeps retry/cancel behavior safe when multiple requests share an import.
+- **Restricted service access:** ChaptarrNG `0.9.941` and later can use a SeerrNG-only API key for supported book requests, searches, library status, and pending imports without granting global administration or destructive access.
+- **Standalone additions maintained here:** An optional built-in indexer and download client can search configured ebook sources, use API-key downloads, and optionally fall back to browser-assisted links. Full backup archives can use passphrase-based authenticated encryption; the direct Chaptarr project separately offers encryption for quick-start settings backups.
+- **Fork-owned releases and packages:** ChaptarrNG publishes its own images and maintains Unraid and YunoHost packages. Its [fork feature guide](docs/FORK_FEATURES.md) compares these additions with the parent project.
 
 The [fork feature guide](docs/FORK_FEATURES.md) maps these changes to setup,
 API, security, and distribution documentation. The [changelog](CHANGELOG.md)

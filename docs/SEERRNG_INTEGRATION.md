@@ -8,8 +8,10 @@ pending author-import support, restricted-key support, and format-specific
 availability statistics.
 
 For a broader overview of maintained behavior beyond the shared Chaptarr base,
-see [ChaptarrNG fork changes](./FORK_FEATURES.md). This guide focuses on
-connecting SeerrNG and the service-key permissions.
+see [ChaptarrNG fork changes and upstream replacement criteria](./FORK_FEATURES.md).
+Chaptarr's current development branch has its own pending-import subsystem;
+this guide focuses on the format, identity, capability, and service-key
+contract SeerrNG uses.
 
 ## Configure a dedicated service key
 

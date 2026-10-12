@@ -7,33 +7,52 @@ Readarr. The fork was created on August 31, 2026 from the parent repository's
 [shared fork-base commit](https://github.com/Chaptarr/chaptarr/commit/423b1bba1d47657d24ddfbf9c5418892972a1229).
 This page summarizes the main user and operator changes carried in ChaptarrNG
 through the published
-[`v0.9.942` release](https://github.com/snapetech/chaptarrng/releases/tag/v0.9.942).
-It groups related changes rather than listing every fix and dependency update;
-the [changelog](../CHANGELOG.md) records changes by release, and the
+[`v0.9.969` release](https://github.com/snapetech/chaptarrng/releases/tag/v0.9.969),
+and compares them with Chaptarr's `develop` branch as reviewed on 2026-10-12
+at [`e67374f`](https://github.com/Chaptarr/chaptarr/commit/e67374f). That
+parent commit is in ChaptarrNG `main`'s history. The guide groups related
+changes rather than listing every fix or dependency update; the
+[changelog](../CHANGELOG.md) records releases and the
 [repository history](https://github.com/snapetech/chaptarrng/commits/main/)
-contains the commit-level record. ChaptarrNG and upstream have continued to
-evolve independently since the fork; this guide describes the fork's changes,
-not a claim that every later upstream `develop` commit is included.
+records each commit.
 
 The application keeps reporting its name as `Chaptarr` through its
 Readarr-compatible API so existing clients can identify it. **ChaptarrNG**
 names the maintained repository and its fork-owned releases and packages.
 ChaptarrNG remains a standalone book manager and does not require SeerrNG.
 
+## Why maintain ChaptarrNG
+
+Chaptarr already provides the standalone combined ebook/audiobook manager,
+narrator-aware metadata, and its own pending-author-import API. ChaptarrNG does
+not claim those shared application features as NG-only. Its SeerrNG-specific
+work is the capability-discovered contract: selected format and provider
+identity, format-scoped API aliases, paged library reads, and a restricted
+service key. Chaptarr's current `develop` source does not expose that SeerrNG
+contract or key scope.
+
+ChaptarrNG also maintains standalone additions that operators may use without
+SeerrNG: the built-in Direct Download indexer/client, authenticated encryption
+for full backup archives, fork-owned release images, and the fork's Unraid and
+YunoHost packages. Chaptarr has its own encrypted quick-start settings backup;
+the full-backup capability is the distinction recorded here.
+
 ## Format-aware books and SeerrNG requests
 
-ChaptarrNG can manage ebooks and audiobooks as separate format-specific book
-records, even when both formats belong to the same work. Its API carries the
-requested format through lookups, searches, adds, monitoring, and library scans.
-Provider IDs are retained for integrations; local database row IDs are not
-durable external identities.
+Chaptarr supports ebook and audiobook formats in one standalone instance.
+ChaptarrNG's integration contract carries the selected format through SeerrNG
+lookups, searches, adds, monitoring, and paged library scans. Provider IDs are
+retained for integrations; local database row IDs are not durable external
+identities.
 
 When an author is not ready in the metadata catalog, ChaptarrNG can accept a
 book add as a pending import instead of losing the request. It retries author
 preparation, keeps the selected format and requested book attached to that
 work, then searches for the requested book when the catalog is ready.
-Integrations can inspect, retry, or cancel pending imports. Retry and
-cancellation checks protect imports shared by more than one active request.
+Chaptarr's current development branch has a pending-import subsystem too.
+ChaptarrNG's contribution is exposing its status and retry/cancel behavior to
+SeerrNG through the capability contract. Retry and cancellation checks protect
+imports shared by more than one active request.
 
 SeerrNG discovers the supported API dialect, format routes, paged library
 behavior, provider identity rules, and pending-import operations through
@@ -66,7 +85,7 @@ to a canonical author folder is opt-in. The [API identity and lifecycle
 contract](./API_IDENTITY_AND_LIFECYCLE.md) documents identity, match evidence,
 pending imports, and organize-preview fields.
 
-## Direct ebook downloads
+## Direct ebook downloads maintained in ChaptarrNG
 
 The optional Direct Download indexer searches configured ebook sources by ISBN
 when available and falls back to the monitored edition title. URL order is
@@ -132,9 +151,20 @@ instructions for supported architectures, paths, and upgrade steps.
 ## Release history
 
 The [changelog](../CHANGELOG.md) records the maintained release line from
-`0.9.936` through `0.9.942`: format-scoped requests and pending imports, fork
-identity and Unraid distribution, format-preserving lookups, YunoHost
-packaging, capability discovery, encrypted backups, the restricted SeerrNG
-service key, and the Direct Download indexer/client with browser-assisted
-fallback. The `v0.9.942` container includes headless Chromium on AMD64 and
-ARM64; ARMv7 retains API-key downloads without browser fallback.
+`0.9.936` through `0.9.969`: format-scoped requests, fork identity and Unraid
+distribution, capability discovery, the restricted SeerrNG service key,
+encrypted full backups, and the Direct Download indexer/client with
+browser-assisted fallback. The `v0.9.969` container includes headless Chromium
+on AMD64 and ARM64; ARMv7 retains API-key downloads without browser fallback.
+
+## What would allow replacement
+
+ChaptarrNG could be replaced for SeerrNG when a supported Chaptarr release
+advertises the required capability contract, keeps provider identity and format
+scoped through lookup/add/status, exposes paged library reads and safe
+pending-import read/retry/cancel operations, and offers a credential limited to
+those routes. Chaptarr already contains a pending-import engine, so SeerrNG
+needs matching exposed semantics rather than a second queue implementation.
+Keep Direct Download and full-backup encryption available upstream or replace
+those standalone needs before retiring the fork. Verify the exact upstream
+release with SeerrNG before switching.
