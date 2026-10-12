@@ -6646,9 +6646,11 @@
       "title": "feature: abs propagation",
       "url": "https://github.com/Chaptarr/chaptarr/pull/133",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit a816c7e08015c70317a2feca0f9f002c800a68be; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T02:25:52Z",
       "body": "#### Description\r\nAudioBookShelf keeps its own copy of an item's metadata and only re-reads it when files are renamed, so a change Chaptarr makes to a book would otherwise never show up there. This sends the current title, description, publisher, series, and cover to the matching AudioBookShelf item whenever the owning library changes, behind a per-connection setting that says what the push actually carries. Items are matched by library-relative path across the connection's mapped libraries. AudioBookShelf is never read back \u2014 it stays a consumer, not a source.\r\n\r\nFixes # - n/a (feature)\r\n\r\n#### Database Migration\r\nNO - The setting lives in the connection's existing JSON settings blob\r\n\r\n#### How was this tested?\r\nDocker (linux/amd64) on an Ubuntu server host, image built with Dockerfile.build, against a live Audiobookshelf instance.\r\n\r\n- Metadata edits propagated: changed fields (description, tags-as-genres, series) arrived on the matching ABS item, located by library-relative path.\r\n- Cover updates delivered via the item cover endpoint from the library's cover URL.\r\n- With the setting off, nothing is pushed \u2014 default behaviour unchanged.\r\n- Confirmed no reverse flow: ABS-side edits are never read back into Chaptarr.\r\n\r\n#### Screenshots (UI changes only)\r\n\r\n<img width=\"623\" height=\"1023\" alt=\"image\" src=\"https://github.com/user-attachments/assets/92c82f46-691f-48f6-8a64-3a170ade2a3c\" />\r\n\r\n---\r\n\r\n**A note on AI:** We know AI/agentic coding is everywhere and only getting\r\nmore popular. We won't insist that you disclose whether you used it or which\r\nmodels you used, but in the same spirit, please don't take offense if your PR\r\nis scrutinized and changes are requested.\r\n\r\n**Review time:** The longer the PR and the more lines changed, the longer the\r\nreview will take. Small, focused PRs merge fastest. If yours is big, please be\r\npatient.\r\n",
