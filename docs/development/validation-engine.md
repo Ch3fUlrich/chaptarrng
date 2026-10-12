@@ -77,8 +77,11 @@ Linux and macOS. Each platform receipt separately hashes its compiled test
 assembly byte-for-byte; platform binaries are allowed to differ. Before and
 after a task the engine checks that the source fingerprint has not moved. Logs
 and receipts are private under the system temporary directory, overlapping
-runs in one checkout are rejected, and child processes do not inherit
-credential-shaped environment variables.
+runs in one checkout are rejected. Runtime probes and task child processes
+receive an explicit environment allowlist and each task's declared settings.
+Every task gets run-owned home, temporary, XDG, and .NET CLI directories. NuGet
+packages use a private cache shared only within the validation run. Test tasks
+run with `CI=true` and `NODE_ENV=test` regardless of the invoking shell's values.
 
 The artifact downloader preserves each runner receipt in its own subdirectory,
 and the reconciler finds `receipt.json` recursively so same-named artifacts do
