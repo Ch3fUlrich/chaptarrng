@@ -40,6 +40,19 @@ node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node scripts/validation-engine/engine.mjs --tests-only
 ```
 
+Local execution of test tasks requires the trusted Linux bubblewrap launcher.
+For a branch you have not reviewed, copy `trusted-test-launcher.mjs` from a
+reviewed revision to a location outside the checkout, then run:
+
+```sh
+node /path/to/trusted-test-launcher.mjs "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --tests-only
+```
+
+The optional Playwright cache is mounted read-only. Run planning for an
+unreviewed candidate through the same launcher because planning imports its
+validation configuration. GitHub Actions remains responsible for hosted
+validation.
+
 During a run, the engine writes a compact task summary to stderr when each task
 starts and finishes, then once per minute while a task is still running. The
 counts cover completed tasks; the active task and its elapsed time are shown
