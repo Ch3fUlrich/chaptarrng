@@ -24,6 +24,11 @@ const MAX_OUTPUT = 1024 * 1024;
 
 function hash(value) { return createHash('sha256').update(value).digest('hex'); }
 
+export function sha256GitText(content) {
+  const text = Buffer.isBuffer(content) ? content.toString('utf8') : content;
+  return hash(text.replace(/\r\n/g, '\n'));
+}
+
 function stable(value) {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
   if (value && typeof value === 'object') {
@@ -44,12 +49,13 @@ function repoFiles() {
   return [...new Set([...tracked, ...untracked])].sort();
 }
 
-function digestFile(relative) {
+function digestFile(relative, { text = false } = {}) {
   const full = path.join(ROOT, relative);
   const info = lstatSync(full);
   if (info.isSymbolicLink()) return hash(`symlink:${readlinkSync(full)}`);
   if (!info.isFile()) return hash(`not-a-file:${relative}`);
-  return hash(readFileSync(full));
+  const content = readFileSync(full);
+  return text ? sha256GitText(content) : hash(content);
 }
 
 export function globRegex(pattern) {
@@ -81,7 +87,7 @@ export function discoverInventory(files = repoFiles()) {
       if (ownership.has(file)) throw new Error(`Test inventory has duplicate ownership: ${file}`);
       ownership.add(file);
       if (lstatSync(path.join(ROOT, file)).isSymbolicLink()) throw new Error(`Test inventory contains a symbolic link: ${file}`);
-      const entry = { file, lane: rule.id, framework: rule.framework, owner: rule.owner, sha256: digestFile(file) };
+      const entry = { file, lane: rule.id, framework: rule.framework, owner: rule.owner, sha256: digestFile(file, { text: true }) };
       entries.push(entry);
       laneEntries.push(entry);
     }
@@ -96,7 +102,7 @@ function captureCandidate(inventory) {
   const tree = git(['rev-parse', 'HEAD^{tree}']).trim();
   const diffSha256 = hash(git(['diff', '--binary', 'HEAD']));
   const status = git(['status', '--porcelain=v1', '--untracked-files=all']);
-  const inputs = validation.inputs.map((file) => ({ file, sha256: digestFile(file) }));
+  const inputs = validation.inputs.map((file) => ({ file, sha256: digestFile(file, { text: true }) }));
   const sourceSha256 = hash(stable({ commit, tree, diffSha256, inputs, inventorySha256: inventory.sha256 }));
   return {
     commit,

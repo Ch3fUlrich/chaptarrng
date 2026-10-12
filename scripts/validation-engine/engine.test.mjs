@@ -1,7 +1,17 @@
 // Copyright (C) ChaptarrNG contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlan, discoverInventory, globRegex, parseNodeTestSummary, parseNUnitSummary } from './engine.mjs';
+import { createPlan, discoverInventory, globRegex, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
+
+function withEnvironmentVariable(name, value, action) {
+  const previous = process.env[name];
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+  try { return action(); } finally {
+    if (previous === undefined) delete process.env[name];
+    else process.env[name] = previous;
+  }
+}
 
 test('test source patterns include nested project files but exclude sibling projects', () => {
   const pattern = globRegex('src/Chaptarr.Core.Test/**/*.cs');
@@ -43,14 +53,29 @@ test('NUnit summary refuses missing, malformed, and zero-case results', () => {
   assert.throws(() => parseNUnitSummary('<test-run total="0" passed="0" failed="0"/>'), /invalid, or zero/);
 });
 
-test('local test-only planning selects Core tests and contracts but not ephemeral database smoke', () => {
-  const plan = createPlan({ testsOnly: true });
-  assert.deepEqual(plan.tasks.filter((task) => task.selected).map((task) => task.id), [
+test('source fingerprints normalize Git text line endings across runner operating systems', () => {
+  const lf = Buffer.from('first line\nsecond line\n');
+  const crlf = Buffer.from('first line\r\nsecond line\r\n');
+  assert.equal(sha256GitText(lf), sha256GitText(crlf));
+  assert.notEqual(sha256GitText(lf), sha256GitText(Buffer.from('first line\nchanged line\n')));
+});
+
+test('test-only planning distinguishes local and hosted tasks regardless of ambient workflow environment', () => {
+  const localPlan = withEnvironmentVariable('GITHUB_ACTIONS', undefined, () => createPlan({ testsOnly: true }));
+  assert.deepEqual(localPlan.tasks.filter((task) => task.selected).map((task) => task.id), [
     'engine-contract-tests', 'dotnet-core-tests',
   ]);
-  assert.ok(plan.missingArtifacts.length === 0 || plan.missingArtifacts.includes('_tests/net10.0/Chaptarr.Core.Test.dll'));
-  assert.equal(plan.executionContext.platform, 'linux');
-  assert.match(plan.candidate.sourceSha256, /^[a-f0-9]{64}$/);
+  assert.ok(localPlan.missingArtifacts.length === 0 || localPlan.missingArtifacts.includes('_tests/net10.0/Chaptarr.Core.Test.dll'));
+  const expectedPlatform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux';
+  assert.equal(localPlan.executionContext.platform, expectedPlatform);
+  assert.equal(localPlan.executionContext.github, null);
+  assert.match(localPlan.candidate.sourceSha256, /^[a-f0-9]{64}$/);
+
+  const hostedPlan = withEnvironmentVariable('GITHUB_ACTIONS', 'true', () => createPlan({ testsOnly: true }));
+  assert.deepEqual(hostedPlan.tasks.filter((task) => task.selected).map((task) => task.id), [
+    'engine-contract-tests', 'dotnet-core-tests', 'postgres-migrations-smoke',
+  ]);
+  assert.equal(hostedPlan.executionContext.executor, 'github-actions');
 });
 
 test('explicit PostgreSQL task planning includes only its contract dependency', () => {

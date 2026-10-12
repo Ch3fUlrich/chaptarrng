@@ -11,7 +11,7 @@ Windows, macOS, and PostgreSQL smoke receipts before the workflow is complete.
 Use Node.js `26.10.0` and .NET SDK `10.0.401`, matching the CI toolchain. Build
 the existing CI outputs first:
 
-ImageSharp 3.2.0 requires the complete Six Labors license at build time. Store
+ImageSharp 4.1.3 requires the complete Six Labors license at build time. Store
 it as a single shell-quoted `SIXLABORS_LICENSE_KEY` assignment in the ignored
 `.env.sixlabors` file; use the full contents of `sixlabors.lic`, not only its
 `Key` field. Do not commit either file. Source it before restore/build commands
@@ -63,8 +63,10 @@ the standard TAP summary with the same zero-case and accounting checks. The
 migration smoke emits one case only after the app starts against the workflow's ephemeral PostgreSQL service and `/ping` responds.
 
 The source fingerprint binds the commit, tree, working diff, configured build
-inputs, and test-source inventory. Each platform receipt separately hashes its
-compiled test assembly; platform binaries are allowed to differ. Before and
+inputs, and test-source inventory. Text inputs and inventory files use Git's
+CRLF-to-LF normalization so Windows checkouts produce the same fingerprint as
+Linux and macOS. Each platform receipt separately hashes its compiled test
+assembly byte-for-byte; platform binaries are allowed to differ. Before and
 after a task the engine checks that the source fingerprint has not moved. Logs
 and receipts are private under the system temporary directory, overlapping
 runs in one checkout are rejected, and child processes do not inherit
