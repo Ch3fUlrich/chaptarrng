@@ -4520,12 +4520,13 @@
       "title": "Fix inverted equality in memoized author/book collection selectors (#43)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/47",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         43
       ],
       "implementationEvidence": [
-        "b26145bc1a54937e0ebfe6c9b1cf794dc7db8e36"
+        "b26145bc1a54937e0ebfe6c9b1cf794dc7db8e36",
+        "Integrated reviewed upstream patch at fork commit b26145bc1a54937e0ebfe6c9b1cf794dc7db8e36; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-08-15T22:39:35Z",
@@ -4656,10 +4657,11 @@
       "title": "Fix: narrator custom formats never match \"Title (Narrator Name)\" releases",
       "url": "https://github.com/Chaptarr/chaptarr/pull/56",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "bafc7a151bed5a0a759bafbae8d0b5eb671ef5bc"
+        "bafc7a151bed5a0a759bafbae8d0b5eb671ef5bc",
+        "Integrated reviewed upstream patch at fork commit bafc7a151bed5a0a759bafbae8d0b5eb671ef5bc; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-08-17T01:49:16Z",
@@ -4694,11 +4696,12 @@
       "title": "Fix: one case-duplicate path collapses the entire unmapped page to per-file units",
       "url": "https://github.com/Chaptarr/chaptarr/pull/57",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
         "323f8b58a082f69f8d319180128275a313b3279c",
-        "2aba90ed6982a9d7133a9c649ba78dfd19257c61"
+        "2aba90ed6982a9d7133a9c649ba78dfd19257c61",
+        "Integrated reviewed upstream patch at fork commit 323f8b58a082f69f8d319180128275a313b3279c; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-08-16T22:47:24Z",
@@ -4879,11 +4882,13 @@
       "title": "Fix #28: author audiobook/ebook path edits are silently dropped",
       "url": "https://github.com/Chaptarr/chaptarr/pull/63",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         28
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit bbb0f94a9552a9a05ac81bdce6ca03990ce6fab4; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-08-17T12:09:49Z",
       "body": "Fixes #28\n\n## The bug\n\nEditing an author's Audiobook or Ebook path in the UI never saves \u2014 the request succeeds, nothing is logged, and the value reverts. The reporter's devtools captures show why: the frontend submits `audiobookPath`/`ebookPath`, but `AuthorResource` has no such properties (the API's only per-media path fields are the read-only `audiobookFolder`/`ebookFolder` display values), so the deserializer silently drops the incoming value. Not related to spaces in author names \u2014 no author path edit can save.\n\nThe value was actually being dropped at **two** layers:\n\n1. `AuthorResource` \u2192 model: the fields don't exist on the resource, and `ToModel` never maps them\n2. `Author.ApplyChanges` (the final merge for plain updates): copies `Path` and the root-folder paths but not `AudiobookPath`/`EbookPath`\n\n## Fix\n\n- Add writable `AudiobookPath`/`EbookPath` to `AuthorResource` (the read-only folder display fields are unchanged), map them in both directions\n- Preserve-when-null in the facade update path, mirroring the existing `Path` handling\n- Merge them in `Author.ApplyChanges` with `?? ` semantics: null means not-provided (keep stored), an explicit clear arrives as an empty string\n- `PutValidator` path validation for both, only when set\n\n## Tests\n\n`AuthorResourceMapperFixture`, following the fixture's existing apply/not-wipe pattern:\n- `should_apply_media_paths_on_put_update` \u2014 provided value lands; omitted sibling keeps its stored value\n- `should_not_wipe_media_paths_when_not_provided_on_put_update`\n\nMapper suite 102/102; wider Books suite 567/567.",
@@ -4914,12 +4919,13 @@
       "title": "Fix #49: author merge trips the unique provider-id indexes while the source still owns them",
       "url": "https://github.com/Chaptarr/chaptarr/pull/66",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         49
       ],
       "implementationEvidence": [
-        "840a6a6ff9bf50650e8135ef041d4a5013d0a86d"
+        "840a6a6ff9bf50650e8135ef041d4a5013d0a86d",
+        "Integrated reviewed upstream patch at fork commit 840a6a6ff9bf50650e8135ef041d4a5013d0a86d; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-08-17T21:58:31Z",
@@ -5150,10 +5156,11 @@
       "title": "Fix: V5-suggested authors already in the library are not linked when author import is disallowed",
       "url": "https://github.com/Chaptarr/chaptarr/pull/90",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "cdf75b62eb762b61b28ab391be2a484018b33195"
+        "cdf75b62eb762b61b28ab391be2a484018b33195",
+        "Integrated reviewed upstream patch at fork commit cdf75b62eb762b61b28ab391be2a484018b33195; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-08-27T12:36:35Z",
@@ -5336,11 +5343,13 @@
       "title": "fix(author): ApplyChanges wipes stored paths when an update omits them",
       "url": "https://github.com/Chaptarr/chaptarr/pull/97",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         88
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 408d58a98d0b2f057645b40b9f21344263520b26; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T15:14:13Z",
       "body": "Fixes #88.\n\n## What changed and why\n\n`Author.ApplyChanges` assigned `Path`, `AudiobookRootFolderPath` and `EbookRootFolderPath` unconditionally, so any caller passing an `Author` without them cleared the stored values.\n\nThat is inconsistent with the fields immediately around them, which are all guarded \u2014 the quality profiles, the metadata profiles and the tags each check before assigning. The existing comment there already explains why: *\"Quality profiles from metadata sources are always null/0\"*.\n\nPaths reach the same method from the same two directions:\n\n- **the API**, where a `PUT /api/v1/author/{id}` may legitimately omit fields it is not changing, and\n- **metadata refresh**, where the incoming `Author` is built from remote metadata and carries no local paths at all.\n\nBoth wiped the stored path. This guards the three assignments the same way the neighbouring fields are guarded.\n\n`UseDbFieldsFrom` is deliberately left alone \u2014 it is a full copy from the database, so assigning unconditionally is correct there.\n\n## Breaking changes\n\nNone. The only behaviour change is that an omitted (null) path no longer clears the stored one; supplying a path still overwrites it exactly as before.\n\n## Testing performed\n\n`AuthorApplyChangesPathPreservationFixture` covers three cases: preservation when paths are omitted, normal overwrite when they are supplied, and independent preservation when only one of the three changes.\n\nVerified red/green \u2014 **2 of the 3 tests fail without the production change**:\n\n```\nwithout the fix:  Failed: 2, Passed: 1, Total: 3\nwith the fix:     Failed: 0, Passed: 3, Total: 3\n```\n\nFull suite, no regressions:\n\n```\nbefore:  Passed! - Failed: 0, Passed: 2852, Total: 2852\nafter:   Passed! - Failed: 0, Passed: 2855, Total: 2855   (+3 new)\n```\n\nBuilt and tested on .NET SDK 10.0.400, rebased on `develop`.",
@@ -5960,12 +5969,13 @@
       "title": "Fix crash on supplementary-plane characters (emoji, astral CJK) in release/catalog titles",
       "url": "https://github.com/Chaptarr/chaptarr/pull/117",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         116
       ],
       "implementationEvidence": [
-        "a6d90c44699cc1a12ee815e30f8c293b2210e60d"
+        "a6d90c44699cc1a12ee815e30f8c293b2210e60d",
+        "Integrated reviewed upstream patch at fork commit a6d90c44699cc1a12ee815e30f8c293b2210e60d; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-02T04:59:56Z",
@@ -6290,12 +6300,13 @@
       "title": "Don't move ebook files when no colocated destination applies",
       "url": "https://github.com/Chaptarr/chaptarr/pull/127",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         126
       ],
       "implementationEvidence": [
-        "e33ebdcc03b2533de3d6a8d2d41ed59e8b5d029a"
+        "e33ebdcc03b2533de3d6a8d2d41ed59e8b5d029a",
+        "Integrated reviewed upstream patch at fork commit e33ebdcc03b2533de3d6a8d2d41ed59e8b5d029a; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-04T14:09:49Z",
@@ -6633,12 +6644,13 @@
       "title": "Fix repeated grabs of failed Usenet releases",
       "url": "https://github.com/Chaptarr/chaptarr/pull/141",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         140
       ],
       "implementationEvidence": [
-        "6267dcf057d3d37b9e6f9062bc04ba6654ce27e0"
+        "6267dcf057d3d37b9e6f9062bc04ba6654ce27e0",
+        "Integrated reviewed upstream patch at fork commit 6267dcf057d3d37b9e6f9062bc04ba6654ce27e0; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-13T17:54:17Z",
@@ -6668,9 +6680,11 @@
       "title": "Prefer English edition in ratings-based edition selection tiebreak",
       "url": "https://github.com/Chaptarr/chaptarr/pull/142",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit ed05115d650feec7b9e2af1696ae3bda097a6bb3; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-14T01:34:14Z",
       "body": "## Bug\n\nWhen an import list discovers a new author from one shelved book, Chaptarr pulls in that author's entire back-catalog as unmonitored stub `Book` rows. For each work, `EditionSelector` has to pick one edition to represent it in the local catalog \u2014 and that pick had no language preference at all: it ranked candidates purely by native-format match, then per-edition vote count.\n\n`MetadataProfile.AllowedLanguages` only filters the candidate pool when it's explicitly configured. On the common unconfigured profile, every language passes through untouched, and a translated edition can end up with more votes on its own edition row than the original English one for the same work (e.g. all Spanish-reader votes on one edition row, while English votes are split across several English edition rows). The higher-voted foreign edition then wins and gets stored as the book's sole representative edition.\n\nConcretely, this produced local catalog rows like:\n- A book whose local title became `\"<Title> [Spanish Edition]\"`, its stored edition carrying Spanish narrator credits, despite an English edition of the same work being available\n- A book whose local title became `\"<Title> \u2013 <German subtitle>\"`, similarly mismatched\n\nBoth cases trace to the same author-bibliography-refresh timestamp in the DB, confirming the bulk back-catalog path, not a one-off manual add.\n\nThis selector (`EditionSelector.SelectByNativeFormatThenRatings`, via `SelectMostRated`/`SelectRepresentativeFallback`) is shared by two call sites:\n- `BookInfoProxy.SelectBestEditionAsMonitored` \u2014 the provisional pick made when converting an author's full back-catalog from provider data, explicitly commented as provisional (\"Language ... filtering happen[s] later once the metadata profile is available\")\n- `AuthorLibraryService.SelectMonitoredEditionsForMediaType` \u2014 the later, profile-aware pick\n\nUnmonitored bibliography stub books never get promoted to the second pass, so they stay stuck with whatever the language-blind provisional pick chose \u2014 permanently.\n\n## Fix\n\nAdd a language-preference tiebreak ahead of vote count in `SelectMostRated` and `SelectRepresentativeFallback`: an edition with explicit English language wins, an edition with no language tag is treated neutrally (not punished for missing metadata), and any other explicit language loses. It's a soft default ordering key, not an exclusionary filter \u2014 a foreign-only candidate pool still falls back to picking by votes exactly as before, and a library where `AllowedLanguages` is explicitly restricted to something else still narrows correctly upstream in `EditionMetadataProfileFilter`.\n\nAdded tests in `EditionSelectorLanguageFilteringFixture` covering: English winning over a more-voted foreign edition for both audiobook and ebook media types, and the no-English-available fallback still picking by votes.\n\n## Testing\n\nRan `dotnet test` (net10.0) locally: full suite passes, 3023/3023, 0 failures \u2014 including the 3 new tests in `EditionSelectorLanguageFilteringFixture`.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n",
@@ -6735,12 +6749,13 @@
       "title": "Fix OnUpgrade-only notifications never enabling and Discord empty username",
       "url": "https://github.com/Chaptarr/chaptarr/pull/151",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         150
       ],
       "implementationEvidence": [
-        "ea34cdb467ef63a9f682c5b896fee56966c530f6"
+        "ea34cdb467ef63a9f682c5b896fee56966c530f6",
+        "Integrated reviewed upstream patch at fork commit ea34cdb467ef63a9f682c5b896fee56966c530f6; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-22T21:51:55Z",
@@ -6833,11 +6848,13 @@
       "title": "Fix: Cached<T> leaks a Task.Delay timer per Set()/rolling-expiry touch on the same key",
       "url": "https://github.com/Chaptarr/chaptarr/pull/156",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         157
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 69df86404c638c0e9ac286d8586ee40cbc9fd1d2; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-22T21:51:58Z",
       "body": "#### Description\n\n`Cached<T>.ScheduleTryRemove()` schedules a new `Task.Delay(lifeTime).ContinueWith(...)` on every `Set()` call (and every rolling-expiry `Find()`/`Get()`), but never cancels any delay already pending for that same key. On a long-lived cache that gets touched more often than its lifetime, orphaned delays are never cancelled and pile up indefinitely - each one harmless individually, but collectively a lot of live `Timer`/`Task` machinery sitting idle.\n\n`MediaCoverProxy.RegisterUrl()` hits this directly: it calls `_cache.Set(hash, url, TimeSpan.FromHours(24))` unconditionally on every call, and it's called for every cover URL in every API response that includes book/author cover art (author lists, book lists, the queue view, etc).\n\n**How this was found:** on a ~1,600-author / large-queue instance, the process was pegged at 200-300% CPU even at idle. `dotnet-counters` showed `dotnet.timer.count` steady around **15,180+** (a healthy instance should have dozens, not thousands), alongside a matching `dotnet.gc.heap.total_allocated` rate of 75-250MB/s.\n\nA `dotnet-dump` heap snapshot (`dumpheap -stat`) showed near-identical live counts across several types, all traceable to one code path:\n\n```\n15,207  System.Threading.TimerQueueTimer\n15,179  System.Threading.Tasks.Task+DelayPromise\n15,179  System.Threading.Tasks.ContinueWithTaskContinuation\n15,180  System.Action<System.Threading.Tasks.Task>\n15,181  System.Threading.Tasks.Task+ContingentProperties\n15,176  NzbDrone.Common.Cache.Cached<System.String>+<>c__DisplayClass16_0\n```\n\n`<>c__DisplayClass16_0` is the compiler-generated closure for `ScheduleTryRemove`'s `Task.Delay(...).ContinueWith(delegate {...})` lambda - confirming these were all orphaned expiry delays for the same `Cached<string>` instance (`MediaCoverProxy`'s cover-url cache), none of them ever cancelled.\n\n**Fix:** track one pending removal per key (`ConcurrentDictionary<string, CancellationTokenSource>`) and cancel/dispose the previous one before scheduling a new one, so re-touching a key doesn't add another timer on top of whatever's already pending. Behavior is otherwise unchanged - the lazy expiry check in `Find()`/`Get()` and the `ClearExpired()` sweep are untouched; this only stops the proactive scheduled-removal delays from accumulating.\n\nFixes #157\n\n#### Database Migration\nNO\n\n#### How was this tested?\n- `Chaptarr.Common` builds clean.\n- Added `CachedFixture` covering: repeated `Set()` on the same key stays at exactly one pending expiry timer, and an item still expires correctly after being repeatedly refreshed.\n- `dotnet test --filter FullyQualifiedName~CachedFixture` passes (2/2).\n- Not yet verified against a live restart of the reporting instance (that instance was mid a long-running, non-restartable `RefreshMonitoredDownloads` scan at the time and I didn't want to interrupt it) - happy to report back once that's safe to do.\n\n#### Screenshots (UI changes only)\nN/A\n",
@@ -6871,9 +6888,11 @@
       "title": "Interactive search finds nothing for a book titled \"\u2026, Book 4\"",
       "url": "https://github.com/Chaptarr/chaptarr/pull/158",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit db64a0bee23bdda82cd137eff7542caebccb9042; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-18T15:28:24Z",
       "body": "#### Description\n\nInteractive search returns nothing for any book whose monitored edition has an Audible-style title \u2014 `Harry Potter and the Goblet of Fire, Book 4` \u2014 on every Newznab and Torznab indexer, which includes everything proxied through Prowlarr. Release names almost never carry the series position, so all three query tiers look for text that isn't there. Chaptarr already solves exactly this for MyAnonaMouse, with a last-resort tier that drops the book number; this gives the Newznab generator the same tier. One property, one block in the request generator, eight tests.\n\n**A concrete example.** The same indexer, the same categories, one minute apart:\n\n| Query | Results |\n|---|---|\n| `Harry Potter and the Goblet of Fire, Book 4` (what Chaptarr sends today) | **0** |\n| `Harry Potter and the Goblet of Fire` | **14** |\n\nFour monitored audiobooks in my library have titles of this shape and none of them had ever returned a single release, in the UI or through the API.\n\n**What already works, and what doesn't.**\n\n| Generator | Precise tiers | Last-resort tier without the book number |\n|---|---|---|\n| MyAnonaMouse | \u2705 | \u2705 \u2014 `MAM_SEARCH_FALLBACK_TERM \u2026 (book-number fallback)`, interactive only |\n| Newznab / Torznab | \u2705 | \u274c \u2014 what this PR adds |\n\n<details>\n<summary>Technical detail</summary>\n\n`BookSearchCriteria.BookQuery` is built from `GetMainSearchTitle`, which only splits on `:` and `(`. A trailing `, Book 4` survives, and `GetQueryTitle` turns it into `\u2026+Fire+Book+4`. The Newznab generator then sends that in all three tiers (`t=book&author=&title=`, `t=search&q=title+author`, `t=search&q=title`). The request a test captures today:\n\n```\n\u2026/api?t=search&cat=3030,7020&extended=1&\u2026&q=Harry%20Potter%20and%20the%20Goblet%20of%20Fire%20Book%204\n```\n\nThe change:\n\n- `BookSearchCriteria.BookQueryWithoutBookNumber` returns the query without a trailing book number, or `null` when the title has none (or is nothing *but* a book number), so callers can skip the extra tier. The pattern is MyAnonaMouse's `\\s*,?\\s*book\\s+\\d+\\s*$`, extended to accept a fractional position such as `Book 0.5`.\n- `NewznabRequestGenerator.GetSearchRequests(BookSearchCriteria)` appends one tier when `InteractiveSearch` is set and that property is non-null: `t=book&title=\u2026` if the indexer supports book search, and `t=search&q=\u2026` if it supports plain search.\n\n`HttpIndexerBase` walks the tiers in order and stops at the first that returns releases (`if (releases.Any()) break;`), so the precise queries still run first and the new tier only fires when they find nothing.\n\n</details>\n\n**Deliberate choices worth flagging for review**\n\n1. **Interactive search only, mirroring MyAnonaMouse.** This is the choice most worth challenging. A broader query is safe when a person \u2014 or anything calling the interactive endpoint \u2014 picks from the results, and less obviously safe when Chaptarr grabs on its own, so I kept automatic and RSS-driven searches exactly as they are. The cost is that an automatic search for these books still finds nothing. If you'd rather have it everywhere, it is a one-line condition and I'll change it.\n2. **A new tier rather than stripping the suffix from `BookQuery`.** I tried stripping it in `GetMainSearchTitle` first. It is simpler, but it removes the book number from *every* tier, and it broke `should_add_book_number_fallback_as_last_tier_for_interactive_search` because MyAnonaMouse builds its precise tiers from the same helper. Keeping the precise query first seemed clearly right once I saw that.\n3. **MyAnonaMouse keeps its own copy of the regex.** I did not move it onto the new property, to keep this change to one generator. Happy to fold the two together if you'd like a single source.\n\n**Blast radius.** One new read-only property on `BookSearchCriteria`, and one added tier in one generator method. No existing tier, query or category changes. Indexers using other generators (MyAnonaMouse, FileList, Gazelle) are untouched. For a title without a trailing book number the chain is byte-for-byte what it was.\n\n**Known gaps I deliberately did not fix**\n\n- **Other suffix shapes.** `, Volume 2`, `, Part 2` and spelled-out numbers (`Book Two`) are not handled. `Part` in particular is often a real part of a title (*Henry IV, Part 2*), and I had no evidence for the others in my data.\n- **The matcher is unchanged.** Releases found by the new tier are still judged against the monitored edition title, so some may be shown as soft-rejected. That is existing behaviour and felt like a separate conversation.\n\nUnrelated to this change: a clean checkout currently fails `dotnet restore` with `NU1902` for `Microsoft.Build.Tasks.Git` 8.0.0 (via `Microsoft.SourceLink.GitHub` 8.0.0) because `TreatWarningsAsErrors` promotes the audit warning. I used `-p:NuGetAuditMode=direct` locally and left the package alone; I mentioned the same thing in #155.\n\n#### Database Migration\n\n**NO.** No schema change. The new property is computed from fields that already exist.\n\n#### How was this tested?\n\nNative `dotnet` on Linux (.NET SDK 10.0.112), SQLite backend.\n\n**Tests first, watched failing before the code existed.** New fixture `NewznabRequestGeneratorFixture` (there was none), driving the real `NewznabRequestGenerator` with a stub capabilities provider and asserting on the URLs it produces:\n\n| Test | Asserts |\n|---|---|\n| `should_add_a_book_number_fallback_as_the_last_tier_for_interactive_search` | one extra tier, containing the title and no `Book 4` |\n| `should_search_the_fallback_by_title_and_by_query_when_the_indexer_supports_book_search` | both `t=book&title=` and `t=search&q=` |\n| `should_search_the_fallback_by_query_only_when_the_indexer_has_no_book_search` | only `t=search` |\n| `should_drop_a_fractional_book_number_in_the_fallback` | `The Hedge Knight, Book 0.5` |\n| `should_keep_the_book_number_in_every_tier_before_the_fallback` | precise tiers are untouched |\n| `should_not_add_a_book_number_fallback_for_automatic_search` | automatic search is unchanged |\n| `should_not_add_a_fallback_when_the_title_has_no_book_number` | *The Book of Lost Things* |\n| `should_not_add_a_fallback_when_the_title_is_only_a_book_number` | never search for nothing |\n\nThe last four passed before the change as well; they pin what must not move.\n\n**Counts, base `develop` (7a06004):** 3020 \u2192 3028 (+8), 0 failing, Debug and Release. `MyAnonaMouseRequestGeneratorFixture` and `ReleaseSearchServiceTitleSelectionFixture` pass unchanged.\n\n**The tests catch the bug.** With only the production change reverted:\n\n```\nFailed should_add_a_book_number_fallback_as_the_last_tier_for_interactive_search\n  Expected: 5   But was: 4\nFailed should_search_the_fallback_by_query_only_when_the_indexer_has_no_book_search\n  Expected: no item String containing \"Book%204\"\n  But was:  < \"\u2026&q=Harry%20Potter%20and%20the%20Goblet%20of%20Fire%20Book%204\" >\n\nFailed!  - Failed: 4, Passed: 4, Total: 8\n```\n\n**CI commands from `.github/workflows/build.yml`, run locally:**\n\n| Step | Result |\n|---|---|\n| Guard (repo) \u2014 no merge-conflict markers, `package.json` parses | pass |\n| `version_guard.py` sync / monotonic / commit-hygiene vs `origin/develop` | pass |\n| `dotnet build src/Chaptarr.NoTests.sln --configuration Release` | **0 warnings, 0 errors** |\n| `dotnet test \u2026 --configuration Release` | 3028 passed, 0 failed |\n| `dotnet publish` (Console + Update) | pass |\n\nNo frontend files are touched, so the yarn steps aren't applicable.\n\n**What I did not test.** I have not yet run this build against live indexers; I'm deploying it to my own instance next and will report the before/after result counts here. I have not tested an indexer that supports book search but not plain search, beyond the unit test.\n\n#### Screenshots (UI changes only)\n\nNone \u2014 no UI changes.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01SRWmo6LJbxw6Sojr6YErXi\n",
@@ -6988,11 +7007,13 @@
       "title": "Tell users how to fix authors skipped by bulk sync-monitoring",
       "url": "https://github.com/Chaptarr/chaptarr/pull/162",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         161
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit cc86412d7b304d4dd997512afe5958e7ba18ec57; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-22T21:51:59Z",
       "body": "#### Description\n\nFixes #161. The bulk Author Editor's \"Sync Monitored Audio/eBooks\" action silently skips any author missing one of the two root folder paths (`AudiobookRootFolderPath`/`EbookRootFolderPath`), reporting only an aggregate count with no indication of what to do next.\n\n**Correction from the original version of this PR:** I initially assumed the frontend bulk editor had no way to set root folder paths at all, and considered adding a new UI control for it. That assumption was wrong - Author Editor already has a Root Folder bulk-set field (`AuthorEditorFooter.js`, backed by `RootFolderSelectInputConnector`), the same way it already supports bulk quality/metadata profile. It's just gated behind the page's media-type filter tab (Audiobooks / eBooks / All), same as quality and metadata profile are, so it only applies to one media type at a time - you can't set both root folders in a single action. That's the actual reason people hit the \"both root folders required\" skip: they set one via the bulk editor and assume that's enough, or don't realize the fix already exists in the UI.\n\nSo no frontend change is needed here - the fix is just telling people the real, already-supported steps instead of vague or (in the previous revision of this PR) actively wrong guidance:\n\n> Sync was enabled for N author(s). M author(s) were skipped because both audiobook and ebook root folders are required. In Author Editor, switch the media type filter to Audiobooks, select the skipped authors, and set a Root Folder (this only assigns the path - it won't move any files unless you choose to). Repeat with the filter set to eBooks, then re-run Sync Monitored Audio/eBooks.\n\n#### Database Migration\nNO\n\n#### How was this tested?\nUpdated the existing unit test in `AuthorEditorMissingRootHydrationFixture.cs` to assert on the new warning text. `dotnet test --filter FullyQualifiedName~AuthorEditorMissingRootHydrationFixture` - 5/5 passing.\n\nDid not test the frontend live (no running instance in this sandbox) - no frontend files were touched, so this is a backend-only string change plus a matching test update.\n\n#### Screenshots (UI changes only)\nN/A - backend response header text only.\n",
@@ -7021,9 +7042,11 @@
       "title": "perf(refresh): stop refetching Book+Author+Editions+Files per book during author refresh (#163)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/166",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 49224120faf5a93f9f07f640781a1b5e3cb5c634; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T20:19:43Z",
       "body": "#### Description\n\n`RefreshBookService.PublishEntityUpdatedEvent` called `_bookService.GetBook(id)` unconditionally for every book that changed during an author refresh - a full `Book + Author + Editions + BookFiles` reload, even though the author-level refresh already batch-loaded `Editions`/`BookFiles` for every book up front (`RefreshAuthorService.HydrateLocalChildrenForRefresh`), and `remoteData` (the author) is already in memory and identical for every book in a single author-scoped refresh call.\n\nOn a large library this produced a very large number of avoidable per-book queries. Measured via `pg_stat_statements` on a live instance (204s window, mid-refresh): 254,056 calls to `Authors JOIN Books WHERE Books.Id = $1` and 233,131 calls to `Editions WHERE BookId = $1`. This is a direct contributor to why authors with very large catalogues (e.g. Charles Dickens, 10k+ books) can take hours to refresh, and starve other commands of chaptarr's single disk-access slot for the duration.\n\nReuse the already-hydrated entity when its `Editions`/`BookFiles` are already loaded and its `Author` is already set, instead of re-querying. Falls back to the original full `GetBook()` fetch when something is genuinely missing (a merge target fetched via `GetEntityByForeignId`, or a direct single-book refresh call that didn't pre-hydrate), so behavior for every other caller/subscriber is unchanged.\n\nAlso fixes a related footgun found while testing this: `Book.Author` / `.Editions` / `.BookFiles` are backed by `LazyLoaded<TParent,TChild>` proxies that transparently issue a DB query the *first time* the materializing property is read. A naive `== null` check on those properties fires the exact query it's trying to detect. The fix checks the non-materializing `Lazy*.IsLoaded` flag instead, and pre-assigns `book.Author` before any code path can read it for the first time.\n\nFixes # (part of #163, tracked under #173)\n\n#### Database Migration\nNO\n\n#### How was this tested?\n- Built and ran in an isolated container against a full template copy of a production `chaptarr-main` database (real library, largest author has 10k+ books), so as not to touch any live data.\n- Confirmed a `RefreshAuthor` run completes without errors/regressions.\n- No behavior changes intended for any other `BookUpdatedEvent` subscriber: the published event still carries a fully-hydrated `Book` in every case, just sourced from memory instead of the database when possible.\n- Subsequently deployed to the live instance this was profiled on, alongside the other PRs in this cluster (#167, #168, #172, #174) - a full `RefreshAuthor` pass over the whole library (400+ authors, including several with 3,000-10,000+ books) completed with no errors.\n\n#### Screenshots (UI changes only)\nN/A\n",
@@ -7058,9 +7081,11 @@
       "title": "perf(books): stop CloneStoredBook eagerly loading Author on every book save (#163)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/167",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 05da1d629c534fe3e9e3ae2bc46ccfff731f1bcf; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T20:19:45Z",
       "body": "#### Description\n\n`BookService.SaveEntity` runs unconditionally for every book processed during a refresh (not gated by whether the book actually changed), and its `UpdateMany` builds a \"stored\" comparison snapshot for each book via `CloneStoredBook`, which copied `Author = book.Author`.\n\n`Book.Author` is a lazy-loaded property (`LazyLoaded<Book, Author>`, registered in `TableMapping` as a join back through `Books` by `Id`) - reading it on a freshly-queried row transparently fires:\n\n```sql\nSELECT \"Authors\".* FROM \"Authors\" JOIN \"Books\" ON (\"Authors\".\"Id\" = \"Books\".\"AuthorId\") WHERE (\"Books\".\"Id\" = $1)\n```\n\nSince this runs on every single book save, it fired once per book on every author refresh - regardless of whether the monitoring-sync logic that actually consumes the stored snapshot (`GetSyncUpdatesForMutations`) even needed it (that logic is gated behind `author.SyncMonitoredAcrossFormats` and typically applies to few authors).\n\nThe only place that later actually reads `Author` off a cloned/stored book (`PublishBookEditedEvents`) re-fetches it explicitly and cheaply via `GetAuthor(authorId)` - a simple primary-key lookup - before use, so the eager copy was pure overhead. Dropped it, keeping `AuthorId` (already copied), which is all of `CloneStoredBook`'s callers actually compare on.\n\nA second commit in this PR fixes the same mechanism for the ASIN fields: `CloneStoredBook` also computed `ASIN`/`AudibleASIN` via `BookEditionIdentity.GetAsin()`/`GetAudibleAsin()`, which prefer an edition-level value over the book-level field by reading `book.Editions` - another lazy-loaded property, firing `SELECT Editions WHERE BookId = $1` on the same freshly-queried row, once per book, on every save. Neither field on the cloned snapshot is ever read anywhere (`HasMonitoringChanged` only compares the monitored flags), so both were dropped entirely.\n\nFixes # (part of #163, tracked under #173)\n\n#### Database Migration\nNO\n\n#### How was this tested?\nMeasured on an isolated copy of a production database (unrelated to any live data, no live downloads/queue), same 2-minute `RefreshAuthor` window, processing the same 2 authors, comparing before this PR's changes vs. after (on top of #166):\n\n|                     | before | after |\n|---------------------|--------|-------|\n| total DB queries    | 261,406 | 28,751 |\n| DB execution time   | 4,868s  | 1,613s |\n| Editions query      | 74,680  | 2,902  |\n| Authors-join query  | 16,985  | 945    |\n\n~89% fewer total queries and ~96% fewer of the specific Editions query, for the same amount of work done.\n\nSubsequently deployed to the live instance this was profiled on, alongside the other PRs in this cluster (#166, #168, #172, #174) - a full `RefreshAuthor` pass over the whole library (400+ authors, including several with 3,000-10,000+ books) completed with no errors.\n\n#### Screenshots (UI changes only)\nN/A\n",
@@ -7097,9 +7122,11 @@
       "title": "perf(books): stop re-fetching RootFolders per work group during monitoring sync (#163)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/168",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 73a7b269ea4adf8b3a70ddb7b1bdf51e5abdda52; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T20:19:47Z",
       "body": "#### Description\n\n`GetSyncUpdatesForMutations` (invoked via `SaveEntity` on every book save) calls `ApplyMutationSyncForWorkGroup` once per author-owned work group when that author has `SyncMonitoredAcrossFormats` enabled. That path could reach `EnsureOneMonitoredOnFormat` -> `CanEnableMonitoringForMediaType` -> `HasCompatibleRootFolderForMediaType`, which called `_rootFolderService.All()` fresh every time - an uncached full read of a small, rarely-changing table, repeated once per media type, per work group, per changed book.\n\nFetch `RootFolders` once per author (only for authors that actually have sync-across-formats enabled) and thread it through as an optional parameter. Every other existing call site (`ApplyInsertSyncDefaults`, `BuildReconcileSyncUpdates`, the direct `CanEnableMonitoringForMediaType` caller) is unchanged - the new parameter defaults to `null` and falls back to the original per-call fetch when not supplied, so behavior elsewhere is identical.\n\nFixes # (part of #163, tracked under #173)\n\n#### Database Migration\nNO\n\n#### How was this tested?\nMeasured on an isolated copy of a production database (unrelated to any live data), on top of #166 and #167: the `RootFolders` query, which was running at roughly 2,000/min during a `RefreshAuthor` pass, dropped out of the top statements entirely after this change.\n\nSubsequently deployed to the live instance this was profiled on, alongside the other PRs in this cluster (#166, #167, #172, #174) - a full `RefreshAuthor` pass over the whole library (400+ authors, including several with 3,000-10,000+ books) completed with no errors.\n\n#### Screenshots (UI changes only)\nN/A\n",
@@ -7132,9 +7159,11 @@
       "title": "Speed up the slowest library queries on large databases",
       "url": "https://github.com/Chaptarr/chaptarr/pull/169",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit c33c68c51173db5df97507824553326b3cfc48f9; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-22T14:53:53Z",
       "body": "#### Description\r\n\r\nI profiled every SQL statement Chaptarr ran against my own library's database: 925 authors, 75k books, 130k editions, 12k book files, 650 MB. The profiling covered each main page of the UI plus startup. A handful of queries read far more of the database than their results need. This PR fixes the ones that an index or a join change can fix, and changes nothing else.\r\n\r\n**Migration 108 adds four indexes and drops the two single-column indexes they make redundant:**\r\n\r\n| Index | For | Why |\r\n|---|---|---|\r\n| `BookFiles (EditionId, Size)`, replaces `(EditionId)` | Author progress, the book index summary, every EditionId lookup | The file size and count roll-ups only read these two columns. BookFiles rows are wide (about 7 KB on average here, mostly `MatchProvenance` and `AllTags` JSON), so without this index each roll-up reads the whole table. |\r\n| `Books (AuthorId, ReleaseDate, Id)` | The author index's next/last book | The `ROW_NUMBER() OVER (PARTITION BY AuthorId ORDER BY ReleaseDate \u2026)` queries can rank from the index instead of fetching every book row. |\r\n| `Books (MediaType, LOWER(COALESCE(CleanTitle, Title, '')), Id, CleanTitle, Title)` | The Books page (paged, title-sorted) and its A\u2013Z jump bar | With the same expression indexed, a page of 200 is read in order instead of sorting every book of that media type first. `CleanTitle` and `Title` are included so the jump-bar counts can be read from the index alone. Without them, that query walks the index and fetches every row out of order, and it came out slower than the sort it replaced. |\r\n| `Editions (Monitored, BookId)`, replaces `(Monitored)` | Wanted \u2192 Missing and Cutoff Unmet | Both start from the monitored editions and only need `BookId`, so they no longer read edition rows. `Chapters` alone is 129 MB of the 219 MB Editions table here. |\r\n\r\n**`MediaFileRepository.GetFilesByAuthor` and `GetFilesByBook` now INNER JOIN editions and books.** They filter on a book column, so they return the same rows as before. The difference is in the plan. With the shared `LEFT JOIN` builder, SQLite has to keep `BookFiles` as the outer table, so every call read every file row: `SCAN BookFiles`. `GetFilesByBook` runs per matching release in the decision engine (already-imported, repack and proper checks), and during imports, renames and retags. `GetFilesByAuthor` backs the author page's size numbers and file list.\r\n\r\n#### Database Migration\r\n\r\nYES. Indexes only; no data changes.\r\n\r\n- `BookFiles`: adds `IX_BookFiles_EditionId_Size` and drops `IX_BookFiles_EditionId`.\r\n- `Books`: adds `IX_Books_AuthorId_ReleaseDate_Id` and `IX_Books_MediaType_TitleSort` (an expression index, created with `Execute.Sql` because FluentMigrator can't express it; the same SQL works on SQLite and PostgreSQL).\r\n- `Editions`: adds `IX_Editions_Monitored_BookId` and drops `IX_Editions_Monitored`.\r\n\r\nEvery step checks whether the index exists first. On my database the migration took about 1.7 s, mostly reading BookFiles once to build its index. The file grew by 12 MB (623 \u2192 636 MB, 2%).\r\n\r\n#### How was this tested?\r\n\r\n**Unit tests.** The new `QueryPerformanceIndexesFixture` has 8 tests. It runs the real migrations into a fresh SQLite database, then:\r\n\r\n- checks each index's columns and that the two replaced indexes are gone;\r\n- captures the SQL that `BookRepository`, `MediaFileRepository` and `AuthorStatisticsRepository` actually send, and asserts on SQLite's query plan for it. Title page: uses the index, with no temp B-tree. Jump bar: covering index. Next/last book: covering index. Files by author and by book: no `SCAN BookFiles`. Author progress roll-up: covering index. Wanted's edition lookup: covering index.\r\n- checks that `GetFilesByAuthor` and `GetFilesByBook` still return only that author's or book's mapped files, with edition, book and author loaded in the same query.\r\n\r\n7 of the 8 fail without this change. The behaviour test passes both ways, as it should. The full `Chaptarr.Core.Test` suite passes: 3028 passed, 0 failed.\r\n\r\n**My real database.** I ran a copy of my production database with indexer, download-client and notification credentials removed. The SQL numbers below use the same SQLite build Chaptarr bundles (e_sqlite3 3.50.4), loaded into a small harness. They are the median of repeated runs on an otherwise idle machine, and two separate runs agreed within about 10%.\r\n\r\n| Query (what triggers it) | Before | After |\r\n|---|---:|---:|\r\n| Books page, first 200 by title | 81 ms | 1.8 ms |\r\n| Books page, 200 at offset 4,000 (scrolling down) | 406 ms | 2.1 ms |\r\n| Books page, A\u2013Z jump bar counts | 296 ms | 190 ms |\r\n| Author index, next book for every author | 57 ms | 4.3 ms |\r\n| Author index, last book for every author | 142 ms | 85 ms |\r\n| Author progress, one author with 5,304 books | 47 ms | 32 ms |\r\n| Author progress, one author with 36 books | 37 ms | 21 ms |\r\n| Wanted \u2192 Missing, page / count | 136 / 134 ms | 75 / 70 ms |\r\n| Wanted \u2192 Cutoff Unmet, page / count | 148 / 154 ms | 93 / 89 ms |\r\n| `GetFilesByAuthor` (author with 15 files) | 45 ms | 0.7 ms |\r\n| `GetFilesByBook` (book with 1 file) | 31 ms | 0.08 ms |\r\n\r\n**Whole API requests** on the same database: a Debug build, each request replayed 5 times after a warm-up, median shown.\r\n\r\n| Endpoint | Before | After |\r\n|---|---:|---:|\r\n| `GET /api/v1/author/{id}/size/{mediaType}` | 43\u201350 ms | 5\u201311 ms |\r\n| `GET /api/v1/bookFile?authorId=` | 45\u201355 ms | 6\u20138 ms |\r\n| `GET /api/v1/book/paged` (title, 200 rows) | 250\u2013287 ms | 169\u2013186 ms |\r\n| `GET /api/v1/book/buckets` | 416 ms | 279 ms |\r\n| `GET /api/v1/wanted/missing` | 331 ms | 203 ms |\r\n| `GET /api/v1/wanted/cutoff` | 367 ms | 263 ms |\r\n\r\n`/api/v1/author` (about 1.9 s here) and `/api/v1/book?authorId=` (4.3\u20136.4 s for authors with 2\u20135k books) did not change. Their time goes to lazy loading and mapping, not to any one slow query. I'll open that as a separate issue.\r\n\r\n**What it costs to write.** A refresh-style update of all 5,304 books of one author went from 38 ms to 105 ms, because Books has two more indexes to maintain. Changing monitoring on 6,454 editions and updating BookFiles sizes both stayed the same.\r\n\r\n**PostgreSQL.** A fresh install on PostgreSQL 16 migrates cleanly to 108. The four indexes exist, the two old ones are gone, and `EXPLAIN` of the paged title query shows an Index Scan on `IX_Books_MediaType_TitleSort` with no sort. I have not load-tested on Postgres.\r\n\r\n**What I tried and left out:**\r\n\r\n- **`ANALYZE` / `PRAGMA optimize`.** About 10% faster on the current schema. With these indexes, though, it made the book-index summary query 2\u00d7 slower (118 \u2192 217 ms), so I left statistics alone.\r\n- **A bigger page cache (`cache_size` 16 MB).** Consistently 20\u201330% slower on these queries here, so it stays at the default.\r\n- **`temp_store=MEMORY`.** No measurable change.\r\n- **`mmap_size=256MB`.** 10\u201350% faster across the board. But an I/O error on a memory-mapped database crashes the process instead of raising an error, and people run Chaptarr on NAS boxes and network mounts, so I didn't include it. It might be worth a separate discussion.\r\n- **Setting the connection PRAGMAs once instead of on every open.** They add up to about 1\u20132% of SQL time, so it isn't worth the change.\r\n\r\n**Notes for reviewers:**\r\n\r\n- With `IX_Editions_Monitored_BookId` present, SQLite may use it instead of `IX_Editions_BookId_Monitored_Id` (from 105) for author progress's monitored-edition lookup. Both seek on the same two columns and return rows in `Id` order, and author progress got faster. The existing plan test for 105 is unaffected, because its fixture only creates that index.\r\n- The expression index only helps if the query spells the expression the same way. The migration has a comment saying so. The plan tests would catch it if the title sort in `BookRepository` changed.\r\n- Migration number: this takes 108, the next free one on `develop` today.\r\n\r\n---\r\n\r\n**A note on AI:** this change was written with [Claude Code](https://claude.com/claude-code) (Claude Agent SDK), using **Claude Opus 5** (`claude-opus-5`) at **`xhigh`** reasoning effort. The profiling, the choice of indexes, the implementation, the tests and this description were all AI-generated; I reviewed them before opening the PR. The profiling hook used to find the hot queries was a local-only patch and is not part of this PR.\r\n",
@@ -7164,10 +7193,11 @@
       "title": "fix(queue): respect torrent preservation when removing downloads",
       "url": "https://github.com/Chaptarr/chaptarr/pull/171",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "9de84446a295f96ede90bb746bf6ca1c3ead5deb"
+        "9de84446a295f96ede90bb746bf6ca1c3ead5deb",
+        "Integrated reviewed upstream patch at fork commit 9de84446a295f96ede90bb746bf6ca1c3ead5deb; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-22T15:16:11Z",
@@ -7197,9 +7227,11 @@
       "title": "perf(books): replace BuildWorkGroups's O(N^2) pairwise matching with a token-bucketed union-find (#163, #173)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/174",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 775edaf8e1c986593a667c40da43e5384462623c; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T20:19:49Z",
       "body": "#### Description\n\nFound via `dotnet-trace` against a live instance: while refreshing a \"publisher as author\" entity (Charles River Editors, 7,105 books, many near-duplicate reprints), `BuildWorkGroups` (used by `ApplyInsertSyncDefaults`, the insert-time counterpart of the cross-format-monitoring-sync logic fixed in #172) pinned chaptarr at 100%+ CPU for many minutes on a single call.\n\nUnlike the other fixes in this cluster (#166/#167/#168/#172), which were called redundantly - once per book saved - this call site only runs once per insert batch. The problem here is that the algorithm itself is O(N^2): `BuildWorkGroups` compares every remaining book against every other remaining book via `WorkIdMatcher.CrossFormatSafeMatches`. For an author with thousands of books, that's tens of millions of comparisons in one call.\n\n`CrossFormatSafeMatches` can only return true when two books share an identity token (drawn from the categories in `BookIdentity.GetProviderIdentityTokens` - work-level or edition-level, depending on same/cross media type); it never matches on title or anything else. So two books that share no token can never match and don't need to be compared at all.\n\nThe new implementation buckets books by token (O(N)), then only runs the real, unmodified `CrossFormatSafeMatches` - not a reimplementation of its rules - within each bucket, unioning matches with a union-find. Realistic token buckets are small (a handful of format/duplicate siblings), so the expensive comparison only ever runs on small candidate sets instead of the whole catalogue.\n\nThe original O(N^2) algorithm is kept, `internal`-only, as `BuildWorkGroupsReference`, purely so tests can assert the two produce identical output.\n\nFixes # (part of #163, tracked under #173)\n\n#### Database Migration\nNO\n\n#### How was this tested?\n- New `BuildWorkGroupsFixture`: hand-written cases for every semantic path the algorithm has to get right (shared work ids, shared edition ids, the cross-media-type work-only restriction, a transitive chain across different shared tokens, untokened books, empty/null input). Each case asserts the fast and reference implementations produce *identical* groupings, not just a hardcoded expected count, so the test catches a regression in either one.\n- Full `Chaptarr.Core.Test` suite (3,016 tests) passes.\n- Additionally verified out-of-band (not part of the committed suite, since it depends on ~1.4MB of extracted production data) with a differential run of both implementations against every book from five real large-catalogue authors on a live instance (Charles Dickens, Mark Twain, Nora Roberts, Lewis Carroll, Charles River Editors - 22,447 books total): identical groupings in every case.\n- Deployed to the live instance this was profiled on: a full `RefreshAuthor` pass over 418 authors (including two ~4,000-book \"publisher as author\" entities, Alexandre Dumas at 3,777 books and Random House at 4,108) completed in ~45 minutes with no errors, each of those large authors clearing in well under a minute alongside dozens of others in the same window.\n\n#### Screenshots (UI changes only)\nN/A\n",
@@ -7281,9 +7313,11 @@
       "title": "Requesting one format doesn't monitor the sibling, even with format sync on",
       "url": "https://github.com/Chaptarr/chaptarr/pull/178",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit f58e836d53439da0ed4cf18a0a7bf9d576d22a59; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-23T00:02:27Z",
       "body": "#### Description\n\n\"Sync Monitored Across Formats\" is supposed to mean: monitor the ebook, and the audiobook gets monitored too (or vice versa). It only half works. Toggling an *existing* book's monitored flag reconciles the sibling correctly \u2014 that path has been solid since it shipped. But a book that arrives **already monitored**, which is exactly what every book request does (`POST /api/v1/book` with `monitored: true`), never goes through any of the four methods the reconciliation is wired into (`SetBookMonitored`, `SetMonitored`, `UpdateBook`, `UpdateMany`). Its monitored flag is set once, inline, at insert time \u2014 so the sibling is left behind, silently, even on an author with sync fully configured.\n\n<details>\n<summary>Technical detail</summary>\n\n`BookService.AddBook` inserts the row, sets `newBook.Monitored` from the caller, publishes `BookAddedEvent`, and returns. None of that touches `GetSyncUpdatesForMutations`, the private helper the four existing mutation methods all call. Confirmed on a real library: an audiobook was requested and owned; its ebook sibling sat on the same Goodreads work id, unmonitored, with the author's `SyncMonitoredAcrossFormats` correctly `true` \u2014 and nothing ever reconciled it, because nothing ever called one of the four methods for that row after its creation.\n\n`BulkSyncFormatMonitoringCommand` exists specifically to reconcile this kind of drift after the fact, but nothing in the app invokes it automatically \u2014 not on add, not on refresh, not on a schedule. It's dead code unless someone calls it manually via `POST /api/v1/command`.\n\n</details>\n\n**What this does.** Runs the insert through the exact same reconciliation the four existing methods already share: build a clone of the new book with both format-monitored flags forced to `false` as the \"prior\" state, and hand `(newBook, priorState)` to `GetSyncUpdatesForMutations`. From the reconciliation's point of view this looks identical to \"a book just became monitored\" \u2014 which is the true story \u2014 so it produces the same sibling update it always would have.\n\n**Deliberate choices worth flagging for review**\n\n- **This only closes the single-book insert path.** A book that arrives via bulk catalog import (an author refresh discovering their back-catalog, all unmonitored by design) still isn't covered \u2014 `InsertMany` was never one of the four sync-triggering methods, and this PR doesn't add it there. I chose the narrower fix because it's the path every book request goes through (`AddBookService.AddBook` \u2192 `BookService.AddBook`), so it's the one that matters for a site that lets people request books; the bulk-import path only matters in the rarer sequence where a refresh discovers a new sibling for a work whose other format is *already* monitored outside of a request. That's the case I found the original bug in, historically \u2014 I fixed the data for it by hand \u2014 but I don't have evidence it recurs going forward the same way, since a freshly-requested author's other books are typically all-unmonitored on both sides when refresh later fills them in (nothing to sync against yet). Happy to extend this into `InsertMany` too if you'd rather close the whole surface in one PR.\n- The diff is 25 lines in one file, `BookService.cs`, plus tests. Nothing else changes.\n\n**Blast radius.** `AddBook` is the single insertion point for both the manual \"add a book\" UI flow and every programmatic book request. The new call is a no-op whenever the book isn't monitored, or the author has sync off, or there's no sibling row to reconcile \u2014 which is true for the overwhelming majority of inserts (most new books are catalog-only, unmonitored, or the sibling doesn't exist yet).\n\n#### Database Migration\n\nNO.\n\n#### How was this tested?\n\nFour tests, written first and watched failing for the right reason:\n\n```\nFailed add_book_should_monitor_the_unmonitored_sibling_format\n  the pre-existing ebook sibling should have been monitored by the sync\n  Expected: True\n  But was:  False\nFailed!  - Failed: 4, Passed: 0\n```\n\n(All four failed initially \u2014 the other three assert `AddBook` should *not* touch the sibling under specific conditions \u2014 sync off, the new book itself unmonitored, no sibling at all \u2014 and those only started passing once the surrounding infrastructure in the test double was wired up correctly; once fixed, all three passed unmodified before the actual code change, confirming they're real regression guards and not accidentally-passing assertions.)\n\n```\ndevelop (7a06004): 3020 passed  \u2192  this branch: 3024 passed (+4), 0 failed\n```\n\n| CI step | Result |\n|---|---|\n| conflict-marker guard | clean |\n| `package.json` parses | ok |\n| `version_guard.py` sync / monotonic / commit-hygiene | ok / ok / ok |\n| `dotnet build src/Chaptarr.NoTests.sln -c Release` | 0 warnings, 0 errors |\n| `dotnet test` | 3024 passed |\n\nNo frontend files are touched, so the yarn steps aren't applicable.\n\n**On a real instance:** deployed to my own instance, cherry-picked on top of several other local branches (see that branch's own commit history \u2014 one of them adds `Author.AudiobookMonitorExisting`/`EbookMonitorExisting` and an extra `> 0` gate on top of upstream's simpler sync-enable rule; the cherry-picked copy of this PR's test carries one additional commit setting those fields so the test proves the fix against what that build actually gates on, without changing the PR itself). The specific historical gap (an owned, monitored audiobook with an unmonitored ebook sibling on the same work id, sync on) was corrected by hand via the existing `PUT /book/monitor` endpoint \u2014 proving *that* endpoint's reconciliation already worked correctly; this PR's job is only to make a fresh insert behave the same way going forward.\n\n**What I did not test.** I did not add coverage for the bulk-import (`InsertMany`) path \u2014 see the deliberate-choices note above. I also did not exercise this through the full HTTP `POST /api/v1/book` request path in a test (only through `BookService.AddBook` directly); the controller layer between them does no monitoring-relevant work, so I don't expect a difference, but I haven't proven it in a test.\n\n#### Screenshots (UI changes only)\n\nNone. No UI changes.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_016egDLGPNYH9NDewUXf1Gkq\n",
@@ -7312,9 +7346,11 @@
       "title": "perf(covers): skip per-book cover reconciliation when a refresh made no changes",
       "url": "https://github.com/Chaptarr/chaptarr/pull/179",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 394e84080206ae68bd83f6f6cefe927116a4387e; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T20:19:53Z",
       "body": "#### Description\n\n`MediaCoverService.HandleAsync(AuthorRefreshCompleteEvent)` unconditionally re-fetches every book (+ eagerly hydrated editions) for the author again via `GetBooksByAuthor`, then runs `EnsureBookCovers` on each one - disk-cache checks across every rendition, and on any miss a synchronous HTTP fetch + resize - on every single `RefreshAuthor` completion, including pure no-op re-scans of an already-fully-synced catalogue. For large catalogues (e.g. an author with several thousand books) that's a redundant full re-query plus thousands of per-book operations running after every refresh, competing for I/O/CPU with anything else in flight.\n\nThreads an `AnyChanges` flag through `PublishRefreshCompleteEvent` -> `AuthorRefreshCompleteEvent`, sourced from the same \"did anything change\" bool `RefreshEntityInfo` already computes for `PublishEntityUpdatedEvent`. When a refresh found no changes at all, `MediaCoverService` now skips the re-fetch and per-book loop entirely - nothing about any book's title/editions/images could have moved. `AnyChanges` defaults to `true`, so the other 6 `AuthorRefreshCompleteEvent` publishers (import/discovery flows) keep today's always-reconcile behavior unchanged.\n\n#### Database Migration\nNO\n\n#### How was this tested?\n- Full `Chaptarr.Core.Test` suite (3,020 tests) passes.\n- Deployed to a live instance and confirmed the skip path actually fires: with logging temporarily bumped to Info, a refresh that found real changes reconciled covers as before, and a refresh with `AnyChanges=false` correctly skipped the per-book loop and logged the skip.\n- Note: on the specific author I used for that live check, a separate pre-existing bug (see the companion PR making match-claim order deterministic) meant `AnyChanges` rarely settled to `false` in practice for that author. This PR's own logic (the skip itself, and that it doesn't regress the other 6 callers) is verified regardless of that separate issue.\n\n#### Screenshots (UI changes only)\nN/A - no frontend changes in this PR.",
@@ -7346,9 +7382,11 @@
       "title": "fix(books): make remote-item match-claim order deterministic during author refresh",
       "url": "https://github.com/Chaptarr/chaptarr/pull/180",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 30750b3824d77050200301cfc246c44c3ab72aff; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T20:19:55Z",
       "body": "#### Description\n\nWhen several remote pockets share the same title (e.g. multiple \"Dune\" editions from different sources/print runs), \\`GetMatchingExistingChildren\\` -> \\`BookRefreshMatchingIndex.Consume\\` lets whichever remote item is processed first claim a given ambiguous local row, removing it from the candidate pool for every later remote item. The final tie-break within a single candidate set (\\`HasKnownFiles\\`, \\`AddType\\`, provider score, then \\`Id\\`) is already deterministic, but the order remote items arrive in was whatever the metadata source's response happened to be for that call - not guaranteed stable request to request.\n\nConfirmed live against a real author (363 books) with several ambiguously-titled duplicate rows: refreshing the same already-synced author back to back reported books being matched/unmatched inconsistently between runs purely due to claim order, even with zero real catalogue changes in between.\n\nAdds \\`OrderRemoteChildrenForMatching\\`, a virtual hook on \\`RefreshEntityServiceBase\\` (default no-op, so \\`RefreshBookService\\`'s nested edition refresh is unaffected) that \\`RefreshAuthorService\\` overrides to sort remote books by their own stable provider-identity token before the match loop runs. Claim order - and therefore the outcome - is now a function of the data itself, not of call-to-call API response order.\n\n**Note:** while investigating a \"same author reports N books changed on every single refresh\" symptom, this fix turned out not to be the (or at least not the only) cause for that specific symptom - the claimed set was identical run over run for that author, not flapping between different sets, which pointed at a separate root cause (a title-metadata field not persisting on write) that's still under investigation. This PR stands on its own as a real correctness fix for the ambiguous-title-ordering case regardless.\n\n#### Database Migration\nNO\n\n#### How was this tested?\n- New tests in \\`RefreshAuthorServiceMonitoringFixture\\`: same candidate set in forward/reversed/shuffled input order produces identical output order, and the sort never drops or duplicates books (including ones with no provider tokens at all).\n- Full \\`Chaptarr.Core.Test\\` suite (3,022 tests) passes.\n- Deployed to a live instance; confirmed the new ordering is applied and is stable across repeated calls for the same input set.\n\n#### Screenshots (UI changes only)\nN/A - no frontend changes in this PR.",
@@ -7378,9 +7416,11 @@
       "title": "fix(books): use the author-refresh match instead of independently re-deriving it",
       "url": "https://github.com/Chaptarr/chaptarr/pull/181",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 63383d931ad4101b1c06d2ef409dd3dd9e810831; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T22:21:27Z",
       "body": "#### Description\n\nRefreshAuthorService's SortChildren already decides, once, which remote item matches each local book (`GetMatchingExistingChildren`) - that decision is what buckets a book as Added/Updated/UpToDate/Deleted. But when the actual per-book refresh runs, `RefreshBookService.GetRemoteData` throws that decision away and independently re-derives its own match via `BookIdentity.FindWorkFirstMatches(...).FirstOrDefault()` over the same raw remote list.\n\nWhen the remote list has more than one plausible candidate for a book (e.g. the metadata source returning multiple entries that share a provider id), these two passes can disagree. Confirmed live: a book correctly classified as changed (SortChildren's comparison found a real difference) never actually got the field written, refresh after refresh, because `GetRemoteData`'s own separate match resolved to a different candidate.\n\nAdds `SortedChildren.MatchedRemoteByLocalId` (populated where the match is actually decided, in `SortChildren`) and threads it through a new, non-interface `RefreshBookInfo` overload - same reasoning as `BookService.UpdateMany`'s existing hint overload: adding a parameter to `IRefreshBookService` would break every hand-written test double, so `RefreshAuthorService` holds a concrete `RefreshBookService` reference check instead. `GetRemoteData` consults the hint first and only falls back to independent re-derivation when there isn't one for that book id, so every other `RefreshBookInfo` caller (imports, discovery, manual single-book refresh) is completely unaffected.\n\nThis is one of three related fixes (companion PRs make match-claim order deterministic, and fix a separate comparison-vs-apply mismatch); together they resolve a \"books reported as changed on every single refresh, forever\" symptom I found while investigating a cover-reconciliation performance issue.\n\n#### Database Migration\nNO\n\n#### How was this tested?\n- New tests in `RefreshBookServiceProviderMatchingFixture`: with an ambiguous remote list (two candidates that both legitimately match by provider id and media type), a hint pointing at either candidate is honored regardless of list order; a hint entry for a different book id is correctly ignored and falls back to normal matching.\n- Full `Chaptarr.Core.Test` suite (3,022 tests) passes.\n- Deployed to a live instance alongside the two companion fixes and confirmed via live logging that a book's match now resolves consistently between the classification pass and the actual update pass.\n\n#### Screenshots (UI changes only)\nN/A - no frontend changes in this PR.",
@@ -7416,10 +7456,11 @@
       "title": "fix(books): compare against the simulated update result, not the raw remote payload",
       "url": "https://github.com/Chaptarr/chaptarr/pull/182",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "52bdf5677dc0ba01c5b54baa073844b6b6e46d2e"
+        "52bdf5677dc0ba01c5b54baa073844b6b6e46d2e",
+        "Integrated reviewed upstream patch at fork commit 52bdf5677dc0ba01c5b54baa073844b6b6e46d2e; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-23T01:31:27Z",
@@ -7521,9 +7562,11 @@
       "title": "fix(commands): stop disk-access groups from globally blocking each other",
       "url": "https://github.com/Chaptarr/chaptarr/pull/188",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 05854a8bc8125f4425c448e1a0a1237a4bcc1d7b; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-24T00:17:30Z",
       "body": "## Summary\n\n`CommandQueue.IsBlockedByDiskAccess` blocks a candidate command whenever\n**any** started disk-access command is in a **different** `DiskAccessGroup`,\nbefore it ever checks the candidate's own group against that group's limit.\nThat collapses every named group into a single global mutex, which\ncontradicts the method's own comment:\n\n> Respect disk access groups: most disk work remains exclusive, while\n> selected groups can opt into a bounded concurrency limit.\n\nIn practice, `RetryFailedImportCommand` and `DownloadedBooksScanCommand` are\nthe only two commands that opt into their own `\"downloadImport\"` group,\nspecifically so they can proceed independently of large `\"default\"`-group\nsweeps (`ProcessMonitoredDownloads`, `ManualImport`, etc.). Because of this\nbug they never actually could: a `ProcessMonitoredDownloads` pass over a\nlarge library (which can legitimately run 15-30+ minutes) fully starves\n`RetryFailedImport` and `ManualImport` for its entire duration, even though\n`ManualImport` is submitted at `\"high\"` priority \u2014 priority is irrelevant\nif the command can't even be selected as a candidate.\n\nLive-reproduced on a ~3,300-item monitored-downloads backlog: submitted a\n`RetryFailedImport` command while `ProcessMonitoredDownloads` was actively\nrunning; it sat `status: \"queued\"` for the entire multi-minute run and only\nstarted once `ProcessMonitoredDownloads` finished (or was cancelled).\n\n## Fix\n\nA candidate is now only blocked by started commands in its **own** group\nexceeding that group's configured limit. Commands in different groups no\nlonger block each other, matching the behavior the existing code comment\nalready described.\n\nMost commands don't override `DiskAccessGroup` and so still share the\nimplicit `\"default\"` group (limit 1) \u2014 they remain serialized with each\nother exactly as before. Only the few commands that explicitly opt into\ntheir own group are affected, which is the intended behavior.\n\n## Test plan\n\n- [x] Added `CommandQueueDiskAccessGroupFixture` covering both directions:\n      a command in a different group is no longer blocked; two commands\n      sharing a group are still correctly serialized.\n- [x] Full existing test suite passes (3,027/3,027).\n- [x] Live-verified on a running instance: submitted `RetryFailedImport`\n      while a `\"default\"`-group `ManualImport` command was actively\n      started \u2014 it started and completed within seconds, instead of\n      sitting queued for the duration of the `\"default\"`-group work like\n      it did before this fix.",
@@ -7585,9 +7628,11 @@
       "title": "fix(download): make ProcessMonitoredDownloads honor cancellation",
       "url": "https://github.com/Chaptarr/chaptarr/pull/190",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 44b9f61062ac7e921b0303a9d642b2015a0baedf; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-24T17:01:06Z",
       "body": "## Problem\n\n`CommandExecutor` runs `Execute(command, CancellationToken)` when a handler provides that overload. `DownloadProcessingService` (the `ProcessMonitoredDownloads` handler) only has `Execute(command)`, so it never sees the token.\n\n`CommandQueueManager.Cancel()` marks a running command `Cancelled` immediately and cancels its token. For this handler that changes nothing: the worker thread keeps importing every tracked download until the sweep finishes, which takes minutes to an hour with a large backlog. Meanwhile:\n\n- the command disappears from the started list, so nothing shows it is still running\n- it still occupies one of the three `CommandExecutor` workers\n- it no longer counts toward disk-access group limits, since those look at `Started` status\n\nCancelling a few sweeps this way leaves no free worker. Every other command stays `queued` while `GET /api/v1/command` shows nothing started. In our case ManualImport and RetryFailedImport sat queued for over an hour with an empty started list; a container restart \"fixed\" it only because it killed the ghost threads.\n\n## Fix\n\nAdd `Execute(ProcessMonitoredDownloadsCommand, CancellationToken)` and check the token between downloads. `Execute(command)` delegates with `CancellationToken.None`, so callers are unchanged.\n\nOther long-running handlers without a token overload probably have the same problem (not touched here).\n\n## Verification\n\n- New test `cancelled_sweep_should_stop_importing_instead_of_running_to_completion`.\n- Full suite: 3021 passed.\n- Live: started a sweep, cancelled it, and `CommandExecutor: Command ProcessMonitoredDownloadsCommand (ID: ...) was cancelled` was logged about 12s later (the in-flight download finishing). Before the change that line never appeared and the thread kept running.",
@@ -7616,9 +7661,11 @@
       "title": "fix(import): report why a manual import imported nothing",
       "url": "https://github.com/Chaptarr/chaptarr/pull/191",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 9e6e12f8d9f8e6f05546a7c8e93d8666c562ccc4; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-24T18:19:51Z",
       "body": "## Problem\n\n`ManualImportService.Execute` counts results that were not imported but drops their reasons (the decision's `Rejections` and the result's `Errors`), and it leaves the command marked successful even when zero files were imported.\n\nThrough the API this looks like:\n\n```\nstatus: completed, result: successful\nmessage: Manually imported 0 files (1 failed/skipped)\n```\n\nwith nothing in the log. Anything driving Manual Import through `POST /api/v1/command` (scripts, integrations) cannot tell a real import from a rejected one. In practice about 89% (816 of 920) of the manual-import commands we submitted imported nothing, and we counted them as successes because the command reported success.\n\n## Fix\n\n- Log every non-imported file at Warn with its reasons: `[MANUAL-IMPORT] Not imported (Rejected) '<path>': <reasons>`.\n- Put the first reason in the command message: `Manually imported 0 files (1 failed/skipped: <reason>)`.\n- Report the command as `Unsuccessful` when nothing was imported.\n\nThe reporter is an optional constructor argument (`ICommandResultReporter commandResultReporter = null`), so existing constructions and tests are unaffected. Partial imports keep their current result.\n\n## Verification\n\n- New test `manual_import_that_imports_nothing_should_report_unsuccessful_with_the_reason`.\n- Full suite: 3021 passed.\n- Live: the same request that previously returned a bare \"0 files\" now returns `result: unsuccessful` and `... 1 failed/skipped: The authoritative author catalog does not currently contain suggested work 'hc:781589' for Ebook.`, with the matching Warn line in the log.",
@@ -7678,9 +7725,11 @@
       "title": "fix(ui): don't open a blank confirmation when a manual import replaces no local book",
       "url": "https://github.com/Chaptarr/chaptarr/pull/194",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 58a40ad61ac1d513b9a32d4ae2286854f863819a; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-25T01:07:13Z",
       "body": "## Problem\n\nIn the queue, Manual Import runs with \"Replace Existing Files\" on. Import then opens a confirmation listing the existing files that would be replaced. For a row that only has a *metadata suggestion* (no local book, badge \"Will add from metadata\"), the confirmation requests `/bookFile` with no filter. The API answers `500 authorId, bookId, bookFileIds or unmapped must be provided`, the request fails, and the dialog stays blank forever. No import is ever sent and nothing explains why.\n\n## Fix\n\nSkip the confirmation when no selected row has a local book: nothing can be replaced, so there is nothing to confirm.\n\n## Verification\n\nReproduced in headless Chrome (Playwright) against a running instance:\n\n- before: click Import on a \"Will add from metadata\" row, a second dialog opens empty and stays empty for 20+ seconds, no `POST /api/v1/command` is sent;\n- after: the same click sends `POST /api/v1/command` and the dialog closes.\n\nThere is no frontend unit test setup in the repo, so this is verified end to end rather than by a unit test.",
@@ -7708,10 +7757,11 @@
       "title": "fix(import): don't let an explicit Move override \"this torrent's files cannot be moved\"",
       "url": "https://github.com/Chaptarr/chaptarr/pull/195",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "95e47edfdf0de8f26f75ed53a5b44986ae69b775"
+        "95e47edfdf0de8f26f75ed53a5b44986ae69b775",
+        "Integrated reviewed upstream patch at fork commit 95e47edfdf0de8f26f75ed53a5b44986ae69b775; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-25T01:07:15Z",
@@ -7741,9 +7791,11 @@
       "title": "fix(commands): keep a cancelled running command Started until its handler exits",
       "url": "https://github.com/Chaptarr/chaptarr/pull/196",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit c443d655b666a7d4e271622ceb7cea4269c52e7c; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-25T01:07:17Z",
       "body": "> Related to #190, which makes `ProcessMonitoredDownloads` observe the token. This change is independent of it.\n\n## Problem\n\n`CommandQueueManager.Cancel` signals the token and immediately relabels a running command `Cancelled`. A handler that does not observe the token (many do not) keeps running on its worker thread, but the command has already left the started list and stops counting toward disk access group limits. A few such cancels can occupy every worker while `GET /api/v1/command` shows nothing running and every other command sits `queued`.\n\n## Fix\n\nFor a running command whose token was signalled, set the message to `Cancelling` and leave it `Started`. The executor already marks it `Cancelled` when the handler throws `OperationCanceledException`, or `Completed` if it finishes anyway. A second cancel is a no-op. Cancelling a queued or paused command is unchanged.\n\n## Verification\n\n- Three new tests: a running command stays `Started` and its token is signalled; cancelling twice does not relabel it; a queued command is still cancelled immediately. The first fails without the change.\n- Live: cancelled a running `ProcessMonitoredDownloads`; it stayed `started` with message `Cancelling` (the sweep was inside a large multi-file import) instead of disappearing while still busy.",
@@ -7797,9 +7849,11 @@
       "title": "perf(matching): don't use bare function words as Postgres FTS recall keys",
       "url": "https://github.com/Chaptarr/chaptarr/pull/199",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 2340b992166c63cf9b7c26c0b1d371032cc7d691; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T17:20:32Z",
       "body": "## Problem\n\n`EditionFtsRepository.RecallBooksPostgres` ORs every token of a file's title under the `simple` text search configuration, which has no stopword list. A bare `and` or `the` therefore matches tens of thousands of editions. Matching issues this query once per file, so a several-hundred-file audiobook keeps Postgres busy for minutes and makes import sweeps very slow.\n\nMeasured on a 315k-book library (`EXPLAIN (ANALYZE, BUFFERS)` and `pg_stat_statements`):\n\n- The GIN indexes are used; this is not a missing index. The cost is the width of the recall.\n- An 11-term query pulled 80,091 candidate editions and 37,822 books before `LIMIT 20` (`and` alone matches 57,278 editions, `1` matches 16,938).\n- Execution: 1,238 ms for the full query, 506 ms with `and` dropped, 29 ms with the common words dropped.\n- In production the query averaged 1,112 ms per call (2,532 calls, 2.8M ms total), about 11% of all recorded database time, with Postgres near 150% CPU during import sweeps.\n\n## Fix\n\nDrop a small list of English function words (`a`, `an`, `and`, `the`, `of`, `in`, `to`) from the Postgres recall terms. Deliberately kept: digits and series words (`part`, `book`, `volume`), because they distinguish books in a series. If nothing but stopwords remains, the original terms are kept, so a title made only of stopwords still recalls. Only the Postgres path changes.\n\n## Verification\n\n- Four new tests: function words are dropped; series words and digits are kept; an all-stopword title keeps its terms; matching is case-insensitive.\n- Full suite passes.\n- Live, before/after on the same instance: the recall query averaged 1,112 ms per call before and 374 ms per call over the 16,117 calls since deploy (about 3x faster), with the host load average falling from about 95 to 20 over the same period. The workload mix changed between the two windows, so treat the ratio as indicative.\n\n## Not verified\n\nMatching quality: I did not compare recalled candidates before and after for a sample of files. The dropped words only contributed candidates that matched on the function word alone, but a reviewer with a larger regression corpus may want to check.",
@@ -7833,9 +7887,11 @@
       "title": "fix(import): stop multi-file upgrade imports from deleting their own new files",
       "url": "https://github.com/Chaptarr/chaptarr/pull/200",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 495353585df515fe1909f8d38a038fb48ef5fd90; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-25T23:29:35Z",
       "body": "## Summary\nAn automatic import that upgrades an existing multi-file release (typical: a multi-part audiobook whose new release uses the same destination filenames) deleted its own freshly written files. Only the last part of the set survived.\n\n## Cause\nA book group is imported file by file, but the old rows are only removed by one group-level `ReplaceMany` at the end. For every file the replacement selection re-reads the book's rows from the database, so each file sees *all* old rows as \"to replace\". Because both releases produce the same filenames in the same folder, from the second file on the \"old file\" at a path is the new file written by the previous iteration; it is staged to a `.chaptarr-upgrade~` backup and then recycled by `FinalizePendingFileCommits` (a permanent delete when no recycle bin is configured).\n\nA second, smaller problem is in the same flow: when a file's destination path is already tracked by an old row, `ResolveBookFilePathConflict` reused that row, but an earlier file of the same batch had already queued it for replacement, so the group-level replace deleted the row that now described the new file. The file stayed on disk with no `BookFiles` row.\n\n## Fix\n- `BookImportBatchState` tracks the destination paths written and the row ids displaced or reused by the batch in progress; replacement selection (`IsReplaceableExistingFile`, pure and unit tested) and the staging loop never treat those as old files.\n- A row reused at an imported destination is always reused in place and kept out of the batch's `ReplaceMany`; pending commits are kept so staged backups are still recycled and are never rolled back once persisted.\nNormal single-file upgrades are unchanged.\n\n## Evidence\nOn a live library (~200k files) this produced 8,202 `BookFileDeleted`/`Upgrade` history rows in 32 hours; 1,623 of the 1,633 later `MissingFromDisk` removals were at paths an upgrade had already deleted at the same path. 193 editions imported as multi-file sets ended up with far fewer files (e.g. 880 imported -> 1). After the fix, restoring a 173-part audiobook and a 5-part audiobook by re-import gave all files on disk, one row each, and no deletion events.\n\n## Tests\nNew regression tests reproduce both failures (3-part audiobook, `replaceExisting: true`, old release occupying the identical destination paths) and fail on current `develop`. `ImportApprovedBooks|MediaFile|UpgradeMediaFile|ManualImport`: 738 passed.\n\n## Not addressed\n`UpgradeMediaFileService.UpgradeBookFile` (reachable via `BookImportService.ImportFileAsync`) still recycles every file in `Book.BookFiles` before writing; it cannot delete the new file but would wipe a book's other parts if one part is imported through it. Separate follow-up.\n",
@@ -7901,9 +7957,11 @@
       "title": "log: report per-book 'no editions' skips at debug; keep the per-author warning summary",
       "url": "https://github.com/Chaptarr/chaptarr/pull/202",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 3144d5c0e5393fc182dc0fa0dd58e69d824c2130; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-25T23:29:38Z",
       "body": "## Summary\n`RefreshAuthorService.ExcludeBooksWithoutEditions` logged one `[Error]` line per remote book that has no editions, then a per-author `[Warn]` summary. On a large library a single refresh pass produced thousands of error lines (6,717 in 40 minutes) for a condition that is expected and already summarised.\n\nThe per-book line is now `Debug`; the per-author `Warn` summary is unchanged.\n",
@@ -7931,9 +7989,11 @@
       "title": "perf: batch the author-list N+1 queries and the queue conversion-job lookups; scope the FTS recall candidates",
       "url": "https://github.com/Chaptarr/chaptarr/pull/203",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit a41588968836d73f1df28abc84bb12d89a6911c6; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T15:37:08Z",
       "body": "## Summary\n`GET /api/v1/author` (called by the web UI on load) took ~12 s on a 2,659-author / 340k-book library, mostly in ~10,000 single-row lazy-load queries.\n\n## Cause\n`AuthorController.LinkNextPreviousBooks` batched the fetch of each author's next/last book but mapped every book with the rich resource options, which touch `Editions`, `Author` and `BookFiles` (lazy loads: one query each per book), plus an O(n*m) `FirstOrDefault` to pair books with authors.\n\n## Changes\n- Next/last books are hydrated up front: `Author` from the models the request already holds, `Editions` and `BookFiles` from one batched lookup each; pairing uses a dictionary. `nextBook`/`lastBook` are mapped with the lean options, so they no longer carry `overview` and `links` (checked against `frontend/src`: the author index only reads `id`, `title`, `titleSlug`, `disambiguation`, `releaseDate`).\n- `QueueService.ApplyConversionStatuses` queried `ConversionJobs` once per queue item on every queue build (~220 queries/s with a ~2,600 item queue) and only used non-completed rows; it now issues one `NonCompleted` query.\n- The Postgres FTS recall repeats the media-type and author-scope predicates inside every candidate branch; the outer query already applies them, so rows and scores are identical, but the candidate set is smaller before ranking.\n\n## Evidence\nLive: `GET /author` 12.4 s -> 1.6 s (payload 15.6 MB -> 14.3 MB). The recall change was A/B tested read-only against 60 real cases: identical ordered top-20 lists in author-scoped and unscoped modes, ~2x faster scoped and ~20% faster unscoped.\n\n## Tests\nNew fixture asserts the number of edition/file lookups does not scale with the number of authors or books (1/50/500 authors). `AuthorController|Api|Queue|Fts|Conversion|ImportApprovedBooks`: 244 passed.\n",
@@ -7971,9 +8031,11 @@
       "title": "perf: count missing books with a semi-join and bound per-author file statistics",
       "url": "https://github.com/Chaptarr/chaptarr/pull/204",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 76c7c224927297b0cef38c064de033db02df0417; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-25T23:29:41Z",
       "body": "## Summary\nTwo SQL statements dominated the `wanted/missing` page and the per-author statistics on a large library.\n\n## Changes\n- Missing-books total: `COUNT(DISTINCT Books.Id)` over `Books x Editions x BookFiles` anti-join walked, sorted and de-duplicated ~240k rows to produce one number. It now uses an `EXISTS (monitored edition) AND NOT EXISTS (file)` semi-join against `Books`/`Authors` only. Same number (238,045 in both forms on a live database), 1.0 s -> 0.32 s.\n- Per-author statistics: the file-statistics derived table aggregated every `BookFiles` row before the author filter applied. The single-author overloads now restrict the aggregate to that author's books (the id is an int, so it is inlined safely). Same rows (book, size and file counts identical on two real authors), 212 ms -> 7 ms and 147 ms -> 1 ms per call.\n\n## Tests\nNew test asserts the missing-books total equals the distinct books listed for ebook, audiobook and unfiltered requests. `AuthorStat|BookRepository|Wanted`: 37 passed.\n",
@@ -8035,11 +8097,12 @@
       "title": "Fix IndexOutOfRangeException pruning the inferred-quality queue cache",
       "url": "https://github.com/Chaptarr/chaptarr/pull/207",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
         "e9354758cf50783593a978c9691b081df93d4a29",
-        "7022c7436e51780b7314f9d4a502269ebd8a370f"
+        "7022c7436e51780b7314f9d4a502269ebd8a370f",
+        "Integrated reviewed upstream patch at fork commit e9354758cf50783593a978c9691b081df93d4a29; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T20:48:12Z",
@@ -8069,11 +8132,12 @@
       "title": "Do not fail the manual import preview when a file has vanished",
       "url": "https://github.com/Chaptarr/chaptarr/pull/208",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
         "532d95a30a2efcfd67a6cb56d5f8f0c8ddd93915",
-        "debecbdeaaea44d0b077f28f6575e97246800724"
+        "debecbdeaaea44d0b077f28f6575e97246800724",
+        "Integrated reviewed upstream patch at fork commit 532d95a30a2efcfd67a6cb56d5f8f0c8ddd93915; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T20:52:23Z",
@@ -8191,11 +8255,12 @@
       "title": "fix(tags): don't fail ebook tag reading on a null tag value (unparseable AZW3/MOBI ISBN)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/212",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
         "ab1e657d539044004abe2394b176ccb7d45fbd59",
-        "086cbcec9c654869a0414bd3efb4129237df351d"
+        "086cbcec9c654869a0414bd3efb4129237df351d",
+        "Integrated reviewed upstream patch at fork commit ab1e657d539044004abe2394b176ccb7d45fbd59; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T21:04:13Z",
@@ -8290,9 +8355,11 @@
       "title": "fix(import): treat equal-quality automatic imports as duplicates instead of replacing files",
       "url": "https://github.com/Chaptarr/chaptarr/pull/215",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 90000f579f13b18c494be8223199a730b768dea5; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T21:19:44Z",
       "body": "Depends on #200 (`fix-upgrade-deletes-new-files`); stacked on that branch.\n\n## Problem\n`ImportApprovedBooks.ImportFile` built `filesToReplace` from every existing file of the matched edition and, for an automatic import (`replaceExisting: true` from `DownloadedBooksImportService`), staged, replaced and recycled them whenever the new copy was not a strictly lower *revision*. A second copy of an already-imported release therefore churned the library: on a live instance 2,525 editions were re-imported in the same format as \"Upgrade\".\n\n## Fix\nAn automatic import (not `IsManualImport`, not `DownloadForced`) only displaces existing files when the shared upgrade rule says the release is a real upgrade for the edition's quality profile (`IUpgradableSpecification.IsUpgradable` plus `IsUpgradeAllowed`, the same comparison search, queue and history use). Equal or worse is reported as \"Already imported: this edition already has files of equal or better quality\" and nothing is moved, deleted or recycled. Rows whose file is missing on disk are excluded. Manual imports and forced grabs are unchanged. The rejection surfaces through the normal \"nothing imported\" path (`importBlocked` with that message); no new queue state is invented.\n\n## Verification\n- New `ImportApprovedBooksAdditionalCopyFixture` cases (equal quality, worse, real upgrade, missing-on-disk row, manual/forced unchanged).\n- Core tests pass (3,030 with #200 underneath).\n- Live: duplicate releases now show \"Already imported: this edition already has files of equal or better quality\" instead of re-importing.\n\nPartial editions: if the surviving rows declare more parts than are present (for example an edition left with 2 of 4 parts by the same-path upgrade bug fixed in #200), the complete incoming set is accepted and replaces the partial set instead of being rejected as a duplicate; complete duplicates are still rejected.\n\nNote: for a profile with `UpgradeAllowed` false the existing code routes an equal-or-worse re-download to an additional copy before this guard runs, so the \"Already imported\" rejection applies to profiles that allow upgrades.\n- Tests: existing 2 of 4 parts with an incoming complete set of equal quality is accepted (failed before the fix); a multi-file upgrade parses each stored file's custom formats once per batch, not once per incoming file (3,032 core tests pass).\n",
@@ -8321,9 +8388,11 @@
       "title": "fix(import): reject an automatic import onto an occupied destination instead of throwing",
       "url": "https://github.com/Chaptarr/chaptarr/pull/216",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 1e14107b114723b485fc8bf914c29462548b4007; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T15:37:06Z",
       "body": "Depends on #200 and on the equal-quality guard PR (`fix-equal-quality-duplicate-guard`); stacked on that branch.\n\n## Problem\nAn automatic import whose computed destination path already held a file that `filesToReplace` did not cover reached `CopyBookFile`/`MoveBookFile`, where `ClearTargetPath` throws `DestinationAlreadyExistsException` and the queue item ends as `IMPORT_EXCEPTION` (about 2,700 `DestinationAlreadyExists` errors logged in three days on a live instance). `filesToReplace` only covers rows of the same edition at a different path, so a destination occupied by an untracked file or by a row tracked for another edition of the same book was never caught.\n\n## Fix\n`ImportFile` checks the computed destination before any staging or transfer, for automatic imports only: a row tracked for this edition gives the existing already-imported rejection, a row for another edition or an untracked file gives a clear rejection naming the destination. Nothing is moved or deleted. Manual imports, forced downloads, relocations and genuine upgrades are unaffected.\n\n## Verification\n- Extended `ImportApprovedBooksAdditionalCopyFixture`.\n- Core tests pass (3,035 with the two PRs underneath).\n- Live: affected items are rejected with a message naming the destination instead of ending as `IMPORT_EXCEPTION`.\n\nThe destination check is skipped when the destination folder does not exist (nothing can occupy it), so ordinary imports do not pay for `FileExists`' path-resolution fallback, which lists every directory along a missing path. The transfer keeps its own check.\n- Adds `automatic_import_into_a_folder_that_does_not_exist_should_not_probe_the_destination_file` (records `FileExists` calls; failed with 1 probe, passes with 0) (3,038 core tests pass).\n",
@@ -8357,9 +8426,11 @@
       "title": "fix(import): reject a manual import onto an occupied destination instead of throwing",
       "url": "https://github.com/Chaptarr/chaptarr/pull/217",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit d4afb1edbb0c4040aad7600ddd63c8466b084f8c; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T22:04:42Z",
       "body": "DRAFT. Depends on `fix-auto-import-occupied-destination` (stacked on it).\n\n## Problem\nA manual import with `replaceExistingFiles=false` skipped the occupied-destination check that automatic imports get, so an untracked file or a file tracked for another edition at the managed destination reached the transfer, which threw `DestinationAlreadyExistsException` after staging began and was logged as an Error with a stack for every retry.\n\n## Fix\nApply the same pre-check when the import will not replace files. A tracked file that this import replaces is still exempt.\n\n## Verification\n- Test added; fails without the fix.\n- Core tests pass (3,036 with the earlier PRs underneath).\n- Not yet exercised live: deployed, but no manual import has hit an occupied destination since.\n\nThe check applies to every import except relocations and forced downloads: a replacing manual import onto an untracked file, or one tracked for another edition, is rejected too (the transfer never overwrites, so it used to throw after staging began).\n- Adds `manual_import_with_replace_onto_an_untracked_occupied_destination_should_be_rejected_not_throw` (failed with `Imported` before the fix) (3,040 core tests pass).\n",
@@ -8388,9 +8459,11 @@
       "title": "perf(books): reuse the author book list and cache BuildWorkGroups per author (#163, #172)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/218",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 8247df9; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T22:15:57Z",
       "body": "DRAFT. Depends on #168 (`perf-163-rootfolders-refetch-per-workgroup`); stacked on that branch. Continues #163/#172.\n\n## Problem\n`GetSyncUpdatesForMutations` calls `BuildWorkGroups` once per book saved, and each call re-fetches the author's book list and recomputes the groups. A dotnet-trace against a live instance while Charles Dickens (10,107 books) was refreshing showed `BuildWorkGroups` at about 99% of sampled CPU in a 30-second window. It is itself O(N^2) (pairwise `WorkIdMatcher.CrossFormatSafeMatches`), so for an N-book author it is an O(N^2) call made up to N times.\n\n## Fix\n1. Reuse the author's already-loaded book list instead of re-fetching and re-cloning it per book saved (fixes the database side of the repetition).\n2. Cache `BuildWorkGroups` per author instead of recomputing per book saved (fixes the CPU side).\n\n## Verification\n- Core tests pass (3,020 with #168 underneath).\n- No end-to-end timing recorded after the change; the profile above is the motivation. Left as a draft until a before/after refresh time is measured.\n\n## Review update (concurrency and staleness)\nAn adversarial review found that the first version kept the hint and the work-group cache in fields shared across authors. Per-author `RefreshAuthorCommand`s are not disk-access exclusive and run concurrently (3 by default, more when the command thread count is raised, #222), so one refresh could pair another author's grouping with its own hint and apply monitoring changes to the wrong books. Fixed:\n- One `AuthorBooksHint` object held in an `AsyncLocal` for the length of `RefreshBookInfo` (per refresh, not shared).\n- Cached groups are stored as ids, remapped onto the current `Book` instances (sync decisions use current monitored flags), and rebuilt whenever any identity the grouping depends on changes (provider ids move and merge during a refresh).\n- Deleted books are removed from the hint.\n- Four tests, two deterministic ones fail on the original code with the exact symptoms; the concurrency stress test is a regression guard only (3,024 core tests pass).\n\nNote: the hint avoids the database re-fetch of the author's books, not the per-save clone of them; that clone remains.\n",
@@ -8462,9 +8535,11 @@
       "title": "perf(import): read tags for a multi-file manual import preview in parallel",
       "url": "https://github.com/Chaptarr/chaptarr/pull/220",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit ff5a9b4900f0690f42c48ef1173b99f953c02723; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T01:06:38Z",
       "body": "DRAFT.\n\n## Problem\nThe Manual Import preview reads tags and duration (ffprobe or TagLib over network storage) one file at a time, which took about 340 s for a 3.5 GB, roughly 100-file audiobook on a cold cache (a 655-file audiobook took 577 s).\n\n## Fix\nWarm the existing tag cache with four concurrent reads before the per-file loop; the loop then reads every file from the cache, so results are unchanged. Files that fail tag extraction are read twice.\n\n## Verification\n- New `SimpleImportDecisionMaker` test (fails without the change).\n- Core tests pass (3,021 on top of develop).\n- Speedup not measured: there is no before/after timing on the same folder, so this stays a draft.\n\nReview update:\n- The warm-up only helps a cold folder: tags are also persisted in a database cache keyed by path, modification time and size, so a re-preview already skips tag reads. A 655-file audiobook preview that took ~577 s on a repeat run is therefore dominated by per-file matching (`PerFileMatching` runs a full staged match with FTS recall for every file; see the linked issue), not by tag reads. This PR stays a draft until a cold folder has been timed before and after.\n- The tag cache is capped at 1,000 entries and clears itself when it overflows, so prefetching a bigger folder wiped the cache mid-prefetch. The prefetch is now capped at 800 files (test: `multi_file_preview_should_not_prefetch_more_files_than_the_tag_cache_can_hold`, failed with 887 reads against a cap of 800) (3,022 core tests pass).\n",
@@ -8493,9 +8568,11 @@
       "title": "perf: stop loading the author's whole catalogue on every single-book update",
       "url": "https://github.com/Chaptarr/chaptarr/pull/221",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit df08d6409f6abf2bcdb8fb7bd223948b79e669d8; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T01:11:28Z",
       "body": "## Problem\nRefreshing a large author is quadratic. `BookService.EnsureUniqueTitleSlugs` (called from `UpdateMany`) runs `SELECT \"Books\".* FROM \"Books\" WHERE \"AuthorId\" = $1` on every call only to build a set of existing slugs, and `RefreshBookService` updates one book at a time. Measured on a live library while refreshing large authors: 303 calls and 3.7 million rows in one minute (~12,000 rows per call), with the database mostly idle and the process CPU-bound materialising the rows.\n\n## Fix\nNew `IBookRepository.GetTitleSlugsByAuthorId` (a default interface member so existing stubs keep working; `BookRepository` overrides it with a projection of `Id` and `TitleSlug`). `EnsureUniqueTitleSlugs` uses it. Slug results are identical.\n\n## Results\n\n| Measured on a live instance (346k books) | Before | After |\n|---|---|---|\n| Books refreshed per minute | 303 | 2,585 |\n| Rows read from the database per minute | 3.7 million | 0.5 million |\n| Chaptarr CPU | 144% | 72% |\n| Queued RefreshAuthor commands (285 at start of the run) | 285 | 16 |\n\nThe books-per-minute figure combines this change with a higher command thread count (#222). Per thread the rate rose from about 100 to about 258 books per minute, which is the effect of this change alone; the same profile showed exactly one full-catalogue read per book before, and the top statement afterwards is a 2,580-call slug projection reading ~435k narrow rows.\n\n## Verification\nCore tests pass (3,020 on top of develop).\n\nReview update: the lookup now returns only slugs that can collide with a book's base slug, i.e. equal to it or `<base>_<n>` (case-insensitive via `lower()` equality plus `LIKE ... ESCAPE '\\'`, with `%`, `_` and `\\` in the base escaped), instead of every slug of the author. It falls back to the full projection for non-ASCII bases (`lower()` is only reliable for ASCII in both databases), no candidates, or more than 200 candidates. The default interface member is null-coalesced for test doubles. The SQL was checked against a live Postgres (executes; 0.05 ms for a 12,000-book author) and the SQLite path is covered by tests.\n- Adds `BookRepositoryTitleSlugFixture` (5 SQLite-backed cases: projection equivalence, exact and `_<n>` matches, wildcard escaping, non-ASCII fallback) (3,025 core tests pass).\n",
@@ -8526,9 +8603,11 @@
       "title": "Make the command executor thread count configurable",
       "url": "https://github.com/Chaptarr/chaptarr/pull/222",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 41a9d37a9aabb24c5b1bd67ac7f4bc6c1cb15a64; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T03:22:51Z",
       "body": "## Problem\n`CommandExecutor` runs a hard-coded 3 threads for every command in the application. On a large library a few long `RefreshAuthor` commands hold every slot for minutes (an author with ~5,000 books took 8-12 minutes), which starves RSS sync, download processing and imports, and makes the Tasks page back up with queued commands.\n\n## Fix\nRead `CHAPTARR_COMMAND_THREADS` (1-32; invalid or unset keeps the existing default of 3), so hosts with headroom can raise it. Command exclusivity and the disk-access group still apply.\n\n## Results\nRunning with 10 threads together with #221 on a live instance (24-thread host):\n\n| Measured on a live instance (346k books) | Before | After |\n|---|---|---|\n| Books refreshed per minute | 303 | 2,585 |\n| Rows read from the database per minute | 3.7 million | 0.5 million |\n| Chaptarr CPU | 144% | 72% |\n| Queued RefreshAuthor commands (285 at start of the run) | 285 | 16 |\n\nThe books-per-minute figure combines this change with a higher command thread count (#222). Per thread the rate rose from about 100 to about 258 books per minute, which comes from #221; the same profile showed exactly one full-catalogue read per book before, and the top statement afterwards is a 2,580-call slug projection reading ~435k narrow rows.\n\n## Verification\nUnit tests for the parser; core tests pass (3,029 on top of develop).\n\nNote: the higher per-thread rate in the table comes from #221; this PR only raises concurrency.\n- Adds a startup log line with the thread count and `CommandQueueConcurrentConsumersFixture`: 10 consumers race for the queue and exactly 1 disk-access command starts, exactly 1 type-exclusive command starts, and all 10 per-author refreshes start (3,032 core tests pass). Npgsql's default pool is 100 connections, so up to 32 threads is safe; on SQLite a high count can add writer contention.\n",
@@ -8563,9 +8642,11 @@
       "title": "perf(covers): stop enumerating MediaCover/Books for every book without a cover folder",
       "url": "https://github.com/Chaptarr/chaptarr/pull/237",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit b1bac163985a844235b2239e4d3826f004a17ef7; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T01:20:25Z",
       "body": "## Problem\n`GET /api/v1/book?authorId=N` (what the book and author pages load) is quadratic in the size of the catalogue. On a live instance the time per book is flat at about 3 ms for small authors, then falls off a cliff:\n\n| Books for the author | Time |\n|---|---|\n| 363 | 1.0 s |\n| 1,059 | 2.7 s |\n| 2,522 | no response in 100 s |\n| 12,269 | no response in 280 s |\n\nThe database is not the bottleneck. `pg_stat_statements` showed no activity for 12 s or more mid-request, and the controller's own mapping is linear (a benchmark of the real `GetBooks` and `MapToResource` with stubbed services maps 5,000 books in about 110 ms).\n\n## Cause\nStack snapshots taken while a request was running put every request thread in `MediaCoverService.TryReadBookCoverMetadata` -> `DiskProviderBase.FileExists` -> `ResolveExistingFilePath` -> `ResolvePathSegment`. `TryReadBookCoverMetadata` looks up `cover-metadata.json` per book. When the file does not exist, `FileExists` falls back to a case-insensitive path resolution that lists and normalises every entry of the parent directory. Here that is `MediaCover/Books` with 194,613 folders (one per book), and most books have no cover folder: 2,286 of the 2,522 books of the author above. That is about 445 million comparisons for one request.\n\n## Fix\nCheck `FolderExists` (a plain `Directory.Exists`) for the book's cover folder first, and cache the negative result the same way the missing-file case already was. Books that do have a cover folder behave as before.\n\n## Verification\n- New regression test `converting_a_book_without_a_cover_folder_should_not_probe_for_its_metadata_file`: fails without the change, passes with it.\n- All 66 `MediaCover` tests pass.\nMeasured live after deploying: `GET /api/v1/book?authorId=552` (2,522 books) went from more than 100 s (timeout) to 1.36 s, and `authorId=2698` (12,000 books) from never returning to 5.9 s.\n\nReview update: the read path now writes the negative cache entry with `TryAdd`, so a cover download that stores its metadata between the disk check and the cache write is no longer overwritten by a stale 'missing' result (test: `a_concurrent_cover_write_should_not_be_overwritten_by_the_missing_folder_negative_cache_entry`, deterministic via an `OnFolderExists` hook on the test disk stub) (3,022 core tests pass).\n",
@@ -8599,11 +8680,13 @@
       "title": "fix(refresh): keep per-refresh state per refresh, not on singleton services",
       "url": "https://github.com/Chaptarr/chaptarr/pull/248",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         246
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 53440b89951e7794dfecfe7531a78d227d5add4c; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T02:36:21Z",
       "body": "Fixes #246.\n\n## Problem\n`RefreshAuthorCommand` neither requires disk access nor is type exclusive, so per-author refreshes run concurrently (3 command threads by default, more with #222), but singleton services kept per-refresh state in plain fields:\n- `RefreshBookService._bookMetadataCache`: a plain `Dictionary` cleared at the start of every refresh while other refreshes read and write it (corruption, exceptions, wrong metadata).\n- `RefreshAuthorService._authorRefreshRehomeBlueprint`: one refresh could re-home editions from another author's snapshot, or null it under a refresh still using it.\n- `_editionRefreshMatchingIndex` / `_bookRefreshMatchingIndex`: one-entry memos that read the shared field twice, so a concurrent refresh could swap it between the reads and the caller got another list's index.\n\n## Fix\nThe first two are held in an `AsyncLocal` (one per refresh; the same approach as #218 and #181); the memos read the field once into a local. Single-threaded behaviour is unchanged. `AuthorStatisticsService._deferredFileAuthorIds` is a lock-protected shared debounce and is intentionally left alone.\n\n## Verification\nThree tests that fail on the original code: two deterministic two-flow tests (metadata cache, rehome blueprint) and a contention test for the matching indexes (failed within 22 ms on the old code) (3,023 core tests pass). Note: touches lines near #218/#181 in `RefreshBookService`, so merging with those needs a trivial rebase.\n\nReview update: the metadata cache is also reached from the single-book `RefreshBookInfo(Book)` path and the overload that takes a remote author, which never reset it. With a per-flow cache an executor thread that mostly runs single-book refreshes would have kept the previous cache between commands (stale author metadata, unbounded growth), so a scope helper now opens a fresh cache and restores the previous one on dispose (also on exceptions) at all three entry points. Test covers the scope semantics (3,024 core tests pass).\n",
@@ -8633,12 +8716,13 @@
       "title": "fix(import): reject a vanished file on manual import execute instead of aborting the batch",
       "url": "https://github.com/Chaptarr/chaptarr/pull/249",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         225
       ],
       "implementationEvidence": [
-        "cebb8684a6008dcde9368a84b49b8ba8be710f5e"
+        "cebb8684a6008dcde9368a84b49b8ba8be710f5e",
+        "Integrated reviewed upstream patch at fork commit cebb8684a6008dcde9368a84b49b8ba8be710f5e; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T01:55:39Z",
@@ -8668,13 +8752,14 @@
       "title": "fix(datastore): batch insert of command rows fails on Postgres for derived command types",
       "url": "https://github.com/Chaptarr/chaptarr/pull/250",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         227
       ],
       "implementationEvidence": [
         "f8e388d47b404e9bd0bb76dee4948a024d68fe0a",
-        "a2f03356bbddd91e83b842df35e767ea2e9222d7"
+        "a2f03356bbddd91e83b842df35e767ea2e9222d7",
+        "Integrated reviewed upstream patch at fork commit f8e388d47b404e9bd0bb76dee4948a024d68fe0a; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T02:41:48Z",
@@ -8705,11 +8790,13 @@
       "title": "fix(import): reject a forced import onto an occupied destination instead of throwing",
       "url": "https://github.com/Chaptarr/chaptarr/pull/251",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         239
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit d5f765f9e616d7b3c7e0bc0be0dbc4ea21cc6232; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T02:44:25Z",
       "body": "Fixes #239\n\nDepends on #217: the diff includes #217's commits until it merges (this PR is the last commit only).\n\n## Problem\nThe up-front destination check added in #216/#217 excludes forced downloads (`downloadForced`). A forced import overrides quality and duplicate rejections, but the transfer never overwrites an existing file, so a forced import onto an untracked file, or one tracked for another edition, still threw `DestinationAlreadyExistsException` after staging began instead of being rejected with a reason.\n\n## Fix\nApply the same three-way classification (tracked for the same edition / tracked for another edition / untracked) to forced imports. The rejection message says why and how to proceed (\"A forced import cannot overwrite it: remove or track that file first, or replace the tracked file.\"). Relocations keep their exemption, and a tracked file that the import replaces is still staged aside first, so a forced replacing import still works.\n\n## Verification\n- Two new tests (forced onto an untracked destination, forced onto a destination tracked for another edition) fail without the change and pass with it; a third pins that a forced replacing import still replaces the tracked file.\n- Full core suite: 3,043 tests pass.\n- Review fix: the 'remove or track that file' hint is added only for the untracked and other-edition classes (it was wrong advice on the same-edition 'already imported' reason, which is effectively unreachable for forced imports because they are rejected earlier as 'Edition already has files'); a test pins that outcome (3,044 core tests pass).\n",
@@ -8775,11 +8862,13 @@
       "title": "perf(import): memoize file-match recall and ranking by identical evidence within one manual import preview",
       "url": "https://github.com/Chaptarr/chaptarr/pull/253",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         244
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 684d0df712825e4f1c0219a8cf353619cad4106b; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T02:50:04Z",
       "body": "Fixes #244.\n\n## Problem\nThe manual import preview sets `PerFileMatching`, so every file of a multi-file group is matched independently, and each file runs a full staged match: an FTS recall query (`RecallBooks`) and a rank query (`RankEditions`). Files of one audiobook normally produce identical recall/rank inputs, but the only cache is by path, so the same search is repeated for every file. Measured on a live library: a 655-file audiobook preview took ~577 s on a repeat run (~0.9 s per file) even though tags were already cached (see #220 review: tag reads are not the cost).\n\n## Fix\nWithin one `MatchFilesToLibraryAsync` call with `PerFileMatching`, `RecallBooks` and `RankEditions` are memoized by their exact inputs:\n- recall key: author scope, media type, tokens;\n- rank key: media type, the gated books and the field queries.\n\nDesign points that keep results unchanged:\n- Only the search is memoized. Everything that depends on the individual file (duration checks, path fallback, evidence scoring, candidate gating) still runs per file, so files whose evidence differs never share a match; identical inputs give identical search results.\n- The memo lives in an `AsyncLocal` scoped to the call and restored afterwards (no cross-request or static cache), and values are stored serialized and returned as fresh copies, so callers never share or mutate instances.\n- It is skipped when matching trace is enabled, so trace output is unchanged.\n\n## Verification\n- `per_file_memo_should_run_the_staged_search_once_per_distinct_evidence_and_not_change_results`: three files with identical evidence run one recall and one rank (three each without the memo), with identical matches.\n- `per_file_memo_should_not_share_results_between_files_with_different_evidence`: two distinct evidence sets across three files run two recalls, results equal to the un-memoized run. Both fail (2 expected, 3 was) when the memo lookup is disabled.\n- 3,022 core tests pass; a dry merge into an integration branch that carries other import PRs is clean.\n\nNot yet measured: the live speed-up. The searches are the repeated work by inspection, but how much of the ~0.9 s per file they account for has not been timed on a real folder.\n\n\nReview update: NaN/Infinity scores made `System.Text.Json` throw while building the memo key or value, failing a match that worked unmemoized; the key is now built lazily and any key/serialize/deserialize failure falls back to computing directly (two tests, 3,024 core tests pass). Live result: the 655-file audiobook preview went 577 s -> 512 s (~11%), so recall/ranking are not the dominant per-file cost (see the linked issue for the remaining suspects).\n",
@@ -8939,9 +9028,11 @@
       "title": "perf(books): bulk-load editions before format-sync work grouping (N+1 per save)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/265",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 5afe02a05ca41c7b7d2c6af23ed765b818807e22; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T17:17:20Z",
       "body": "## Problem\n`Book.Editions` is lazy-loaded. In the format-sync pass, `BuildWorkGroups` (`BookIdentity.GetProviderIdentityTokens` -> `BookEditionIdentity.GetOrderedEditions`) and `CloneStoredBook` (`GetAsin`) both read it, and the pass is handed every one of an author's books on each save (`UpdateMany`, insert defaults, bulk reconcile, `PersistWithLifecycle`, `SetMonitored*`). Each book costs its own `Editions` query, on every save.\n\nFound by sampling a live bulk refresh with `dotnet-stack` (4 samples, one busy thread): two landed in `GetOrderedEditions` -> `LazyLoad()` under `BuildWorkGroups`, the other two in Npgsql waiting on an `UPDATE` / `DELETE` from the same loop. Postgres CPU and memory were not saturated; the thread was serialised on round trips.\n\n## Change\n- `PreloadEditions(authorId, books)`: one `GetEditionsByAuthor` per author, called right after the author's books are fetched and before they are cloned or grouped.\n- `PreloadEditionsByBook(books)`: one `IN` query for a specific set (the stored copies cloned in `UpdateMany`, `PersistWithLifecycle`, `SetMonitored`, `SetMonitoredForMediaType`).\n- Only books whose editions have not loaded are filled, with the same rows the lazy loader returns (`Editions` by `BookId`), so already-loaded books keep their in-memory editions and behaviour is otherwise unchanged.\n\n## Tests\n- `update_many_should_load_author_editions_in_one_query_instead_of_one_per_book`: 25 books, no per-book lazy loads, at most two bulk author queries.\n- `update_many_should_give_each_book_only_its_own_editions_and_not_touch_loaded_books`.\n- Both fail without the change (verified). Full `Chaptarr.Core.Test`: 3037 passed. The strict edition-service proxy in `BookProviderIdCanonicalizationFixture` gains the bulk `GetEditionsByBook` overload.\n\n## Not measured\nI have no before/after wall-clock for a refresh yet; the claim is the query-count change, not a speedup figure.",
@@ -8971,9 +9062,11 @@
       "title": "perf(commands): throttle progress-message DB writes to once per second per command",
       "url": "https://github.com/Chaptarr/chaptarr/pull/266",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 9d3da8288ffad2bb7e5de921504ebc7b2af54a47; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T19:07:39Z",
       "body": "## Problem\n`ProgressMessageTarget` forwards every progress log line to `CommandQueueManager.SetMessage`, which synchronously `UPDATE`s `Message` and `LastProgressAt` on the command row. An author refresh logs one line per book (\"Checking Info for ...\"), so a refresh paid one database round trip per book just to change display text.\n\nFound by sampling a live bulk refresh with `dotnet-stack` (12 samples): `RefreshBookService.LogProgress -> SetMessage -> SetFields -> UpdateFields` was in 2 of 12 (~17%), alongside the per-book delete path (a separate change).\n\n## Change\n- `ICommandQueueManager.SetProgressMessage(command, message)`: a **default interface method** that calls `SetMessage`, so existing implementers and hand-written test doubles are unaffected.\n- `CommandQueueManager` overrides it: the in-memory command (what the API reads while it runs) is updated on every call; the DB write happens at most once per second per command.\n- `ProgressMessageTarget` calls `SetProgressMessage`.\n- Explicit messages (Completed / Failed / Cancelled / Resumed) still use `SetMessage`: always persisted, and they clear that command's throttle state.\n- `LastProgressAt` already has its own 30s heartbeat (`TouchProgress`) and nothing else reads it.\n\n## Tests\n`CommandQueueManagerProgressFixture` (4 tests): one DB write for 200 progress messages; in-memory message always current; `SetMessage` always persists and resets the throttle; throttling is per command. The throttle tests fail with the interval set to 0. Full `Chaptarr.Core.Test`: 3039 passed.\n\n## Not measured\nQuery-count change only; no before/after refresh timing yet.",
@@ -9003,9 +9096,11 @@
       "title": "perf(db): index MetadataFiles/ExtraFiles by (AuthorId, BookId)",
       "url": "https://github.com/Chaptarr/chaptarr/pull/267",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit f04f995097fd0c7ace76a9f72a922af809ed3b0a; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T19:13:27Z",
       "body": "## Problem\n`ExtraFileService<T>` reads (`GetFilesByBook`) and deletes (`DeleteForBook`) its rows with `WHERE \"AuthorId\" = @a AND \"BookId\" = @b`. `DeleteForBook` runs once per deleted book, for every extra-file type, via `BookDeletedEvent`. Neither `MetadataFiles` nor `ExtraFiles` had an index on those columns (only the primary key, plus `BookFileId` on `MetadataFiles`), so each call was a sequential scan.\n\n## Evidence (live PostgreSQL, `pg_stat_statements`)\n- `DELETE FROM \"MetadataFiles\" WHERE \"AuthorId\" = $1 AND \"BookId\" = $2`: mean **~5 ms** over 33k calls, against ~0.05-0.1 ms for every other statement on the delete path (`Books`, `Editions`, `ExtraFiles`, aliases).\n- In a 20 s window of an author refresh that was pruning books, it was **38% of all database execution time**.\n- `EXPLAIN ANALYZE` on a copy of the table (69.5k rows): **4.2 ms Seq Scan -> 0.019 ms Index Scan**. Index size 1.3 MB.\n\n## Change\nMigration 110 adds `IX_MetadataFiles_AuthorId_BookId` and `IX_ExtraFiles_AuthorId_BookId`. Guarded like migration 105: skipped when the table or columns are absent or the index already exists. No application code changes.\n\nMigration number: 110 is simply the next free number in the branch I run (108/109 are taken by other open PRs); renumber to whatever is next on merge.\n\n## Tests\n`ExtraFileAuthorBookIndexMigrationFixture` (SQLite): both indexes exist in query column order; the per-book delete is planned as an index search rather than a scan; missing tables/columns and a pre-existing index don't throw. Two of the four fail if the index is not created. Full `Chaptarr.Core.Test`: 3039 passed.\n\n## Not measured\nThe 4.2 ms -> 0.019 ms figure is the statement on a copy; I have no end-to-end refresh timing yet. `History` (500k rows) and `DownloadHistory` (275k) also have `AuthorId`+`BookId` and no index on the pair; I did not touch them because nothing on this path queries them that way.",
@@ -9034,11 +9129,12 @@
       "title": "fix(aliases): retry ReplaceAliases when a concurrent writer wins the unique-index race",
       "url": "https://github.com/Chaptarr/chaptarr/pull/268",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
         "e3e16054e396dc89e8608ba3e8cccae9d44b7988",
-        "0b514cdd6c3610b83012a2d8ca2c032d88e07c84"
+        "0b514cdd6c3610b83012a2d8ca2c032d88e07c84",
+        "Integrated reviewed upstream patch at fork commit e3e16054e396dc89e8608ba3e8cccae9d44b7988; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T20:08:10Z",
@@ -9068,9 +9164,11 @@
       "title": "fix(ui): delete-author dialog lists every author folder, not only the legacy path",
       "url": "https://github.com/Chaptarr/chaptarr/pull/269",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 4707e052301e3dd9e9974f491f36e3d8ae68db26; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T20:40:28Z",
       "body": "## Problem\nThe delete-author dialog rendered a single `path` (the legacy `Author.Path`) in both the folder line and the \"The author folder ... and all of its content will be deleted\" warning. An author can have separate audiobook and ebook folders, and deleting with \"delete files\" removes all of them, so the dialog named only one folder.\n\nSeen live: an ebook-only author whose page header showed `/mnt/Media/Books/<name>` got a delete dialog naming `/mnt/Media/Audio Books/<name>`; and after the first version of this PR, an author with both folders still showed one.\n\n## Change\n`DeleteAuthorModalContentConnector` spreads the whole author resource into the component. The resource exposes the format folders as **`audiobookFolder` / `ebookFolder`** (`AuthorResource` maps `Author.AudiobookPath` / `EbookPath` to them); `audiobookPath` / `ebookPath` are null on the API response. The dialog now lists each distinct, non-empty folder among `path` / `audiobookFolder` / `ebookFolder`, and repeats the existing warning once per folder (no new translation strings). The file count and size already come from the author statistics and cover both formats.\n\nChecked against live API data: 2564 of 2774 authors have two distinct folders and one has three, so this changes the dialog for nearly every author.\n\n## Correction to the first version of this PR\nThe first commit read `audiobookPath` / `ebookPath`, which the API does not populate, so it never showed more than `path`. Adversarial review checked the code but not real data and missed it; caught by looking at the dialog on a live author.\n\n## Testing\nSyntax-checked with esbuild; the full webpack production build compiles. No frontend tests exist in this repo. Verified the field names and folder counts against the live `/api/v1/author` response; not yet re-verified in a browser after this fix.\n\n## Known limitation\nA folder is listed whenever it is configured on the author, whether or not it exists on disk (e.g. an ebook folder that was never created), so the warning can name a folder with nothing in it.\n",
@@ -9098,9 +9196,11 @@
       "title": "fix(ui): stop the book page refetching forever for a book that does not exist",
       "url": "https://github.com/Chaptarr/chaptarr/pull/272",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 9c9dbfa03bd411a315696a7f94f57e7a77049f60; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T21:59:49Z",
       "body": "## Problem\nOpening `/book/<id>` for a book that no longer exists (deleted, or pruned by a metadata profile) shows a spinner indefinitely instead of the existing \"Sorry, that book cannot be found\" screen.\n\n## Cause\n`BookDetailsPageConnector` fetches the book when it is not in the store (`needsBookFetch = !isFetching && !hasBook`). For a missing book the server answers 404 (`GET /book?bookId=<id>`; checked against a live instance: 404 in ~1 ms). The `FETCH_BOOKS` failure branch sets `isFetching: false`, so `needsBookFetch` flips `false -> true`, and `componentDidUpdate` treats that transition as a reason to `populate()` again. The result is an endless loop of failing requests with the spinner up most of the time, so the `NotFound` render at the bottom of `render()` is never reached.\n\n## Change\n- A definitive **404 is final**: the book is fetched once and the existing `NotFound` screen renders.\n- Anything else (a transient 500, a network error, a request aborted by another `fetchBooks`, an empty 200) is **retried, up to 3 fetches per route** (`MAX_BOOK_FETCH_ATTEMPTS`), so a persistent failure still ends on `NotFound` instead of looping, and a transient one still recovers.\n- The counter resets when the route key changes. The connector now also reads `books.error` to tell a 404 from other failures.\n- The author fetch gets a once-per-author guard, since it has the same shape if an author is missing.\n\n## Testing\n- Syntax-checked with esbuild; the full webpack production build compiles.\n- I modelled the render/`componentDidUpdate` cycle in plain JavaScript (this checks the reasoning, not the React component): book deleted (404 every time) = 1 fetch then NotFound; transient 500 then success = 2 fetches then the book; aborted request then success = 2 fetches then the book; persistent 500 = 3 fetches then NotFound; empty 200 forever = 3 fetches then NotFound; book exists = 1 fetch. Without the guard the 404 case fetches on every cycle (stopped by my cap at 40).\n- No frontend tests exist in this repo, and I have not yet checked it in a browser.\n",
@@ -9128,9 +9228,11 @@
       "title": "perf(extras): batch the post-scan metadata-file cleanup and probe the right base path first",
       "url": "https://github.com/Chaptarr/chaptarr/pull/273",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit ce7bcc0b46808929963c7469524fbd2ac1a817a2; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-29T22:37:22Z",
       "body": "Addresses #271.\n\n## Problem\n`CleanExtraFileService.Clean` runs after every author scan. For each `MetadataFiles` row it probed the author's base paths in a fixed audiobook, ebook, legacy order, and it deleted missing rows one at a time. `DiskProviderBase.FileExists` falls back to listing directories when the exact path misses, so:\n- an ebook sidecar always paid for a miss under the audiobook folder before its hit, and\n- every missing row cost its own `DELETE`.\n\n## Change\n- **Probe the right base path first.** Sidecars are written under `ExtraFilePathHelper.GetPreferredBasePath(author, bookFile)`, so for rows that point at a book file that path is tried first. Rows with no book file keep the existing order, and **every base path is still tried before a row counts as missing**, so which rows get deleted is unchanged. Adds an `ExtraFilePathHelper.GetAuthorBasePaths(author, preferredBasePath)` overload and one `IMediaFileService.GetFilesByAuthor` query per author (optional constructor dependency, no effect when absent).\n- **One batched delete** (`DeleteMany`) for all missing rows instead of one `Delete` per row.\n- Skip rows with a blank `RelativePath` instead of throwing from `Path.Combine`.\n- Return early for an author with no metadata files.\n\n## What this does not change\n`FileExists` itself, the case-insensitive fallback, and the \"list each folder once\" idea from #271. That would change matching semantics and belongs in its own change.\n\n## Tests\n`CleanExtraFileServiceFixture` (9 tests): one batched delete with the exact ids; nothing deleted when all files exist; a linked ebook sidecar is found on the first probe and the audiobook folder is never touched; a file that exists only under the other base path is kept; default order for rows with no book file; blank paths ignored; no work for an author with no rows; a row whose linked book file no longer exists falls back to the default order; works without the media file service. The batching and preferred-base tests fail if either change is reverted (checked). Full `Chaptarr.Core.Test`: 3044 passed.\n\n## Not measured\nI have not measured the wall-clock effect of this on a real library; the claim is fewer probes and fewer statements, not a speedup figure. The cost of a full-library scan on network storage is what #271 describes.\n\n\n## Note on cost\nThe added `GetFilesByAuthor` is one join (BookFile, Edition, Book, Author) per scan, and only when the author has metadata rows. For an author with many book files and very few sidecars it could cost more than the probes it saves; the existing lighter `GetMappedFilePathEvidenceByAuthor` returns no book-file id, so it cannot be used here.\n",
@@ -9180,9 +9282,11 @@
       "title": "Clarify that both identifier skip settings together require ISBN and ASIN",
       "url": "https://github.com/Chaptarr/chaptarr/pull/278",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit e3d6046bff07ae23853460653076746ea26bc12f; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-04T14:47:13Z",
       "body": "#### Description\nWith both \"Skip missing identifier\" and \"Skip missing ASIN\" ticked, the filter keeps only editions that have an ISBN **and** an ASIN, which neither help text said. This updates the help text on both checkboxes (audiobook and ebook profiles) to state it.\n\nText only; no behavior change.\n\n#### Database Migration\nNO\n\n#### How was this tested?\nText-only change to `en.json`; verified the file is still valid JSON. Screenshot from Firefox on Android.\n\n#### Screenshots (UI changes only)\n![Screenshot_20261002_145932_Firefox.jpg](https://github.com/user-attachments/assets/80e915e7-ad5c-490c-be6c-51aa9f3a549f)\n\n\n",
@@ -9210,13 +9314,14 @@
       "title": "Fix profile selects sending string ids, which root folder save drops",
       "url": "https://github.com/Chaptarr/chaptarr/pull/280",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         279
       ],
       "implementationEvidence": [
         "68d47aed6be1465b048e0651779d49aae6549932",
-        "5b3910f25569df7878439985c19a0569c692029d"
+        "5b3910f25569df7878439985c19a0569c692029d",
+        "Integrated reviewed upstream patch at fork commit 68d47aed6be1465b048e0651779d49aae6549932; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-04T14:46:42Z",
@@ -9276,9 +9381,11 @@
       "title": "Scroll the author book table on narrow screens instead of squeezing titles",
       "url": "https://github.com/Chaptarr/chaptarr/pull/281",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 6aaaf5a07d10267eceb720ecbcc14a7365735524; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-05T16:40:58Z",
       "body": "#### Description\r\n**TL;DR:** Author Book table's columns overlap on narrow screens, this fix makes the table's scrollable instead.\r\n\r\nThe author book table uses `table-layout: fixed`, so the title only gets the width left over after the fixed columns (`AuthorDetailsBookTable.css:4`). On narrow screens the cells don't wrap, so long titles were clipped, and the 768px/480px rules hid the narrator and shrank rating, status, and duration below their content. The table now has a min width and scrolls horizontally, titles wrap, the narrator stays visible, and rating, status, and duration keep their full width.\r\n\r\n#### Database Migration\r\nNO\r\n\r\n#### How was this tested?\r\nNative dev build, viewed in Firefox on Android 16 and Firefox on Ubuntu 26.04 at desktop, 768px, and 480px widths. Stylelint passes on the changed rules.\r\n\r\n#### Screenshots (UI changes only)\r\nFrom Firefox on Android 16:\r\n**BEFORE**\r\n<img width=\"1080\" height=\"2316\" alt=\"Screenshot_20261003_002348_Firefox\" src=\"https://github.com/user-attachments/assets/3547c630-6bb5-4e4d-82c0-00d723c1a095\" />\r\n\r\n**AFTER**\r\n<img width=\"1080\" height=\"2316\" alt=\"Screenshot_20261003_002426_Firefox\" src=\"https://github.com/user-attachments/assets/2c4fffe3-c845-465b-802f-a1da6f0dca32\" />\r\n\r\n",
@@ -9343,10 +9450,11 @@
       "title": "Stop OIDC sign-in when Chaptarr's own policy rejects the ticket",
       "url": "https://github.com/Chaptarr/chaptarr/pull/283",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "b3ea34678de7995727fab5aefa36ce031288bd9d"
+        "b3ea34678de7995727fab5aefa36ce031288bd9d",
+        "Integrated reviewed upstream patch at fork commit b3ea34678de7995727fab5aefa36ce031288bd9d; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T15:27:11Z",
@@ -9410,11 +9518,13 @@
       "title": "Preserve numeric title token order during matching",
       "url": "https://github.com/Chaptarr/chaptarr/pull/291",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         262
       ],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 5e252ade320d666a09d6d806af5ed343c31d5257; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-04T20:39:04Z",
       "body": "#### Description\nTitles with numbers and subtitles can match the wrong volume because token extraction puts words before numbers and scrambles the title. This preserves token order and keeps numeric metadata handling for catalog titles without numbers. Builds on the reproduction @SaxxyToo posted in [#262](https://github.com/Chaptarr/chaptarr/issues/262).\n\nFixes #262\n\n#### Database Migration\nNO\n\n#### How was this tested?\nAdded regressions for numbered-title imports and numeric metadata. Ran on Linux with `dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj -c Release --no-restore --verbosity minimal`.\n\n#### Screenshots (UI changes only)\nN/A\n\n---\n\nCo-authored-by: SaxxyToo <198826566+SaxxyToo@users.noreply.github.com>\n",
@@ -9444,9 +9554,11 @@
       "title": "Add selected-edition Audible ASIN naming token",
       "url": "https://github.com/Chaptarr/chaptarr/pull/292",
       "kind": "pullRequest",
-      "auditStatus": "needs-review",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "Integrated reviewed upstream patch at fork commit 4734b240edd65c133d96c52f01359cda5c59c531; subsequent integration fixes are retained in branch history."
+      ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-04T20:41:00Z",
       "body": "# Add selected-edition Audible ASIN naming token\n\n#### Description\n\nAdds `{Edition AudibleAsin}` to book-file naming, the token picker and the naming-pattern compiler. The token reads `Edition.AudibleASIN` from the selected edition. Missing values render empty, allowing `{Book Title}{ [Edition AudibleAsin]}` to produce either `Grave Peril [B0ABCDEFGH]` or `Grave Peril`.\n\n`Edition.Asin` can contain an ISBN-10, so it is excluded from this token. The Audible ASIN is trimmed and rendered uppercase even when the token is spelled lowercase or uses a dot separator. Existing title-token case mirroring is preserved.\n\nThis is opt-in: existing formats without the new token keep their output. The token exposes selected-edition metadata; it does not validate that the selected edition matches the imported audio. It does not change edition selection or automatically rename files.\n\n#### Database Migration\n\nNO.\n\n#### How was this tested?\n\nLinux, using the Docker .NET SDK 10.0 image (`mcr.microsoft.com/dotnet/sdk:10.0`), against develop `e67374f4`:\n\n- Fresh Organizer tests on commit `f21c59b`: 20 passed (16 existing plus 4 added).\n- Fresh full `Chaptarr.Core.Test` suite: 3,039 executed and passed, 0 failed. One Windows-only test was not executed on Linux (TRX: 3,040 total).\n- Fresh solution build: 0 warnings, 0 errors.\n- Saved patch matches branch `feature/edition-audible-asin-token` at `f21c59b` and passes `git apply --check` on the develop baseline.\n\nAdded tests cover a populated Audible ASIN, omission when only an ISBN/non-Audible ASIN exists, uppercase output with lowercase and dot-separated token spellings, and unchanged output for formats without the token.\n\nTo reproduce in the naming preview, use `{Book Title}{ [Edition AudibleAsin]}` with selected editions that have and lack `AudibleASIN`. The sample edition has `B0ABCDEFGH` for previewing the populated case.\n\nCommands: `dotnet build src/Chaptarr.sln -c Release`; `dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj -c Release`; targeted tests add `--no-build --filter FullyQualifiedName~Organizer`. No live library rename was performed.\n\n#### Screenshots (UI changes only)\n\nNo screenshot captured. The UI change is one token-picker entry, `{Edition AudibleAsin}`, with example `B0ABCDEFGH`.\n\n---\n\nAI-assisted implementation and review; build and test results checked before submission.\n",
@@ -9478,10 +9590,11 @@
       "title": "Allow missing Release Year to collapse conditional naming segments",
       "url": "https://github.com/Chaptarr/chaptarr/pull/293",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "36439085e361f3a2e7a0eb8fa919d07db2924b49"
+        "36439085e361f3a2e7a0eb8fa919d07db2924b49",
+        "Integrated reviewed upstream patch at fork commit 36439085e361f3a2e7a0eb8fa919d07db2924b49; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-04T20:47:59Z",
@@ -9676,10 +9789,11 @@
       "title": "Fix Kavita notification sending title prefix instead of folder path",
       "url": "https://github.com/Chaptarr/chaptarr/pull/299",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
-        "4a9216fc89d9c13a3fa063bf7ee5aa4e16b1dd25"
+        "4a9216fc89d9c13a3fa063bf7ee5aa4e16b1dd25",
+        "Integrated reviewed upstream patch at fork commit 4a9216fc89d9c13a3fa063bf7ee5aa4e16b1dd25; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-07T14:59:33Z",
@@ -9711,12 +9825,13 @@
       "title": "Apply custom format to {Book SeriesPosition}",
       "url": "https://github.com/Chaptarr/chaptarr/pull/303",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [
         72
       ],
       "implementationEvidence": [
-        "0d77e513335d7a8b7bfe64ebd6b1175860f52bf0"
+        "0d77e513335d7a8b7bfe64ebd6b1175860f52bf0",
+        "Integrated reviewed upstream patch at fork commit 0d77e513335d7a8b7bfe64ebd6b1175860f52bf0; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-10T17:52:45Z",
@@ -9783,11 +9898,12 @@
       "title": "fix(MyAnonaMouse): persist refreshed mam_id so sessions don't expire after 30 days",
       "url": "https://github.com/Chaptarr/chaptarr/pull/308",
       "kind": "pullRequest",
-      "auditStatus": "implemented-awaiting-validation",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
       "implementationEvidence": [
         "3d6923b8bc3cb55ff19b76892fad6e38552be284",
-        "f4e6c27f53559b71477a649a5dd3a74dea4c99fa"
+        "f4e6c27f53559b71477a649a5dd3a74dea4c99fa",
+        "Integrated reviewed upstream patch at fork commit 3d6923b8bc3cb55ff19b76892fad6e38552be284; subsequent integration fixes are retained in branch history."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-10T22:14:15Z",
@@ -9808,6 +9924,30 @@
           "src/NzbDrone.Core/Indexers/MyAnonaMouse/MyAnonaMouse.cs"
         ]
       }
+    }
+  ],
+  "validationCheckpoints": [
+    {
+      "commit": "bebf3cd",
+      "suite": "Core full suite",
+      "passed": 3448,
+      "skipped": 3,
+      "failed": 0,
+      "notes": "Browser-dependent tests skipped; later changes require another full run."
+    },
+    {
+      "commit": "7fa62a6",
+      "suite": "Second batch focused suite",
+      "passed": 915,
+      "failed": 1,
+      "notes": "One stale test double fixed; all four tests in affected fixture then passed."
+    },
+    {
+      "commit": "9d3da82",
+      "suite": "Third batch focused datastore, queue, import safety, author mapping suite",
+      "passed": 282,
+      "failed": 0,
+      "skipped": 0
     }
   ]
 }
