@@ -466,10 +466,10 @@
       "title": "[FEATURE] Proxmox Script Support",
       "url": "https://github.com/Chaptarr/chaptarr/issues/27",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "external-service-fix-required",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": ["No packaging files created: the requested listing must be contributed to the external Proxmox Helper-Scripts project, not the Chaptarr codebase."],
+      "validationEvidence": ["The official ProxmoxVED/DevScripts AGENTS.md requires new-script candidates to have 600+ stars and be at least six months old. gh repo view reports Chaptarr/chaptarr created 2026-06-29 with 665 stars; on 2026-10-12 it is not yet six months old. Revisit after 2026-12-29."],
       "sourceUpdatedAt": "2026-08-12T23:12:12Z",
       "body": "**Is your feature request related to a problem? Please describe.**\nNo\n\n**Describe the solution you'd like**\nIt would be nice if the team added this to the Proxmox VE Helper Script Community.",
       "comments": [
