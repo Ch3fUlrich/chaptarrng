@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:28:05+00:00",
-  "forkHead": "c5beffe",
+  "snapshotAt": "2026-10-12T20:33:57+00:00",
+  "forkHead": "75e9bb8",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -3531,10 +3531,17 @@
       "title": "[BUG] {MediaInfo AudioBitRate} naming token always renders \"0 kbps\"",
       "url": "https://github.com/Chaptarr/chaptarr/issues/288",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit 75e9bb8 populates stored MediaInfo from imported audio files and resolves missing media fields from the file when a matching naming token is used, including for older library files.",
+        "Naming tokens omit unavailable bitrate, sample rate, channel, bit-depth, and codec values instead of emitting misleading zero or Unknown text.",
+        "Release note 20261012-audio-bitrate-naming-token.md records the behavior."
+      ],
+      "validationEvidence": [
+        "Source review and git diff --check passed; the release-note preview passed.",
+        "A backend build was not run because this environment lacks a valid Six Labors license required by the ImageSharp source build."
+      ],
       "sourceUpdatedAt": "2026-10-04T15:06:01Z",
       "body": "**Describe the bug**\n`{MediaInfo AudioBitRate}` in the book/file naming format always renders `0 kbps` for imported audiobooks. Originally reported on Discord with this Standard Book Format:\n```\n{Book Title}{ (MediaInfo AudioBitRate) }{ {Narrator}}/{Book Title}{ (PartNumber:smart)}\n```\nReproduced on a dev instance.\n\n**To Reproduce**\n1. Settings → Media Management → set the audiobook file format to include `{ (MediaInfo AudioBitRate) }`\n2. Import an audiobook, or rename an existing one\n3. The file or folder name contains `(0 kbps)`\n\n**Expected behavior**\nThe token renders the file's actual bitrate, or is omitted when the bitrate is unknown.\n\n**Cause (from code)**\n- Import paths build `BookFile.MediaInfo` from duration only: `MediaDuration.CreateMediaInfo` / `ApplyToMediaInfo` (`ImportApprovedBooks.cs:1177`, `:1194`; `BookImportService.cs:414`, `:717`), and `new MediaInfoModel()` in `DiskScanService.cs:831`, `ImportOrchestratorV2.cs`, and `BookImportUnmappedFileHelper.cs`. `AudioBitrate` stays 0.\n- `MediaInfoExtractor.ExtractMediaInfo` does read the bitrate, but it's only called for Matroska quality detection, MP3→M4B source-bitrate selection, and the legacy `BookDurationService` backfill. Its result never reaches the stored `BookFile.MediaInfo` on import.\n- `MediaInfoFormatter.FormatAudioBitrate` returns `\"0 kbps\"` instead of an empty string when the bitrate is 0, so the `{ (…) }` optional-token wrapper never collapses.\n- The naming preview uses a hard-coded sample (`AudioBitrate = 875` in `FileNameSampleService.cs:84`), so the bug doesn't show in Settings.\n\nLikely the same for the other `MediaInfo` tokens (`AudioCodec` → `Unknown`, `AudioSampleRate` → `0kHz`, `AudioChannels`/`AudioBitsPerSample` → empty). This is from reading the code; those tokens weren't tested.\n\n**System Information:**\n- OS: Ubuntu 25.10\n- Chaptarr Version: 0.9.965 (develop)\n- Installation Method: built from source\n\n<img width=\"1080\" height=\"1947\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/dc07c57a-899b-4f52-a8e1-395496f1e3cc\" />",
       "comments": []
