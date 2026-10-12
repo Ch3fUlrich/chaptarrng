@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "ff74478",
+  "forkHead": "59e8c7f",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -1025,10 +1025,10 @@
       "title": "[BUG] No audiobook edition survived metadata profile filtering for this book.",
       "url": "https://github.com/Chaptarr/chaptarr/issues/68",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": ["Commit 59e8c7f lets an audiobook add retain a Hardcover reading_format_id=4 edition as its ebook representative when no audiobook, format-3 ebook, or print representative is available. Other import-list paths already classify format 4 as ebook.", "AddBookServiceAutoEditionSelectionFixture.should_allow_format_four_ebook_as_audiobook_representative_with_none_metadata_profile covers the reported Brave New World case shape and verifies the edition remains selected and monitored."],
+      "validationEvidence": ["Static review confirmed the format-4 ebook classification in ImportListSyncService and traced the prior failure through EditionSelector retention and selection. git diff --check passed. Tests were not run per the user instruction."],
       "sourceUpdatedAt": "2026-08-19T15:29:23Z",
       "body": "**Describe the bug**\n`No audiobook edition survived metadata profile filtering for this book.` is displayed when trying to add some books.\n\n**To Reproduce**\nSteps to reproduce the behavior:\n1. Search and attempt to add `Brave New World` by Aldous Huxley, as an audiobook\n2. Receive this error, even when trying to set audiobook metadata profile to `none`\n\n**Expected behavior**\nBook is added\n\n**Screenshots**\n\n<img width=\"703\" height=\"604\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/c2f6cb0b-913a-4a82-8bc7-21faf54ed5c5\" />\n\n**System Information:**\n - OS: Unraid\n - Chaptarr Version: 0.9.911.0\n - Installation Method: Docker\n - Browser: Firefox\n\n**Docker Information (if applicable):**\n - Docker version: [e.g. 24.0.5]\n - Docker Compose version: [e.g. 2.20.2]\n - Container logs: [Please include relevant logs]\n\n**Additional context**\nAdd any other context about the problem here.\n\n**Logs**\n```\n2026-08-19 11:20:09.2|Error|BookController|[AddBook] Validation error\n\n[v0.9.911.0] FluentValidation.ValidationException: Validation failed: \n -- Edition: No audiobook edition survived metadata profile filtering for this book.\n   at NzbDrone.Core.Books.AddBookService.ApplyEditionRetentionForAdd(Book book, IReadOnlyCollection`1 requestedEditionProviderIds) in ./Chaptarr.Core/Books/Services/AddBookService.cs:line 921\n   at NzbDrone.Core.Books.AddBookService.AddBook(Book book, Boolean doRefresh) in ./Chaptarr.Core/Books/Services/AddBookService.cs:line 601\n   at Chaptarr.Api.V1.Books.BookController.AddBook(String mediaType, BookResource bookResource) in ./Chaptarr.Api.V1/Books/BookController.cs:line 1330\n\n\n2026-08-19 11:20:09.2|Error|BookController|[AddBook] Validation error: Edition - No audiobook edition survived metadata profile filtering for this book.\n2026-08-19 11:20:09.2|Warn|ChaptarrErrorPipeline|Invalid request Validation failed: \n -- Edition: No audiobook edition survived metadata profile filtering for this book.\n2026-08-19 11:20:09.2|Debug|Api|[POST] /api/v1/book: 400.BadRequest (1673 ms)\n```\n",
       "comments": []
