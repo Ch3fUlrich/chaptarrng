@@ -1,5 +1,4 @@
 /* eslint max-params: 0 */
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import * as calendarViews from 'Calendar/calendarViews';
@@ -11,6 +10,7 @@ import MenuButton from 'Components/Menu/MenuButton';
 import MenuContent from 'Components/Menu/MenuContent';
 import ViewMenuItem from 'Components/Menu/ViewMenuItem';
 import { align, icons } from 'Helpers/Props';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import translate from 'Utilities/String/translate';
 import CalendarHeaderViewButton from './CalendarHeaderViewButton';
 import styles from './CalendarHeader.css';

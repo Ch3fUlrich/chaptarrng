@@ -1,5 +1,4 @@
 /* eslint max-params: 0 */
-import dayjs from 'Utilities/Date/dayjsSetup';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import withCurrentPage from 'Components/withCurrentPage';
@@ -8,6 +7,7 @@ import createAuthorCountSelector from 'Store/Selectors/createAuthorCountSelector
 import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
 import { isCommandExecuting } from 'Utilities/Command';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import isBefore from 'Utilities/Date/isBefore';
 import CalendarPage from './CalendarPage';
 

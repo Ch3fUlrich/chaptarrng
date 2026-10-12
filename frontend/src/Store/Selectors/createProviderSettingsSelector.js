@@ -6,7 +6,7 @@ import selectSettings from 'Store/Selectors/selectSettings';
 function createProviderSettingsSelector(sectionName) {
   return createSelector(
     (state, { id }) => id,
-    (state) => state.settings && state.settings[sectionName] ? state.settings[sectionName] : {},
+    (state) => (state.settings && state.settings[sectionName] ? state.settings[sectionName] : {}),
     (id, section) => {
       if (!section) {
         console.warn(`createProviderSettingsSelector: section is undefined for ${sectionName}`);
@@ -70,12 +70,12 @@ function createProviderSettingsSelector(sectionName) {
       } = section;
 
       const foundItem = find(items, { id });
-      
+
       // Debug logging
       if (id && !foundItem) {
         console.warn(`createProviderSettingsSelector: No item found with id ${id} in ${sectionName}. Items:`, items);
       }
-      
+
       const settings = selectSettings(foundItem, pendingChanges, saveError);
 
       return {

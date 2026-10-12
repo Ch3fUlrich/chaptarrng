@@ -8,10 +8,10 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import NotFound from 'Components/NotFound';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
-import getErrorMessage from 'Utilities/Object/getErrorMessage';
-import translate from 'Utilities/String/translate';
 import { fetchAuthor } from 'Store/Actions/authorActions';
 import { setAuthorDetailsFilterValue } from 'Store/Actions/authorDetailsActions';
+import getErrorMessage from 'Utilities/Object/getErrorMessage';
+import translate from 'Utilities/String/translate';
 import AuthorDetailsConnector from './AuthorDetailsConnector';
 import styles from './AuthorDetails.css';
 
@@ -20,7 +20,7 @@ function createMapStateToProps() {
     (state, { match }) => match,
     (state) => state.authors,
     (match, authors) => {
-      const authorId = parseInt(match.params.id, 10);
+      const authorId = parseInt(match.params.id);
       const {
         isFetching,
         isPopulated,

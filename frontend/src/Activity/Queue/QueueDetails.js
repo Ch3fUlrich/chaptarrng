@@ -1,8 +1,8 @@
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Icon from 'Components/Icon';
 import { icons, kinds } from 'Helpers/Props';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import translate from 'Utilities/String/translate';
 
 function QueueDetails(props) {

@@ -1,9 +1,7 @@
-// webpack's DefinePlugin replaces `process.env.NODE_ENV` at build time, but
-// `tsc` runs without DefinePlugin. Provide a minimal ambient type so type-
-// checking of `process.env.NODE_ENV === 'production'` (e.g. in index.ts) passes.
-declare const process: {
-  env: {
+// Node's ambient declarations provide `process`; augment its environment type
+// for the value webpack's DefinePlugin replaces at build time.
+declare namespace NodeJS {
+  interface ProcessEnv {
     NODE_ENV?: string;
-    [key: string]: string | undefined;
-  };
-};
+  }
+}

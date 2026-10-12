@@ -1,6 +1,6 @@
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React from 'react';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import AgendaEventConnector from './AgendaEventConnector';
 import styles from './Agenda.css';
 

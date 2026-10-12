@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { batchActions } from 'redux-batched-actions';
+import { set, update } from 'Store/Actions/baseActions';
 import useApiQuery from 'Store/Hooks/useApiQuery';
-import { update, set } from 'Store/Actions/baseActions';
 
 /**
  * Thunk-hydration pattern: fetch data via react-query, then push the result
@@ -36,15 +36,17 @@ export default function useTagsHydration() {
   //   dispatch(set({ section: 'tags', isFetching: false, isPopulated: true, error: null }))
   useEffect(() => {
     if (result.data !== undefined) {
-      dispatch(batchActions([
-        update({ section: 'tags', data: result.data }),
-        set({
-          section: 'tags',
-          isFetching: false,
-          isPopulated: true,
-          error: null,
-        }),
-      ]));
+      dispatch(
+        batchActions([
+          update({ section: 'tags', data: result.data }),
+          set({
+            section: 'tags',
+            isFetching: false,
+            isPopulated: true,
+            error: null,
+          }),
+        ])
+      );
     }
   }, [result.data, dispatch]);
 

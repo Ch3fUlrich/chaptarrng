@@ -1,5 +1,5 @@
-import findIndex from 'lodash/findIndex';
 import { push } from 'connected-react-router';
+import findIndex from 'lodash/findIndex';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';

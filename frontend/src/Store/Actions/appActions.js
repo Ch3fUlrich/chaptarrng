@@ -258,10 +258,10 @@ export const reducers = createHandleActions({
 
   [TOGGLE_HIDE_UNMONITORED_MISSING]: function(state) {
     const newValue = !state.hideUnmonitoredMissing;
-    
+
     // Save to localStorage for persistence
     localStorage.setItem('hideUnmonitoredMissing', JSON.stringify(newValue));
-    
+
     return Object.assign({}, state, {
       hideUnmonitoredMissing: newValue
     });
@@ -269,10 +269,10 @@ export const reducers = createHandleActions({
 
   [SET_SELECTED_MEDIA_TYPE]: function(state, { payload }) {
     const mediaType = payload.mediaType;
-    
+
     // Save to localStorage for persistence
     localStorage.setItem('selectedMediaType', mediaType);
-    
+
     return Object.assign({}, state, {
       selectedMediaType: mediaType
     });

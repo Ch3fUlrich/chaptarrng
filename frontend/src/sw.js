@@ -11,14 +11,16 @@
 // This file is processed by workbox-webpack-plugin at build time.
 // self.__WB_MANIFEST is injected by InjectManifest but intentionally unused
 // (see "no precache" note above).
+// Workbox replaces this reference with the generated manifest at build time.
+// eslint-disable-next-line no-underscore-dangle, no-unused-vars
 const _WB_MANIFEST = self.__WB_MANIFEST || [];
 
-import { cleanupOutdatedCaches } from 'workbox-precaching';
-import { registerRoute, NavigationRoute } from 'workbox-routing';
-import { CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
-import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { setCacheNameDetails } from 'workbox-core';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { cleanupOutdatedCaches } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
 
 // ── Cache naming ──────────────────────────────────────────────
 // Use a well-known prefix so chunkCleanup's cache wipe and any
@@ -28,11 +30,17 @@ setCacheNameDetails({
   prefix: 'chaptarr',
   precache: 'precache-v2',
   runtime: 'runtime',
-  googleAnalytics: 'ga',
+  googleAnalytics: 'ga'
 });
 
 // Remove old precache entries from previous workbox versions.
 cleanupOutdatedCaches();
+
+const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const escapedScopePath = scopePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const apiRoutePattern = new RegExp(`^${escapedScopePath}/api/`);
+const hubRoutePattern = new RegExp(`^${escapedScopePath}/(?:signalr|hub)(?:/|$)`, 'i');
+const serviceRoutePatterns = [apiRoutePattern, hubRoutePattern];
 
 // ── Activation ───────────────────────────────────────────────
 // skipWaiting + clients.claim ensure a freshly-deployed SW takes
@@ -56,26 +64,17 @@ registerRoute(
 // on first load after a deploy (a stale index.html referencing deleted
 // [contenthash] chunks).
 //
-// NOTE — Sub-path deployment limitation:
-// The precache manifest URLs use build-time publicPath '/' (e.g.
-// '/runtime-abc.js').  This works correctly for the default root
-// deployment (urlBase='/').  Deploying under a sub-path (urlBase≠'/')
-// requires additional workbox configuration (e.g. a manifestTransforms
-// that prefixes URLs, or runtime URL modification) and is a known
-// limitation needing live-server testing.  Do NOT use modifyURLPrefix
-// to strip '/' — that breaks matching for sub-path deployments and
-// also corrupts matching for the default root case.
 registerRoute(
   new NavigationRoute(
     new NetworkFirst({
       networkTimeoutSeconds: 3,
       cacheName: 'chaptarr-navigation',
       plugins: [
-        new CacheableResponsePlugin({ statuses: [0, 200] }),
-      ],
+        new CacheableResponsePlugin({ statuses: [0, 200] })
+      ]
     }),
     {
-      denylist: [/^\/api\//, /\/signalr/i, /\/hub/i],
+      denylist: serviceRoutePatterns
     }
   )
 );
@@ -86,10 +85,7 @@ registerRoute(
 // negotiation traffic.  Strict regexes prevent false positives
 // (e.g. matching a path like /apiology).
 registerRoute(
-  ({ url }) =>
-    /^\/api\//.test(url.pathname) ||
-    /\/signalr/i.test(url.pathname) ||
-    /\/hub/i.test(url.pathname),
+  ({ url }) => serviceRoutePatterns.some((pattern) => pattern.test(url.pathname)),
   new NetworkOnly()
 );
 
@@ -98,15 +94,21 @@ registerRoute(
 // and common image types.  These are content-hashed at build time
 // so they never change in-place — cache-first is safe.
 registerRoute(
-  ({ url, request }) => {
+  ({ url }) => {
     // Only cache same-origin requests (respects urlBase prefix).
-    if (url.origin !== self.location.origin) return false;
+    if (url.origin !== self.location.origin) {
+      return false;
+    }
 
     const ext = url.pathname.match(/\.(js|css|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|gif|webp|ico)$/i);
-    if (!ext) return false;
+    if (!ext) {
+      return false;
+    }
 
     // Skip the service worker itself.
-    if (url.pathname.endsWith('/sw.js')) return false;
+    if (url.pathname.endsWith('/sw.js')) {
+      return false;
+    }
 
     return true;
   },
@@ -116,8 +118,8 @@ registerRoute(
       new CacheableResponsePlugin({ statuses: [0, 200] }),
       new ExpirationPlugin({
         maxEntries: 120,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-      }),
-    ],
+        maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+      })
+    ]
   })
 );

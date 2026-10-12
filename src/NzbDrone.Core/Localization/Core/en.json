@@ -1858,6 +1858,7 @@
   "SettingsBackupCreated": "Backup created.",
   "SettingsBackupDownloadClientsDescription": "Torrent and Usenet clients",
   "SettingsBackupFailedToCreate": "Failed to create settings backup.",
+  "SettingsBackupFailedToLoadLocations": "Failed to load backup locations: {message}",
   "SettingsBackupFileName": "File Name",
   "SettingsBackupFileNameHelpText": "The file will be saved as an encrypted .chaptarr-settings-backup.json.",
   "SettingsBackupHardcoverDescription": "Hardcover API integration",

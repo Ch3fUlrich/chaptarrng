@@ -18,8 +18,8 @@ import {
   selectDownloadClientSchema,
   selectIndexerSchema,
   selectNotificationSchema } from 'Store/Actions/settingsActions';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
 import queryClient from 'Store/queryClient';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import Quickstart from './Quickstart';
 
 function createMapStateToProps() {

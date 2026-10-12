@@ -1,11 +1,11 @@
 import classNames from 'classnames';
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 import getStatusStyle from 'Calendar/getStatusStyle';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import translate from 'Utilities/String/translate';
 import CalendarEventQueueDetails from './CalendarEventQueueDetails';
 import styles from './CalendarEvent.css';
@@ -15,7 +15,6 @@ function CalendarEvent(props) {
     id,
     author,
     title,
-    titleSlug,
     releaseDate,
     monitored,
     statistics,
@@ -25,14 +24,8 @@ function CalendarEvent(props) {
     onEventModalOpenToggle
   } = props;
 
-  const [isDetailsModalOpen] = useState(false);
-
   const onPress = useCallback(() => {
     onEventModalOpenToggle(true);
-  }, [onEventModalOpenToggle]);
-
-  const onDetailsModalClose = useCallback(() => {
-    onEventModalOpenToggle(false);
   }, [onEventModalOpenToggle]);
 
   if (!author) {

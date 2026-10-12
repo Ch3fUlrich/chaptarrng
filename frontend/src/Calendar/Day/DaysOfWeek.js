@@ -1,7 +1,7 @@
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import * as calendarViews from 'Calendar/calendarViews';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import DayOfWeek from './DayOfWeek';
 import styles from './DaysOfWeek.css';
 

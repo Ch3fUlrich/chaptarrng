@@ -42,7 +42,10 @@ export interface ApiQueryParams {
 export default function useApiQuery<TData = unknown>(
   queryKey: unknown[],
   ajaxParams: ApiQueryParams,
-  queryOptions?: Omit<UseQueryOptions<TData, Error, TData, unknown[]>, 'queryKey' | 'queryFn'>
+  queryOptions?: Omit<
+    UseQueryOptions<TData, Error, TData, unknown[]>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery<TData, Error, TData, unknown[]>({
     queryKey,

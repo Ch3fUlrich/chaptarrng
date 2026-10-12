@@ -1,6 +1,6 @@
-import dayjs from 'Utilities/Date/dayjsSetup';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatTimeSpan from 'Utilities/Date/formatTimeSpan';
 
