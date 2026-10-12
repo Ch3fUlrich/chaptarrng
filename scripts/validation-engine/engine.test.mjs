@@ -1,7 +1,10 @@
 // Copyright (C) ChaptarrNG contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlan, discoverInventory, globRegex, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
+import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createPlan, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
 
 function withEnvironmentVariable(name, value, action) {
   const previous = process.env[name];
@@ -53,6 +56,22 @@ test('NUnit summary refuses missing, malformed, and zero-case results', () => {
   assert.throws(() => parseNUnitSummary('<test-run total="0" passed="0" failed="0"/>'), /invalid, or zero/);
 });
 
+test('live progress summary distinguishes completed, blocked, pending, and running tasks', () => {
+  const tasks = [
+    { id: 'passed', name: 'Passed task' },
+    { id: 'blocked', name: 'Blocked task' },
+    { id: 'running', name: 'Long task' },
+  ];
+  const results = new Map([
+    ['passed', { status: 'passed', startedAt: '2026-10-12T00:00:00.000Z' }],
+    ['blocked', { status: 'blocked' }],
+  ]);
+  assert.equal(
+    formatValidationProgress('sample', tasks, results, tasks[2], 65_000),
+    '[validation] sample: 1/3 selected tasks complete (1 passed, 0 failed, 1 blocked, 1 pending); running Long task (1m05s)',
+  );
+});
+
 test('source fingerprints normalize Git text line endings across runner operating systems', () => {
   const lf = Buffer.from('first line\nsecond line\n');
   const crlf = Buffer.from('first line\r\nsecond line\r\n');
@@ -60,9 +79,51 @@ test('source fingerprints normalize Git text line endings across runner operatin
   assert.notEqual(sha256GitText(lf), sha256GitText(Buffer.from('first line\nchanged line\n')));
 });
 
+test('task environments use an allowlist and run-owned user and temporary directories', (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-env-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  assert.throws(() => isolatedChildEnvironment({ id: 'fixture', passEnv: ['GITHUB_TOKEN'] }, root, {
+    GITHUB_TOKEN: 'synthetic-token',
+  }), /unapproved inherited environment variable/);
+  assert.throws(() => isolatedChildEnvironment({ id: '../outside' }, root), /safe lowercase identifier/);
+  const env = isolatedChildEnvironment({
+    id: 'fixture',
+    kind: 'test',
+    env: { FIXTURE_SETTING: 'expected' },
+  }, root, {
+    PATH: '/toolchain/bin',
+    DOTNET_ROOT: '/toolchain/dotnet',
+    HOME: '/operator/home',
+    TMPDIR: '/operator/tmp',
+    NODE_OPTIONS: '--require=/operator/injected.cjs',
+    GITHUB_TOKEN: 'synthetic-token',
+    RANDOM_PRIVATE_VALUE: 'synthetic-private-value',
+    XDG_CONFIG_HOME: '/operator/config',
+  });
+  const environmentRoot = path.join(root, 'fixture-environment');
+  assert.equal(env.PATH, '/toolchain/bin');
+  assert.equal(env.DOTNET_ROOT, '/toolchain/dotnet');
+  assert.equal(env.HOME, path.join(environmentRoot, 'home'));
+  assert.equal(env.USERPROFILE, env.HOME);
+  assert.equal(env.TMPDIR, path.join(environmentRoot, 'tmp'));
+  assert.equal(env.XDG_CONFIG_HOME, path.join(environmentRoot, 'xdg-config'));
+  assert.equal(env.XDG_CACHE_HOME, path.join(environmentRoot, 'xdg-cache'));
+  assert.equal(env.NODE_ENV, 'test');
+  assert.equal(env.CI, 'true');
+  assert.equal(env.FIXTURE_SETTING, 'expected');
+  for (const key of ['NODE_OPTIONS', 'GITHUB_TOKEN', 'RANDOM_PRIVATE_VALUE']) assert.equal(env[key], undefined);
+  if (process.platform !== 'win32') {
+    assert.equal(statSync(env.HOME).mode & 0o777, 0o700);
+    assert.equal(statSync(env.TMPDIR).mode & 0o777, 0o700);
+  }
+});
+
 test('test-only planning distinguishes local and hosted tasks regardless of ambient workflow environment', () => {
   const localPlan = withEnvironmentVariable('GITHUB_ACTIONS', undefined, () =>
-    withEnvironmentVariable('VALIDATION_NODE_ID', undefined, () => createPlan({ testsOnly: true })));
+    withEnvironmentVariable('VALIDATION_NODE_ID', undefined, () =>
+      withEnvironmentVariable('GITHUB_TOKEN', 'synthetic-runtime-token', () =>
+        withEnvironmentVariable('NODE_OPTIONS', '--require=/nonexistent-chaptarr-runtime-module.cjs', () =>
+          createPlan({ testsOnly: true })))));
   assert.deepEqual(localPlan.tasks.filter((task) => task.selected).map((task) => task.id), [
     'engine-contract-tests', 'dotnet-core-tests',
   ]);
@@ -73,6 +134,7 @@ test('test-only planning distinguishes local and hosted tasks regardless of ambi
   assert.equal(localPlan.executionContext.nodeId.toLowerCase(), `chaptarr-${expectedNodePlatform}-${process.arch}`.toLowerCase());
   assert.equal(localPlan.executionContext.github, null);
   assert.match(localPlan.candidate.sourceSha256, /^[a-f0-9]{64}$/);
+  assert.equal(localPlan.runtimes.find((runtime) => runtime.command === process.execPath).version, process.version);
 
   const hostedPlan = withEnvironmentVariable('GITHUB_ACTIONS', 'true', () =>
     withEnvironmentVariable('VALIDATION_NODE_ID', 'chaptarr-linux-X64', () => createPlan({ testsOnly: true })));

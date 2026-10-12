@@ -19,8 +19,15 @@ import { fileURLToPath } from 'node:url';
 import { validation } from './config.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const SECRET_ENV = /(?:TOKEN|PASSWORD|SECRET|API[_-]?KEY|CREDENTIAL|COOKIE|AUTH|DATABASE_URL|DB_PASS)/i;
+const INHERITED_ENVIRONMENT_KEYS = new Set([
+  'ASDF_DATA_DIR', 'ASDF_DIR', 'COMSPEC', 'DOTNET_ROOT', 'DOTNET_ROOT_X64',
+  'DOTNET_ROOT_X86', 'LANG', 'LC_ALL', 'LC_CTYPE', 'MISE_DATA_DIR',
+  'MISE_HOME', 'NVM_DIR', 'PATH', 'PATHEXT', 'VOLTA_HOME', 'SYSTEMROOT',
+  'TZ', 'WINDIR',
+]);
+const APPROVED_TASK_PASS_ENVIRONMENT = new Map();
 const MAX_OUTPUT = 1024 * 1024;
+const PROGRESS_INTERVAL_MS = 60_000;
 
 function hash(value) { return createHash('sha256').update(value).digest('hex'); }
 
@@ -119,13 +126,23 @@ function captureCandidate(inventory) {
 function inspectRuntime(runtime) {
   const result = spawnSync(runtime.command, runtime.args ?? ['--version'], {
     cwd: ROOT, encoding: 'utf8', timeout: 10000, maxBuffer: 1024 * 1024,
-    env: { ...process.env, NO_COLOR: '1' },
+    env: { ...inheritedToolchainEnvironment(), NO_COLOR: '1' },
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
   const version = output.split(/\r?\n/, 1)[0] ?? '';
   const available = !result.error && result.status === 0;
   const compatible = available && new RegExp(runtime.versionPattern).test(version);
   return { command: runtime.command, expected: runtime.versionPattern, version, available, compatible, exitCode: result.status };
+}
+
+function inheritedToolchainEnvironment(inherited = process.env) {
+  const values = new Map();
+  for (const [key, value] of Object.entries(inherited)) {
+    const normalized = key.toUpperCase();
+    if (!INHERITED_ENVIRONMENT_KEYS.has(normalized) || typeof value !== 'string') continue;
+    if (!values.has(normalized) || key === normalized) values.set(normalized, value);
+  }
+  return Object.fromEntries(values);
 }
 
 function runnerContext(candidate) {
@@ -149,6 +166,16 @@ function runnerContext(candidate) {
 }
 
 export function createPlan(options = {}) {
+  for (const task of validation.tasks) {
+    if (typeof task.id !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(task.id)) {
+      throw new Error('Validation task ID must be a safe lowercase identifier.');
+    }
+    const passEnv = task.passEnv ?? [];
+    if (!Array.isArray(passEnv) || passEnv.some((name) =>
+      typeof name !== 'string' || !APPROVED_TASK_PASS_ENVIRONMENT.get(task.id)?.has(name))) {
+      throw new Error('Task requests an unapproved inherited environment variable: ' + task.id);
+    }
+  }
   const inventory = discoverInventory();
   const candidate = captureCandidate(inventory);
   const github = process.env.GITHUB_ACTIONS === 'true';
@@ -210,12 +237,51 @@ export function createPlan(options = {}) {
   return { ...body, planSha256: hash(stable(body)) };
 }
 
-function childEnvironment(task) {
-  const env = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (!SECRET_ENV.test(key) && !['NODE_TEST_CONTEXT', 'VALIDATION_RECEIPT_EXPORT'].includes(key)) env[key] = value;
+export function isolatedChildEnvironment(task, runRoot, inherited = process.env) {
+  if (typeof task?.id !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(task.id)) {
+    throw new Error('Validation task ID must be a safe lowercase identifier.');
   }
-  return { ...env, CI: env.CI ?? 'true', NO_COLOR: '1', ...task.env };
+  const env = inheritedToolchainEnvironment(inherited);
+  const approvedPassEnv = APPROVED_TASK_PASS_ENVIRONMENT.get(task.id) ?? new Set();
+  const passEnv = task.passEnv ?? [];
+  if (!Array.isArray(passEnv) || passEnv.some((name) =>
+    typeof name !== 'string' || !approvedPassEnv.has(name))) {
+    throw new Error('Task requests an unapproved inherited environment variable: ' + task.id);
+  }
+  for (const name of passEnv) {
+    const match = Object.entries(inherited).find(([key]) => key.toUpperCase() === name.toUpperCase());
+    if (match && typeof match[1] === 'string') env[name] = match[1];
+  }
+  for (const [key, value] of Object.entries(task.env ?? {})) {
+    if (typeof value === 'string') env[key] = value;
+  }
+
+  const environmentRoot = path.join(runRoot, `${task.id}-environment`);
+  const directories = {
+    HOME: path.join(environmentRoot, 'home'),
+    USERPROFILE: path.join(environmentRoot, 'home'),
+    TMPDIR: path.join(environmentRoot, 'tmp'),
+    TMP: path.join(environmentRoot, 'tmp'),
+    TEMP: path.join(environmentRoot, 'tmp'),
+    XDG_CONFIG_HOME: path.join(environmentRoot, 'xdg-config'),
+    XDG_CACHE_HOME: path.join(environmentRoot, 'xdg-cache'),
+    APPDATA: path.join(environmentRoot, 'AppData', 'Roaming'),
+    LOCALAPPDATA: path.join(environmentRoot, 'AppData', 'Local'),
+    DOTNET_CLI_HOME: path.join(environmentRoot, 'dotnet-home'),
+    NUGET_PACKAGES: path.join(runRoot, 'nuget-packages'),
+  };
+  for (const directory of new Set(Object.values(directories))) {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+  }
+  Object.assign(env, directories, {
+    CI: 'true',
+    NO_COLOR: '1',
+    DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+    DOTNET_NOLOGO: '1',
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
+  });
+  if (task.kind === 'test') env.NODE_ENV = 'test';
+  return env;
 }
 
 function terminate(child) {
@@ -270,6 +336,37 @@ export function parseNUnitSummary(xml) {
   return summary;
 }
 
+function formatElapsed(milliseconds) {
+  const seconds = Math.floor(milliseconds / 1000);
+  return `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, '0')}s`;
+}
+
+export function formatValidationProgress(repository, tasks, results, currentTask = null, elapsedMs = 0) {
+  const receipts = tasks.map((task) => results.get(task.id)).filter(Boolean);
+  const passed = receipts.filter((receipt) => receipt.status === 'passed').length;
+  const failed = receipts.filter((receipt) => ['failed', 'incomplete'].includes(receipt.status)).length;
+  const blocked = receipts.filter((receipt) => ['blocked', 'not-run'].includes(receipt.status)).length;
+  const completed = passed + failed;
+  const pending = Math.max(0, tasks.length - completed - blocked);
+  const active = currentTask
+    ? `; running ${currentTask.name ?? currentTask.id} (${formatElapsed(elapsedMs)})`
+    : '';
+  return `[validation] ${repository}: ${completed}/${tasks.length} selected tasks complete (${passed} passed, ${failed} failed, ${blocked} blocked, ${pending} pending)${active}`;
+}
+
+function writeValidationProgress(tasks, results, currentTask = null, startedAt = 0, state = null) {
+  const summary = formatValidationProgress(
+    validation.repository,
+    tasks,
+    results,
+    currentTask,
+    currentTask ? Date.now() - startedAt : 0,
+  );
+  if (state?.last === summary) return;
+  if (state) state.last = summary;
+  process.stderr.write(`${summary}\n`);
+}
+
 function hashArtifacts(task) {
   return (task.artifacts ?? []).map((file) => {
     const full = path.join(ROOT, file);
@@ -298,7 +395,7 @@ async function runTask(task, runRoot) {
   const started = Date.now();
   const child = spawn(spec.command[0], args, {
     cwd: ROOT,
-    env: childEnvironment(spec),
+    env: isolatedChildEnvironment(spec, runRoot),
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: process.platform !== 'win32',
     windowsHide: true,
@@ -413,6 +510,7 @@ async function execute(plan) {
       plan.missingArtifacts.length > 0 ||
       (plan.executionContext.github && plan.executionContext.github.sha !== plan.candidate.commit);
     const selected = plan.tasks.filter((task) => task.selected);
+    const progressState = {};
     if (missing) {
       for (const task of selected) results.set(task.id, { taskId: task.id, status: 'not-run', reason: 'runtime, test artifact, or workflow SHA prerequisite is missing' });
     } else {
@@ -428,8 +526,21 @@ async function execute(plan) {
           results.set(task.id, { taskId: task.id, status: 'blocked', reason: 'candidate changed after planning' });
           break;
         }
-        const taskResult = await runTask(task, runRoot);
+        const taskStartedAt = Date.now();
+        writeValidationProgress(selected, results, task, taskStartedAt, progressState);
+        const heartbeat = setInterval(
+          () => writeValidationProgress(selected, results, task, taskStartedAt, progressState),
+          PROGRESS_INTERVAL_MS,
+        );
+        heartbeat.unref();
+        let taskResult;
+        try {
+          taskResult = await runTask(task, runRoot);
+        } finally {
+          clearInterval(heartbeat);
+        }
         results.set(task.id, taskResult);
+        writeValidationProgress(selected, results, null, 0, progressState);
         if (captureCandidate(discoverInventory()).sourceSha256 !== plan.candidate.sourceSha256) {
           sourceChanged = true;
           results.set(task.id, { ...taskResult, status: 'blocked', error: 'source changed during execution' });
@@ -445,6 +556,7 @@ async function execute(plan) {
         reason: task.selected ? 'a prerequisite task did not pass' : task.reason,
       });
     }
+    writeValidationProgress(selected, results, null, 0, progressState);
     const tasks = plan.tasks.map((task) => results.get(task.id));
     const totals = {
       planned: plan.tasks.filter((task) => task.selected).length,

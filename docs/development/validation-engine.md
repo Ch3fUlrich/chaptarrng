@@ -40,6 +40,12 @@ node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node scripts/validation-engine/engine.mjs --tests-only
 ```
 
+During a run, the engine writes a compact task summary to stderr when each task
+starts and finishes, then once per minute while a task is still running. The
+counts cover completed tasks; the active task and its elapsed time are shown
+separately. GitHub renders `GITHUB_STEP_SUMMARY` only after its workflow step
+finishes, so these updates appear in the live step log instead.
+
 For BuildKit container builds, source the same file and pass the value as a
 BuildKit secret, for example:
 
@@ -71,8 +77,11 @@ Linux and macOS. Each platform receipt separately hashes its compiled test
 assembly byte-for-byte; platform binaries are allowed to differ. Before and
 after a task the engine checks that the source fingerprint has not moved. Logs
 and receipts are private under the system temporary directory, overlapping
-runs in one checkout are rejected, and child processes do not inherit
-credential-shaped environment variables.
+runs in one checkout are rejected. Runtime probes and task child processes
+receive an explicit environment allowlist and each task's declared settings.
+Every task gets run-owned home, temporary, XDG, and .NET CLI directories. NuGet
+packages use a private cache shared only within the validation run. Test tasks
+run with `CI=true` and `NODE_ENV=test` regardless of the invoking shell's values.
 
 The artifact downloader preserves each runner receipt in its own subdirectory,
 and the reconciler finds `receipt.json` recursively so same-named artifacts do
