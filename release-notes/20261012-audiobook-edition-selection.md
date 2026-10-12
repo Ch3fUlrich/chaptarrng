@@ -6,4 +6,4 @@ action: none
 breaking: false
 ---
 
-When an audio file has matching audiobook and ebook/print candidates, the matcher now prefers the audiobook when title, narrator, duration, author, and series evidence is otherwise tied. Rename previews can then use audiobook metadata when catalog details are incomplete; representative editions remain the fallback when no suitable audiobook candidate is available.
+Audio-file matching now prefers a native audiobook over an ebook/print candidate when title, narrator, duration, author, and series evidence is otherwise tied. Previews for newly matched files can use audiobook metadata despite incomplete catalog details; representative editions remain the fallback when no suitable audiobook exists. Existing file links remain unchanged until corrected.

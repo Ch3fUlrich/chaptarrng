@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:45:05+00:00",
-  "forkHead": "1ab2354",
+  "snapshotAt": "2026-10-12T20:50:27+00:00",
+  "forkHead": "e3c9eff",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -3573,10 +3573,20 @@
       "title": "[BUG] Audiobook rename preview uses unexpected edition year and omits narrator",
       "url": "https://github.com/Chaptarr/chaptarr/issues/289",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        142,
+        262
+      ],
+      "implementationEvidence": [
+        "Commit e3c9eff moves native reading-format preference ahead of representative-edition ranking in audiobook candidate selection, after title, audiobook-proof, duration, narrator, author, and series evidence. With otherwise tied fallback candidates, an audiobook edition now wins over a representative ebook or print edition; existing duration and narrator rejection gates remain in place.",
+        "This changes the edition link chosen for new matches, allowing rename previews to use audiobook year and narrator metadata when the catalog candidate is incomplete. Existing file links are not automatically rewritten; the issue reporter manually pinned the edition to correct the current file.",
+        "Related PR #142 handles the language-preference tiebreak in representative edition selection; issue #262 concerns sibling-book matching and remains a separate matching concern."
+      ],
+      "validationEvidence": [
+        "git diff --check passed, and the focused release-note preview passed for the audiobook-selection fragment. The full branch-wide preview against origin/main currently flags three security-note fragments missing from this branch; the backlog branch has diverged from origin/main and needs final integration.",
+        "No unit or integration tests were run, per the earlier instruction. The backend build remains blocked by the existing Six Labors ImageSharp licensing target because no license file/key is available in this environment."
+      ],
       "sourceUpdatedAt": "2026-10-05T17:23:45Z",
       "body": "# [BUG] Audiobook rename preview uses unexpected edition year and omits narrator\n\n**Describe the bug**\n\nAn existing audiobook of *The Sirens of Titan* has a rename preview that substitutes a different year and drops the narrator. This appears related to edition selection or edition metadata, but the saved preview alone does not establish the cause.\n\n**Observed example**\n\nOn Chaptarr 0.9.965, the saved 2026-10-04 rename preview shows:\n\n```\nExisting folder:\nKurt Vonnegut/2009 - The Sirens of Titan {Jay Snyder} [B002V8L3P0]\n\nProposed folder:\nKurt Vonnegut/2014 - Sirens of Titan\n```\n\nA same-day edition survey reports ten editions for this book and monitored edition ID 21082. This report describes the historical preview, not a fresh import reproduction. Existing folder labels express the intended audiobook identity; they are not proof of embedded file tags or of what evidence the import matcher received.\n\n**Expected behavior**\n\nFor an audiobook whose metadata includes the appropriate narrated edition, the preview should use that edition's year and narrator. Could edition selection prefer audiobook-format candidates when the imported file is audio, and avoid selecting an ebook/physical edition when an appropriate audiobook candidate exists? The preferred policy would need to account for incomplete metadata and language preferences.\n\n**System Information**\n\n- Chaptarr: 0.9.965.0 (develop), Docker image `chaptarr/chaptarr:0.9.965`.\n- Observation: saved rename-preview output and edition survey; no rename performed.\n\n**Additional context / diagnostics**\n\nThis is distinct from series-label issue #34 and PR #48. PR #142 addresses language preference in edition selection; #262 concerns matching the book itself. A format preference may be adjacent to those changes, rather than a separate matcher redesign. This report does not request using folder ASINs as matching evidence.\n\nThe saved evidence does not include a complete import trace or raw edition-format rows, so it does not prove that the selected edition was an ebook. Please indicate which diagnostic fields would distinguish a selection problem from incomplete edition metadata; a controlled reproduction can then be collected without renaming the existing library.\n",
       "comments": [
