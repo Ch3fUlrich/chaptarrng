@@ -150,7 +150,7 @@ namespace Chaptarr.Core.Test.Books
             public Edition GetEditionByOpenLibraryEditionId(string openLibraryEditionId) => throw new NotImplementedException();
             public Edition GetEditionByProviderAndId(string providerPrefix, string providerId) => throw new NotImplementedException();
             public List<Edition> GetEditionsByProviderAndId(string providerPrefix, string providerId) => new();
-            public List<Edition> GetAllMonitoredEditions() => throw new NotImplementedException();
+            public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType) => throw new NotImplementedException();
             public void InsertMany(List<Edition> editions)
             {
                 // AddBook only reads the count/ids of what it passed in; nothing here needs to persist for these tests.
