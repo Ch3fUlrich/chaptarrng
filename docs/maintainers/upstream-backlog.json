@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:26:02+00:00",
-  "forkHead": "223a874",
+  "snapshotAt": "2026-10-12T20:28:05+00:00",
+  "forkHead": "c5beffe",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -3665,10 +3665,16 @@
       "title": "Interactive Search: Title column collapses to zero width and overlaps Indexer column",
       "url": "https://github.com/Chaptarr/chaptarr/issues/297",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit c5beffe reserves a 280px title column and sets a 1280px minimum width for the Interactive Search table, so the existing horizontal scroller preserves the title and indexer columns on narrow screens.",
+        "Release note 20261012-queue-label-contrast-and-indexer-names.md records the responsive behavior."
+      ],
+      "validationEvidence": [
+        "Production webpack build passed with 18 non-fatal MiniCssExtractPlugin CSS-order warnings in existing lazy chunks.",
+        "Stylelint passed for both changed Interactive Search stylesheets, and the release-note preview completed successfully."
+      ],
       "sourceUpdatedAt": "2026-10-05T17:48:15Z",
       "body": "## What happened",
       "comments": [
@@ -3833,6 +3839,7 @@
       "relatedItems": [],
       "implementationEvidence": [
         "Commit 223a874 widens the Interactive Search Indexer column from 82px to 180px, wraps long names instead of truncating them, and exposes the complete name through the cell title.",
+        "Commit c5beffe gives the table a stable minimum width and preserves room for the title column on narrow screens.",
         "Release note 20261012-queue-label-contrast-and-indexer-names.md records the visible change."
       ],
       "validationEvidence": [
