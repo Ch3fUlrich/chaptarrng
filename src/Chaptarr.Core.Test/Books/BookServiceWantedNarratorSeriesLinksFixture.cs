@@ -191,6 +191,8 @@ namespace Chaptarr.Core.Test.Books
 
             public Book Get(int id) => _booksById.TryGetValue(id, out var book) ? book : null;
 
+            public IEnumerable<Book> FindExisting(IEnumerable<int> ids) => Get(ids);
+
             public IEnumerable<Book> Get(IEnumerable<int> ids)
             {
                 return (ids ?? Array.Empty<int>())
@@ -229,7 +231,13 @@ namespace Chaptarr.Core.Test.Books
             public void Delete(int id) => throw new NotImplementedException();
             public void InsertMany(IList<Book> model) => throw new NotImplementedException();
             public void InsertMany(IList<Book> model, IDbConnection connection, IDbTransaction transaction) => throw new NotImplementedException();
-            public void UpdateMany(IList<Book> model) => throw new NotImplementedException();
+            public void UpdateMany(IList<Book> model)
+            {
+                foreach (var book in model)
+                {
+                    Update(book);
+                }
+            }
             public void SetFields(IList<Book> models, params System.Linq.Expressions.Expression<Func<Book, object>>[] properties) => throw new NotImplementedException();
             public void DeleteMany(List<Book> model) => throw new NotImplementedException();
             public void DeleteMany(IEnumerable<int> ids) => throw new NotImplementedException();
