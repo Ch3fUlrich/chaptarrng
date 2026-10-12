@@ -1,4 +1,8 @@
 <Project>
+  <PropertyGroup Condition="'$(SIXLABORS_LICENSE_KEY)' != ''">
+    <SixLaborsLicenseKey>$(SIXLABORS_LICENSE_KEY)</SixLaborsLicenseKey>
+  </PropertyGroup>
+
   <!-- Common to all Chaptarr Projects -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

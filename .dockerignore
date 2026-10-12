@@ -10,6 +10,7 @@ config.xml
 .env
 .env.*
 !.env.example
+sixlabors.lic
 *.pem
 *.key
 *.pfx

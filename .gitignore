@@ -62,6 +62,8 @@ src/postgres.runsettings
 .env
 .env.local
 .env.*.local
+.env.sixlabors
+sixlabors.lic
 
 # Test artifacts
 test/

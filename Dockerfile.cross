@@ -53,7 +53,9 @@ RUN yarn build
 # just bloats every final image layer.
 ARG TARGETPLATFORM
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
-    set -eux; \
+    --mount=type=secret,id=SIXLABORS_LICENSE_KEY,required=true \
+    set -eu; \
+    export SIXLABORS_LICENSE_KEY="$(cat /run/secrets/SIXLABORS_LICENSE_KEY)"; \
     case "$TARGETPLATFORM" in \
         "linux/amd64") RUNTIME_ID="linux-x64" ;; \
         "linux/arm64") RUNTIME_ID="linux-arm64" ;; \

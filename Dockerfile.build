@@ -48,9 +48,15 @@ RUN yarn build
 # Back‑end build with NuGet cache (limit to linux-x64 + disable parallel for stability)
 ARG RUNTIME_ID=linux-x64
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
+    --mount=type=secret,id=SIXLABORS_LICENSE_KEY,required=true \
+    set -e; \
+    export SIXLABORS_LICENSE_KEY="$(cat /run/secrets/SIXLABORS_LICENSE_KEY)"; \
     dotnet restore src/Chaptarr.NoTests.sln -r ${RUNTIME_ID} --disable-parallel --nologo /p:RestoreUseStaticGraphEvaluation=true
 
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
+    --mount=type=secret,id=SIXLABORS_LICENSE_KEY,required=true \
+    set -e; \
+    export SIXLABORS_LICENSE_KEY="$(cat /run/secrets/SIXLABORS_LICENSE_KEY)"; \
     dotnet publish src/NzbDrone.Console/Chaptarr.Console.csproj -c Release -f net10.0 -r ${RUNTIME_ID} --self-contained false -o /app --no-restore /p:EnableWindowsTargeting=true /p:RunAnalyzersDuringBuild=false /p:RunCodeAnalysis=false /p:PublishSingleFile=false --nologo
 
 # Copy UI output to final app directory
