@@ -12,6 +12,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.Organizer
@@ -30,6 +31,7 @@ namespace NzbDrone.Core.Organizer
         private readonly INamingConfigService _namingConfigService;
         private readonly IQualityDefinitionService _qualityDefinitionService;
         private readonly ICustomFormatCalculationService _formatCalculator;
+        private readonly IMediaInfoExtractor _mediaInfoExtractor;
         private readonly ICached<BookFormat[]> _trackFormatCache;
         private readonly Logger _logger;
 
@@ -63,11 +65,13 @@ namespace NzbDrone.Core.Organizer
                                IQualityDefinitionService qualityDefinitionService,
                                ICacheManager cacheManager,
                                ICustomFormatCalculationService formatCalculator,
-                               Logger logger)
+                               Logger logger,
+                               IMediaInfoExtractor mediaInfoExtractor)
         {
             _namingConfigService = namingConfigService;
             _qualityDefinitionService = qualityDefinitionService;
             _formatCalculator = formatCalculator;
+            _mediaInfoExtractor = mediaInfoExtractor;
             _trackFormatCache = cacheManager.GetCache<BookFormat[]>(GetType(), "bookFormat");
             _logger = logger;
         }
@@ -730,24 +734,75 @@ namespace NzbDrone.Core.Organizer
 
         private void AddMediaInfoTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, BookFile bookFile)
         {
-            if (bookFile.MediaInfo == null)
+            if (bookFile == null)
             {
                 _logger.Trace("Media info is unavailable for {0}", bookFile);
 
                 return;
             }
 
-            var audioCodec = MediaInfoFormatter.FormatAudioCodec(bookFile.MediaInfo);
-            var audioChannels = MediaInfoFormatter.FormatAudioChannels(bookFile.MediaInfo);
-            var audioChannelsFormatted = audioChannels > 0 ?
-                                audioChannels.ToString("F1", CultureInfo.InvariantCulture) :
-                                string.Empty;
+            var mediaInfo = bookFile.MediaInfo;
+            var mediaInfoResolved = false;
 
-            tokenHandlers["{MediaInfo AudioCodec}"] = m => audioCodec;
-            tokenHandlers["{MediaInfo AudioChannels}"] = m => audioChannelsFormatted;
-            tokenHandlers["{MediaInfo AudioBitRate}"] = m => MediaInfoFormatter.FormatAudioBitrate(bookFile.MediaInfo);
-            tokenHandlers["{MediaInfo AudioBitsPerSample}"] = m => MediaInfoFormatter.FormatAudioBitsPerSample(bookFile.MediaInfo);
-            tokenHandlers["{MediaInfo AudioSampleRate}"] = m => MediaInfoFormatter.FormatAudioSampleRate(bookFile.MediaInfo);
+            MediaInfoModel GetMediaInfo(Func<MediaInfoModel, bool> isMissing)
+            {
+                if (!mediaInfoResolved && isMissing(mediaInfo))
+                {
+                    mediaInfoResolved = true;
+
+                    if (_mediaInfoExtractor != null && !string.IsNullOrWhiteSpace(bookFile.Path))
+                    {
+                        var extracted = _mediaInfoExtractor.ExtractMediaInfo(bookFile.Path);
+                        mediaInfo = MediaDuration.MergeMediaInfo(mediaInfo, extracted);
+                    }
+                }
+
+                return mediaInfo;
+            }
+
+            tokenHandlers["{MediaInfo AudioCodec}"] = m =>
+            {
+                var resolved = GetMediaInfo(info => string.IsNullOrWhiteSpace(info?.AudioFormat) ||
+                    string.Equals(info.AudioFormat, "Unknown", StringComparison.OrdinalIgnoreCase));
+                if (string.IsNullOrWhiteSpace(resolved?.AudioFormat))
+                {
+                    return m.DefaultValue("");
+                }
+
+                var codec = MediaInfoFormatter.FormatAudioCodec(resolved);
+                return string.Equals(codec, "Unknown", StringComparison.OrdinalIgnoreCase)
+                    ? m.DefaultValue("")
+                    : codec;
+            };
+            tokenHandlers["{MediaInfo AudioChannels}"] = m =>
+            {
+                var resolved = GetMediaInfo(info => info == null || info.AudioChannels <= 0);
+                var channels = resolved == null ? 0 : MediaInfoFormatter.FormatAudioChannels(resolved);
+                return channels > 0
+                    ? channels.ToString("F1", CultureInfo.InvariantCulture)
+                    : m.DefaultValue("");
+            };
+            tokenHandlers["{MediaInfo AudioBitRate}"] = m =>
+            {
+                var resolved = GetMediaInfo(info => info == null || info.AudioBitrate <= 0);
+                return resolved != null && resolved.AudioBitrate > 0
+                    ? MediaInfoFormatter.FormatAudioBitrate(resolved)
+                    : m.DefaultValue("");
+            };
+            tokenHandlers["{MediaInfo AudioBitsPerSample}"] = m =>
+            {
+                var resolved = GetMediaInfo(info => info == null || info.AudioBits <= 0);
+                return resolved != null && resolved.AudioBits > 0
+                    ? MediaInfoFormatter.FormatAudioBitsPerSample(resolved)
+                    : m.DefaultValue("");
+            };
+            tokenHandlers["{MediaInfo AudioSampleRate}"] = m =>
+            {
+                var resolved = GetMediaInfo(info => info == null || info.AudioSampleRate <= 0);
+                return resolved != null && resolved.AudioSampleRate > 0
+                    ? MediaInfoFormatter.FormatAudioSampleRate(resolved)
+                    : m.DefaultValue("");
+            };
         }
 
         private void AddGraphicAudioTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Edition edition, BookFile bookFile)

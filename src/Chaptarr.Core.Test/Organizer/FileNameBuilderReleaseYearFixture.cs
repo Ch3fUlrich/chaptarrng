@@ -50,7 +50,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 new CacheManager(),
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Jim Butcher" };
             edition.Book ??= new Book();

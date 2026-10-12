@@ -52,7 +52,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "J.K. Rowling" };
             var book = new Book { Author = author };
@@ -95,7 +96,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "J.K. Rowling" };
             var book = new Book { Author = author };
@@ -127,7 +129,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "J.K. Rowling" };
             var book = new Book { Author = author };
@@ -159,7 +162,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "J.K. Rowling" };
             var book = new Book { Author = author };
@@ -191,7 +195,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Some Author" };
             var book = new Book { Author = author };
@@ -226,7 +231,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Some Author" };
             var book = new Book { Author = author };
@@ -258,7 +264,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Some Author" };
             var book = new Book { Author = author };

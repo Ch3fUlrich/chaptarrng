@@ -33,6 +33,34 @@ namespace NzbDrone.Core.MediaFiles
             };
         }
 
+        public static MediaInfoModel CreateMediaInfo(IMediaInfoExtractor extractor, string path, int? durationSeconds)
+        {
+            var mediaInfo = !string.IsNullOrWhiteSpace(path)
+                ? extractor?.ExtractMediaInfo(path)
+                : null;
+
+            return ApplyToMediaInfo(mediaInfo, durationSeconds);
+        }
+
+        public static MediaInfoModel MergeMediaInfo(MediaInfoModel current, MediaInfoModel extracted)
+        {
+            return new MediaInfoModel
+            {
+                AudioFormat = current != null &&
+                              !string.IsNullOrWhiteSpace(current.AudioFormat) &&
+                              !string.Equals(current.AudioFormat, "Unknown", StringComparison.OrdinalIgnoreCase)
+                    ? current.AudioFormat
+                    : extracted?.AudioFormat,
+                AudioBitrate = current != null && current.AudioBitrate > 0 ? current.AudioBitrate : extracted?.AudioBitrate ?? 0,
+                AudioChannels = current != null && current.AudioChannels > 0 ? current.AudioChannels : extracted?.AudioChannels ?? 0,
+                AudioBits = current != null && current.AudioBits > 0 ? current.AudioBits : extracted?.AudioBits ?? 0,
+                AudioSampleRate = current != null && current.AudioSampleRate > 0 ? current.AudioSampleRate : extracted?.AudioSampleRate ?? 0,
+                Duration = current != null && current.Duration > TimeSpan.Zero
+                    ? current.Duration
+                    : extracted?.Duration ?? TimeSpan.Zero
+            };
+        }
+
         public static MediaInfoModel ApplyToMediaInfo(MediaInfoModel mediaInfo, int? durationSeconds)
         {
             mediaInfo ??= new MediaInfoModel();

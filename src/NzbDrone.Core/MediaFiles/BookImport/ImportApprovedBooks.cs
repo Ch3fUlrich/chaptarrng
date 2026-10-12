@@ -1299,7 +1299,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         bookFile.Author = author;
                         bookFile.AllTags = localBook.RawTags?.AllTags ?? bookFile.AllTags;
                         bookFile.DurationSeconds = durationSeconds ?? bookFile.DurationSeconds;
-                        bookFile.MediaInfo = MediaDuration.ApplyToMediaInfo(bookFile.MediaInfo, durationSeconds);
+                        bookFile.MediaInfo = MediaDuration.CreateMediaInfo(_mediaInfoExtractor, localBook.Path, durationSeconds);
                     }
                     else
                     {
@@ -1316,7 +1316,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             SceneName = localBook.SceneName,
                             ReleaseGroup = localBook.ReleaseGroup,
                             IndexerFlags = localBook.IndexerFlags,
-                            MediaInfo = MediaDuration.CreateMediaInfo(durationSeconds),
+                            MediaInfo = MediaDuration.CreateMediaInfo(_mediaInfoExtractor, localBook.Path, durationSeconds),
                             EditionId = edition.Id,
                             Edition = edition,
                             MediaType = BookFile.DetermineMediaType(localBook.Quality),
