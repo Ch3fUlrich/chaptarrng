@@ -74,6 +74,7 @@ namespace NzbDrone.Core.Books
 	        PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
 	        PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBooksPaged(offset, pageSize, sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
 	        List<int> GetBookIds(bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null, bool? monitored = null, bool? missing = null, bool? wanted = null) => throw new NotImplementedException();
+        HashSet<int> GetAuthorIdsWithBooks() => new HashSet<int>();
 	        List<string> GetAllGenres() => throw new NotImplementedException();
 	    }
 
@@ -1307,6 +1308,12 @@ namespace NzbDrone.Core.Books
             {
                 return conn.Query<int>(template.RawSql, template.Parameters).ToList();
             }
+        }
+
+        public HashSet<int> GetAuthorIdsWithBooks()
+        {
+            using var conn = _database.OpenConnection();
+            return conn.Query<int>(@"SELECT DISTINCT ""AuthorId"" FROM ""Books"" WHERE ""AuthorId"" > 0").ToHashSet();
         }
 
         public PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null)

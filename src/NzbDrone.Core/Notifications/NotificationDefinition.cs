@@ -46,6 +46,9 @@ namespace NzbDrone.Core.Notifications
             // MQTT can run from its own sensor/event switches without legacy notification triggers.
             (Settings is MqttGateway.MqttGatewaySettings mqtt && (mqtt.PublishSensors || mqtt.PublishEvents || mqtt.PublishHomeAssistantDiscovery)) ||
 
+            // Canonical webhook delivery has its own event contract and does not depend on legacy trigger checkboxes.
+            (Settings is Webhook.WebhookSettings webhook && webhook.IncludeCanonicalEvents) ||
+
             // Grimmory pushes and edit forwarding run without any event trigger
             (Settings is Grimmory.GrimmorySettings grimmory && (grimmory.PushMetadata || grimmory.PushCovers || grimmory.ForwardEdits)) ||
 

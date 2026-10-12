@@ -20,11 +20,24 @@ namespace NzbDrone.Core.Notifications.MqttGateway
             RuleFor(c => c.Host).NotEmpty().ValidHost();
             RuleFor(c => c.Port).ValidPort();
             RuleFor(c => c.InstanceId).NotEmpty().MaximumLength(64).Matches("^[A-Za-z0-9_-]+$");
-            RuleFor(c => c.TopicPrefix).NotEmpty().MaximumLength(128).Must(prefix => !string.IsNullOrWhiteSpace(prefix) && !prefix.Contains("//") && !prefix.StartsWith("/") && !prefix.EndsWith("/"));
+            RuleFor(c => c.TopicPrefix).Must(IsValidTopicPrefix).WithMessage("Topic prefix must be a valid MQTT topic prefix.");
             RuleFor(c => c.ClientId).MaximumLength(128);
-            RuleFor(c => c.DiscoveryPrefix).NotEmpty().When(c => c.PublishHomeAssistantDiscovery);
+            RuleFor(c => c.EventQos).IsInEnum();
+            RuleFor(c => c.DiscoveryPrefix).Must(IsValidTopicPrefix).WithMessage("Home Assistant discovery prefix must be a valid MQTT topic prefix.").When(c => c.PublishHomeAssistantDiscovery);
             RuleFor(c => c.SensorRefreshIntervalMinutes).InclusiveBetween(1, 1440);
             RuleFor(c => c.UpcomingReleaseWindowDays).InclusiveBetween(1, 365);
+        }
+
+        private static bool IsValidTopicPrefix(string prefix)
+        {
+            return !string.IsNullOrWhiteSpace(prefix) &&
+                   prefix.Length <= 128 &&
+                   !prefix.StartsWith("/") &&
+                   !prefix.EndsWith("/") &&
+                   !prefix.Contains("//") &&
+                   !prefix.Contains('+') &&
+                   !prefix.Contains('#') &&
+                   !prefix.Contains('\0');
         }
     }
 
@@ -37,10 +50,10 @@ namespace NzbDrone.Core.Notifications.MqttGateway
             InstanceId = Guid.NewGuid().ToString("N");
         }
 
-        [FieldDefinition(0, Label = "Broker Host", Type = FieldType.Textbox, HelpText = "Hostname or IP address of the MQTT broker")]
+        [FieldDefinition(0, Label = "MqttGatewayBrokerHost", Type = FieldType.Textbox, HelpText = "MqttGatewayBrokerHostHelpText")]
         public string Host { get; set; }
 
-        [FieldDefinition(1, Label = "Broker Port", Type = FieldType.Number, HelpText = "1883 without TLS, 8883 with TLS")]
+        [FieldDefinition(1, Label = "MqttGatewayBrokerPort", Type = FieldType.Number, HelpText = "MqttGatewayBrokerPortHelpText")]
         public int Port { get; set; } = 1883;
 
         [FieldDefinition(2, Label = "Username", Privacy = PrivacyLevel.UserName)]
@@ -49,40 +62,40 @@ namespace NzbDrone.Core.Notifications.MqttGateway
         [FieldDefinition(3, Label = "Password", Type = FieldType.Password, Privacy = PrivacyLevel.Password)]
         public string Password { get; set; }
 
-        [FieldDefinition(4, Label = "Use TLS", Type = FieldType.Checkbox, HelpText = "Connect using TLS. Server certificates are validated by default.")]
+        [FieldDefinition(4, Label = "MqttGatewayUseTls", Type = FieldType.Checkbox, HelpText = "MqttGatewayUseTlsHelpText")]
         public bool UseTls { get; set; }
 
-        [FieldDefinition(5, Label = "Allow Invalid TLS Certificates", Type = FieldType.Checkbox, Advanced = true, HelpTextWarning = "Disables broker certificate validation. Use only with a trusted private broker.")]
+        [FieldDefinition(5, Label = "MqttGatewayAllowInvalidCertificates", Type = FieldType.Checkbox, Advanced = true, HelpTextWarning = "MqttGatewayAllowInvalidCertificatesWarning")]
         public bool AllowInvalidCertificates { get; set; }
 
-        [FieldDefinition(6, Label = "Instance ID", Type = FieldType.Textbox, Advanced = true, HelpText = "Stable identifier used to keep topics and Home Assistant entities unique across Chaptarr instances")]
+        [FieldDefinition(6, Label = "MqttGatewayInstanceId", Type = FieldType.Textbox, Advanced = true, HelpText = "MqttGatewayInstanceIdHelpText")]
         public string InstanceId { get; set; }
 
-        [FieldDefinition(7, Label = "Client ID", Type = FieldType.Textbox, HelpText = "Leave blank to generate a stable client ID from the instance ID")]
+        [FieldDefinition(7, Label = "MqttGatewayClientId", Type = FieldType.Textbox, HelpText = "MqttGatewayClientIdHelpText")]
         public string ClientId { get; set; }
 
-        [FieldDefinition(8, Label = "Topic Prefix", Type = FieldType.Textbox, HelpText = "Default: chaptarr")]
+        [FieldDefinition(8, Label = "MqttGatewayTopicPrefix", Type = FieldType.Textbox, HelpText = "MqttGatewayTopicPrefixHelpText")]
         public string TopicPrefix { get; set; } = "chaptarr";
 
-        [FieldDefinition(9, Label = "Event QoS", Type = FieldType.Select, SelectOptions = typeof(MqttGatewayQos))]
+        [FieldDefinition(9, Label = "MqttGatewayEventQos", Type = FieldType.Select, SelectOptions = typeof(MqttGatewayQos))]
         public MqttGatewayQos EventQos { get; set; } = MqttGatewayQos.AtLeastOnce;
 
-        [FieldDefinition(10, Label = "Publish Sensors", Type = FieldType.Checkbox)]
+        [FieldDefinition(10, Label = "MqttGatewayPublishSensors", Type = FieldType.Checkbox)]
         public bool PublishSensors { get; set; } = true;
 
-        [FieldDefinition(11, Label = "Publish Events", Type = FieldType.Checkbox)]
+        [FieldDefinition(11, Label = "MqttGatewayPublishEvents", Type = FieldType.Checkbox)]
         public bool PublishEvents { get; set; } = true;
 
-        [FieldDefinition(12, Label = "Home Assistant Discovery", Type = FieldType.Checkbox)]
+        [FieldDefinition(12, Label = "MqttGatewayPublishHomeAssistantDiscovery", Type = FieldType.Checkbox)]
         public bool PublishHomeAssistantDiscovery { get; set; } = true;
 
-        [FieldDefinition(13, Label = "Home Assistant Discovery Prefix", Type = FieldType.Textbox, HelpText = "Default: homeassistant")]
+        [FieldDefinition(13, Label = "MqttGatewayDiscoveryPrefix", Type = FieldType.Textbox, HelpText = "MqttGatewayDiscoveryPrefixHelpText")]
         public string DiscoveryPrefix { get; set; } = "homeassistant";
 
-        [FieldDefinition(14, Label = "Sensor Refresh Interval", Type = FieldType.Number, Unit = "minutes")]
+        [FieldDefinition(14, Label = "MqttGatewaySensorRefreshInterval", Type = FieldType.Number, Unit = "minutes")]
         public int SensorRefreshIntervalMinutes { get; set; } = 5;
 
-        [FieldDefinition(15, Label = "Upcoming Release Window", Type = FieldType.Number, Unit = "days")]
+        [FieldDefinition(15, Label = "MqttGatewayUpcomingReleaseWindow", Type = FieldType.Number, Unit = "days")]
         public int UpcomingReleaseWindowDays { get; set; } = 30;
 
         public NzbDroneValidationResult Validate()

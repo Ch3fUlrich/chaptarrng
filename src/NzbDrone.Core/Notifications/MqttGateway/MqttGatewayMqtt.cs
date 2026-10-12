@@ -1,5 +1,7 @@
 using System;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
@@ -8,9 +10,22 @@ namespace NzbDrone.Core.Notifications.MqttGateway
 {
     public static class MqttGatewayMqtt
     {
+        private static readonly JsonSerializerOptions SettingsJsonOptions = new(JsonSerializerDefaults.Web);
+
         public static string GetRootTopic(MqttGatewaySettings settings)
         {
             return $"{settings.TopicPrefix.Trim('/')}/{settings.InstanceId}";
+        }
+
+        public static string GetEventTopic(MqttGatewaySettings settings, string eventName)
+        {
+            return $"{GetRootTopic(settings)}/{eventName}";
+        }
+
+        public static string GetSettingsFingerprint(MqttGatewaySettings settings)
+        {
+            var json = JsonSerializer.Serialize(settings, SettingsJsonOptions);
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
         }
 
         public static string GetClientId(MqttGatewaySettings settings)
@@ -20,16 +35,24 @@ namespace NzbDrone.Core.Notifications.MqttGateway
                 : settings.ClientId.Trim();
         }
 
-        public static MqttClientOptions BuildClientOptions(MqttGatewaySettings settings, string availabilityTopic)
+        public static MqttClientOptions BuildClientOptions(MqttGatewaySettings settings,
+                                                           string availabilityTopic,
+                                                           string clientIdOverride = null,
+                                                           bool includeAvailabilityWill = true)
         {
             var options = new MqttClientOptionsBuilder()
-                .WithClientId(GetClientId(settings))
+                .WithClientId(clientIdOverride ?? GetClientId(settings))
                 .WithTcpServer(settings.Host, settings.Port)
-                .WithProtocolVersion(MqttProtocolVersion.V500)
-                .WithWillTopic(availabilityTopic)
-                .WithWillPayload("offline")
-                .WithWillQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithWillRetain(true);
+                .WithProtocolVersion(MqttProtocolVersion.V500);
+
+            if (includeAvailabilityWill)
+            {
+                options
+                    .WithWillTopic(availabilityTopic)
+                    .WithWillPayload("offline")
+                    .WithWillQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithWillRetain(true);
+            }
 
             if (!string.IsNullOrWhiteSpace(settings.Username))
             {

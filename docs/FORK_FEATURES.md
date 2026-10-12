@@ -37,6 +37,11 @@ for full backup archives, fork-owned release images, and the fork's Unraid and
 YunoHost packages. Chaptarr has its own encrypted quick-start settings backup;
 the full-backup capability is the distinction recorded here.
 
+The upstream-backlog work also adds an optional MQTT Gateway for library
+snapshots, lifecycle events, and Home Assistant discovery, plus opt-in
+canonical lifecycle requests for existing Webhook connections. See the
+[MQTT Gateway guide](./MQTT_GATEWAY.md) for topic and payload details.
+
 ## Format-aware books and SeerrNG requests
 
 Chaptarr supports ebook and audiobook formats in one standalone instance.
