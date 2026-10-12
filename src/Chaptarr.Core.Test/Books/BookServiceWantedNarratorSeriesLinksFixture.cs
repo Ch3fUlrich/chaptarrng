@@ -473,6 +473,25 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void partially_overlapping_casts_should_remain_separate_variants()
+        {
+            var (sut, baseBook, first, second, _) = BuildTwoNarratorBook(withFiles: false);
+            first.NarratorNames = new List<string> { "Stephen Fry", "Shared Narrator" };
+            second.NarratorNames = new List<string> { "Andrew Wincott", "Shared Narrator" };
+            Assert.That(sut.AddWantedEdition(baseBook.Id, second.Id, asNewVariant: true).Id, Is.Not.EqualTo(baseBook.Id));
+        }
+
+        [Test]
+        public void dramatized_recording_should_not_reuse_a_standard_narration()
+        {
+            var (sut, baseBook, first, second, _) = BuildTwoNarratorBook(withFiles: false);
+            second.Narrator = first.Narrator;
+            second.NarratorNames = first.NarratorNames;
+            second.IsGraphicAudio = true;
+            Assert.That(sut.AddWantedEdition(baseBook.Id, second.Id, asNewVariant: true).Id, Is.Not.EqualTo(baseBook.Id));
+        }
+
+        [Test]
         public void should_pin_in_place_without_creating_a_variant_when_not_requested()
         {
             var (sut, baseBook, _, secondEdition, _) = BuildTwoNarratorBook(withFiles: false);

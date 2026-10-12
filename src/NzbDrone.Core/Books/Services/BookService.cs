@@ -2888,10 +2888,7 @@ namespace NzbDrone.Core.Books
 
                         // Different printings of the same narration are distinct edition records but
                         // the same request, so an existing variant for this narrator already covers it.
-                        var sameNarrator = selectedNarratorKeys.Count > 0 &&
-                                           GetEditionNarratorKeys(candidateManual)
-                                               .Intersect(selectedNarratorKeys, StringComparer.OrdinalIgnoreCase)
-                                               .Any();
+                        var sameNarrator = HaveSameNarration(candidateManual, selectedEdition);
 
                         if (sameEdition || sameNarrator)
                         {
@@ -2926,9 +2923,7 @@ namespace NzbDrone.Core.Books
                                  ?? baseEditions.FirstOrDefault(e => e.Monitored);
 
                 if (basePinned != null &&
-                    GetEditionNarratorKeys(basePinned)
-                        .Intersect(selectedNarratorKeys, StringComparer.OrdinalIgnoreCase)
-                        .Any())
+                    HaveSameNarration(basePinned, selectedEdition))
                 {
                     return GetBook(baseBook.Id);
                 }
@@ -3080,6 +3075,15 @@ namespace NzbDrone.Core.Books
 
         // Narrator names arrive from several providers with inconsistent spacing and casing
         // ("Peter   Noble"), so compare on normalised tokens rather than the raw string.
+        private static bool HaveSameNarration(Edition left, Edition right)
+        {
+            var names = GetEditionNarratorKeys(left).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // A shared cast member or a generic "Full Cast" label cannot identify a recording.
+            return left?.IsGraphicAudio == right?.IsGraphicAudio &&
+                   names.Count > 0 && !names.Contains("full cast") && !names.Contains("various") &&
+                   names.SetEquals(GetEditionNarratorKeys(right));
+        }
+
         private static List<string> GetEditionNarratorKeys(Edition edition)
         {
             var names = new List<string>();
@@ -3089,7 +3093,7 @@ namespace NzbDrone.Core.Books
                 names.AddRange(edition.NarratorNames);
             }
 
-            if (!string.IsNullOrWhiteSpace(edition?.Narrator))
+            if (names.Count == 0 && !string.IsNullOrWhiteSpace(edition?.Narrator))
             {
                 names.Add(edition.Narrator);
             }
