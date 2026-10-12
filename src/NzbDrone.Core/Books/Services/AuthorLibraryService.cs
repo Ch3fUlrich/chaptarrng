@@ -1142,6 +1142,12 @@ namespace NzbDrone.Core.Books.Services
                 return existing;
             }
 
+            existing = FindExistingAuthorByProviderId(remoteAuthor?.RanobeDbAuthorId, defaultProvider: "rn");
+            if (existing != null)
+            {
+                return existing;
+            }
+
             if (remoteAuthor?.RemoteProviderIds != null)
             {
                 foreach (var pid in remoteAuthor.RemoteProviderIds)
@@ -1282,6 +1288,7 @@ namespace NzbDrone.Core.Books.Services
             var audnexusAuthorId = existingAuthor.AudnexusAuthorId;
             var openLibraryAuthorId = existingAuthor.OpenLibraryAuthorId;
             var googleBooksAuthorId = existingAuthor.GoogleBooksAuthorId;
+            var ranobeDbAuthorId = existingAuthor.RanobeDbAuthorId;
 
             existingAuthor.UseMetadataFrom(remoteAuthor);
             existingAuthor.HardcoverAuthorId = hardcoverAuthorId;
@@ -1289,6 +1296,7 @@ namespace NzbDrone.Core.Books.Services
             existingAuthor.AudnexusAuthorId = audnexusAuthorId;
             existingAuthor.OpenLibraryAuthorId = openLibraryAuthorId;
             existingAuthor.GoogleBooksAuthorId = googleBooksAuthorId;
+            existingAuthor.RanobeDbAuthorId = ranobeDbAuthorId;
             existingAuthor.LastInfoSync = DateTime.UtcNow;
 
             return _authorService.UpdateAuthor(existingAuthor);
@@ -1427,7 +1435,8 @@ namespace NzbDrone.Core.Books.Services
                    ProviderIdHelper.Normalize(author.GoodreadsAuthorId, "gr") ??
                    ProviderIdHelper.Normalize(author.OpenLibraryAuthorId, "ol") ??
                    ProviderIdHelper.Normalize(author.GoogleBooksAuthorId, "gb") ??
-                   ProviderIdHelper.Normalize(author.AudnexusAuthorId, "az");
+                   ProviderIdHelper.Normalize(author.AudnexusAuthorId, "az") ??
+                   ProviderIdHelper.Normalize(author.RanobeDbAuthorId, "rn");
         }
 
         private static string NormalizeRequestedProviderId(string providerId)
@@ -1667,6 +1676,12 @@ namespace NzbDrone.Core.Books.Services
                     changed = true;
                 }
 
+                if (existingAuthor.RanobeDbAuthorId.IsNullOrWhiteSpace() && !remoteAuthor.RanobeDbAuthorId.IsNullOrWhiteSpace())
+                {
+                    existingAuthor.RanobeDbAuthorId = remoteAuthor.RanobeDbAuthorId;
+                    changed = true;
+                }
+
                 if (!changed)
                 {
                     return existingAuthor;
@@ -1696,7 +1711,8 @@ namespace NzbDrone.Core.Books.Services
             "GoodreadsAuthorId",
             "AudnexusAuthorId",
             "OpenLibraryAuthorId",
-            "GoogleBooksAuthorId"
+            "GoogleBooksAuthorId",
+            "RanobeDbAuthorId"
         };
 
         private static bool IsAuthorProviderIdUniqueViolation(SqliteException ex)

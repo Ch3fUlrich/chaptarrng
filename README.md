@@ -72,6 +72,17 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/b
 
 ChaptarrNG is not compatible with Readarr's metadata sources. It uses Chaptarr's modular pipeline to resolve entities across metadata providers and aggregate their data through automated refinement and consensus. Metadata work remains an ongoing effort.
 
+For light-novel eBooks, ChaptarrNG can search RanobeDB explicitly and store its
+work and release IDs alongside the normal eBook records. RanobeDB's public API
+is currently v0 and is for non-commercial use; ChaptarrNG applies a conservative
+local request throttle below the API's 60-per-minute guidance. ChaptarrNG links
+results back to RanobeDB and does not import its descriptions or cover images,
+which have separate licensing conditions. If several instances or other clients
+share an IP address, keep their combined requests below the service limit.
+See the [RanobeDB API documentation](https://ranobedb.org/api/docs/v0) and
+[database licensing notes](https://ranobedb.org/about) before enabling this
+source.
+
 ## Getting Started
 
 > **Docker is currently the only supported way to run ChaptarrNG.** The fork is developed and tested in Docker. Releases do not include native install packages; native support is not currently offered.

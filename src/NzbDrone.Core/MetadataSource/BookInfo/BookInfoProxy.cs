@@ -32,6 +32,7 @@ using NzbDrone.Core.MetadataSource.Audible;
 using NzbDrone.Core.MetadataSource.Audible.Resources;
 using NzbDrone.Core.MetadataSource.Hardcover;
 using NzbDrone.Core.MetadataSource.Goodreads;
+using NzbDrone.Core.MetadataSource.RanobeDb;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Validation;
 using NzbDrone.Common.Instrumentation;
@@ -58,6 +59,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         private readonly IGoodreadsSearchProxy _goodreadsSearchProxy;
         private readonly IHardcoverSearchClient _hardcoverSearchClient;
         private readonly IAudibleCatalogProxy _audibleCatalogProxy;
+        private readonly RanobeDbProxy _ranobeDbProxy;
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
         private readonly IEditionService _editionService;
@@ -89,6 +91,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             _goodreadsSearchProxy = goodreadsSearchProxy;
             _hardcoverSearchClient = hardcoverSearchClient;
             _audibleCatalogProxy = audibleCatalogProxy;
+            _ranobeDbProxy = new RanobeDbProxy(cachedHttpClient, logger);
             _authorService = authorService;
             _bookService = bookService;
             _editionService = editionService;
@@ -164,6 +167,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             _logger.DebugSafe("Getting Author details for ID: {0}", foreignAuthorId);
 
+            if (IsRanobeDbId(foreignAuthorId))
+            {
+                var ranobeAuthor = _ranobeDbProxy.GetAuthorInfo(foreignAuthorId, useCache);
+                return ranobeAuthor ?? throw new AuthorNotFoundException(foreignAuthorId);
+            }
+
+            if (IsRanobeDbReleaseId(foreignAuthorId))
+            {
+                throw new InvalidProviderIdException(foreignAuthorId, "RanobeDB release IDs identify editions, not authors.");
+            }
+
             if (LooksLikeV5WorkKey(foreignAuthorId))
             {
                 throw new InvalidProviderIdException(foreignAuthorId, $"Invalid author id '{foreignAuthorId}' (looks like a legacy V5 work key).");
@@ -207,6 +221,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public async Task<Author> GetAuthorInfoAsync(string foreignAuthorId, bool useCache = true)
         {
             _logger.Debug("Getting Author details (async) for ID: {0}", foreignAuthorId);
+
+            if (IsRanobeDbId(foreignAuthorId))
+            {
+                return GetAuthorInfo(foreignAuthorId, useCache);
+            }
+
+            if (IsRanobeDbReleaseId(foreignAuthorId))
+            {
+                throw new InvalidProviderIdException(foreignAuthorId, "RanobeDB release IDs identify editions, not authors.");
+            }
 
             if (foreignAuthorId.Contains(":"))
             {
@@ -535,6 +559,22 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             try
             {
+                if (IsRanobeDbId(authorId))
+                {
+                    var ranobeAuthor = _ranobeDbProxy.GetAuthorWithBooks(authorId, !forceRefresh && !bypassEtag, out var ranobeETag);
+                    if (ranobeAuthor == null)
+                    {
+                        return RefreshResult.NotFound();
+                    }
+
+                    if (!forceRefresh && !bypassEtag && string.Equals(etag, ranobeETag, StringComparison.Ordinal))
+                    {
+                        return RefreshResult.NoChanges(ranobeETag);
+                    }
+
+                    return RefreshResult.Updated(ranobeAuthor, ranobeETag);
+                }
+
                 var metadataServerUrl = _configService.MetadataServerUrl;
                 // Chaptarr should only ask for the latest published snapshot and let the
                 // metadata service decide when to rebuild it. Manual/force refresh still
@@ -2143,6 +2183,33 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             var normalizedForeignBookId = NormalizeGoodreadsProviderId(foreignBookId);
 
+            if (IsRanobeDbReleaseId(normalizedForeignBookId))
+            {
+                throw new InvalidProviderIdException(normalizedForeignBookId, "RanobeDB release IDs identify editions, not books.");
+            }
+
+            if (IsRanobeDbId(normalizedForeignBookId))
+            {
+                if (mediaType != BookMediaType.Ebook)
+                {
+                    throw new BookNotFoundException(normalizedForeignBookId);
+                }
+
+                try
+                {
+                    return _ranobeDbProxy.GetBookInfo(normalizedForeignBookId) ?? throw new BookNotFoundException(normalizedForeignBookId);
+                }
+                catch (BookNotFoundException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "RanobeDB request failure getting book info for {0}", normalizedForeignBookId);
+                    throw new BookNotFoundException(normalizedForeignBookId);
+                }
+            }
+
             try
             {
                 _logger.Debug("Getting book info for foreignBookId: {0}", normalizedForeignBookId);
@@ -2175,6 +2242,21 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             var normalizedForeignWorkId = NormalizeGoodreadsProviderId(foreignWorkId);
 
+            if (IsRanobeDbReleaseId(normalizedForeignWorkId))
+            {
+                throw new InvalidProviderIdException(normalizedForeignWorkId, "RanobeDB release IDs identify editions, not works.");
+            }
+
+            if (IsRanobeDbId(normalizedForeignWorkId))
+            {
+                if (mediaType != BookMediaType.Ebook)
+                {
+                    throw new BookNotFoundException(normalizedForeignWorkId);
+                }
+
+                return GetBookInfo(normalizedForeignWorkId, mediaType, authorHintProviderId);
+            }
+
             try
             {
                 _logger.Debug("Getting work info for foreignWorkId: {0}", normalizedForeignWorkId);
@@ -2205,6 +2287,28 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public Tuple<string, Book, List<Author>> GetEditionInfo(string foreignEditionId, BookMediaType mediaType = BookMediaType.Audiobook)
         {
             var normalizedForeignEditionId = NormalizeGoodreadsProviderId(foreignEditionId);
+
+            if (IsRanobeDbReleaseId(normalizedForeignEditionId))
+            {
+                if (mediaType != BookMediaType.Ebook)
+                {
+                    throw new BookNotFoundException(normalizedForeignEditionId);
+                }
+
+                try
+                {
+                    return _ranobeDbProxy.GetEditionInfo(normalizedForeignEditionId) ?? throw new BookNotFoundException(normalizedForeignEditionId);
+                }
+                catch (BookNotFoundException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "RanobeDB request failure getting release info for {0}", normalizedForeignEditionId);
+                    throw new BookNotFoundException(normalizedForeignEditionId);
+                }
+            }
 
             try
             {
@@ -2243,6 +2347,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return ProviderIdHelper.Normalize(foreignBookId.Trim(), defaultPrefix: null);
         }
 
+        private static bool IsRanobeDbId(string providerId)
+        {
+            return providerId?.StartsWith("rn:", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        private static bool IsRanobeDbReleaseId(string providerId)
+        {
+            return providerId?.StartsWith("rnr:", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
         public List<object> SearchForNewEntity(string title)
         {
             return SearchForNewEntity(title, null);
@@ -2251,6 +2365,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public List<object> SearchForNewEntity(string title, string provider)
         {
             _logger.DebugSafe($"[BookInfoProxy] SearchForNewEntity called with title: '{title}', provider: '{provider ?? "null"}'");
+
+            if (provider?.Equals("ranobedb", StringComparison.OrdinalIgnoreCase) == true ||
+                provider?.Equals("ranobe", StringComparison.OrdinalIgnoreCase) == true ||
+                provider?.Equals("rn", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return SearchRanobeDbEntities(title);
+            }
 
             // Route the explicit Audible search provider to the Audible catalog
             if (provider?.Equals("audible", StringComparison.OrdinalIgnoreCase) == true)
@@ -2411,6 +2532,34 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return result;
         }
 
+        private List<object> SearchRanobeDbEntities(string title)
+        {
+            try
+            {
+                var trimmed = (title ?? string.Empty).Trim();
+                var books = IsRanobeDbId(trimmed)
+                    ? new[] { _ranobeDbProxy.GetBookInfo(trimmed)?.Item2 }.Where(book => book != null).ToList()
+                    : IsRanobeDbReleaseId(trimmed)
+                        ? new[] { _ranobeDbProxy.GetEditionInfo(trimmed)?.Item2 }.Where(book => book != null).ToList()
+                        : _ranobeDbProxy.SearchBooks(trimmed);
+                var authors = books
+                    .Select(book => book?.Author)
+                    .Where(author => author != null && !string.IsNullOrWhiteSpace(author.RanobeDbAuthorId))
+                    .DistinctBy(author => author.RanobeDbAuthorId)
+                    .ToList();
+
+                var results = new List<object>();
+                results.AddRange(authors);
+                results.AddRange(books);
+                return results;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "[BookInfoProxy] RanobeDB search failed for '{0}'", title);
+                return new List<object>();
+            }
+        }
+
         private static string BuildHardcoverSearchCacheKey(string title, string apiToken)
         {
             var normalizedTerm = (title ?? string.Empty).Trim().ToLowerInvariant();
@@ -2440,7 +2589,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 try
                 {
-                    // Canonical provider-prefixed lookup (hc:/gr:/ol:/gb:/az:) should route to the V5 work endpoint,
+                    // Canonical provider-prefixed lookup (hc:/gr:/ol:/gb:/az:/rn:/rnr:) should route to its provider's endpoint,
                     // not to Goodreads text search.
                     var trimmed = title?.Trim();
                     if (!trimmed.IsNullOrWhiteSpace())
@@ -2456,6 +2605,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                                 try
                                 {
                                     var normalized = ProviderIdHelper.Normalize(trimmed, defaultPrefix: null);
+                                    if (canonicalPrefix == "rn")
+                                    {
+                                        var ranobeBook = GetBookInfo(normalized, BookMediaType.Ebook)?.Item2;
+                                        return ranobeBook == null ? new List<Book>() : new List<Book> { ranobeBook };
+                                    }
+
+                                    if (canonicalPrefix == "rnr")
+                                    {
+                                        var ranobeBook = GetEditionInfo(normalized, BookMediaType.Ebook)?.Item2;
+                                        return ranobeBook == null ? new List<Book>() : new List<Book> { ranobeBook };
+                                    }
+
                                     return SearchByV5WorkId(normalized);
                                 }
                                 catch (BookNotFoundException)

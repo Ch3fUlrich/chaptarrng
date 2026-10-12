@@ -207,12 +207,18 @@ namespace NzbDrone.Core.Books
                     return book.OpenLibraryWorkId;
                 }
 
+                if (!string.IsNullOrWhiteSpace(book.RanobeDbBookId))
+                {
+                    return book.RanobeDbBookId;
+                }
+
                 return null;
             }
 
             book.HardcoverBookId = CanonicalizeOrNull(book.HardcoverBookId, "hc");
             book.GoodreadsWorkId = CanonicalizeOrNull(book.GoodreadsWorkId, "gr");
             book.OpenLibraryWorkId = CanonicalizeOrNull(book.OpenLibraryWorkId, "ol");
+            book.RanobeDbBookId = CanonicalizeOrNull(book.RanobeDbBookId, "rn");
             book.BaseBookId = CanonicalizeBaseBookId(book);
         }
 
@@ -644,6 +650,12 @@ namespace NzbDrone.Core.Books
                 provider = provider.Trim().ToLowerInvariant();
                 providerId = providerId.Trim();
 
+                if (provider == "rnr")
+                {
+                    var releaseId = ProviderIdHelper.Canonicalize(providerId, "rnr");
+                    return FindBookByEditionProviderId("rnr", ProviderIdHelper.StripPrefix(releaseId), mediaType);
+                }
+
                 string canonicalPrefix;
                 string repositoryProvider;
 
@@ -672,6 +684,11 @@ namespace NzbDrone.Core.Books
                     case "az":
                         canonicalPrefix = "az";
                         repositoryProvider = "az";
+                        break;
+
+                    case "rn":
+                        canonicalPrefix = "rn";
+                        repositoryProvider = "rn";
                         break;
 
                     default:
@@ -717,6 +734,12 @@ namespace NzbDrone.Core.Books
                 provider = provider.Trim().ToLowerInvariant();
                 providerId = providerId.Trim();
 
+                if (provider == "rnr")
+                {
+                    var releaseId = ProviderIdHelper.Canonicalize(providerId, "rnr");
+                    return FindBooksByEditionProviderId("rnr", ProviderIdHelper.StripPrefix(releaseId), mediaType);
+                }
+
                 string canonicalPrefix;
                 string repositoryProvider;
 
@@ -745,6 +768,11 @@ namespace NzbDrone.Core.Books
                     case "az":
                         canonicalPrefix = "az";
                         repositoryProvider = "az";
+                        break;
+
+                    case "rn":
+                        canonicalPrefix = "rn";
+                        repositoryProvider = "rn";
                         break;
 
                     case "isbn":
@@ -786,13 +814,13 @@ namespace NzbDrone.Core.Books
                 }
 
                 provider = provider.Trim().ToLowerInvariant();
-                if (provider is not ("hc" or "gr" or "ol" or "gb" or "az"))
+                if (provider is not ("hc" or "gr" or "ol" or "gb" or "az" or "rn"))
                 {
                     return new List<Book>();
                 }
 
                 var normalizedProviderId = ProviderIdHelper.Canonicalize(providerId.Trim(), provider);
-                var books = provider is "hc" or "gr" or "ol"
+                var books = provider is "hc" or "gr" or "ol" or "rn"
                     ? HydrateLookupBooks(
                         _bookRepository.FindAllByProviderIdAndMediaType(provider, normalizedProviderId, mediaType) ??
                         new List<Book>())

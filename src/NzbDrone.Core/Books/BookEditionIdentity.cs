@@ -49,6 +49,7 @@ namespace NzbDrone.Core.Books
             Add(ids, NormalizeProviderIdOrNull(book.HardcoverBookId, "hc"));
             Add(ids, NormalizeProviderIdOrNull(book.GoodreadsWorkId, "gr"));
             Add(ids, NormalizeProviderIdOrNull(book.OpenLibraryWorkId, "ol"));
+            Add(ids, NormalizeProviderIdOrNull(book.RanobeDbBookId, "rn"));
 
             return ids
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -84,6 +85,10 @@ namespace NzbDrone.Core.Books
                 Add(ids, NormalizeProviderId(edition?.GoogleBooksEditionId, "gb"));
                 Add(ids, NormalizeAmazonProviderId(edition?.Asin));
                 Add(ids, NormalizeAmazonProviderId(edition?.AudibleASIN));
+                if (edition?.ForeignEditionId?.StartsWith("rnr:", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    Add(ids, NormalizeProviderIdOrNull(edition.ForeignEditionId, "rnr"));
+                }
             }
 
             if (ids.Count > 0)
@@ -570,6 +575,11 @@ namespace NzbDrone.Core.Books
                 return NormalizeAmazonProviderId(trimmed);
             }
 
+            if (trimmed.StartsWith("rnr:", StringComparison.OrdinalIgnoreCase))
+            {
+                return NormalizeProviderIdOrNull(trimmed, "rnr");
+            }
+
             return null;
         }
 
@@ -602,6 +612,12 @@ namespace NzbDrone.Core.Books
             if (value.StartsWith("gb:", StringComparison.OrdinalIgnoreCase))
             {
                 AddCanonicalRehomeToken(tokens, value, "gb");
+                return;
+            }
+
+            if (value.StartsWith("rnr:", StringComparison.OrdinalIgnoreCase))
+            {
+                AddCanonicalRehomeToken(tokens, value, "rnr");
             }
         }
 

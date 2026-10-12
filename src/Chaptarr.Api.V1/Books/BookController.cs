@@ -391,6 +391,22 @@ namespace Chaptarr.Api.V1.Books
 
                 var bookMediaType = MediaTypeParameterParser.ParseRequired(importResource.MediaType);
 
+                if (bookProvider == "rnr")
+                {
+                    throw new ValidationException(new[]
+                    {
+                        new ValidationFailure("ForeignBookId", "RanobeDB release IDs identify editions. Use an rn: work ID for foreignBookId.")
+                    });
+                }
+
+                if (bookProvider == "rn" && bookMediaType != BookMediaType.Ebook)
+                {
+                    throw new ValidationException(new[]
+                    {
+                        new ValidationFailure("MediaType", "RanobeDB metadata is available for eBooks only.")
+                    });
+                }
+
                 var authorAmbiguity = GetAuthorProviderAmbiguityResult(authorProvider, authorId, "foreignAuthorId", "importing book");
                 if (authorAmbiguity != null)
                 {
@@ -430,7 +446,9 @@ namespace Chaptarr.Api.V1.Books
                 var monitorNewItems = monitoring.MonitorNewItems;
                 var monitorCurrentBook = monitorMode != MonitorTypes.None;
 
-                if (editionId != "0" && !string.Equals(editionProvider, bookProvider, StringComparison.OrdinalIgnoreCase))
+                if (editionId != "0" &&
+                    !string.Equals(editionProvider, bookProvider, StringComparison.OrdinalIgnoreCase) &&
+                    !(bookProvider == "rn" && editionProvider == "rnr"))
                 {
                     throw new ValidationException(new[]
                     {
@@ -462,6 +480,9 @@ namespace Chaptarr.Api.V1.Books
 	                        break;
 	                    case "ol":
 	                        bookToAdd.OpenLibraryWorkId = bookId;
+	                        break;
+	                    case "rn":
+	                        bookToAdd.RanobeDbBookId = ProviderIdHelper.WithPrefix("rn", bookId);
 	                        break;
 	                    case "gb":
 	                        bookToAdd.Editions.Add(new Edition
@@ -522,6 +543,9 @@ namespace Chaptarr.Api.V1.Books
 	                        break;
 	                    case "az":
 	                        author.AudnexusAuthorId = $"az:{authorId?.Trim().ToUpperInvariant()}";
+	                        break;
+	                    case "rn":
+	                        author.RanobeDbAuthorId = ProviderIdHelper.WithPrefix("rn", authorId);
 	                        break;
 	                }
 

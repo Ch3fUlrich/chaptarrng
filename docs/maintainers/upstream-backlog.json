@@ -139,10 +139,17 @@
       "title": "[FEATURE] ranobedb support for light novel metadata",
       "url": "https://github.com/Chaptarr/chaptarr/issues/6",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Added explicit RanobeDB v0 search and metadata lookup for digital light-novel eBooks, including rn: work IDs and rnr: release IDs throughout persistence, provider lookup, imports, API resources, library search, and refresh handling.",
+        "The adapter filters to digital releases, omits separately licensed descriptions and cover images, limits requests below the published 60-per-minute guidance, and refuses incomplete author pages to avoid pruning local books after partial responses. RanobeDB-only authors refresh through RanobeDB; mixed-provider authors retain their other source's authoritative child list.",
+        "Uses the documented read-only API rather than ingesting the nightly dump; no separate eBook subtype was added because the request described that as optional."
+      ],
+      "validationEvidence": [
+        "Added RanobeDbProxyFixture coverage for direct and wrapped payloads, digital release mapping, print/audio-only rejection, and ambiguous multi-book releases. Tests were not run under the user's instruction.",
+        "git diff --check and JSON parsing for openapi.json and this backlog ledger passed. A no-restore API build stopped before C# compilation because the repository's ImageSharp target requires a license key/file; the check was not bypassed. Frontend lint tools are not installed locally."
+      ],
       "sourceUpdatedAt": "2026-09-04T16:19:34Z",
       "body": "**Is your feature request related to a problem? Please describe.**\nI made this basic request before, seemed to be well received but wanted to add it here to be tracked.\n\nLight novels tend to have not so great metadata on the main sites. ranobedb is dedicated to light novels\n\nranobedb.org, they also provide a nightly database dump https://ranobedb.org/database-dumps in addition to their existing api\n\n**Describe the solution you'd like**\nIncorporating the ranobedb db in to the backend database, and possibly under ebook media type add a subtype for light novels that could help it prioritize ranobedd db data,  (similar to how sonarr can be set to standard or anime to help with episode numbering etc)\n\n\n**Media Type**\nDoes this feature apply to:\n- [ ] Audiobooks\n- [X ] eBooks\n- [ ] Both\n\n**Use Case**\nmanaging light novels of course!\n",
       "comments": [

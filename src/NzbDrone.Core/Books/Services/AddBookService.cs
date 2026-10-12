@@ -614,7 +614,8 @@ namespace NzbDrone.Core.Books
                          (author.HardcoverAuthorId, "hc"),
                          (author.GoodreadsAuthorId, "gr"),
                          (author.OpenLibraryAuthorId, "ol"),
-                         (author.AudnexusAuthorId, "az")
+                         (author.AudnexusAuthorId, "az"),
+                         (author.RanobeDbAuthorId, "rn")
                      })
             {
                 if (string.IsNullOrWhiteSpace(providerId))
@@ -923,7 +924,7 @@ namespace NzbDrone.Core.Books
 
             var prefixes = !string.IsNullOrWhiteSpace(expectedPrefix)
                 ? new[] { expectedPrefix }
-                : new[] { "hc", "gr", "ol" };
+                : new[] { "hc", "gr", "ol", "rn" };
 
             foreach (var prefix in prefixes)
             {

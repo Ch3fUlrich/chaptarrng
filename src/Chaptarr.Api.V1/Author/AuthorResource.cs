@@ -408,6 +408,7 @@ namespace Chaptarr.Api.V1.Author
             string openLibraryAuthorId = null;
             string googleBooksAuthorId = null;
             string audnexusAuthorId = null;
+            string ranobeDbAuthorId = null;
             if (!string.IsNullOrWhiteSpace(resource.ForeignAuthorId))
             {
                 if (long.TryParse(resource.ForeignAuthorId, out _) && facadeContext != null)
@@ -439,6 +440,9 @@ namespace Chaptarr.Api.V1.Author
                             break;
                         case "az":
                             audnexusAuthorId = ProviderIdHelper.Normalize(normalizedProviderId, "az");
+                            break;
+                        case "rn":
+                            ranobeDbAuthorId = ProviderIdHelper.Normalize(normalizedProviderId, "rn");
                             break;
                     }
                 }
@@ -551,7 +555,8 @@ namespace Chaptarr.Api.V1.Author
                 GoodreadsAuthorId = goodreadsAuthorId,
                 OpenLibraryAuthorId = openLibraryAuthorId,
                 GoogleBooksAuthorId = googleBooksAuthorId,
-                AudnexusAuthorId = audnexusAuthorId
+                AudnexusAuthorId = audnexusAuthorId,
+                RanobeDbAuthorId = ranobeDbAuthorId
                 // LocalAuthorId removed - using database ID directly
             };
         }

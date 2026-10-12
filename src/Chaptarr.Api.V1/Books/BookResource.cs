@@ -38,6 +38,7 @@ namespace Chaptarr.Api.V1.Books
         public string GoodreadsBookId { get; set; }
         public string GoodreadsWorkId { get; set; }
         public string OpenLibraryWorkId { get; set; }
+        public string RanobeDbBookId { get; set; }
         public string GoogleBooksId { get; set; }
         public string ASIN { get; set; }
         public string AudibleASIN { get; set; }
@@ -157,7 +158,8 @@ namespace Chaptarr.Api.V1.Books
             // Lookup and search results are not persisted and therefore never carry links, so the
             // denormalized pair from the metadata server is all they have. For a library book the
             // links are the truth, including when there are none.
-            if (seriesTitle.IsNullOrWhiteSpace() && model.Id <= 0)
+            if (seriesTitle.IsNullOrWhiteSpace() &&
+                (model.Id <= 0 || !string.IsNullOrWhiteSpace(model.RanobeDbBookId)))
             {
                 seriesTitle = BookSeriesLabel.Format(model.SeriesName, model.SeriesPosition);
             }
@@ -199,6 +201,7 @@ namespace Chaptarr.Api.V1.Books
                 GoodreadsBookId = BookEditionIdentity.GetGoodreadsEditionProviderId(model),
                 GoodreadsWorkId = model.GoodreadsWorkId,
                 OpenLibraryWorkId = model.OpenLibraryWorkId,
+                RanobeDbBookId = model.RanobeDbBookId,
                 GoogleBooksId = BookEditionIdentity.GetGoogleBooksEditionId(model),
                 ASIN = BookEditionIdentity.GetAsin(model),
                 AudibleASIN = BookEditionIdentity.GetAudibleAsin(model),
@@ -685,6 +688,7 @@ namespace Chaptarr.Api.V1.Books
             string goodreadsBookId = resource.GoodreadsBookId;
             string goodreadsWorkId = resource.GoodreadsWorkId;
             string openLibraryWorkId = resource.OpenLibraryWorkId;
+            string ranobeDbBookId = resource.RanobeDbBookId;
             string googleBooksId = resource.GoogleBooksId;
             string audibleAsin = null;
 
@@ -715,6 +719,10 @@ namespace Chaptarr.Api.V1.Books
                             else if (foreignBookId.StartsWith("ol:", StringComparison.OrdinalIgnoreCase))
                             {
                                 openLibraryWorkId = TryCanonicalizeWorkId(foreignBookId, "ol");
+                            }
+                            else if (foreignBookId.StartsWith("rn:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ranobeDbBookId ??= TryCanonicalizeWorkId(foreignBookId, "rn");
                             }
                             else if (foreignBookId.StartsWith("az:", StringComparison.OrdinalIgnoreCase))
                             {
@@ -761,9 +769,10 @@ namespace Chaptarr.Api.V1.Books
                 HardcoverBookId = hardcoverBookId,
                 GoodreadsWorkId = goodreadsWorkId,
                 OpenLibraryWorkId = openLibraryWorkId,
+                RanobeDbBookId = ranobeDbBookId,
                 GoogleBooksId = null,
                 ASIN = null,
-                RemoteProviderIds = BuildRemoteProviderIds(hardcoverBookId, goodreadsWorkId, openLibraryWorkId)
+                RemoteProviderIds = BuildRemoteProviderIds(hardcoverBookId, goodreadsWorkId, openLibraryWorkId, ranobeDbBookId)
             };
 
             if (goodreadsBookId.IsNotNullOrWhiteSpace() || googleBooksId.IsNotNullOrWhiteSpace() || audibleAsin.IsNotNullOrWhiteSpace())
@@ -874,6 +883,12 @@ namespace Chaptarr.Api.V1.Books
                 return remoteOpenLibraryWorkId;
             }
 
+            var ranobeDbBookId = TryCanonicalizeWorkId(model?.RanobeDbBookId, "rn") ?? GetCanonicalRemoteWorkId(model, "rn");
+            if (!string.IsNullOrWhiteSpace(ranobeDbBookId))
+            {
+                return ranobeDbBookId;
+            }
+
             if (BookIdentity.GetStableWorkProviderIdentityTokens(model).Count > 0)
             {
                 return string.Empty;
@@ -937,7 +952,7 @@ namespace Chaptarr.Api.V1.Books
             return null;
         }
 
-        private static HashSet<string> BuildRemoteProviderIds(string hardcoverBookId, string goodreadsWorkId, string openLibraryWorkId)
+        private static HashSet<string> BuildRemoteProviderIds(string hardcoverBookId, string goodreadsWorkId, string openLibraryWorkId, string ranobeDbBookId)
         {
             var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -953,6 +968,7 @@ namespace Chaptarr.Api.V1.Books
             Add(hardcoverBookId, "hc");
             Add(goodreadsWorkId, "gr");
             Add(openLibraryWorkId, "ol");
+            Add(ranobeDbBookId, "rn");
 
             return ids.Count > 0 ? ids : null;
         }

@@ -13694,6 +13694,10 @@
             "type": "string",
             "nullable": true
           },
+          "ranobeDbBookId": {
+            "type": "string",
+            "nullable": true
+          },
           "googleBooksId": {
             "type": "string",
             "nullable": true
@@ -15966,6 +15970,10 @@
             "type": "string",
             "nullable": true
           },
+          "ranobeDbBookId": {
+            "type": "string",
+            "nullable": true
+          },
           "hardcoverAuthorId": {
             "type": "string",
             "nullable": true
@@ -15983,6 +15991,10 @@
             "nullable": true
           },
           "audnexusAuthorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ranobeDbAuthorId": {
             "type": "string",
             "nullable": true
           },

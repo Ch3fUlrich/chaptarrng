@@ -448,6 +448,9 @@ namespace NzbDrone.Core.Books
 		                case "gb":
 		                    matches = Query(b => b.GoogleBooksId == providerId && b.MediaType == mediaType);
 		                    break;
+	                case "rn":
+	                    matches = Query(b => b.RanobeDbBookId == providerId && b.MediaType == mediaType);
+	                    break;
 		                case "az":
                     {
                         var normalizedAz = providerId.Contains(":")

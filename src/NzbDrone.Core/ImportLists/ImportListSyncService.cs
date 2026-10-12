@@ -1110,6 +1110,7 @@ namespace NzbDrone.Core.ImportLists
                 GoodreadsWorkId = canonicalBook.GoodreadsWorkId,
                 HardcoverBookId = canonicalBook.HardcoverBookId,
                 OpenLibraryWorkId = canonicalBook.OpenLibraryWorkId,
+                RanobeDbBookId = canonicalBook.RanobeDbBookId,
                 BaseBookId = canonicalBook.BaseBookId,
                 RemoteProviderIds = CloneProviderIds(canonicalBook.RemoteProviderIds),
 

@@ -4052,6 +4052,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     MediaType = mediaType,
                     UnitKeyHash = unitKeyHash,
                     HardcoverBookId = originalBook.HardcoverBookId,
+                    RanobeDbBookId = originalBook.RanobeDbBookId,
                     RemoteProviderIds = CloneRemoteProviderIds(originalBook.RemoteProviderIds),
                     IsGraphicAudio = DetectGraphicAudioFromLocalTags(localBook),
                     
