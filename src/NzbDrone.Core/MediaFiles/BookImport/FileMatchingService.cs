@@ -54,13 +54,16 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> _negativeUnitCache = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
         private static readonly TimeSpan _negativeUnitCacheTtl = TimeSpan.FromMinutes(10);
         private readonly System.Threading.AsyncLocal<bool> _negativeUnitCacheSuppressed = new System.Threading.AsyncLocal<bool>();
+        private long _lastNegativeUnitCacheSweepTicks;
 
         private static string BuildNegativeUnitCacheKey(
             DiscoveredFileWithMetadata file,
             BookMediaType mediaType,
             int? restrictToAuthorId,
             bool unscoped,
-            bool disablePathFallback)
+            bool disablePathFallback,
+            bool inferAuthorFromPathDuringPathFallback,
+            IReadOnlySet<int> hardAllowedBookIds)
         {
             string Tag(string name)
             {
@@ -72,6 +75,16 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 return string.Empty;
             }
 
+            var album = Tag("album").Trim();
+            var artist = Tag("artist").Trim();
+
+            // Without book and author evidence, files in one folder may have different
+            // identities that only their individual filenames can establish.
+            if (string.IsNullOrWhiteSpace(album) || string.IsNullOrWhiteSpace(artist))
+            {
+                return null;
+            }
+
             var folder = Path.GetDirectoryName(file.Path) ?? string.Empty;
             return string.Join("|",
                 folder.ToLowerInvariant(),
@@ -79,8 +92,37 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 restrictToAuthorId?.ToString() ?? "-",
                 unscoped,
                 disablePathFallback,
-                Tag("album").ToLowerInvariant(),
-                Tag("artist").ToLowerInvariant());
+                inferAuthorFromPathDuringPathFallback,
+                hardAllowedBookIds == null ? string.Empty : string.Join(",", hardAllowedBookIds.OrderBy(id => id)),
+                album.ToLowerInvariant(),
+                artist.ToLowerInvariant());
+        }
+
+        private void SweepExpiredNegativeUnitCache(DateTime now)
+        {
+            if (_negativeUnitCache.Count <= 1024)
+            {
+                return;
+            }
+
+            var nowTicks = now.Ticks;
+            var lastSweepTicks = System.Threading.Interlocked.Read(ref _lastNegativeUnitCacheSweepTicks);
+            if (nowTicks - lastSweepTicks < TimeSpan.FromMinutes(1).Ticks ||
+                System.Threading.Interlocked.CompareExchange(ref _lastNegativeUnitCacheSweepTicks, nowTicks, lastSweepTicks) != lastSweepTicks)
+            {
+                return;
+            }
+
+            var expiredBefore = now - _negativeUnitCacheTtl;
+            var entries = (System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<string, DateTime>>)_negativeUnitCache;
+            foreach (var entry in _negativeUnitCache)
+            {
+                if (entry.Value < expiredBefore)
+                {
+                    // Remove only the value we inspected so a concurrent refresh survives the sweep.
+                    entries.Remove(entry);
+                }
+            }
         }
         private readonly IRootFolderService _rootFolderService;
         private readonly IConfigService _configService;
@@ -4492,10 +4534,19 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 };
             }
 
-            var negativeUnitKey = BuildNegativeUnitCacheKey(file, mediaType, restrictToAuthorId, unscoped, disablePathFallback);
-            if (!_negativeUnitCacheSuppressed.Value && _negativeUnitCache.TryGetValue(negativeUnitKey, out var negativeSeenAt))
+            var negativeUnitKey = BuildNegativeUnitCacheKey(
+                file,
+                mediaType,
+                restrictToAuthorId,
+                unscoped,
+                disablePathFallback,
+                inferAuthorFromPathDuringPathFallback,
+                hardAllowedBookIds);
+            var cacheNow = DateTime.UtcNow;
+            SweepExpiredNegativeUnitCache(cacheNow);
+            if (negativeUnitKey != null && !_negativeUnitCacheSuppressed.Value && _negativeUnitCache.TryGetValue(negativeUnitKey, out var negativeSeenAt))
             {
-                if (DateTime.UtcNow - negativeSeenAt < _negativeUnitCacheTtl)
+                if (cacheNow - negativeSeenAt < _negativeUnitCacheTtl)
                 {
                     _logger.Debug("[HOLY-GRAIL] Sibling file in '{0}' already exhausted all fallbacks moments ago - skipping duplicate pipeline for '{1}'",
                         Path.GetDirectoryName(file.Path),
@@ -4679,18 +4730,18 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 Path.GetFileName(file.Path),
                 unscoped ? " (unscoped)" : "",
                 stopwatch.ElapsedMilliseconds);
-            if (!_negativeUnitCacheSuppressed.Value)
+            if (negativeUnitKey != null && !_negativeUnitCacheSuppressed.Value)
             {
-                _negativeUnitCache[negativeUnitKey] = DateTime.UtcNow;
+                _negativeUnitCache[negativeUnitKey] = cacheNow;
             }
-                return new HolyGrailEvaluation
-                {
-                    Match = null,
-                    WinningTags = embeddedTags,
-                    PathFallbackUsed = false,
-                    PathFallbackSuppressedReason = usePathAsTagsFallback ? null : pathFallbackSuppressedReason
-                };
-            }
+            return new HolyGrailEvaluation
+            {
+                Match = null,
+                WinningTags = embeddedTags,
+                PathFallbackUsed = false,
+                PathFallbackSuppressedReason = usePathAsTagsFallback ? null : pathFallbackSuppressedReason
+            };
+        }
 
         /// <summary>
         /// Checks if a candidate passes the leftover token gate.
