@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.Profiles.Metadata.Events;
@@ -19,6 +21,7 @@ namespace NzbDrone.Core.Books.Services
         private readonly IMediaFileService _mediaFileService;
         private readonly IEditionSelector _editionSelector;
         private readonly IEditionMetadataProfileFilter _editionMetadataProfileFilter;
+        private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
 
         public UpdateEditionSelectionOnMetadataProfileChangeService(
@@ -28,6 +31,7 @@ namespace NzbDrone.Core.Books.Services
             IMediaFileService mediaFileService,
             IEditionSelector editionSelector,
             IEditionMetadataProfileFilter editionMetadataProfileFilter,
+            IManageCommandQueue commandQueueManager,
             Logger logger)
         {
             _authorService = authorService;
@@ -36,6 +40,7 @@ namespace NzbDrone.Core.Books.Services
             _mediaFileService = mediaFileService;
             _editionSelector = editionSelector;
             _editionMetadataProfileFilter = editionMetadataProfileFilter;
+            _commandQueueManager = commandQueueManager;
             _logger = logger;
         }
 
@@ -56,20 +61,17 @@ namespace NzbDrone.Core.Books.Services
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(profile.AllowedLanguages))
-            {
-                _logger.DebugSafe("Metadata profile '{0}' has no language restrictions, skipping edition re-selection", profile.Name);
-                return;
-            }
-
+            var allowedLanguagesDescription = string.IsNullOrWhiteSpace(profile.AllowedLanguages)
+                ? "all languages"
+                : profile.AllowedLanguages;
             _logger.InfoSafe("Metadata profile '{0}' (ID: {1}) language settings changed to: {2}, updating edition selection for affected books",
-                profile.Name, profile.Id, profile.AllowedLanguages);
+                profile.Name, profile.Id, allowedLanguagesDescription);
 
-                // Find all authors using this metadata profile
-                var affectedAuthors = _authorService.GetAllAuthors()
-                    .Where(a => a.AudiobookMetadataProfileId == profile.Id ||
-                               a.EbookMetadataProfileId == profile.Id)
-                    .ToList();
+            // Find all authors using this metadata profile
+            var affectedAuthors = _authorService.GetAllAuthors()
+                .Where(a => a.AudiobookMetadataProfileId == profile.Id ||
+                           a.EbookMetadataProfileId == profile.Id)
+                .ToList();
 
             if (!affectedAuthors.Any())
             {
@@ -89,6 +91,26 @@ namespace NzbDrone.Core.Books.Services
                 {
                     _logger.Error(ex, "Error updating edition selection for author {0}", author.Name);
                 }
+            }
+
+            if (!AllowedLanguagesExpanded(message.PreviousMetadataProfile, profile))
+            {
+                return;
+            }
+
+            try
+            {
+                // A wider language profile can make editions available that were never stored
+                // locally. Refresh author metadata before expecting release search to use them.
+                _commandQueueManager.Push(new BulkRefreshAuthorCommand(
+                    affectedAuthors.Select(author => author.Id).ToList(),
+                    refreshMetadata: true,
+                    rescanFolders: false,
+                    forceRefresh: true));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to queue metadata refresh for authors using metadata profile {0}", profile.Id);
             }
         }
 
@@ -129,6 +151,43 @@ namespace NzbDrone.Core.Books.Services
             }
 
             return string.Join(",", tokens);
+        }
+
+        private static bool AllowedLanguagesExpanded(MetadataProfile previousProfile, MetadataProfile profile)
+        {
+            if (previousProfile == null)
+            {
+                return true;
+            }
+
+            EditionMetadataProfileFilter.ParseAllowedLanguages(
+                previousProfile.AllowedLanguages,
+                out var previousLanguages,
+                out var previouslyAllowedUnknown,
+                out var previousFilterConfigured,
+                out _);
+
+            EditionMetadataProfileFilter.ParseAllowedLanguages(
+                profile.AllowedLanguages,
+                out var currentLanguages,
+                out var currentlyAllowedUnknown,
+                out var currentFilterConfigured,
+                out _);
+
+            // An unconfigured profile accepts every language. Moving from that state to a
+            // configured profile is a restriction and does not require downloading metadata.
+            if (!previousFilterConfigured)
+            {
+                return false;
+            }
+
+            if (!currentFilterConfigured)
+            {
+                return true;
+            }
+
+            return currentLanguages.Any(language => !previousLanguages.Contains(language)) ||
+                   (currentlyAllowedUnknown && !previouslyAllowedUnknown);
         }
 
         private void UpdateAuthorEditionSelection(Author author, MetadataProfile changedProfile)
