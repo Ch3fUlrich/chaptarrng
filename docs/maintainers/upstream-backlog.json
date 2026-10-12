@@ -642,10 +642,15 @@
       "title": "[BUG]  UI issues in ABS connection window",
       "url": "https://github.com/Chaptarr/chaptarr/issues/40",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "AudioBookShelfLibraryMappings now presents the ABS library name separately from its full folder-path hint, and Chaptarr root paths expose the complete path through a hover title. The shared hinted-select option and selected-value components now surface full value/hint text on hover.",
+        "The Load Libraries control is prevented from shrinking, and its toolbar wraps/reflows on narrow modals so the button remains visible."
+      ],
+      "validationEvidence": [
+        "Reviewed upstream issue #40 and the ABS mapping UI; git diff --check passes. No frontend test or lint was run per the user instruction; frontend ESLint is not installed in this checkout."
+      ],
       "sourceUpdatedAt": "2026-08-15T01:07:38Z",
       "body": "**Describe the bug**\n\n1. If the path to a librairy is too long, it is impossible to read it when configuring the Audiobookshelf intergration.\n2. The button to load librairies is not correctly displayed.\n\nIn this example, I have an audiobookshelf folder per user. I cannot distinguish between them on the popup windows.\n\n**To Reproduce**\n1. Setup a root folder with more than 32 caracters\n2. Got to Settings -> Connect -> ABS\n3. Click on \"Load\"\n\n**Expected behavior**\nIf the path is more than 32 caracters I should either see only the end of the path or can hover to see the whole path.\n\n**Screenshots**\n\n<img width=\"972\" height=\"277\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/d0de8838-12e1-4678-b522-61fd3c94a706\" />\n\n**System Information:**\n - OS: Ubuntu 24.04.4 LTS\n - Chaptarr Version: 0.9.911.0\n - Installation Method: Docker\n - Browser: Vivaldi\n",
       "comments": []
