@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "ec1308f",
+  "forkHead": "ff74478",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -942,10 +942,15 @@
       "title": "[BUG] \"Wanted\" section has books that have not been released",
       "url": "https://github.com/Chaptarr/chaptarr/issues/65",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit ff74478 filters Wanted/missing results and missing-search targets by the monitored edition's release date, falling back to the book date; it also applies that date to wanted=true filters and release-date sorting, so displayed dates, inclusion, and order agree.",
+        "BookRepositoryIndexFilterFixture.wanted_lists_should_filter_and_sort_by_the_monitored_edition_release_date covers an old book date with a future edition, sorting across different selected-edition dates, search targets, and wanted filters."
+      ],
+      "validationEvidence": [
+        "git diff --check passed. Tests were not run per the user's instruction. A no-test build restored dependencies but stopped before compiling the changed Core project because the environment lacks the required SixLabors ImageSharp license; an earlier parallel build worker also exited while /tmp was full."
+      ],
       "sourceUpdatedAt": "2026-08-17T21:45:46Z",
       "body": "In the wanted section, there are books that have not been released yet showing up, the sorting is also messed up\n\n<img width=\"1918\" height=\"870\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e3f33405-1a42-41b6-bdcf-53249b9c288d\" />",
       "comments": [
