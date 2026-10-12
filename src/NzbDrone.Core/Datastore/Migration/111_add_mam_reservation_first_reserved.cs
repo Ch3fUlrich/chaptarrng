@@ -3,7 +3,7 @@ using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace NzbDrone.Core.Datastore.Migration
 {
-    [Migration(103)]
+    [Migration(111)]
     public class add_mam_reservation_first_reserved : NzbDroneMigrationBase
     {
         protected override void MainDbUpgrade()

@@ -607,7 +607,7 @@ namespace NzbDrone.Core.Books
             {
                 _bookService.ResyncDenormalizedSeriesFields(authorId);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Warn(ex, "[SERIES] Failed to repair denormalized series fields for authorId {0}", authorId);
             }

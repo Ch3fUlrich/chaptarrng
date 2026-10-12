@@ -204,12 +204,12 @@ namespace NzbDrone.Core.MediaFiles
         /// </summary>
         private void RewriteArchive(string epubPath, string opfPath, XmlDocument opf)
         {
-            var tempPath = epubPath + ".chaptarr-tmp";
+            var tempPath = epubPath + "." + Guid.NewGuid().ToString("N") + ".chaptarr-tmp";
 
             try
             {
                 using (var source = ZipFile.OpenRead(epubPath))
-                using (var destStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+                using (var destStream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write))
                 using (var dest = new ZipArchive(destStream, ZipArchiveMode.Create))
                 {
                     foreach (var entry in OrderEntries(source))
@@ -244,6 +244,11 @@ namespace NzbDrone.Core.MediaFiles
                             sourceEntryStream.CopyTo(destEntryStream);
                         }
                     }
+                }
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    File.SetUnixFileMode(tempPath, File.GetUnixFileMode(epubPath));
                 }
 
                 File.Move(tempPath, epubPath, true);

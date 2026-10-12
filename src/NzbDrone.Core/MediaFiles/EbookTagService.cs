@@ -225,7 +225,7 @@ namespace NzbDrone.Core.MediaFiles
             {
                 WriteTagsInternal(file, updateCover, embedMetadata);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
             {
                 _logger.Warn(ex, "Failed writing tags for {0}, continuing with the remaining files", file?.Path);
             }
@@ -283,7 +283,12 @@ namespace NzbDrone.Core.MediaFiles
                 return;
             }
 
-            var seriesName = GetSeriesName(book);
+            var (seriesName, position) = BookSeriesLabel.Resolve(book.SeriesLinks);
+            if (seriesName.IsNullOrWhiteSpace())
+            {
+                seriesName = book.SeriesName;
+                position = book.SeriesPosition;
+            }
 
             if (seriesName.IsNullOrWhiteSpace())
             {
@@ -291,12 +296,11 @@ namespace NzbDrone.Core.MediaFiles
                 return;
             }
 
-            var position = GetSeriesPosition(book);
             double? seriesIndex = null;
 
             if (position.IsNotNullOrWhiteSpace())
             {
-                if (double.TryParse(position, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                if (double.TryParse(position, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && double.IsFinite(parsed))
                 {
                     seriesIndex = parsed;
                 }
@@ -313,36 +317,6 @@ namespace NzbDrone.Core.MediaFiles
             {
                 _logger.Debug("Wrote series tags to {0}: {1} #{2}", file.Path, seriesName, seriesIndex?.ToString(CultureInfo.InvariantCulture) ?? "-");
             }
-        }
-
-        // The denormalised columns on Book are the values Chaptarr itself displays and keeps in
-        // step with the metadata provider. The relational series links are only consulted when
-        // those are empty.
-        private static string GetSeriesName(Book book)
-        {
-            if (book.SeriesName.IsNotNullOrWhiteSpace())
-            {
-                return book.SeriesName;
-            }
-
-            return GetPrimarySeriesLink(book)?.Series?.Value?.Title;
-        }
-
-        private static string GetSeriesPosition(Book book)
-        {
-            if (book.SeriesName.IsNotNullOrWhiteSpace())
-            {
-                return book.SeriesPosition;
-            }
-
-            return GetPrimarySeriesLink(book)?.Position;
-        }
-
-        private static SeriesBookLink GetPrimarySeriesLink(Book book)
-        {
-            return book.SeriesLinks?
-                .OrderBy(x => x.SeriesPosition)
-                .FirstOrDefault(x => x.Series?.Value?.Title.IsNotNullOrWhiteSpace() == true);
         }
 
         private IEnumerable<RetagBookFilePreview> GetPreviews(List<BookFile> files)
