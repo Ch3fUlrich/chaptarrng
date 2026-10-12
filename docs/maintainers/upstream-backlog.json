@@ -1,6 +1,6 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:50:27+00:00",
+  "snapshotAt": "2026-10-12T20:52:12+00:00",
   "forkHead": "e3c9eff",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
@@ -1342,7 +1342,9 @@
       "url": "https://github.com/Chaptarr/chaptarr/issues/105",
       "kind": "issue",
       "auditStatus": "unreviewed",
-      "relatedItems": [],
+      "relatedItems": [
+        262
+      ],
       "implementationEvidence": [],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T19:45:17Z",
@@ -3201,10 +3203,20 @@
       "title": "[BUG] Import matches a sibling book when the file title carries a subtitle the edition title lacks",
       "url": "https://github.com/Chaptarr/chaptarr/issues/262",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        291,
+        105
+      ],
+      "implementationEvidence": [
+        "The fork already contains upstream PR #291 at commit 5e252ad. Its title tokenizer keeps words and numbers in their original order, so a numbered edition title such as “The Primal Hunter 6” can be found in a file title that adds a trailing subtitle; a missing, wrong, or reordered volume number does not match.",
+        "The PR adds regression cases for the reported title, the same title without a subtitle, a bare series title, a wrong number, a number moved after the subtitle, and other numeric-title arrangements. The Stage 2 fallback still excludes editions that failed eligibility; the ordered numeric-title fix addresses the eligibility failure that caused the reported sibling fallback.",
+        "The issue’s production rejection-visibility concern is tracked separately in #105; this issue’s requested match behavior is covered by #291."
+      ],
+      "validationEvidence": [
+        "Committed regressions in LogicalWorkGroupingFixture cover all three reported A/B title variants and assert the expected local book and edition IDs. NearExactTitleEvidenceFixture also checks subtitle matches, wrong-volume rejection, and numeric order.",
+        "The regression tests were not rerun, per the earlier instruction. git diff --check passed for this ledger update. Backend build remains blocked by the existing Six Labors ImageSharp licensing target because no license file/key is available in this environment."
+      ],
       "sourceUpdatedAt": "2026-10-03T19:45:00Z",
       "body": "**Version:** 0.9.965.0 (Docker, `chaptarr/chaptarr:develop`, buildTime 2026-09-27T18:51:06Z), PostgreSQL backend\n\n## What happens\n\nA book file whose embedded title carries a subtitle that its own edition title does not have fails the strict edition-eligibility pass with `CONTAINMENT_FAILED`. The fallback that runs next re-scores with `!stagedPreferredBookIds.Contains(...)`, so the book Stage 2 already identified is excluded by construction — and the only candidate that passes containment is the edition titled exactly the bare series name. That edition wins.\n\nConcretely: **\"The Primal Hunter 6\" imports as \"The Primal Hunter, Vol. 1\".** Book 6, edition 16318 (ASIN `B0BW17HMDZ`), resolves to book 6589 — the series' volume 1.\n\n## To reproduce\n\nThe trigger is the subtitle, not the series number. Take the same file and change **only** `dc:title` in its OPF:\n\n| `dc:title` in the epub | Matched book |\n|---|---|\n| `The Primal Hunter 6` | The Primal Hunter 6 — **correct** |\n| `The Primal Hunter 6: A LitRPG Adventure` | The Primal Hunter, Vol. 1 — **wrong** |\n| `The Primal Hunter` | The Primal Hunter, Vol. 1 |\n\nSame file, same ASIN, same tags otherwise. Nothing but the title string differs between rows 1 and 2.\n\nSteps:\n\n1. `GET /api/v1/manualimport?folder=<folder>&filterExistingFiles=false` on the file titled `The Primal Hunter 6: A LitRPG Adventure`.\n2. Response suggests \"The Primal Hunter, Vol. 1\" with `rejections: []`.\n3. Edit `dc:title` to `The Primal Hunter 6`, re-zip, repeat. Response suggests \"The Primal Hunter 6\".\n\nFor the A/B I built `NzbDrone.MatchBench` and ran `/libraryaudit /live=true /source=disk` against a directory holding the variants, then compared `match_selected` per file.\n\n## What the trace shows\n\n```\n[STAGED-FTS-FALLBACK] Stage 2 selected provider Book 'Ebook|base:hc:1093426',\nbut none of its Editions passed eligibility; running deep analysis on the\nremaining author-gated Books.\nMATCH ACCEPTED (book-occurrence-edition-selection-leftover): EditionId=16309, Title='The Primal Hunter'\n```\n\nStage 2 gets it right — `hc:1093426` is the correct book (local id 6598), with `fts_stage2_book_selected` reporting `localBookIds: 6598`, `titleFields: title[0]`, `yearExact: true`, and the edition's provider keys `az:B0BW17HMDZ,hc:edition:31229956`. The exact ASIN is right there in the file.\n\nThe strict pass then rejects that very edition:\n\n```\ncandidate_rejected  ed=16318 book=6598  reason=CONTAINMENT_FAILED\n```\n\n**21 of the 22 candidates were rejected with `CONTAINMENT_FAILED`.** The sole survivor was edition 16309, titled exactly `The Primal Hunter`. So the fallback picks it, and the winning provenance records the series digit as neutral:\n\n```\n[ 0,17] 'The Primal Hunter'   supporting   title      edition\n[18,19] '6'                   neutral      tolerated_metadata\n```\n\n## Expected behavior\n\nA file whose title contains its own edition title as a prefix should match that edition. At minimum, this shouldn't come back as a clean success with no rejections — see #105.\n\n## Diagnostics gap (may be worth fixing on its own)\n\nThe rejection reason is invisible in production. `IFileMatchingService.TraceSink` is assigned only in `HolyGrailSmokeTestFixture` and `NzbDrone.MatchBench`, so every `RecordCandidateRejection` call — gate name, leftovers, reason — writes to a sink that doesn't exist at runtime. No log level exposes it; two Trace-level captures of this exact match produced zero rejection lines. I only got `CONTAINMENT_FAILED` by building MatchBench.\n\n## Additional context\n\n- Related but distinct from #111: that's duplicate book rows hijacking the monitored row via intersecting work IDs. This author's rows are a different mechanism, and the wrong match here happens inside `FileMatchingService` containment, not the retarget path.\n- #105 is the reporting side of this: the wrong match is returned with `rejections: []` and no confidence, so it's indistinguishable from a correct one. This is one concrete mechanism behind it.\n- The leftover symptom is the `importBlocked` queue record (#50, #236): grabbed for book 6598, import matched 6589, and it stays there.\n- Across this library, 65 `DownloadImportIncomplete` events over 31 books with repeated grabs of the same book are consistent with this path.\n\n**Uncertainty:** I haven't pinned the exact predicate inside containment that yields no evidence when the field value has extra trailing tokens. The interior-gap check in `TitleTokenAlignment.TryAlignStructural` (lines 88–98) looks like it should pass for `[the, primal, hunter, 6]` against `[the, primal, hunter, 6, a, litrpg, adventure]`, so something upstream of it is dropping the evidence. The A/B above should locate it quickly.\n\n## Logs\n\nMatcher trace from the repro (MatchBench `/libraryaudit`):\n\n```\n[FILE-GROUP] Embedded tags used (14 keys): all_authors, author, authors, calibre:timestamp, calibre:title_sort, contributor_bkp, cover, creator_aut, date, identifier_unknown\nStaged FTS retained 20/20 recalled Books after 1 unique author evaluations and ranked 22 Editions from 6 residual fields\nGot 22 FTS results, validating evidence and leftovers...\n[STAGED-FTS-FALLBACK] Stage 2 selected provider Book 'Ebook|base:hc:1093426', but none of its Editions passed eligibility; running deep analysis on the remaining author-gated Books.\nMATCH ACCEPTED (book-occurrence-edition-selection-leftover): EditionId=16309, Title='The Primal Hunter'\nSUCCESS: bk=6589 'The Primal Hunter, Vol. 1' ed=16309 author='Zogarth'\n```\n\nThe book is not truncated by the recall limit — I re-ran the stage-1 recall SQL directly against Postgres and it ranks #10 of 23 with the `6` token and #17 without it, against a limit of 20.\n",
       "comments": []
@@ -9890,7 +9902,10 @@
       "implementationEvidence": [
         "Integrated reviewed upstream patch at fork commit 5e252ade320d666a09d6d806af5ed343c31d5257; subsequent integration fixes are retained in branch history."
       ],
-      "validationEvidence": [],
+      "validationEvidence": [
+        "Commit 5e252ad adds focused cases in LogicalWorkGroupingFixture and NearExactTitleEvidenceFixture, including the exact #262 subtitle reproduction and wrong-number/reordered-number rejection. These tests are present in the fork but were not rerun in this continuation, per the earlier instruction.",
+        "Backend build remains blocked by the existing Six Labors ImageSharp licensing target because no license file/key is available in this environment."
+      ],
       "sourceUpdatedAt": "2026-10-04T20:39:04Z",
       "body": "#### Description\nTitles with numbers and subtitles can match the wrong volume because token extraction puts words before numbers and scrambles the title. This preserves token order and keeps numeric metadata handling for catalog titles without numbers. Builds on the reproduction @SaxxyToo posted in [#262](https://github.com/Chaptarr/chaptarr/issues/262).\n\nFixes #262\n\n#### Database Migration\nNO\n\n#### How was this tested?\nAdded regressions for numbered-title imports and numeric metadata. Ran on Linux with `dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj -c Release --no-restore --verbosity minimal`.\n\n#### Screenshots (UI changes only)\nN/A\n\n---\n\nCo-authored-by: SaxxyToo <198826566+SaxxyToo@users.noreply.github.com>\n",
       "comments": [],
