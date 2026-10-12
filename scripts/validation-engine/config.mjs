@@ -27,6 +27,7 @@ export const validation = {
     'release-notes/README.md',
     'release-notes/20261011-validation-engine.md',
     'release-notes/20261011-imagesharp-license-secret.md',
+    'release-notes/20261012-validation-environment-isolation.md',
   ],
   runtimes: [
     { command: process.execPath, args: ['--version'], versionPattern: '^v26\\.10\\.0$' },
