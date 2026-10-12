@@ -45,6 +45,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IImportListBookIdentityCacheRepository _bookIdentityCacheRepository;
         private readonly IRootFolderService _rootFolderService;
         private readonly IRootFolderSettingsResolver _rootFolderSettingsResolver;
+        private readonly IImportListStatusService _importListStatusService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
@@ -66,7 +67,8 @@ namespace NzbDrone.Core.ImportLists
                                      IEventAggregator eventAggregator,
                                      IManageCommandQueue commandQueueManager,
                                      Logger logger,
-                                     IImportListBookIdentityCacheRepository bookIdentityCacheRepository)
+                                     IImportListBookIdentityCacheRepository bookIdentityCacheRepository,
+                                     IImportListStatusService importListStatusService = null)
         {
             _importListFactory = importListFactory;
             _importListExclusionService = importListExclusionService;
@@ -81,6 +83,7 @@ namespace NzbDrone.Core.ImportLists
             _authorLibraryService = authorLibraryService;
             _pendingAuthorImportService = pendingAuthorImportService;
             _bookIdentityCacheRepository = bookIdentityCacheRepository;
+            _importListStatusService = importListStatusService;
             _rootFolderService = rootFolderService;
             _rootFolderSettingsResolver = rootFolderSettingsResolver;
             _eventAggregator = eventAggregator;
@@ -1476,7 +1479,7 @@ namespace NzbDrone.Core.ImportLists
                     importList?.CommitState();
                     if (importList != null)
                     {
-                        _importListStatusService.UpdateListSyncStatus(importList.Definition.Id);
+                        _importListStatusService?.UpdateListSyncStatus(importList.Definition.Id);
                     }
                 }
                 catch (Exception e)

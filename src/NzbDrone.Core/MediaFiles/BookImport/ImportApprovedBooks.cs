@@ -1157,9 +1157,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     existingFiles.Count);
 
                     var manualReplaceExisting = replaceExisting && (localBook.IsManualImport || downloadForced);
-                    var filesToReplace = existingFiles
-                        .Where(f => IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState))
-                        .ToList();
 
                     // The files this conversion consumed are the ones it is meant to supersede. They
                     // are named explicitly rather than swept up by manualReplaceExisting, which takes
@@ -1172,8 +1169,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                     var filesToReplace = existingFiles.Where(f =>
-                        !f.Path.Equals(localBook.Path, StringComparison.OrdinalIgnoreCase) &&
-                        (f.EditionId == edition.Id || manualReplaceExisting || conversionSourcePaths.Contains(f.Path))).ToList();
+                        IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState) ||
+                        (conversionSourcePaths.Contains(f.Path) &&
+                         IsReplaceableExistingFile(f, localBook.Path, f.EditionId, true, batchState))).ToList();
 
                     // A library conversion replaces what it converted and nothing else. Same-edition
                     // files that were not part of the conversion (an eBook filed against the same

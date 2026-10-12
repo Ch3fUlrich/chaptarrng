@@ -451,6 +451,11 @@ namespace Chaptarr.Core.Test.MediaFiles
             public List<Call> Calls { get; } = new();
             public Action OnImport { get; set; }
 
+            public string CheckExistingDestinationConflict(LocalBook localBook, Book book, Author author)
+            {
+                return null;
+            }
+
             public List<ImportResult> Import(
                 List<ImportDecision<LocalBook>> decisions,
                 bool replaceExisting,
@@ -515,7 +520,7 @@ namespace Chaptarr.Core.Test.MediaFiles
 
                 if (targetMethod?.Name == nameof(IDiskProvider.GetFileInfo))
                 {
-                    return new System.IO.Abstractions.FileSystem().FileInfo.FromFileName((string)args[0]);
+                    return new System.IO.Abstractions.FileSystem().FileInfo.New((string)args[0]);
                 }
 
                 throw new NotImplementedException($"Test proxy does not implement IDiskProvider.{targetMethod?.Name}");

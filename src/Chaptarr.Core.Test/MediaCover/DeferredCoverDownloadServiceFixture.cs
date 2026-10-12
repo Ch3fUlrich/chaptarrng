@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using NLog;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
@@ -18,6 +19,14 @@ namespace Chaptarr.Core.Test.MediaCover
     [TestFixture]
     public class DeferredCoverDownloadServiceFixture
     {
+        private class NoOpEventAggregator : DispatchProxy
+        {
+            protected override object Invoke(MethodInfo targetMethod, object[] args)
+            {
+                return null;
+            }
+        }
+
         private sealed class RecordingBookService : IBookService
         {
             private readonly Dictionary<int, Book> _booksById;
@@ -146,7 +155,8 @@ namespace Chaptarr.Core.Test.MediaCover
                 new Book { Id = 3, Title = "Three" }
             });
             var coverMapper = new RecordingCoverMapper();
-            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper, LogManager.GetCurrentClassLogger());
+            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper,
+                DispatchProxy.Create<IEventAggregator, NoOpEventAggregator>(), LogManager.GetCurrentClassLogger());
 
             service.HandleAsync(new ImportStageProgressEvent(ImportStage.MatchingBooks, "start") { CommandId = 7 });
             deferredCoverService.MarkBooksForCoverDownload(new[] { 1, 2, 3 });
@@ -170,7 +180,8 @@ namespace Chaptarr.Core.Test.MediaCover
                 new Book { Id = 3, Title = "Three" }
             });
             var coverMapper = new RecordingCoverMapper();
-            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper, LogManager.GetCurrentClassLogger());
+            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper,
+                DispatchProxy.Create<IEventAggregator, NoOpEventAggregator>(), LogManager.GetCurrentClassLogger());
 
             service.HandleAsync(new ImportStageProgressEvent(ImportStage.MatchingBooks, "start") { CommandId = 9 });
             deferredCoverService.MarkBooksForCoverDownload(new[] { 1, 2, 3 });
@@ -192,7 +203,8 @@ namespace Chaptarr.Core.Test.MediaCover
                 new Book { Id = 1, Title = "One" }
             });
             var coverMapper = new RecordingCoverMapper();
-            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper, LogManager.GetCurrentClassLogger());
+            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper,
+                DispatchProxy.Create<IEventAggregator, NoOpEventAggregator>(), LogManager.GetCurrentClassLogger());
 
             service.HandleAsync(new ImportStageProgressEvent(ImportStage.MatchingBooks, "start") { CommandId = 15 });
             deferredCoverService.MarkBooksForCoverDownload(new[] { 1 });
@@ -216,7 +228,8 @@ namespace Chaptarr.Core.Test.MediaCover
                 new Book { Id = 2, Title = "Next import" }
             });
             var coverMapper = new RecordingCoverMapper();
-            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper, LogManager.GetCurrentClassLogger());
+            var service = new DeferredCoverDownloadService(deferredCoverService, bookService, coverMapper,
+                DispatchProxy.Create<IEventAggregator, NoOpEventAggregator>(), LogManager.GetCurrentClassLogger());
 
             service.HandleAsync(new ImportStageProgressEvent(ImportStage.MatchingBooks, "first start") { CommandId = 21 });
             deferredCoverService.MarkBookForCoverDownload(1);
