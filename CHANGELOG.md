@@ -4,6 +4,17 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.969](https://github.com/snapetech/chaptarrng/compare/v0.9.968..v0.9.969) - 2026-10-12
+
+### User-facing changes
+
+#### Fixed
+
+- **Metadata:** Goodreads searches for titles with umlauts or other special characters now complete successfully when multiple requests arrive at the same time.
+
+### Bug Fixes
+- *(http-cache)* Enforce unique cached response URLs - ([82b81bf](https://github.com/snapetech/chaptarrng/commit/82b81bf270c10cfadff53ee4a2b6b62f3a52f315))
+
 ## [0.9.968](https://github.com/snapetech/chaptarrng/compare/v0.9.967..v0.9.968) - 2026-10-12
 
 ### User-facing changes
