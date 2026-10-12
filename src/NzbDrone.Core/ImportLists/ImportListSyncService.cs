@@ -1447,34 +1447,11 @@ namespace NzbDrone.Core.ImportLists
 
         private List<Book> SyncAll()
         {
-            var enabledImportLists = _importListFactory.AutomaticAddEnabled()
-                .Where(l => !l.Definition.Implementation.EqualsIgnoreCase(nameof(HardcoverLibraryImportList)))
-                .ToList();
-
-            if (enabledImportLists.Empty())
-            {
-                _logger.Debug("No import lists with automatic add enabled");
-
-                return new List<Book>();
-            }
-
             _logger.ProgressInfo("Starting Import List Sync");
 
-            var listItems = _listFetcherAndParser.Fetch().ToList();
-
-            var processed = ProcessListItems(listItems);
-
-            foreach (var importList in enabledImportLists)
-            {
-                try
-                {
-                    importList.CommitState();
-                }
-                catch (Exception e)
-                {
-                    _logger.Error(e, "Error committing state for Import List {0} ({1})", importList.Name, importList.Definition.Name);
-                }
-            }
+            var fetch = _listFetcherAndParser.FetchWithState();
+            var processed = ProcessListItems(fetch.Items);
+            CommitFetchedListState(fetch.FetchedLists);
 
             return processed;
         }
@@ -1483,21 +1460,30 @@ namespace NzbDrone.Core.ImportLists
         {
             _logger.ProgressInfo($"Starting Import List Refresh for List {definition.Name}");
 
-            var listItems = _listFetcherAndParser.FetchSingleList(definition).ToList();
-
-            var processed = ProcessListItems(listItems);
-
-            try
-            {
-                var importList = _importListFactory.GetInstance(definition);
-                importList?.CommitState();
-            }
-            catch (Exception e)
-            {
-                _logger.Error(e, "Error committing state for Import List {0} ({1})", definition.Name, definition.Id);
-            }
+            var fetch = _listFetcherAndParser.FetchSingleListWithState(definition);
+            var processed = ProcessListItems(fetch.Items);
+            CommitFetchedListState(fetch.FetchedLists);
 
             return processed;
+        }
+
+        private void CommitFetchedListState(IEnumerable<IImportList> importLists)
+        {
+            foreach (var importList in importLists ?? Enumerable.Empty<IImportList>())
+            {
+                try
+                {
+                    importList?.CommitState();
+                    if (importList != null)
+                    {
+                        _importListStatusService.UpdateListSyncStatus(importList.Definition.Id);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e, "Error committing state for Import List {0} ({1})", importList?.Name, importList?.Definition?.Name);
+                }
+            }
         }
 
         private List<Book> ProcessListItems(List<ImportListItemInfo> items)
