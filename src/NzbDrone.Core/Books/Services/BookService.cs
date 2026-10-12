@@ -2688,17 +2688,15 @@ namespace NzbDrone.Core.Books
                 return new List<Book>();
             }
 
-            var books = _bookRepository.GetBooksByAuthorIds(authorIds, mediaType);
+            var uniqueAuthorIds = authorIds?.Distinct().ToList() ?? new List<int>();
+            var books = _bookRepository.GetBooksByAuthorIds(uniqueAuthorIds, mediaType);
             if (!books.Any())
             {
                 return books;
             }
 
             // Same lean shape as the general book list: monitored editions only, no files.
-            var bookIds = books.Select(b => b.Id).ToList();
-            var monitoredEditions = _editionService.GetEditionsByBook(bookIds)
-                .Where(e => e.Monitored)
-                .ToList();
+            var monitoredEditions = _editionService.GetMonitoredEditionsForAuthors(uniqueAuthorIds, mediaType);
             var editionsByBook = monitoredEditions
                 .GroupBy(e => e.BookId)
                 .ToDictionary(g => g.Key, g => g.ToList());

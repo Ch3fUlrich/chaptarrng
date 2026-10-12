@@ -119,6 +119,32 @@ wget https://raw.githubusercontent.com/snapetech/chaptarrng/main/docker-compose.
 docker compose up -d
 ```
 
+#### Memory limits for large libraries
+
+The Compose example does not set a memory limit because the right value depends
+on the host and library. For a large initial scan, set a container limit sized
+for the memory the host can spare. Without a cgroup limit, .NET may size its
+garbage-collection heap from all the memory visible to the process, including
+the full VM or host. Docker Compose's [`mem_limit`](https://docs.docker.com/reference/compose-file/services/#mem_limit)
+sets a container memory limit; .NET uses that limit when sizing its heap. On a
+Docker-in-LXC setup, make sure the Docker container itself has a limit visible
+inside the container rather than relying only on the LXC allocation.
+
+For example, add this under the `chaptarrng` service and choose a value that
+fits your host and workload:
+
+```yaml
+mem_limit: 4g # Example only; size this for your host and library.
+```
+
+When a container memory limit is visible, .NET's default GC heap hard limit is
+75% of that limit. If you choose to override it with
+`DOTNET_GCHeapHardLimitPercent`, note that .NET parses the environment-variable
+value as hexadecimal: `55` (or `0x55`) means 85%, while `85` means 133%.
+Consider the memory needed outside the GC heap before increasing the percentage.
+See Microsoft's [.NET GC configuration reference](https://learn.microsoft.com/dotnet/core/runtime-config/garbage-collector#heap-hard-limit-percent)
+for details.
+
 ### PostgreSQL (Optional)
 
 ChaptarrNG supports using an external PostgreSQL database instead of the default SQLite `chaptarr.db` file. To enable it, set at least `Chaptarr__Postgres__Host` (and credentials).

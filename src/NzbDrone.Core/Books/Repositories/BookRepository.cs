@@ -924,6 +924,25 @@ namespace NzbDrone.Core.Books
             }
         }
 
+        private string GetBookListTitleSortExpression(string bookReference, string trueIndicator)
+        {
+            var monitoredEditionTitle = $"(SELECT e.\"Title\" FROM \"Editions\" e WHERE e.\"BookId\" = {bookReference}.\"Id\" AND e.\"Monitored\" = {trueIndicator} ORDER BY e.\"Id\" LIMIT 1)";
+            return $"LOWER(COALESCE({monitoredEditionTitle}, {bookReference}.\"CleanTitle\", {bookReference}.\"Title\", ''))";
+        }
+
+        private string GetBookListNarratorSortExpression(string bookReference, string trueIndicator)
+        {
+            var narratorNames = _database.DatabaseType == DatabaseType.PostgreSQL
+                ? "NULLIF(translate(COALESCE(e.\"NarratorNames\", ''), '[]\"\"', ''), '')"
+                : "(SELECT GROUP_CONCAT(value, ', ') FROM json_each(CASE WHEN json_valid(e.\"NarratorNames\") AND json_type(e.\"NarratorNames\") = 'array' THEN e.\"NarratorNames\" ELSE '[]' END) WHERE value IS NOT NULL AND value != '')";
+            var monitoredEditionNarrator = $"(SELECT COALESCE({narratorNames}, NULLIF(e.\"Narrator\", '')) FROM \"Editions\" e WHERE e.\"BookId\" = {bookReference}.\"Id\" AND e.\"Monitored\" = {trueIndicator} ORDER BY e.\"Id\" LIMIT 1)";
+            var hasFiles = $"EXISTS (SELECT 1 FROM \"BookFiles\" narrator_file JOIN \"Editions\" narrator_file_edition ON narrator_file_edition.\"Id\" = narrator_file.\"EditionId\" WHERE narrator_file_edition.\"BookId\" = {bookReference}.\"Id\")";
+
+            // Keep the SQL sort aligned with BookResource: an unpinned audiobook without files
+            // intentionally hides narrator metadata, and narrator names take precedence.
+            return $"CASE WHEN {bookReference}.\"MediaType\" = {(int)BookMediaType.Audiobook} AND {bookReference}.\"AnyEditionOk\" = {trueIndicator} AND NOT ({hasFiles}) THEN 'zzz' ELSE COALESCE(NULLIF(LOWER({monitoredEditionNarrator}), ''), 'zzz') END";
+        }
+
         public BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null)
         {
             var sortKeyNormalized = sortKey?.Trim().ToLowerInvariant();
@@ -953,7 +972,7 @@ namespace NzbDrone.Core.Books
 
                 case "cleantitle":
                 case "title":
-                    sortExpr = "LOWER(COALESCE(b.\"CleanTitle\", b.\"Title\", ''))";
+                    sortExpr = GetBookListTitleSortExpression("b", _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1");
                     bucketSourceExpr = sortExpr;
                     orderByExpr = $"{sortExpr} {sortDirectionNormalized}, b.\"Id\" {sortDirectionNormalized}";
                     break;
@@ -1267,10 +1286,12 @@ namespace NzbDrone.Core.Books
 
             var tableName = TableMapping.Mapper.TableNameMapping(typeof(Book));
             var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
+            var bookReference = $"\"{tableName}\"";
+            var titleSortExpression = GetBookListTitleSortExpression(bookReference, trueIndicator);
             var columnMap = new Dictionary<string, string>
             {
-                ["cleantitle"] = $"LOWER(COALESCE(\"{tableName}\".\"CleanTitle\", \"{tableName}\".\"Title\", ''))",
-                ["title"] = $"LOWER(COALESCE(\"{tableName}\".\"CleanTitle\", \"{tableName}\".\"Title\", ''))",
+                ["cleantitle"] = titleSortExpression,
+                ["title"] = titleSortExpression,
                 ["authortitle"] = "LOWER(\"Authors\".\"Name\")",
                 ["releasedate"] = $"\"{tableName}\".\"ReleaseDate\"",
                 ["added"] = $"\"{tableName}\".\"Added\"",
@@ -1278,8 +1299,7 @@ namespace NzbDrone.Core.Books
                 ["sizeondisk"] = "COALESCE(\"FileStatistics\".\"SizeOnDisk\", 0)",
                 ["authorname"] = "LOWER(COALESCE(\"Authors\".\"SortName\", \"Authors\".\"Name\", ''))",
 
-                // The list shows the narrator of the monitored edition; books without one sort last when ascending.
-                ["narrator"] = $"COALESCE(NULLIF(LOWER((SELECT \"Editions\".\"Narrator\" FROM \"Editions\" WHERE \"Editions\".\"BookId\" = \"{tableName}\".\"Id\" AND \"Editions\".\"Monitored\" = {trueIndicator} ORDER BY \"Editions\".\"Id\" LIMIT 1)), ''), 'zzz')",
+                ["narrator"] = GetBookListNarratorSortExpression(bookReference, trueIndicator),
                 ["duration"] = $"COALESCE(\"{tableName}\".\"DurationMinutes\", 0)",
                 ["bookfilecount"] = "COALESCE(\"FileStatistics\".\"BookFileCount\", 0)",
                 ["qualityprofileid"] = $"COALESCE(CASE WHEN \"{tableName}\".\"MediaType\" = 1 THEN \"Authors\".\"EbookQualityProfileId\" ELSE \"Authors\".\"AudiobookQualityProfileId\" END, 0)",

@@ -26,6 +26,7 @@ namespace NzbDrone.Core.Books
         Edition GetEditionByProviderAndId(string providerPrefix, string providerId);
         List<Edition> GetEditionsByProviderAndId(string providerPrefix, string providerId);
         List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType);
+        List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
         void InsertMany(List<Edition> editions);
         void InsertMany(List<Edition> editions, IDbConnection connection, IDbTransaction transaction);
         void UpdateMany(List<Edition> editions);
@@ -224,6 +225,11 @@ namespace NzbDrone.Core.Books
         public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType)
         {
             return _editionRepository.GetMonitoredEditionsForBookList(mediaType);
+        }
+
+        public List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType)
+        {
+            return _editionRepository.GetMonitoredEditionsForAuthors(authorIds, mediaType);
         }
 
 	        public void InsertMany(List<Edition> editions)

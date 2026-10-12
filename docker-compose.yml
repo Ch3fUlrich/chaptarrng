@@ -2,9 +2,13 @@ services:
   chaptarrng:
     image: ghcr.io/snapetech/chaptarrng:latest
     container_name: chaptarrng
+    # Optional for large scans; choose a limit the host can spare for this library.
+    # mem_limit: 4g
     environment:
       - PUID=1000
       - PGID=1000
+      # Optional GC heap limit uses a hexadecimal percentage: 55 is 85%.
+      # - DOTNET_GCHeapHardLimitPercent=55
       # Optional: use 002 when multiple containers/users share the same media group.
       # - UMASK=002
       - TZ=America/New_York  # Change to your timezone

@@ -344,6 +344,22 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void paged_title_sort_should_use_the_monitored_edition_title()
+        {
+            WithRepository(sut =>
+            {
+                var page = sut.GetBooksPaged(
+                    offset: 0,
+                    pageSize: 100,
+                    sortKey: "title",
+                    sortDirection: "ASC",
+                    includeUnmonitored: true);
+
+                Assert.That(page.Records.Select(book => book.Id), Is.EqualTo(new[] { 2, 3, 4, 5, 6, 7, 8, 1 }));
+            });
+        }
+
+        [Test]
         public void paged_books_should_keep_sort_order_across_pages()
         {
             WithRepository(sut =>
@@ -454,6 +470,7 @@ namespace Chaptarr.Core.Test.Books
                     ""MediaType"" INTEGER NOT NULL,
                     ""AudiobookMonitored"" INTEGER NOT NULL,
                     ""EbookMonitored"" INTEGER NOT NULL,
+                    ""AnyEditionOk"" INTEGER NOT NULL DEFAULT 1,
                     ""ReleaseDate"" TEXT NULL,
                     ""DurationMinutes"" INTEGER NULL
                 );
@@ -464,7 +481,9 @@ namespace Chaptarr.Core.Test.Books
                     ""Id"" INTEGER PRIMARY KEY,
                     ""BookId"" INTEGER NOT NULL,
                     ""Monitored"" INTEGER NOT NULL,
-                    ""Narrator"" TEXT NULL
+                    ""Title"" TEXT NULL,
+                    ""Narrator"" TEXT NULL,
+                    ""NarratorNames"" TEXT NULL DEFAULT '[]'
                 );
             ");
 
@@ -542,8 +561,12 @@ namespace Chaptarr.Core.Test.Books
                 UPDATE ""Authors"" SET ""Name"" = 'Brandon Sanderson', ""SortName"" = 'sanderson, brandon', ""AudiobookPath"" = '/audio/sanderson', ""EbookPath"" = '/ebooks/sanderson' WHERE ""Id"" = 10;
                 UPDATE ""Authors"" SET ""Name"" = 'Andy Weir', ""SortName"" = 'weir, andy', ""AudiobookPath"" = '/audio/weir' WHERE ""Id"" = 20;
                 UPDATE ""Authors"" SET ""Name"" = 'Ann Leckie', ""SortName"" = 'leckie, ann' WHERE ""Id"" = 30;
-                UPDATE ""Editions"" SET ""Narrator"" = 'Michael Kramer' WHERE ""Id"" = 60;
-                UPDATE ""Editions"" SET ""Narrator"" = 'Ray Porter' WHERE ""Id"" = 70;
+                UPDATE ""Editions"" SET ""Title"" = CASE ""BookId""
+                    WHEN 1 THEN 'Zebra title' WHEN 2 THEN 'Alpha title' WHEN 3 THEN 'Charlie title' WHEN 4 THEN 'Delta title'
+                    WHEN 5 THEN 'Echo title' WHEN 6 THEN 'Foxtrot title' WHEN 7 THEN 'Golf title' WHEN 8 THEN 'Hotel title' END;
+                UPDATE ""Editions"" SET ""Narrator"" = 'Zed Narrator', ""NarratorNames"" = '[""Amy Narrator""]' WHERE ""Id"" = 60;
+                UPDATE ""Editions"" SET ""Narrator"" = 'Bob Narrator' WHERE ""Id"" = 70;
+                UPDATE ""Books"" SET ""AnyEditionOk"" = 0 WHERE ""Id"" = 6;
                 UPDATE ""Books"" SET ""DurationMinutes"" = 600 WHERE ""Id"" = 6;
                 UPDATE ""Books"" SET ""DurationMinutes"" = 300 WHERE ""Id"" = 7;
             ");

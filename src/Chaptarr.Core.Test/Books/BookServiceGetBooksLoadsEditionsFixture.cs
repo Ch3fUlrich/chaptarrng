@@ -153,6 +153,11 @@ namespace Chaptarr.Core.Test.Books
                 BookListMediaType = mediaType;
                 return _editions.Where(e => e.Monitored).ToList();
             }
+
+            public List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType)
+            {
+                return _editions.Where(e => e.Monitored).ToList();
+            }
             public void InsertMany(List<Edition> editions) => throw new NotImplementedException();
             public void InsertMany(List<Edition> editions, IDbConnection connection, IDbTransaction transaction) => throw new NotImplementedException();
             public void UpdateMany(List<Edition> editions) => throw new NotImplementedException();
