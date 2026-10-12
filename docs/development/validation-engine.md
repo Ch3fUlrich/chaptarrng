@@ -59,7 +59,10 @@ does not enter the build context, image layers, or image metadata.
 The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same
 checkout. Linux also requires the Playwright Chromium setup from CI when direct
-download tests run. The PostgreSQL task is GitHub-only and assigned to the
+download tests run. CI installs it in a run-specific cache and passes only that
+cache path to the NUnit task. For local Linux runs, set
+`PLAYWRIGHT_BROWSERS_PATH` to the installed browser directory when using the
+default Playwright cache. The PostgreSQL task is GitHub-only and assigned to the
 dedicated PostgreSQL node: CI supplies three throwaway databases from its
 PostgreSQL service, while ordinary platform nodes select only the NUnit task.
 

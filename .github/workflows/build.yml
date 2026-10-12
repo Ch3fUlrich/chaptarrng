@@ -212,7 +212,11 @@ jobs:
 
     - name: Install Chromium for direct-download browser tests
       if: runner.os == 'Linux'
-      run: pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
+      env:
+        PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright-browsers
+      run: |
+        echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
+        pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
     
     - name: Test
       id: validation
