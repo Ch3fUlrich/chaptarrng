@@ -61,7 +61,8 @@ test('source fingerprints normalize Git text line endings across runner operatin
 });
 
 test('test-only planning distinguishes local and hosted tasks regardless of ambient workflow environment', () => {
-  const localPlan = withEnvironmentVariable('GITHUB_ACTIONS', undefined, () => createPlan({ testsOnly: true }));
+  const localPlan = withEnvironmentVariable('GITHUB_ACTIONS', undefined, () =>
+    withEnvironmentVariable('VALIDATION_NODE_ID', undefined, () => createPlan({ testsOnly: true })));
   assert.deepEqual(localPlan.tasks.filter((task) => task.selected).map((task) => task.id), [
     'engine-contract-tests', 'dotnet-core-tests',
   ]);
