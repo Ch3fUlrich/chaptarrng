@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:58:35+00:00",
-  "forkHead": "9fd105f",
+  "snapshotAt": "2026-10-12T21:11:08+00:00",
+  "forkHead": "55eddba",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -82,10 +82,16 @@
       "title": "[BUG] interactive search shows hidden items (or no items) on valid items",
       "url": "https://github.com/Chaptarr/chaptarr/issues/4",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "needs-reproduction",
+      "relatedItems": [
+        258
+      ],
+      "implementationEvidence": [
+        "Interactive Search already exposes hidden releases with their rejection reasons and filter summary; ReleaseTitleMatchScorer normalizes Scandinavian transliterations. Commit 8272e5a retries known alternate edition titles when the monitored title has no approved result, covering the no-results path when alternate metadata exists."
+      ],
+      "validationEvidence": [
+        "Reviewed the current hidden-results UI and matching path; the focused alternate-title release-note preview and git diff --check passed, and regression fixtures were added but not run per the user's instruction. The original examples call the books ebooks but supply audiobook/MP3 release names and provide no indexer configuration, sent query, or rejection log, so the exact cause and automatic-download symptom remain unverified."
+      ],
       "sourceUpdatedAt": "2026-08-08T08:49:39Z",
       "body": "ill probably break a few rules by making this post but i dont see how i could \"bugreport\" it without mentioning release names, so feel free to edit it out if its not needed. :)\n\nhere goes... \n\nwhen i try interactive search on books for the author zelda falköga (but this has happened for books by other swedish authors too, like jonna björnstjerna) it shows available books as hidden (and one book is even \"no results found\"). so, obviously the automatic downloading (when books got uploaded/available) didnt work.\n\nim not sure what chaptarr searches for, if its the torrent name, the file name or perhaps even both, so i just add all info here.\n\nthe books are (ebooks in this case):\n\nBook name in chaptarr: Klipptrollen (no results found)\ntorrent name: ZeldaFalkoga-_Karma_Och_Jonar_Klipptrollen-AUDiOBOOK-WEB-SE-2019-OLDSWE_iNT\nfile name: 101-zeldafalkoga-_kojk_01.01-oldswe_int.mp3\n\nbook name in chaptarr: Flykten (yesterday it showed as \"hidden items\", today theres a lot of other stuff in the \"hidden items\" list, but this one isnt even showing now.)\ntorrent name: ZeldaFalkoga-_Karma_Och_Jonar_Flykten-AUDiOBOOK-WEB-SE-2020-OLDSWE_iNT\nfile name: 101-zeldafalkoga-_kojf_01.01-oldswe_int.mp3\n\nbook name in chaptarr: Lyras ö (yesterday it showed as \"hidden items\", today its \"no results found\")\ntorrent name: ZeldaFalkoga-_Karma_Och_Jonar_Lyras_Oe-AUDiOBOOK-WEB-SE-2020-OLDSWE_iNT\nfile name: 101-zeldafalkoga-_kojlo_01.01-oldswe_int.mp3\n\nyou can thank \"the scene\" for the wonderful file names.\n\nalso had the same issue with author jonna björnstjerna as i mentioned at the beginning of this post, when a lot of books got uploaded to the indexer, but none were fetched automatically and neither when i pressed the magnifying-glass-icon to check manually. If i went to try the interactive search some of them were \"hidden\" but most were not. Not sure why it doesnt download the ones that werent hidden, and not sure why those that were hidden.. were hidden.\n\nfeel free to edit out parts that arent allowed in my post and arent needed to fix this (or tell me to remove it)\n\n**Screenshots**\n\n<img width=\"1077\" height=\"1293\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3113b729-8935-46fd-9ff3-e87366131353\" />\n\n<img width=\"2603\" height=\"974\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/ad6816dc-79de-4a79-bab4-2eb64af05f35\" />\n\n**System Information:**\n - OS: Unraid\n - Chaptarr Version: 0.9.911.0\n - Installation Method: Docker\n - Browser: Edge\n",
       "comments": []
@@ -3192,10 +3198,18 @@
       "title": "Release search only uses the localized/current edition title, no fallback to other-language editions",
       "url": "https://github.com/Chaptarr/chaptarr/issues/258",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [
+        4
+      ],
+      "implementationEvidence": [
+        "Commit 8272e5a retries up to five distinct known edition titles, preferring English titles, after a monitored-title search produces no approved result. The query override leaves BookTitle unchanged for decision matching; same-work alternate edition names are accepted by the title scorer while quality, language, media-type, and metadata-profile checks remain active. Direct Download omits the primary edition ISBN for alternate-title queries.",
+        "Commit 55eddba queues a forced metadata refresh without folder rescanning when an author's allowed-language profile expands or becomes unrestricted, so the new language's editions can be ingested before a fallback search depends on them. Narrowing the language set still reselects from stored editions without a network refresh."
+      ],
+      "validationEvidence": [
+        "Added regression fixtures for alternate-title selection and de-duplication, BookSearch fallback dispatch, matching against an alternate edition while preserving the monitored title, MyAnonaMouse query generation, and Direct Download's alternate-title request. Focused release-note preview and git diff --check passed. Tests were not run per the user's instruction; the backend build stopped before core compilation because the installed SixLabors.ImageSharp target requires an absent license. Live indexer validation remains outstanding.",
+        "Added profile-change command fixtures for language expansion, cleared restrictions, and narrowing. After 55eddba, the focused release-note preview against 8272e5a and git diff --check passed; fixtures remain unrun per the user's instruction."
+      ],
       "sourceUpdatedAt": "2026-10-03T19:44:59Z",
       "body": "## Description\n\nWhen an author's book has its primary `title` set to a non-English (translated) edition — because the Metadata Profile's Allowed Languages was scoped to that language when the author was first added/refreshed — `ReleaseSearchService` searches indexers using only that single, localized title. There is no fallback to the book's other known editions/titles (e.g. the original English title, or other translated editions that do have releases indexed).\n\nThis means an automatic/manual search can process hundreds of raw indexer results and still return \"0 reports downloaded\", even though releases for the same book exist in abundance under a different title/language — with no warning to the user about why.\n\n## Repro steps\n\n1. Create a Metadata Profile with `Allowed Languages` restricted to a non-English language (e.g. `Dutch`).\n2. Add an author using that profile (audiobook or ebook).\n3. Note the book's `title` gets set from the localized edition, e.g. `Mooie Meisjes` for Karin Slaughter's *Pretty Girls*.\n4. Run a search (interactive `GET /api/v1/release?bookId=X` or `AuthorSearch`/`BookSearch` command).\n5. Log shows the query sent to indexers uses the localized title, e.g.:\n   ```\n   ReleaseSearchService|Searching indexers for [Karin Slaughter - Mooie Meisjes]. 5 active indexers\n   ```\n   Meanwhile a direct Prowlarr/indexer search for `Karin Slaughter` alone returns 200+ results, none titled \"Mooie Meisjes\" (they're in English/German/Danish/Swedish, e.g. \"Pretty Girls\", \"Blutige Fesseln\").\n6. Result: `0 reports downloaded`, despite the book being genuinely available.\n\n## Workaround found\n\nWidening the Metadata Profile's `Allowed Languages` afterward is **not enough** — the book/edition data already in the local DB doesn't change. Only after manually triggering a full `RefreshAuthor` command (metadata refresh) does chaptarr pull in the other-language editions from the metadata source (Hardcover in our case), at which point it auto-picked a different primary `title` for the book (`Pretty Girls`) and search started working.\n\nThis workaround isn't discoverable — there's no UI hint that the book's title/search-term is effectively \"stuck\" on a language with no available releases, and manually editing the `title` field via the API is silently ignored/overwritten (presumably re-derived from the edition data on save).\n\n## Suggested fixes (any of)\n\n- Include a book's known alternate-language edition titles as additional/OR'd search terms, not just the current primary title.\n- Surface a warning/badge on the book/author page when 0 releases are found for repeated searches, especially when other-language editions are known to exist for the same book.\n- After changing a Metadata Profile's Allowed Languages on an author with existing books, prompt to refresh metadata (or do it automatically) so search terms stay in sync with the new language scope.\n\n## Environment\n\n- Chaptarr version: 0.9.911.0 (develop branch), Docker (`chaptarr/chaptarr:latest`)\n- Metadata source: Hardcover\n- Reproduced with author Karin Slaughter / book \"Pretty Girls\" (Dutch edition title \"Mooie Meisjes\")",
       "comments": []
