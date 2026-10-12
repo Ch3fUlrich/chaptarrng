@@ -1626,7 +1626,7 @@ namespace NzbDrone.Core.Books
             }
         }
 
-        private List<BookMonitoringSyncUpdate> GetSyncUpdatesForMutations(List<Book> changedBooks, Dictionary<int, Book> storedById)
+        private List<BookMonitoringSyncUpdate> GetSyncUpdatesForMutations(List<Book> changedBooks, Dictionary<int, Book> storedById, AuthorBooksHint authorBooksHint = null)
         {
             var syncUpdates = new List<BookMonitoringSyncUpdate>();
             if (_authorService == null || changedBooks == null || changedBooks.Count == 0)
@@ -1647,7 +1647,16 @@ namespace NzbDrone.Core.Books
                 // GetSyncUpdatesForMutations pass already runs once per book save.
                 var rootFolders = _rootFolderService?.All();
 
-                var repositoryBooks = _bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>();
+                // PERF (chaptarr #163/#172): when the caller already has this author's full local
+                // catalogue in memory (RefreshBookService, mid author refresh), reuse it instead of
+                // re-fetching+re-cloning it from scratch on every single book saved - for an author with
+                // N books this call otherwise runs up to N times per refresh, each doing O(N) work, i.e.
+                // O(N^2) overall. Only trust the hint when it actually covers this author; an empty/
+                // mismatched hint falls back to the original always-correct DB fetch.
+                var hintForAuthor = authorBooksHint?.Books.Where(book => book?.AuthorId == authorBooks.Key).ToList();
+                var repositoryBooks = hintForAuthor != null && hintForAuthor.Count > 0
+                    ? hintForAuthor
+                    : _bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>();
                 var authorStoredById = repositoryBooks.ToDictionary(book => book.Id, CloneStoredBook);
                 var authorBooksById = repositoryBooks.ToDictionary(book => book.Id);
 
@@ -1664,7 +1673,21 @@ namespace NzbDrone.Core.Books
                 var changedBookIds = authorBooks.Select(book => book.Id).ToHashSet();
                 var baseStates = authorBooksById.ToDictionary(pair => pair.Key, pair => SnapshotMonitoredState(pair.Value));
 
-                foreach (var workGroup in BuildWorkGroups(authorBooksById.Values.ToList()))
+                // PERF (chaptarr #163/#172): BuildWorkGroups is itself O(N^2) internally (pairwise
+                // WorkIdMatcher.CrossFormatSafeMatches over every remaining book), and this whole method
+                // runs once per book saved - for an N-book author that's an O(N^2) call happening N times.
+                // Measured live via dotnet-trace against a 10,107-book author: BuildWorkGroups accounted
+                // for ~99% of sampled CPU time in a 30s window. The grouping only depends on provider
+                // identity tokens, which don't change mid-refresh-pass for a given author, so it's safe to
+                // compute once per author (keyed on the same authorBooksHint reference already used above)
+                // and reuse for every subsequent book saved in this pass.
+                // The grouping is reused only while the identity of every book it depends on is unchanged
+                // (see AuthorBooksHint.GetWorkGroups); a refresh can move or merge books in place mid-pass.
+                var workGroups = hintForAuthor != null && hintForAuthor.Count > 0
+                    ? authorBooksHint.GetWorkGroups(authorBooksById, BuildWorkGroups)
+                    : BuildWorkGroups(authorBooksById.Values.ToList());
+
+                foreach (var workGroup in workGroups)
                 {
                     ApplyMutationSyncForWorkGroup(author, workGroup, changedBookIds, authorStoredById, rootFolders);
                 }
@@ -1887,11 +1910,21 @@ namespace NzbDrone.Core.Books
 
         public void UpdateMany(List<Book> books)
         {
+            UpdateMany(books, authorBooksHint: null);
+        }
+
+        // PERF (chaptarr #163/#172): not part of IBookService - adding a second parameter to the
+        // interface method would force every hand-written IBookService test double in the suite to
+        // implement a matching overload it has no use for. RefreshBookService (the only caller that
+        // has this hint available) holds a concrete BookService reference check instead, so every other
+        // caller/test double is completely unaffected and keeps calling the interface method as before.
+        internal void UpdateMany(List<Book> books, AuthorBooksHint authorBooksHint)
+        {
             // Ensure unique TitleSlugs for duplicate books when updating
             EnsureUniqueTitleSlugs(books);
             books.ForEach(EnsureBookDbFields);
             var storedById = _bookRepository.Get(books.Select(book => book.Id)).ToDictionary(book => book.Id, CloneStoredBook);
-            var syncUpdates = GetSyncUpdatesForMutations(books, storedById);
+            var syncUpdates = GetSyncUpdatesForMutations(books, storedById, authorBooksHint);
             var booksToUpdate = books
                 .Concat(syncUpdates.Select(update => update.Book))
                 .GroupBy(book => book.Id)

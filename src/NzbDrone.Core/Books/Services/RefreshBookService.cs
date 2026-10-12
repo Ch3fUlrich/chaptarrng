@@ -98,6 +98,11 @@ namespace NzbDrone.Core.Books
             set => CurrentMatchedRemoteByLocalIdHint.Value = value;
         }
 
+        // The current author refresh's local books (and the work groups derived from them). AsyncLocal because this
+        // service is a singleton and RefreshAuthor commands for different authors run concurrently (they neither
+        // require disk access nor are type exclusive), so the hint must never be shared between refreshes.
+        private static readonly System.Threading.AsyncLocal<AuthorBooksHint> CurrentAuthorBooksHint = new System.Threading.AsyncLocal<AuthorBooksHint>();
+
         public RefreshBookService(IBookService bookService,
                                   IAuthorService authorService,
                                   IRootFolderService rootFolderService,
@@ -782,13 +787,24 @@ namespace NzbDrone.Core.Books
 
         protected override void SaveEntity(Book local)
         {
-            // Use UpdateMany to avoid firing the book edited event
-            _bookService.UpdateMany(new List<Book> { local });
+            // Use UpdateMany to avoid firing the book edited event.
+            // The hint-aware overload isn't on IBookService (see BookService.UpdateMany for why) - use it
+            // when the concrete type is available (always true in production DI), otherwise fall back to
+            // the plain interface call exactly as before.
+            if (_bookService is BookService concreteBookService)
+            {
+                concreteBookService.UpdateMany(new List<Book> { local }, CurrentAuthorBooksHint.Value);
+            }
+            else
+            {
+                _bookService.UpdateMany(new List<Book> { local });
+            }
         }
 
         protected override void DeleteEntity(Book local, bool deleteFiles)
         {
             _bookService.DeleteBook(local.Id, deleteFiles);
+            CurrentAuthorBooksHint.Value?.Remove(local.Id);
         }
 
         protected override List<Edition> GetRemoteChildren(Book local, Book remote)
@@ -1301,6 +1317,7 @@ namespace NzbDrone.Core.Books
         // resolves to a different, already-matching remote item) - an unfixable "N books updated" loop.
         public bool RefreshBookInfo(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate, Dictionary<int, Book> matchedRemoteByLocalIdHint)
         {
+            var previousMatchHint = _currentMatchedRemoteByLocalIdHint;
             _currentMatchedRemoteByLocalIdHint = matchedRemoteByLocalIdHint;
             try
             {
@@ -1308,11 +1325,24 @@ namespace NzbDrone.Core.Books
             }
             finally
             {
-                _currentMatchedRemoteByLocalIdHint = null;
+                _currentMatchedRemoteByLocalIdHint = previousMatchHint;
             }
         }
 
         private bool RefreshBookInfoCore(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
+        {
+            var previousHint = CurrentAuthorBooksHint.Value;
+            try
+            {
+                return RefreshBookInfoInner(books, remoteBooks, remoteData, forceBookRefresh, forceUpdateFileTags, lastUpdate);
+            }
+            finally
+            {
+                CurrentAuthorBooksHint.Value = previousHint;
+            }
+        }
+
+        private bool RefreshBookInfoInner(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
         {
             var updated = false;
             using var metadataCacheScope = BeginBookMetadataCacheScope();
@@ -1345,6 +1375,8 @@ namespace NzbDrone.Core.Books
 
                 books = deduped;
             }
+
+            CurrentAuthorBooksHint.Value = new AuthorBooksHint(books);
 
             // Group books by provider ID to ensure all books with same provider ID update together
             var groups = books
