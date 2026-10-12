@@ -7,9 +7,9 @@
 .table {
   composes: table from '~Components/Table/Table.css';
 
-  min-width: 100%;
+  min-width: 1280px;
 
-  max-width: 100%;
+  max-width: none;
   width: 100%;
   table-layout: fixed;
 }
@@ -24,6 +24,10 @@
 
 .table th:nth-child(3) {
   width: 76px;
+}
+
+.table th:nth-child(4) {
+  width: 280px;
 }
 
 .table th:nth-child(5) {
