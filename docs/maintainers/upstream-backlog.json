@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "0f3050c",
+  "forkHead": "f3d8105",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -788,10 +788,16 @@
       "title": "[BUG] Completed download remains ImportBlocked when destination file already exists",
       "url": "https://github.com/Chaptarr/chaptarr/issues/50",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [216, 238],
+      "implementationEvidence": [
+        "Commit f3d8105 adds opt-in adoption of non-identical untracked destinations, default adoption of byte-identical destinations, refusal for empty/uninspectable, tracked, upgrade/replacement, and generated-conversion cases, and a no-transfer database-registration path that leaves the destination unchanged.",
+        "Commit f3d8105 serializes library-dependent release-search commands against active disk-access work and queues a newly-added root folder's initial scan at high priority."
+      ],
+      "validationEvidence": [
+        "Added import fixtures for opt-in adoption, identical-file adoption, empty destination refusal, and upgrade refusal, plus command-queue fixtures for search/disk mutual exclusion. Tests were not run per the user's instruction.",
+        "git diff --check and JSON parsing passed."
+      ],
       "sourceUpdatedAt": "2026-10-03T15:04:19Z",
       "body": "**Describe the bug**\n\nA completed download cannot be imported when Chaptarr's calculated destination file already exists. The transfer throws `DestinationAlreadyExistsException`, and the queue remains at **Downloaded - Manual Import Required** / `ImportBlocked`.\n\nThis can happen when the EPUB is physically present in the library but is not registered against the book in Chaptarr's database, for example after an incomplete or overlapping library scan or an author/edition identity mismatch.\n\n**To Reproduce**\n\n1. Have a valid, non-empty book file at Chaptarr's calculated library destination, but no registered `BookFile` for the selected book/edition.\n2. Download the same book through Chaptarr.\n3. Allow the download client to complete it.\n4. Let completed-download handling attempt the automatic import.\n5. Observe that the import tries to transfer the download onto the existing destination and fails.\n\nExample:\n\n```text\nDownloaded - Manual Import Required\n\nLee Child - [Jack Reacher 06] - Without Fail (retail) (epub).epub\n\nImport failed: Destination\n/ebooks/Lee Child/Without Fail/Lee Child - Without Fail.epub\nalready exists.\n```\n\nRelevant log entry:\n\n```text\n2026-08-15 16:48:57.1|Error|ImportApprovedBooks|[CLEAN-IMPORT] Failed to import file:\nLee Child - [Jack Reacher 06] - Without Fail (retail) (epub).epub\n\nNzbDrone.Common.Disk.DestinationAlreadyExistsException:\nDestination /ebooks/Lee Child/Without Fail/Lee Child - Without Fail.epub already exists.\n```\n\nThe completed download is subsequently tracked as:\n\n```text\nClientState=Completed ChaptarrStage=ImportBlocked\n```\n\nThe same behavior was observed for five existing Lee Child titles in the same import run: *No Middle Name*, *The Enemy*, *In Too Deep*, *Without Fail*, and *Better Off Dead*.\n\n**Actual behavior**\n\n- The existing library file is preserved, which is safe.\n- The completed download remains blocked indefinitely.\n- The existing file is not registered against the matched book/edition.\n- The book may continue to appear missing and may be downloaded again.\n- The user must manually resolve the queue item.\n\n**Expected behavior**\n\nThere should be an opt-in Media Management setting for this collision case, for example **Keep existing library file on import conflict**.\n\nWhen enabled, and only when all safety checks pass, Chaptarr should:\n\n1. Keep the existing destination file without moving, copying, replacing, or deleting it.\n2. Register that destination as the book's file and associate it with the matched edition.\n3. Record the completed download as successfully imported so completed-download handling can finish normally.\n4. Leave cleanup of the duplicate download to the configured download-client cleanup behavior.\n\nThe adoption path should refuse the operation when:\n\n- the existing destination is empty or cannot be inspected;\n- it is already tracked to another edition;\n- the import is a normal upgrade/replacement with an existing registered file;\n- the source is a generated conversion;\n- the calculated destination is the same as the source.\n\nThe setting should default to disabled.\n\n**Related prevention**\n\nA search should not run concurrently with an initial library scan when doing so can make already-present files appear missing. Search commands that depend on current library state should wait for disk/library work to finish before release selection.\n\n**System Information**\n\n- Chaptarr Version: `v0.9.925.0`\n- Host OS: Unraid\n- Installation Method: Docker container on Unraid\n- Download client: SABnzbd\n\n**Related issue**\n\n- #49 tracks the separate duplicate-author merge failure involving `Authors.AudnexusAuthorId`. That identity problem can contribute to files being unregistered or associated with a different local author record, but import collision handling should be robust independently.\n",
       "comments": [
@@ -2922,10 +2928,14 @@
       "title": "[FEATURE] Adopt an identical untracked file at the managed destination instead of rejecting the import",
       "url": "https://github.com/Chaptarr/chaptarr/issues/238",
       "kind": "issue",
-      "auditStatus": "unreviewed",
-      "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "auditStatus": "implemented-awaiting-final-validation",
+      "relatedItems": [50, 216],
+      "implementationEvidence": [
+        "Commit f3d8105 compares source and destination size plus SHA-256 and registers the existing file without transferring or changing its bytes when they match."
+      ],
+      "validationEvidence": [
+        "Added a focused fixture asserting identical-file adoption, source retention, unchanged destination content, and the new BookFile path/size. Tests were not run per the user's instruction; git diff --check and JSON parsing passed."
+      ],
       "sourceUpdatedAt": "2026-10-03T19:50:57Z",
       "body": "## Problem\nWith #216 an automatic import onto a destination that is occupied by an untracked file (for example an orphan left by an earlier failed import) is rejected, which leaves the download blocked until someone removes the file by hand.\n\n## Suggested direction\nIf the untracked file at the destination is byte-identical (size and hash) to the incoming file, adopt it (create the BookFile row) instead of rejecting, so an interrupted import can complete. Found while reviewing #216.",
       "comments": [
@@ -8869,11 +8879,14 @@
       "url": "https://github.com/Chaptarr/chaptarr/pull/216",
       "kind": "pullRequest",
       "auditStatus": "implemented-awaiting-final-validation",
-      "relatedItems": [],
+      "relatedItems": [50, 238],
       "implementationEvidence": [
-        "Integrated reviewed upstream patch at fork commit 1e14107b114723b485fc8bf914c29462548b4007; subsequent integration fixes are retained in branch history."
+        "Integrated reviewed upstream patch at fork commit 1e14107b114723b485fc8bf914c29462548b4007; subsequent integration fixes are retained in branch history.",
+        "Commit f3d8105 preserves clear occupied-destination rejections while adding the safe adoption behavior requested by related issues #50 and #238."
       ],
-      "validationEvidence": [],
+      "validationEvidence": [
+        "Existing rejection fixtures remain in place; tests were not run per the user's instruction. Static diff and JSON validation passed."
+      ],
       "sourceUpdatedAt": "2026-10-03T15:37:06Z",
       "body": "Depends on #200 and on the equal-quality guard PR (`fix-equal-quality-duplicate-guard`); stacked on that branch.\n\n## Problem\nAn automatic import whose computed destination path already held a file that `filesToReplace` did not cover reached `CopyBookFile`/`MoveBookFile`, where `ClearTargetPath` throws `DestinationAlreadyExistsException` and the queue item ends as `IMPORT_EXCEPTION` (about 2,700 `DestinationAlreadyExists` errors logged in three days on a live instance). `filesToReplace` only covers rows of the same edition at a different path, so a destination occupied by an untracked file or by a row tracked for another edition of the same book was never caught.\n\n## Fix\n`ImportFile` checks the computed destination before any staging or transfer, for automatic imports only: a row tracked for this edition gives the existing already-imported rejection, a row for another edition or an untracked file gives a clear rejection naming the destination. Nothing is moved or deleted. Manual imports, forced downloads, relocations and genuine upgrades are unaffected.\n\n## Verification\n- Extended `ImportApprovedBooksAdditionalCopyFixture`.\n- Core tests pass (3,035 with the two PRs underneath).\n- Live: affected items are rejected with a message naming the destination instead of ending as `IMPORT_EXCEPTION`.\n\nThe destination check is skipped when the destination folder does not exist (nothing can occupy it), so ordinary imports do not pay for `FileExists`' path-resolution fallback, which lists every directory along a missing path. The transfer keeps its own check.\n- Adds `automatic_import_into_a_folder_that_does_not_exist_should_not_probe_the_destination_file` (records `FileExists` calls; failed with 1 probe, passes with 0) (3,038 core tests pass).\n",
       "comments": [
