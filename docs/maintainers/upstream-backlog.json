@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
-  "snapshotAt": "2026-10-12T20:21:35+00:00",
-  "forkHead": "1c9f53a",
+  "snapshotAt": "2026-10-12T20:26:02+00:00",
+  "forkHead": "223a874",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -3801,10 +3801,16 @@
       "title": "[FEATURE] Quality color of red is so dark I can't read the black text it's highlighting...",
       "url": "https://github.com/Chaptarr/chaptarr/issues/309",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit 223a874 keeps the base Label.css class when a custom class is supplied, restoring the label foreground color on queue quality badges; the screenshot showed the dark-red background with inherited dark text.",
+        "Release note 20261012-queue-label-contrast-and-indexer-names.md records the visible change."
+      ],
+      "validationEvidence": [
+        "Production webpack build passed with 18 non-fatal MiniCssExtractPlugin CSS-order warnings in existing lazy chunks.",
+        "Frontend TypeScript checks, ESLint for changed JavaScript, Stylelint for changed stylesheets, and the release-note preview passed."
+      ],
       "sourceUpdatedAt": "2026-10-11T13:06:50Z",
       "body": "[FEATURE] Quality color of red is so dark I can't read the black text it's highlighting...\nI have attached a screenshot...\n\n<img width=\"2328\" height=\"70\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/2f4d9c34-f9d4-4f60-bf4e-c44e2a71fc35\" />",
       "comments": []
@@ -3823,10 +3829,16 @@
       "title": "[BUG] The Indexer column during Interactive Search seems to cut names longer than 6 characters",
       "url": "https://github.com/Chaptarr/chaptarr/issues/310",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit 223a874 widens the Interactive Search Indexer column from 82px to 180px, wraps long names instead of truncating them, and exposes the complete name through the cell title.",
+        "Release note 20261012-queue-label-contrast-and-indexer-names.md records the visible change."
+      ],
+      "validationEvidence": [
+        "Production webpack build passed with 18 non-fatal MiniCssExtractPlugin CSS-order warnings in existing lazy chunks.",
+        "Frontend TypeScript checks, ESLint for changed JavaScript, Stylelint for changed stylesheets, and the release-note preview passed."
+      ],
       "sourceUpdatedAt": "2026-10-11T19:22:25Z",
       "body": "This is a design related bug.\n\nFor cases where the user has more than one indexer that start with the same first six characters it is impossible for them to tell which of those indexers will be used when choosing an option during Interactive Search. For example one may have multiple ones that start with \"Jackett-\". My screenshot below does not show this exact case in action but just the point which is that the characters are cut off.\n\nSeeing this for the first time I reached out to try and expand the column which you can't and then my natural response from there was to hover over the specific indexers hoping for a tooltip to give the full name but that is also not there.\n\nI'd prefer if the full name is simply shown though as in the other ARRs.\n\n**To Reproduce**\nSteps to reproduce the behavior:\n1. Go to any book\n2. Click on Interactive Search\n4. See the problem\n\n**Expected behavior**\nA clear and concise description of what you expected to happen.\n\n**Screenshots**\n<img width=\"1740\" height=\"388\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f08ba61b-dc16-4f50-9433-2f1a927bd7e7\" />\n\n**System Information:**\n - OS: chaptarr/chaptarr:develop on UnRaid 7.3.3\n - Chaptarr Version: 0.9.965.0\n - Installation Method: Docker\n - Browser: Brave\n",
       "comments": []
