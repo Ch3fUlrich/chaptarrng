@@ -19,7 +19,7 @@
 ## ChaptarrNG boundaries and invariants
 
 - ChaptarrNG is a standalone combined ebook and audiobook manager descended from Chaptarr and Readarr. SeerrNG remains an optional integration.
-- Treat Chaptarr/Chaptarr upstream as a read-only reference. Keep existing upstream copyright headers on upstream files and use the documented fork attribution for new fork-owned files.
+- Treat the original Chaptarr and Readarr repositories as read-only references. Keep existing upstream copyright headers on upstream files and use the documented fork attribution for new fork-owned files.
 - Preserve the compatible Chaptarr API identity used by existing clients. ChaptarrNG is the repository and release identity; do not rename compatibility identifiers without a documented compatibility decision.
 - Keep the selected ebook or audiobook format and durable metadata-provider identity attached through lookup, search, add, monitoring, pending import, and library reads. Provider IDs are external identities; local database row IDs are not.
 - Pending author preparation may be shared by multiple active requests. Retry or cancel only when the operation is still safe for every request that depends on it; do not remove another request's work.
