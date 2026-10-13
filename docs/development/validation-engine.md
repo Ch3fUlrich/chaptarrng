@@ -94,10 +94,11 @@ The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same
 checkout. Linux direct-download tests need the Playwright Chromium cache. CI
 installs it in a run-specific cache and passes only that cache path to the NUnit
-task. The self-hosted Linux runner also points `AQUA_ROOT_DIR` inside the
-private job directory so Aqua-managed tools such as PowerShell do not write to
-the shared runner installation. Local Linux runs should set PLAYWRIGHT_BROWSERS_PATH for both browser
-installation and the trusted launcher; the launcher mounts the cache read-only.
+task. The self-hosted Linux runner invokes PowerShell through Aqua with
+`AQUA_ROOT_DIR` inside the private job directory, so package downloads do not
+write to the shared runner installation. Local Linux runs should set
+`PLAYWRIGHT_BROWSERS_PATH` for both browser installation and the trusted
+launcher; the launcher mounts the cache read-only.
 The engine passes the cache path only to the Core task and keeps its per-task
 home, temporary, XDG, and environment settings private. The PostgreSQL task is
 GitHub-only and assigned to the dedicated PostgreSQL node: CI supplies three

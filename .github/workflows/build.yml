@@ -253,7 +253,40 @@ jobs:
       if: runner.os == 'Linux' && runner.environment == 'self-hosted'
       env:
         PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
-      run: pwsh ./_tests/net10.0/playwright.ps1 install chromium
+      shell: bash
+      run: |
+        set -euo pipefail
+        pwsh_command="$(command -v pwsh)"
+        read -r -N 2 magic < "$pwsh_command" || true
+        aqua_root=''
+        aqua_config=''
+        aqua_policy_config=''
+        if [[ "$magic" == '#!' ]]; then
+          aqua_root="$(sed -n 's/^export AQUA_ROOT_DIR="\([^"]*\)"$/\1/p' "$pwsh_command" | head -n 1)"
+          aqua_config="$(sed -n 's/^export AQUA_CONFIG="\([^"]*\)"$/\1/p' "$pwsh_command" | head -n 1)"
+          aqua_policy_config="$(sed -n 's/^export AQUA_POLICY_CONFIG="\([^"]*\)"$/\1/p' "$pwsh_command" | head -n 1)"
+        fi
+
+        if [[ -n "$aqua_root" ]]; then
+          [[ "$aqua_root" == /* && "$aqua_root" != *$'\n'* && -x "$aqua_root/bin/aqua" ]] \
+            || { echo 'The PowerShell Aqua wrapper has an invalid Aqua installation path.' >&2; exit 1; }
+          [[ -n "$aqua_config" && "$aqua_config" == /* && "$aqua_config" != *$'\n'* && -r "$aqua_config" ]] \
+            || { echo 'The PowerShell Aqua wrapper has no readable Aqua configuration.' >&2; exit 1; }
+          [[ -n "${PRIVATE_RUNNER_TEMP:-}" && -d "$PRIVATE_RUNNER_TEMP" ]] \
+            || { echo 'Private runner temporary storage is unavailable.' >&2; exit 1; }
+
+          export AQUA_ROOT_DIR="$PRIVATE_RUNNER_TEMP/aqua"
+          export AQUA_CONFIG="$aqua_config"
+          if [[ -n "$aqua_policy_config" ]]; then
+            [[ "$aqua_policy_config" == /* && "$aqua_policy_config" != *$'\n'* && -r "$aqua_policy_config" ]] \
+              || { echo 'The PowerShell Aqua wrapper has an invalid policy configuration.' >&2; exit 1; }
+            export AQUA_POLICY_CONFIG="$aqua_policy_config"
+          fi
+
+          "$aqua_root/bin/aqua" exec -- pwsh ./_tests/net10.0/playwright.ps1 install chromium
+        else
+          pwsh ./_tests/net10.0/playwright.ps1 install chromium
+        fi
 
     - name: Install Chromium and system dependencies on GitHub-hosted Linux
       if: runner.os == 'Linux' && runner.environment != 'self-hosted'
