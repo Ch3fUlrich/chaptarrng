@@ -2828,7 +2828,7 @@ namespace NzbDrone.Core.Books
                     throw new InvalidOperationException($"Edition {selection.EditionId} does not belong to book {bookId}");
                 }
 
-                if (!IsWantedFormatEdition(selectedEdition, mediaType))
+                if (IsKnownFormatMismatch(selectedEdition, mediaType))
                 {
                     throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match media type {mediaType}");
                 }
@@ -2862,6 +2862,11 @@ namespace NzbDrone.Core.Books
         private static bool IsWantedFormatEdition(Edition edition, BookMediaType mediaType)
         {
             return mediaType == BookMediaType.Audiobook ? edition?.ReadingFormatId == 2 : edition != null && edition.ReadingFormatId != 2;
+        }
+
+        private static bool IsKnownFormatMismatch(Edition edition, BookMediaType mediaType)
+        {
+            return edition?.ReadingFormatId != null && !IsWantedFormatEdition(edition, mediaType);
         }
 
         private static bool SameLanguage(string editionLanguage, string canonical)
@@ -2908,6 +2913,11 @@ namespace NzbDrone.Core.Books
             if (selectedEdition.BookId != baseBook.Id)
             {
                 throw new InvalidOperationException($"Edition {editionId} does not belong to book {bookId}");
+            }
+
+            if (IsKnownFormatMismatch(selectedEdition, baseBook.MediaType))
+            {
+                throw new InvalidOperationException($"Edition {editionId} does not match media type {baseBook.MediaType}");
             }
 
             return AddWantedEditionForEdition(baseBook, selectedEdition, baseBook.MediaType, Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language), asNewVariant, asNewVariant).Book;

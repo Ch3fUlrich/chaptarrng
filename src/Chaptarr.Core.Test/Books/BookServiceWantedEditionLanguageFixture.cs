@@ -349,6 +349,87 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void AddWantedEdition_EditionIdWithUnknownFormat_IsAccepted()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var englishEdition = new Edition { Id = 101, BookId = 20, Title = "English", ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var germanEdition = new Edition { Id = 102, BookId = 20, Title = "German", ForeignEditionId = "ger-1", ReadingFormatId = null, Monitored = false, Language = "deu" };
+
+            var baseBook = new Book
+            {
+                Id = 20,
+                AuthorId = author.Id,
+                Title = "Test Book",
+                TitleSlug = "test-book",
+                MediaType = BookMediaType.Audiobook,
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
+                Editions = new List<Edition> { englishEdition, germanEdition }
+            };
+
+            var editions = new InMemoryEditionService();
+            editions.Seed(baseBook.Id, englishEdition, germanEdition);
+
+            var repo = new InMemoryBookRepository(baseBook);
+            var mediaFiles = new StubMediaFileService();
+
+            var sut = new BookService(
+                repo,
+                editions,
+                new StubEventAggregator(),
+                new StubAuthorService(author),
+                mediaFiles,
+                rootFolderService: null,
+                seriesBookLinkRepository: null,
+                multiCopySeriesService: new StubMultiCopySeriesService(),
+                logger: LogManager.GetCurrentClassLogger());
+
+            var result = sut.AddWantedEdition(baseBook.Id, new WantedEditionSelection { EditionId = germanEdition.Id, AsNewVariant = true });
+
+            Assert.That(result.Created, Is.True);
+            Assert.That(result.Book.Id, Is.Not.EqualTo(baseBook.Id));
+        }
+
+        [Test]
+        public void AddWantedEdition_LegacyEditionIdWithOtherFormat_Throws()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var englishEdition = new Edition { Id = 101, BookId = 20, Title = "English", ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var germanEdition = new Edition { Id = 102, BookId = 20, Title = "German", ForeignEditionId = "ger-1", ReadingFormatId = 2, Monitored = false, Language = "deu" };
+
+            var baseBook = new Book
+            {
+                Id = 20,
+                AuthorId = author.Id,
+                Title = "Test Book",
+                TitleSlug = "test-book",
+                MediaType = BookMediaType.Ebook,
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
+                Editions = new List<Edition> { englishEdition, germanEdition }
+            };
+
+            var editions = new InMemoryEditionService();
+            editions.Seed(baseBook.Id, englishEdition, germanEdition);
+
+            var repo = new InMemoryBookRepository(baseBook);
+            var mediaFiles = new StubMediaFileService();
+
+            var sut = new BookService(
+                repo,
+                editions,
+                new StubEventAggregator(),
+                new StubAuthorService(author),
+                mediaFiles,
+                rootFolderService: null,
+                seriesBookLinkRepository: null,
+                multiCopySeriesService: new StubMultiCopySeriesService(),
+                logger: LogManager.GetCurrentClassLogger());
+
+            Assert.Throws<InvalidOperationException>(() => sut.AddWantedEdition(baseBook.Id, germanEdition.Id));
+        }
+
+        [Test]
         public void AddWantedEdition_Language_CreatesEbookVariantRow()
         {
             var author = new Author { Id = 1, Name = "Test Author" };
