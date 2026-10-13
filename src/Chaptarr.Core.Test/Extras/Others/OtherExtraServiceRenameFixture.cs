@@ -17,6 +17,8 @@ namespace Chaptarr.Core.Test.Extras.Others
         private const string AuthorFolder = "/library/Zogarth";
         private const string NewBookFolder = AuthorFolder + "/The Primal Hunter/01 - Primal Hunter 1";
 
+        private static string NormalizePath(string path) => path?.Replace('\\', '/');
+
         [Test]
         public void should_rename_an_extra_that_a_folder_move_carried_under_its_old_name()
         {
@@ -70,16 +72,17 @@ namespace Chaptarr.Core.Test.Extras.Others
                 switch (targetMethod?.Name)
                 {
                     case nameof(IDiskProvider.FileExists):
-                        return Disk.Files.Contains((string)args[0]);
+                        return Disk.Files.Contains(NormalizePath((string)args[0]));
                     case nameof(IDiskProvider.MoveFile):
-                        var source = (string)args[0];
+                        var source = NormalizePath((string)args[0]);
                         if (!Disk.Files.Remove(source))
                         {
                             throw new System.IO.FileNotFoundException("File doesn't exist: " + source);
                         }
 
-                        Disk.Files.Add((string)args[1]);
-                        Disk.Moves.Add($"{source} -> {args[1]}");
+                        var destination = NormalizePath((string)args[1]);
+                        Disk.Files.Add(destination);
+                        Disk.Moves.Add($"{source} -> {destination}");
                         return null;
                     default:
                         throw new NotImplementedException($"Test proxy does not implement IDiskProvider.{targetMethod?.Name}");
