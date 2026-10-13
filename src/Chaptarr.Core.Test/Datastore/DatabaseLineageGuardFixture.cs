@@ -1,8 +1,10 @@
 using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
+using NLog;
 using NUnit.Framework;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace Chaptarr.Core.Test.Datastore
 {
@@ -40,6 +42,27 @@ namespace Chaptarr.Core.Test.Datastore
             Create($"CREATE TABLE Authors (Id INTEGER PRIMARY KEY, {columns}); CREATE TABLE VersionInfo (Version INTEGER); INSERT INTO VersionInfo VALUES (46);");
             var before = File.ReadAllBytes(_path);
             Assert.Throws<InvalidDataException>(() => DatabaseLineageGuard.Validate(ConnectionString, DatabaseType.SQLite));
+            Assert.That(File.ReadAllBytes(_path), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void should_reject_bookshelf_schema_before_numbered_migrations_without_changing_bytes()
+        {
+            Create(@"
+                CREATE TABLE AuthorMetadata (Id INTEGER PRIMARY KEY, ForeignAuthorId TEXT);
+                CREATE TABLE Authors (Id INTEGER PRIMARY KEY, CleanName TEXT, Path TEXT, EbookPath TEXT, AudiobookPath TEXT, AuthorMetadataId INTEGER);
+                CREATE TABLE Books (Id INTEGER PRIMARY KEY, AuthorMetadataId INTEGER, ForeignBookId TEXT, Title TEXT);
+                CREATE TABLE VersionInfo (Version INTEGER, AppliedOn TEXT, Description TEXT);
+                INSERT INTO VersionInfo VALUES (46, '2026-10-13T00:00:00', 'BookshelfNG source schema');");
+
+            var before = File.ReadAllBytes(_path);
+            var migrationController = new MigrationController(LogManager.GetLogger(nameof(DatabaseLineageGuardFixture)), null);
+
+            Assert.Throws<InvalidDataException>(() => migrationController.Migrate(
+                ConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite));
+
             Assert.That(File.ReadAllBytes(_path), Is.EqualTo(before));
         }
 
