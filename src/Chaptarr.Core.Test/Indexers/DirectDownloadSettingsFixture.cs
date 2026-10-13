@@ -19,6 +19,8 @@ namespace Chaptarr.Core.Test.Indexers
                 return new();
             }
 
+            public string GetCurrentLocale() => "en";
+
             public string GetLocalizedString(string phrase)
             {
                 return phrase;

@@ -23,7 +23,7 @@ namespace Chaptarr.Api.V1.Localization
         [HttpGet]
         public string GetLocalizationDictionary()
         {
-            return JsonSerializer.Serialize(_localizationService.GetLocalizationDictionary().ToResource(), _serializerSettings);
+            return JsonSerializer.Serialize(_localizationService.GetLocalizationDictionary().ToResource(_localizationService.GetCurrentLocale()), _serializerSettings);
         }
     }
 }

@@ -251,6 +251,7 @@ Stable releases from the application repository's `main` branch publish the
 
 
 ## Documentation
+- [UI localization roadmap](docs/localization-roadmap.md): current locale order, translated high-use strings, and remaining catalog work
 
 - Default ChaptarrNG web UI: http://localhost:8789
 - Default username/password: Set on first launch
