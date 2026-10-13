@@ -20,6 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validation } from './config.mjs';
+import { requireTrustedLocalTestSandbox } from './trusted-sandbox.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const INHERITED_ENVIRONMENT_KEYS = new Set([
@@ -28,7 +29,9 @@ const INHERITED_ENVIRONMENT_KEYS = new Set([
   'MISE_HOME', 'NVM_DIR', 'PATH', 'PATHEXT', 'VOLTA_HOME', 'SYSTEMROOT',
   'TZ', 'WINDIR',
 ]);
-const APPROVED_TASK_PASS_ENVIRONMENT = new Map();
+const APPROVED_TASK_PASS_ENVIRONMENT = new Map([
+  ['dotnet-core-tests', new Set(['PLAYWRIGHT_BROWSERS_PATH'])],
+]);
 const MAX_OUTPUT = 1024 * 1024;
 const PROGRESS_INTERVAL_MS = 60_000;
 
@@ -692,6 +695,9 @@ async function main(argv = process.argv.slice(2)) {
       for (const task of plan.tasks) process.stdout.write(`${task.selected ? '[selected]' : '[excluded]'} ${task.id}: ${task.name}${task.reason ? ` (${task.reason})` : ''}\n`);
     }
     return 0;
+  }
+  if (plan.tasks.some((task) => task.selected && task.kind === 'test')) {
+    requireTrustedLocalTestSandbox();
   }
   const result = await execute(plan);
   process.stdout.write(`${JSON.stringify({ repository: validation.repository, status: result.receipt.status, totals: result.receipt.totals, evidenceDirectory: result.runRoot }, null, 2)}\n`);

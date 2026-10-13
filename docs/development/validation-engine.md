@@ -39,10 +39,27 @@ unset SIXLABORS_LICENSE_KEY
 if [ "$(uname -s)" = Linux ]; then
   export PLAYWRIGHT_BROWSERS_PATH="$(mktemp -d "${TMPDIR:-/tmp}/chaptarr-playwright.XXXXXX")"
   pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
+else
+  export PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright"
+  pwsh ./_tests/net10.0/playwright.ps1 install chromium
 fi
-node scripts/validation-engine/engine.mjs --plan --tests-only --json
-node scripts/validation-engine/engine.mjs --tests-only
+TRUSTED_LAUNCHER=/path/to/trusted-test-launcher.mjs
+node "$TRUSTED_LAUNCHER" "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --plan --tests-only --json
+node "$TRUSTED_LAUNCHER" "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --tests-only
 ```
+
+Local execution of test tasks requires the trusted Linux bubblewrap launcher.
+For a branch you have not reviewed, copy `trusted-test-launcher.mjs` from a
+reviewed revision to a location outside the checkout, then run:
+
+```sh
+node /path/to/trusted-test-launcher.mjs "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --tests-only
+```
+
+The optional Playwright cache is mounted read-only. Run planning for an
+unreviewed candidate through the same launcher because planning imports its
+validation configuration. GitHub Actions remains responsible for hosted
+validation.
 
 During a run, the engine writes a compact task summary to stderr when each task
 starts and finishes, then once per minute while a task is still running. The
@@ -62,9 +79,14 @@ does not enter the build context, image layers, or image metadata.
 
 The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same
-checkout. Linux also requires the Playwright Chromium setup from CI when direct
-download tests run. The PostgreSQL task is GitHub-only and assigned to the
-dedicated PostgreSQL node: CI supplies three throwaway databases from its
+checkout. Linux direct-download tests need the Playwright Chromium cache. CI
+installs it in a run-specific cache and passes only that cache path to the NUnit
+task. Local Linux runs should set PLAYWRIGHT_BROWSERS_PATH for both browser
+installation and the trusted launcher; the launcher mounts the cache read-only.
+The engine passes the cache path only to the Core task and keeps its per-task
+home, temporary, XDG, and environment settings private. The PostgreSQL task is
+GitHub-only and assigned to the dedicated PostgreSQL node: CI supplies three
+throwaway databases from its
 PostgreSQL service, while ordinary platform nodes select only the NUnit task.
 
 ## Receipt contract
