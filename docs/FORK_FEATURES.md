@@ -234,12 +234,15 @@ data, security, and packaging checks.
 
 The data row has known structural blockers: BookshelfNG separates `Authors`
 and `AuthorMetadata`, and one source book may split into multiple
-media-specific Chaptarr books; source download history has no `BookId` although
-the target requires one; source blocklists use local IDs while Chaptarr requires
-provider-qualified IDs; and source extra-file rows may have no `BookFileId`
-although the target schema requires one. Conversion must define durable,
-lossless mappings for each case and test them with populated fixtures before
-the data-compatibility blocker can close.
+media-specific Chaptarr books. Source `DownloadHistory` has no `BookId`; the
+target uses `BookId = 0` for events with no known book, so conversion can retain
+it as author/download state if `AuthorId`, event order, download IDs, release,
+and data are preserved and replay behavior is tested. The user-visible `History`
+table is separate and needs its own event and ID mapping. Source blocklists use
+local IDs while Chaptarr requires provider-qualified IDs, and source extra-file
+rows may have no `BookFileId` although the target schema requires one.
+Conversion must define durable, lossless mappings for each case and test them
+with populated fixtures before the data-compatibility blocker can close.
 
 All gates are open until tested against a supported upstream release. The
 current upstream comparison is pinned above; it does not prove equivalence for
@@ -249,11 +252,14 @@ are recorded in its
 and [feature matrix](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
 At candidate `d763525`, the unpublished consolidation worktree passed 3,966 of
 3,969 Chaptarr Core tests (3 skipped), including 36 focused preference and
-matching tests. Current PR #73 head `a4d8ad9` adds a migration-controller
-regression; its focused database-lineage fixture passes 8/8 locally and proves
-a Bookshelf-shaped SQLite database is rejected before numbered migrations
-without changing source bytes. The full Core suite has not been rerun on this
-head, and hosted checks are queued. These results validate code paths and
+matching tests. The consolidation PR's migration-controller regression
+fixture passes 8/8 locally and proves a Bookshelf-shaped SQLite database is
+rejected before numbered migrations without changing source bytes. The current
+local candidate's focused `DownloadHistoryServiceDownloadIdCasingFixture`
+passes 3/3, including tests for imported and newer-grab events that use
+`BookId = 0`; this verifies target replay semantics, not a converter. The full
+Core suite has not been rerun on the current candidate, and hosted checks have
+not yet run for these latest changes. These results validate code paths and
 fail-closed behavior, not feature parity or conversion. The published
 `v0.9.969` release has no populated BookshelfNG converter or channel bridge.
 Until conversion, parity, consumer probes, and the applicable channel upgrades
