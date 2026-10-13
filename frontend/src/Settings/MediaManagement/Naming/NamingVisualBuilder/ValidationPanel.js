@@ -6,6 +6,16 @@ import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import styles from './ValidationPanel.css';
 
+function getErrorMessage(error) {
+  const messages = {
+    CONSECUTIVE_FOLDERS: translate('NamingBuilderErrorConsecutiveFolderSeparators'),
+    EMPTY_GROUP: translate('NamingBuilderErrorEmptyGroup'),
+    INVALID_TOKEN: translate('NamingBuilderErrorMissingToken')
+  };
+
+  return messages[error.code] || error.message || error.code || translate('NamingBuilderErrorGeneral');
+}
+
 function ValidationPanel({ validation, isLoading }) {
   if (isLoading) {
     return (
@@ -47,7 +57,7 @@ function ValidationPanel({ validation, isLoading }) {
           <ul className={styles.errorList}>
             {errors.map((error, index) => (
               <li key={index} className={styles.errorItem}>
-                {error.message}
+                {getErrorMessage(error)}
                 {error.path && (
                   <span className={styles.errorPath}>
                     {translate('NamingBuilderErrorAtPath', { path: error.path })}
