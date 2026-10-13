@@ -309,6 +309,7 @@ dotnet _output/publish/Chaptarr.Console.dll
 Note: the inherited assembly is named `Chaptarr.dll` on Linux/macOS and `Chaptarr.Console.dll` on Windows.
 
 ## Documentation
+- [UI localization roadmap](docs/localization-roadmap.md): current locale order, translated high-use strings, and remaining catalog work
 
 - Default ChaptarrNG web UI: http://localhost:8789
 - Default username/password: Set on first launch

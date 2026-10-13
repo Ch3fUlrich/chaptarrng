@@ -49,8 +49,21 @@ node "$TRUSTED_LAUNCHER" "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -
 ```
 
 Local execution of test tasks requires the trusted Linux bubblewrap launcher.
-For a branch you have not reviewed, copy `trusted-test-launcher.mjs` from a
-reviewed revision to a location outside the checkout, then run:
+For a branch you have not reviewed, copy `trusted-test-launcher.mjs` and
+`trusted-test-sandbox-policy.mjs` from the same reviewed revision to a location
+outside the checkout, keeping them together. The launcher snapshots only paths
+in the Git index, hides the original checkout and common host configuration and
+data roots, and runs candidate code offline. Dotted and extensionless credential
+names, private/API keys, access/refresh-token names, client-secret names, and
+credential material with source-like extensions are excluded. Source modules
+under credential folders remain available unless their own names identify
+credential material. Stage new candidate files first.
+Suffixed dotenv credentials such as tokens.env.local are excluded, while
+example templates such as tokens.env.example remain available.
+It opens each workspace, run-data, dependency, cache, and marker source before
+the sandbox masks host paths, then binds those pinned sources by inherited file
+descriptor. Each persisted task log is capped at 16 MiB and ends with a marker
+when output was truncated.
 
 ```sh
 node /path/to/trusted-test-launcher.mjs "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --tests-only

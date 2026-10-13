@@ -15,6 +15,14 @@ export async function fetchTranslations(): Promise<boolean> {
     try {
       const data = await getTranslations();
       translations = data.Strings;
+      if (typeof data.Locale === 'string') {
+        const locale = data.Locale.replace(/_/g, '-');
+        document.documentElement.lang = locale;
+        const language = locale.toLowerCase().split('-', 1)[0];
+        document.documentElement.dir = ['ar', 'dv', 'fa', 'he', 'ku', 'ps', 'sd', 'ug', 'ur', 'yi'].includes(language)
+          ? 'rtl'
+          : 'ltr';
+      }
 
       resolve(true);
     } catch (error) {

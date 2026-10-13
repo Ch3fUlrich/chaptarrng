@@ -20,6 +20,8 @@ namespace NzbDrone.Core.Localization
     {
         Dictionary<string, string> GetLocalizationDictionary();
 
+        string GetCurrentLocale();
+
         string GetLocalizedString(string phrase);
         string GetLocalizedString(string phrase, Dictionary<string, object> tokens);
     }
@@ -45,6 +47,11 @@ namespace NzbDrone.Core.Localization
             _appFolderInfo = appFolderInfo;
             _cache = cacheManager.GetCache<Dictionary<string, string>>(typeof(Dictionary<string, string>), "localization");
             _logger = logger;
+        }
+
+        public string GetCurrentLocale()
+        {
+            return GetSetLanguageFileName().Replace('_', '-');
         }
 
         public Dictionary<string, string> GetLocalizationDictionary()

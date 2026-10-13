@@ -41,7 +41,6 @@ SeerrNG: the built-in Direct Download indexer/client, authenticated encryption
 for full backup archives, fork-owned release images, and the fork's Unraid
 package. Chaptarr has its own encrypted quick-start settings backup; the
 full-backup capability is the distinction recorded here.
-
 The sections below also cover the maintained import, metadata, external-library,
 and developer-validation additions. They are separate from the SeerrNG contract
 and can be used without SeerrNG.
@@ -281,7 +280,6 @@ changelog summarize user-facing changes and required operator actions.
 The fork also maintains an [Unraid Community Applications
 package](https://github.com/snapetech/chaptarrng-unraid). Check its instructions
 for supported architectures, paths, and upgrade steps.
-
 ## ChaptarrNG retirement blockers
 
 Retiring BookshelfNG into ChaptarrNG and retiring ChaptarrNG into upstream
@@ -309,7 +307,7 @@ or reduce ChaptarrNG's own released or actively developed blockers.
 | --- | --- | --- |
 | BookshelfNG capabilities carried into ChaptarrNG | Every capability and material enhancement in the BookshelfNG parity roadmap, including its settings, persisted data, identities, clients, and integrations | Demonstrate equivalent behavior on the supported upstream release, including converted data and existing client configurations; pass each row's acceptance checks. |
 | ChaptarrNG released features | Every capability ChaptarrNG introduced, materially extended, or maintains in this guide and the released changelog, including the SeerrNG contract, Direct Download, full-backup encryption, security behavior, and fork-specific operations | Show the behavior in a supported upstream release and validate the relevant APIs, security boundaries, operator workflows, and clients. |
-| ChaptarrNG active and unreleased features | The pinned feature snapshot at `22078e0` is 315 commits ahead and 0 behind `origin/main` at `a6be38d`, across 703 changed paths. Open work also includes PR #72 (Indonesian and Traditional Chinese choices; AudioBookShelf root-mapping and audiobook-mode translations; locale direction metadata), draft PR #73 (BookshelfNG metadata preferences), and PR #74 (proposed YunoHost distribution removal). The itemized capability set follows below. | Preserve or replace each row in a supported upstream release and pass its acceptance checks. Re-pin whenever the branch, PRs, or maintained local work changes. |
+| ChaptarrNG active and unreleased features | The implementation and upstream audit ledger remain incomplete. PR #71 (maintainer guidance), PR #72 (localization), and PR #74 (YunoHost publishing retirement) have merged; draft PR #73 adds BookshelfNG metadata preferences and still requires passing cross-platform validation. The itemized capability set follows below. | Preserve or replace each row in a supported upstream release and pass its acceptance checks. Keep the ledger current as active work changes. |
 | Remaining fork-only source changes | Every post-fork source change not already accounted for by the capability rows, including fixes, migrations, APIs, security, build, and platform behavior | Disposition every changed path as retained, ported, or replaced by a verified equivalent. A path count is not feature parity. |
 | Release and installation channels | Each ChaptarrNG release, image, package, updater, and supported upgrade path, plus any channel carrying a migrated BookshelfNG installation | Test the exact published upgrade, configuration/data migration, rollback, and client/update continuity for each channel. |
 
@@ -344,16 +342,15 @@ review of fixes, migrations, build changes, or deletions.
 | Prometheus metrics | Separate optional listener with low-cardinality queue, health, task, and import metrics | Preserve disabled-by-default exposure, metric names/types, and bounded labels. |
 | Large-library and background-operation behavior | Paged/virtualized views, bounded query work, batched reconciliation, fair download processing, and cancellable background commands | Run scale fixtures and verify query bounds, concurrency, progress, cancellation, and consistent state. |
 | Frontend performance and usability | React Query, route code splitting, mobile search/toolbar adjustments, and upstream bundle optimizations | Preserve loading/error behavior, keyboard/mobile access, route boundaries, and browser tests. |
-| Localization and locale-aware UI | Open PR #72 exposes Indonesian and Traditional Chinese; adds AudioBookShelf root-mapping messages and audiobook-library-mode translations; updates language/resource lookup and locale direction metadata; and documents the localization roadmap. All hosted build, security, PostgreSQL, and release-note checks pass on its current head. | Keep these additions in the cumulative blocker set. Complete language review and browser/layout acceptance for affected locales before treating localization parity as closed. |
-| Release and distribution behavior | Fork-owned releases/images, Unraid packaging, platform build support, and the YunoHost removal proposed in PR #74 | Disposition every supported channel change; a removal is not a bridge for existing installations and needs an explicit compatibility plan. |
+| Localization and locale-aware UI | Merged PR #72 adds Indonesian and Traditional Chinese, AudioBookShelf root-mapping and audiobook-mode translations, language/resource lookup updates, locale-direction metadata, and the localization roadmap. | Keep these additions in the cumulative blocker set. Complete language review and browser/layout acceptance for affected locales before treating localization parity as closed. |
+| Release and distribution behavior | Fork-owned releases/images, Unraid packaging, platform build support, and the merged retirement of YunoHost publishing automation and packaging | Disposition every supported channel change; previously published YunoHost assets and the external package repository were left untouched. |
 | Security, migrations, and compatibility fixes | API, import, authentication, database, dependency, container, and platform changes in the active source tree | Review every security boundary and migration; run the required platform and rollback checks. |
-| CI, validation, and maintainer workflow changes | Hosted-runner and validation contracts, plus open infrastructure PRs #69 and #71 | Retain source-bound validation, clean hosted evidence, and reproducible maintainer workflows. |
+| CI, validation, and maintainer workflow changes | Hosted-runner isolation, validation contracts, and the maintainer guidance added by merged PR #71 | Retain source-bound validation, clean hosted evidence, and reproducible maintainer workflows. |
 | Remaining post-fork changes | All other active-branch changes not already represented above | Disposition every changed path as retained, ported, or replaced by verified behavior; a path count alone is not parity. |
 
-PR #73's current head is `6fa426c`: the Linux Core suite passed 3,972 tests
-with no failures after normalizing path separators at three fake-filesystem
-test boundaries. Its fresh hosted Windows and other checks are still running;
-the PR remains a draft until those checks and review finish.
+Draft PR #73 adds weighted metadata terms and preferred-series selection.
+It remains an active blocker while its cross-platform validation and the
+remaining data-migration requirements are evaluated.
 
 ## Release history
 

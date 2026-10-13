@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, statSync, w
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { createPlan, createShortTemporaryPathAlias, currentRepoFiles, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
+import { createPlan, createShortTemporaryPathAlias, currentRepoFiles, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, runTask, sha256GitText } from './engine.mjs';
 import { validation } from './config.mjs';
 
 function withEnvironmentVariable(name, value, action) {
@@ -95,6 +95,28 @@ test('source fingerprints normalize Git text line endings across runner operatin
   const crlf = Buffer.from('first line\r\nsecond line\r\n');
   assert.equal(sha256GitText(lf), sha256GitText(crlf));
   assert.notEqual(sha256GitText(lf), sha256GitText(Buffer.from('first line\nchanged line\n')));
+});
+
+test('validation task logs are size bounded and mark truncated output', async (t) => {
+  const runRoot = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-log-'));
+  mkdirSync(runRoot, { recursive: true });
+  t.after(() => rmSync(runRoot, { recursive: true, force: true }));
+  const outputBytes = 16 * 1024 * 1024 + 1;
+  const spec = {
+    id: 'log-limit-fixture',
+    command: [
+      process.execPath,
+      '-e',
+      'process.stdout.write(Buffer.alloc(' + outputBytes + ', 120));process.stdout.write("VALIDATION_TEST_CASES_PASSED=1")',
+    ],
+    timeoutSeconds: 30,
+  };
+  const result = await runTask({ id: spec.id }, runRoot, spec);
+  const log = readFileSync(path.join(runRoot, result.logFile));
+  assert.equal(result.status, 'passed');
+  assert.equal(result.outputBytes, outputBytes + Buffer.byteLength('VALIDATION_TEST_CASES_PASSED=1'));
+  assert.equal(log.length, 16 * 1024 * 1024);
+  assert.match(log.toString('utf8'), /\[validation log truncated after 16 MiB\]\n$/u);
 });
 
 test('task environments use an allowlist and run-owned user and temporary directories', (t) => {
@@ -219,7 +241,20 @@ test('Chromium installation and tests share the private-runner cache path', () =
   const workflow = readFileSync(new URL('../../.github/workflows/build.yml', import.meta.url), 'utf8');
   const cacheSetting = 'PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers';
   assert.doesNotMatch(workflow, /^(<<<<<<<|=======|>>>>>>>)( .*)?$/m);
-  assert.equal(workflow.split('\n').filter((line) => line.trim() === cacheSetting).length, 2);
+  const cacheSteps = [
+    'Configure Chromium cache for direct-download browser tests',
+    'Install Chromium on the self-hosted Linux runner',
+    'Install Chromium and system dependencies on GitHub-hosted Linux',
+    'Test',
+  ];
+  for (const name of cacheSteps) {
+    const marker = `    - name: ${name}\n`;
+    const start = workflow.indexOf(marker);
+    assert.notEqual(start, -1, `missing workflow step: ${name}`);
+    const next = workflow.indexOf('\n    - name:', start + marker.length);
+    const step = workflow.slice(start, next === -1 ? workflow.length : next);
+    assert.ok(step.split('\n').some((line) => line.trim() === cacheSetting), `${name} must use the private cache path`);
+  }
   assert.match(workflow, /PLAYWRIGHT_BROWSERS_PATH=\$PLAYWRIGHT_BROWSERS_PATH.*\$GITHUB_ENV/);
 });
 

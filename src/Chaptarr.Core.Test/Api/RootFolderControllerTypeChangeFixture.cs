@@ -113,6 +113,8 @@ namespace Chaptarr.Core.Test.Api
                 return new Dictionary<string, string>();
             }
 
+            public string GetCurrentLocale() => "en";
+
             public string GetLocalizedString(string phrase)
             {
                 LastPhrase = phrase;
