@@ -171,6 +171,16 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
         self.assertIn('export AQUA_CONFIG="$aqua_config"', install)
         self.assertIn('export AQUA_POLICY_CONFIG="$aqua_policy_config"', install)
 
+    def test_frontend_build_runs_after_validation_receipts_are_exported(self) -> None:
+        build = job_block(WORKFLOW.read_text(encoding="utf-8"), "build")
+
+        receipt_upload = build.index("- name: Upload validation receipt")
+        frontend_build = build.index("- name: Build frontend")
+        publish = build.index("- name: Publish")
+
+        self.assertLess(receipt_upload, frontend_build)
+        self.assertLess(frontend_build, publish)
+
 
 if __name__ == "__main__":
     unittest.main()

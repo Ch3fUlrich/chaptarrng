@@ -205,9 +205,6 @@ jobs:
     - name: Type-check frontend
       run: yarn typecheck
 
-    - name: Build frontend
-      run: yarn build
-    
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
       with:
@@ -321,6 +318,12 @@ jobs:
         path: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/chaptarr-validation/receipt.json
         retention-days: 7
         if-no-files-found: error
+
+    # CSS Modules generation rewrites tracked declaration files. Build the UI
+    # after exporting the receipt so every validation node fingerprints the
+    # same committed checkout as the PostgreSQL migration node.
+    - name: Build frontend
+      run: yarn build
     
     - name: Publish
       env:
