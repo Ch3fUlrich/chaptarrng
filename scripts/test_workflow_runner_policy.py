@@ -1,4 +1,7 @@
 from pathlib import Path
+import os
+import subprocess
+import tempfile
 import unittest
 
 
@@ -59,6 +62,89 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
         self.assertIn("github.event.action != 'edited'", build)
         self.assertIn("github.event.action != 'edited'", migrations)
         self.assertIn("github.event.action == 'edited' && 'metadata' || 'source'", source)
+
+    def test_release_note_check_fetches_the_pr_head_after_merge(self) -> None:
+        source = WORKFLOW.read_text(encoding="utf-8")
+        release_notes = job_block(source, "release-notes")
+
+        self.assertIn("PR_NUMBER: ${{ github.event.pull_request.number }}", release_notes)
+        fetch = (
+            'git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:'
+            'refs/remotes/pull/${PR_NUMBER}/head"'
+        )
+        self.assertIn(fetch, release_notes)
+        self.assertIn('git cat-file -e "${HEAD_SHA}^{commit}"', release_notes)
+        self.assertLess(release_notes.index(fetch), release_notes.index("node scripts/check-release-notes.mjs"))
+
+    def test_retained_pull_ref_fetches_head_without_source_branch(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="chaptarr-pr-ref-") as scratch:
+            root = Path(scratch)
+            remote = root / "remote.git"
+            seed = root / "seed"
+            checkout = root / "checkout"
+            subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+            subprocess.run(["git", "init", "-b", "main", str(seed)], check=True, capture_output=True)
+            environment = os.environ | {
+                "GIT_AUTHOR_NAME": "Validation Test",
+                "GIT_AUTHOR_EMAIL": "validation@example.invalid",
+                "GIT_COMMITTER_NAME": "Validation Test",
+                "GIT_COMMITTER_EMAIL": "validation@example.invalid",
+            }
+
+            def git(*args: str) -> str:
+                result = subprocess.run(
+                    ["git", "-C", str(seed), *args],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=environment,
+                )
+                return result.stdout.strip()
+
+            (seed / "base.txt").write_text("base\n", encoding="utf-8")
+            git("add", "base.txt")
+            git("commit", "-m", "base")
+            git("remote", "add", "origin", str(remote))
+            git("push", "origin", "main")
+            (seed / "head.txt").write_text("pull request head\n", encoding="utf-8")
+            git("add", "head.txt")
+            git("commit", "-m", "pull request head")
+            head = git("rev-parse", "HEAD")
+            git("push", "origin", "HEAD:refs/heads/pr-branch")
+            subprocess.run(
+                ["git", "--git-dir", str(remote), "update-ref", "refs/pull/75/head", head],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "--git-dir", str(remote), "update-ref", "-d", "refs/heads/pr-branch"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "clone", "--branch", "main", "--single-branch", str(remote), str(checkout)],
+                check=True,
+                capture_output=True,
+            )
+
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(checkout),
+                    "fetch",
+                    "--no-tags",
+                    "origin",
+                    "refs/pull/75/head:refs/remotes/pull/75/head",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(checkout), "cat-file", "-e", f"{head}^{{commit}}"],
+                check=True,
+                capture_output=True,
+            )
 
 
 if __name__ == "__main__":
