@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -16,6 +17,7 @@ using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.ImportLists.Goodreads;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.ImportLists.Hardcover.Library;
+using NzbDrone.Core.Http;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
@@ -47,6 +49,9 @@ namespace NzbDrone.Core.ImportLists
         private readonly IRootFolderSettingsResolver _rootFolderSettingsResolver;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
+        private readonly IImportListSyncHistoryService _syncHistoryService;
+        private readonly ICachedHttpResponseService _cachedHttpResponseService;
+        private readonly IImportListStatusService _importListStatusService;
         private readonly Logger _logger;
 
         public ImportListSyncService(IImportListFactory importListFactory,
@@ -66,7 +71,10 @@ namespace NzbDrone.Core.ImportLists
                                      IEventAggregator eventAggregator,
                                      IManageCommandQueue commandQueueManager,
                                      Logger logger,
-                                     IImportListBookIdentityCacheRepository bookIdentityCacheRepository)
+                                     IImportListBookIdentityCacheRepository bookIdentityCacheRepository,
+                                     IImportListSyncHistoryService syncHistoryService = null,
+                                     ICachedHttpResponseService cachedHttpResponseService = null,
+                                     IImportListStatusService importListStatusService = null)
         {
             _importListFactory = importListFactory;
             _importListExclusionService = importListExclusionService;
@@ -85,6 +93,9 @@ namespace NzbDrone.Core.ImportLists
             _rootFolderSettingsResolver = rootFolderSettingsResolver;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
+            _syncHistoryService = syncHistoryService;
+            _cachedHttpResponseService = cachedHttpResponseService;
+            _importListStatusService = importListStatusService;
             _logger = logger;
         }
 
@@ -1451,43 +1462,490 @@ namespace NzbDrone.Core.ImportLists
             _logger.ProgressInfo("Starting Import List Sync");
 
             var fetch = _listFetcherAndParser.FetchWithState();
-            var processed = ProcessListItems(fetch.Items);
-            CommitFetchedListState(fetch.FetchedLists);
-
-            return processed;
+            return ProcessFetchedImportLists(fetch);
         }
 
         private List<Book> SyncList(ImportListDefinition definition)
         {
             _logger.ProgressInfo($"Starting Import List Refresh for List {definition.Name}");
 
-            var fetch = _listFetcherAndParser.FetchSingleListWithState(definition);
-            var processed = ProcessListItems(fetch.Items);
-            CommitFetchedListState(fetch.FetchedLists);
+            var startedHistory = StartHistory(definition, DateTime.UtcNow, dryRun: false);
+            ImportListFetchResult fetch;
+            try
+            {
+                fetch = _listFetcherAndParser.FetchSingleListWithState(definition);
+            }
+            catch
+            {
+                CompleteHistory(startedHistory, new ImportListSyncCounts(), "failed", "fetch", false);
+                throw;
+            }
+            var startedHistories = startedHistory == null
+                ? null
+                : new Dictionary<int, ImportListSyncHistory> { [definition.Id] = startedHistory };
 
-            return processed;
+            return ProcessFetchedImportLists(fetch, startedHistories);
         }
 
-        private void CommitFetchedListState(IEnumerable<IImportList> importLists)
+        public ImportListSyncHistory PreviewImportListSync(int importListId)
         {
-            foreach (var importList in importLists ?? Enumerable.Empty<IImportList>())
+            if (_syncHistoryService == null)
             {
-                try
+                throw new InvalidOperationException("Import-list sync history is not available");
+            }
+
+            var definition = _importListFactory.Get(importListId);
+            var history = _syncHistoryService.Start(importListId, definition.Name, DateTime.UtcNow, dryRun: true);
+            var failureStage = "fetch";
+
+            try
+            {
+                if (_cachedHttpResponseService == null)
                 {
-                    importList?.CommitState();
-                    if (importList != null)
-                    {
-                        _importListStatusService.UpdateListSyncStatus(importList.Definition.Id);
-                    }
+                    throw new InvalidOperationException("Read-only provider cache scope is not available");
                 }
-                catch (Exception e)
+
+                if (_importListStatusService == null)
                 {
-                    _logger.Error(e, "Error committing state for Import List {0} ({1})", importList?.Name, importList?.Definition?.Name);
+                    throw new InvalidOperationException("Read-only provider status scope is not available");
+                }
+
+                using var readOnlyScope = _cachedHttpResponseService.BeginReadOnlyScope();
+                using var readOnlyStatusScope = _importListStatusService.BeginReadOnlyScope();
+                if (readOnlyScope == null || readOnlyStatusScope == null)
+                {
+                    throw new InvalidOperationException("Read-only provider scopes are not available");
+                }
+
+                var fetch = _listFetcherAndParser.FetchSingleListWithState(definition);
+                var outcome = fetch.Outcomes.FirstOrDefault();
+
+                if (outcome != null && !outcome.Succeeded)
+                {
+                    return _syncHistoryService.Complete(history, new ImportListSyncCounts(), "failed", outcome.FailureStage, false);
+                }
+
+                var items = outcome?.Items ?? fetch.Items;
+                failureStage = "mapping";
+                MapImportListItems(items, readOnly: true);
+                failureStage = "classification";
+                var localLookup = BuildImportListLocalLookup(items);
+                var counts = BuildImportListSyncCounts(definition, items, localLookup);
+
+                return _syncHistoryService.Complete(history, counts, "preview", null, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Import-list dry-run preview failed for list {0} at stage {1}", importListId, failureStage);
+                return _syncHistoryService.Complete(history, new ImportListSyncCounts(), "failed", failureStage, false);
+            }
+        }
+
+        private ImportListSyncHistory StartHistory(ImportListDefinition definition, DateTime startedAt, bool dryRun)
+        {
+            if (_syncHistoryService == null || definition == null)
+            {
+                return null;
+            }
+
+            return _syncHistoryService.Start(definition.Id, definition.Name, startedAt, dryRun);
+        }
+
+        private List<Book> ProcessFetchedImportLists(ImportListFetchResult fetch, Dictionary<int, ImportListSyncHistory> startedHistories = null)
+        {
+            var items = fetch?.Items ?? new List<ImportListItemInfo>();
+            var outcomes = fetch?.Outcomes?.ToList() ?? new List<ImportListFetchOutcome>();
+
+            if (outcomes.Count == 0 && fetch?.FetchedLists?.Any() == true)
+            {
+                outcomes = fetch.FetchedLists.Select(importList => new ImportListFetchOutcome(
+                    importList,
+                    items.Where(item => item.ImportListId == importList.Definition.Id).ToList(),
+                    DateTime.UtcNow)).ToList();
+            }
+
+            var histories = new Dictionary<int, ImportListSyncHistory>(startedHistories ?? new Dictionary<int, ImportListSyncHistory>());
+            var successfulOutcomes = new List<ImportListFetchOutcome>();
+            var countsByList = new Dictionary<int, ImportListSyncCounts>();
+
+            foreach (var outcome in outcomes)
+            {
+                var fallbackImportListId = histories.Count == 1 ? histories.Keys.First() : 0;
+                var importListId = outcome.ImportList?.Definition?.Id ?? fallbackImportListId;
+                var importListName = outcome.ImportList?.Definition?.Name ?? histories.GetValueOrDefault(importListId)?.ImportListName;
+                if (importListId > 0 && !histories.ContainsKey(importListId))
+                {
+                    histories[importListId] = StartHistory(
+                        outcome.ImportList?.Definition as ImportListDefinition ?? new ImportListDefinition { Id = importListId, Name = importListName },
+                        outcome.StartedAt,
+                        dryRun: false);
+                }
+
+                if (!outcome.Succeeded || outcome.ImportList == null)
+                {
+                    if (importListId > 0)
+                    {
+                        CompleteHistory(histories.GetValueOrDefault(importListId), new ImportListSyncCounts(), "failed", outcome.FailureStage ?? "fetch", false);
+                    }
+
+                    continue;
+                }
+
+                successfulOutcomes.Add(outcome);
+            }
+
+            var failureStage = "mapping";
+            try
+            {
+                MapImportListItems(items, readOnly: false);
+                var localLookup = BuildImportListLocalLookup(items);
+
+                foreach (var outcome in successfulOutcomes)
+                {
+                    var importList = outcome.ImportList.Definition as ImportListDefinition;
+                    if (importList == null)
+                    {
+                        continue;
+                    }
+
+                    var listItems = outcome.Items.Count > 0 || items.Count == 0
+                        ? outcome.Items
+                        : items.Where(item => item.ImportListId == importList.Id).ToList();
+                    countsByList[importList.Id] = BuildImportListSyncCounts(importList, listItems, localLookup);
+                }
+
+                failureStage = "apply";
+                var processed = ProcessListItems(items, mappingAlreadyAttempted: true, localLookupOverride: localLookup);
+
+                foreach (var outcome in successfulOutcomes)
+                {
+                    var importList = outcome.ImportList;
+                    var importListId = importList.Definition.Id;
+                    var counts = countsByList.GetValueOrDefault(importListId) ?? new ImportListSyncCounts();
+                    var history = histories.GetValueOrDefault(importListId);
+
+                    try
+                    {
+                        importList.CommitState();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Error committing state for Import List {0} ({1})", importList.Name, importList.Definition.Name);
+                        CompleteHistory(history, counts, "failed", "state-commit", false);
+                        continue;
+                    }
+
+                    try
+                    {
+                        _importListStatusService?.UpdateListSyncStatus(importListId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Error updating sync status for Import List {0} ({1})", importList.Name, importList.Definition.Name);
+                    }
+
+                    CompleteHistory(history, counts, "succeeded", null, true);
+                }
+
+                return processed;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Import-list sync failed at stage {0}", failureStage);
+                foreach (var outcome in successfulOutcomes)
+                {
+                    var importListId = outcome.ImportList?.Definition?.Id ?? 0;
+                    CompleteHistory(histories.GetValueOrDefault(importListId), countsByList.GetValueOrDefault(importListId), "failed", failureStage, false);
+                }
+
+                throw;
+            }
+        }
+
+        private void CompleteHistory(ImportListSyncHistory history, ImportListSyncCounts counts, string result, string failureStage, bool providerStateCommitted)
+        {
+            _syncHistoryService?.Complete(history, counts, result, failureStage, providerStateCommitted);
+        }
+
+        private void MapImportListItems(List<ImportListItemInfo> items, bool readOnly)
+        {
+            if (items == null || items.Count == 0)
+            {
+                return;
+            }
+
+            const int maxDegreeOfParallelism = 12;
+            const int mappingBatchSize = 250;
+            const int mappingReportInterval = 100;
+
+            var reportsNeedingMapping = items
+                .Where(report =>
+                    (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace()) &&
+                    (report.EditionGoodreadsId.IsNullOrWhiteSpace() ||
+                     report.AuthorGoodreadsId.IsNullOrWhiteSpace() ||
+                     report.BookGoodreadsId.IsNullOrWhiteSpace()))
+                .ToList();
+
+            var totalToMap = reportsNeedingMapping.Count;
+            var completed = 0;
+            var ready = 0;
+            var unavailable = 0;
+            var lastReported = 0;
+
+            _logger.ProgressInfo("Import list sync: mapping {0} of {1} items ({2})",
+                totalToMap, items.Count, readOnly ? "dry run" : "apply");
+
+            for (var offset = 0; offset < items.Count; offset += mappingBatchSize)
+            {
+                var batch = items.Skip(offset).Take(mappingBatchSize).ToList();
+                var batchToMap = batch.Where(reportsNeedingMapping.Contains).ToList();
+                var mappingFailures = new ConcurrentQueue<Exception>();
+
+                if (batchToMap.Count == 0)
+                {
+                    continue;
+                }
+
+                Parallel.ForEach(batchToMap,
+                    new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                    report =>
+                    {
+                        try
+                        {
+                            if (readOnly)
+                            {
+                                MapBookReportWithoutWrites(report);
+                            }
+                            else
+                            {
+                                MapBookReport(report);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            mappingFailures.Enqueue(ex);
+                            _logger.Debug(ex, "Import list sync: failed to map list item ({0} - {1})", report.Author, report.Book);
+                        }
+                        finally
+                        {
+                            if (GetAuthorProviderId(report).IsNotNullOrWhiteSpace() && GetBookProviderId(report).IsNotNullOrWhiteSpace())
+                            {
+                                Interlocked.Increment(ref ready);
+                            }
+                            else
+                            {
+                                Interlocked.Increment(ref unavailable);
+                            }
+
+                            var current = Interlocked.Increment(ref completed);
+                            var reported = Volatile.Read(ref lastReported);
+                            if (current == totalToMap ||
+                                (current - reported >= mappingReportInterval &&
+                                 Interlocked.CompareExchange(ref lastReported, current, reported) == reported))
+                            {
+                                _logger.ProgressInfo("Import list sync: resolving metadata identities {0}/{1} (ready: {2}, unavailable: {3})",
+                                    current, totalToMap, Volatile.Read(ref ready), Volatile.Read(ref unavailable));
+                            }
+                        }
+                    });
+
+                if (!mappingFailures.IsEmpty)
+                {
+                    throw new InvalidOperationException($"Import-list mapping failed for {mappingFailures.Count} item(s)", mappingFailures.First());
                 }
             }
         }
 
-        private List<Book> ProcessListItems(List<ImportListItemInfo> items)
+        private ImportListSyncCounts BuildImportListSyncCounts(ImportListDefinition importList,
+            List<ImportListItemInfo> items,
+            ImportListLocalLookup localLookupOverride = null)
+        {
+            var counts = new ImportListSyncCounts { ProcessedCount = items?.Count ?? 0 };
+            if (importList == null || items == null || items.Count == 0)
+            {
+                return counts;
+            }
+
+            var localLookup = localLookupOverride ?? BuildImportListLocalLookup(items);
+            var exclusions = _importListExclusionService.All();
+            var liveAuthorLookupHitCache = new Dictionary<string, Author>(StringComparer.OrdinalIgnoreCase);
+            var liveBookLookupHitCache = new Dictionary<string, Book>(StringComparer.OrdinalIgnoreCase);
+            var authorBooksCache = new Dictionary<int, List<Book>>();
+
+            foreach (var report in items)
+            {
+                if (report == null)
+                {
+                    counts.UnresolvedCount++;
+                    continue;
+                }
+
+                var hasBook = report.Book.IsNotNullOrWhiteSpace() || report.EditionProviderId.IsNotNullOrWhiteSpace();
+                var hasAuthor = report.Author.IsNotNullOrWhiteSpace() || report.AuthorProviderId.IsNotNullOrWhiteSpace();
+                if (!hasBook && !hasAuthor)
+                {
+                    counts.UnresolvedCount++;
+                    continue;
+                }
+
+                Author existingAuthor = null;
+                Book existingBook = null;
+                var syncStats = new ImportListSyncStats();
+
+                if (hasBook)
+                {
+                    if (!ShouldProcessBookReport(report, exclusions, localLookup, syncStats, liveBookLookupHitCache))
+                    {
+                        if (syncStats.Excluded > 0)
+                        {
+                            counts.ExcludedCount++;
+                        }
+
+                        continue;
+                    }
+
+                    var authorProviderId = GetAuthorProviderId(report);
+                    var bookProviderId = GetBookProviderId(report);
+                    if (authorProviderId.IsNullOrWhiteSpace() || bookProviderId.IsNullOrWhiteSpace())
+                    {
+                        counts.UnresolvedCount++;
+                        continue;
+                    }
+
+                    existingBook = FindExistingBook(bookProviderId, localLookup, liveBookLookupHitCache);
+                    existingAuthor = FindExistingAuthor(authorProviderId, localLookup, liveAuthorLookupHitCache);
+                    existingAuthor ??= existingBook?.Author;
+                }
+                else
+                {
+                    var authorProviderId = GetAuthorProviderId(report);
+                    if (authorProviderId.IsNullOrWhiteSpace())
+                    {
+                        counts.UnresolvedCount++;
+                        continue;
+                    }
+
+                    existingAuthor = FindExistingAuthor(authorProviderId, localLookup, liveAuthorLookupHitCache);
+                    if (!ShouldProcessAuthorReport(report, exclusions, localLookup, liveAuthorLookupHitCache, syncStats))
+                    {
+                        if (syncStats.Excluded > 0)
+                        {
+                            counts.ExcludedCount++;
+                        }
+
+                        continue;
+                    }
+                }
+
+                var isExisting = existingBook != null || existingAuthor != null;
+                if (isExisting)
+                {
+                    counts.ExistingCount++;
+                }
+                else
+                {
+                    counts.NewCount++;
+                }
+
+                var changed = isExisting && WouldChangeImportListMonitoring(importList, report, existingAuthor, existingBook, authorBooksCache);
+                if (changed)
+                {
+                    counts.ChangedCount++;
+                }
+
+                if (importList.ShouldSearch &&
+                    importList.ShouldMonitor != ImportListMonitorType.None &&
+                    (changed || !isExisting && CanMonitorNewImportListItem(importList)))
+                {
+                    counts.SearchEligibleCount++;
+                }
+            }
+
+            return counts;
+        }
+
+        private bool WouldChangeImportListMonitoring(ImportListDefinition importList,
+            ImportListItemInfo report,
+            Author author,
+            Book book,
+            Dictionary<int, List<Book>> authorBooksCache)
+        {
+            if (!importList.ShouldMonitorExisting || importList.ShouldMonitor == ImportListMonitorType.None)
+            {
+                return false;
+            }
+
+            var hardcoverSettings = GetHardcoverLibrarySettings(importList);
+            var goodreadsSettings = GetGoodreadsSettings(importList);
+            var monitorAudiobooks = hardcoverSettings?.MonitorAudiobooks ?? goodreadsSettings?.MonitorAudiobooks ?? true;
+            var monitorEbooks = hardcoverSettings?.MonitorEbooks ?? goodreadsSettings?.MonitorEbooks ?? true;
+
+            if (importList.ShouldMonitor == ImportListMonitorType.SpecificBook)
+            {
+                if (book == null)
+                {
+                    return false;
+                }
+
+                if (goodreadsSettings != null && !monitorAudiobooks && !monitorEbooks)
+                {
+                    monitorAudiobooks = true;
+                    monitorEbooks = true;
+                }
+
+                var requestedMediaType = GetReportMediaTypeForExclusion(report);
+                if (requestedMediaType == BookMediaType.Audiobook)
+                {
+                    return monitorAudiobooks && !book.AudiobookMonitored;
+                }
+
+                if (requestedMediaType == BookMediaType.Ebook)
+                {
+                    return monitorEbooks && !book.EbookMonitored;
+                }
+
+                return book.MediaType == BookMediaType.Audiobook
+                    ? monitorAudiobooks && !book.AudiobookMonitored
+                    : monitorEbooks && !book.EbookMonitored;
+            }
+
+            author ??= book?.Author;
+            if (author == null)
+            {
+                return false;
+            }
+
+            if (!authorBooksCache.TryGetValue(author.Id, out var books))
+            {
+                books = _bookService.GetBooksByAuthor(author.Id) ?? new List<Book>();
+                authorBooksCache[author.Id] = books;
+            }
+
+            return books.Any(candidate =>
+                candidate.MediaType == BookMediaType.Audiobook && monitorAudiobooks && !candidate.AudiobookMonitored ||
+                candidate.MediaType == BookMediaType.Ebook && monitorEbooks && !candidate.EbookMonitored);
+        }
+
+        private bool CanMonitorNewImportListItem(ImportListDefinition importList)
+        {
+            var hardcoverSettings = GetHardcoverLibrarySettings(importList);
+            if (hardcoverSettings != null)
+            {
+                return hardcoverSettings.MonitorAudiobooks || hardcoverSettings.MonitorEbooks;
+            }
+
+            var goodreadsSettings = GetGoodreadsSettings(importList);
+            if (goodreadsSettings != null)
+            {
+                return goodreadsSettings.MonitorAudiobooks || goodreadsSettings.MonitorEbooks;
+            }
+
+            return !importList.RootFolderPath.IsNullOrWhiteSpace();
+        }
+
+        private List<Book> ProcessListItems(List<ImportListItemInfo> items,
+            bool mappingAlreadyAttempted = false,
+            ImportListLocalLookup localLookupOverride = null)
         {
             var processed = new List<Book>();
             var addedAuthorIds = new List<int>();
@@ -1499,6 +1957,7 @@ namespace NzbDrone.Core.ImportLists
             var goodreadsBooksToMonitor = new Dictionary<(int importListId, string authorProviderId), (HashSet<string> audiobookBooks, HashSet<string> ebookBooks)>();
             var pendingAuthors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var pendingAuthorsQueuedEarly = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var applyFailureCount = 0;
             var booksMonitored = 0;
 
             if (items.Count == 0)
@@ -1512,7 +1971,7 @@ namespace NzbDrone.Core.ImportLists
             var liveBookLookupHitCache = new Dictionary<string, Book>(StringComparer.OrdinalIgnoreCase);
 
             _logger.ProgressInfo("Import list sync: fetched {0} list items; indexing local library", items.Count);
-            var localLookup = BuildImportListLocalLookup(items);
+            var localLookup = localLookupOverride ?? BuildImportListLocalLookup(items);
             _logger.ProgressInfo("Import list sync: local match index ready ({0} authors, {1} books)",
                 localLookup.AuthorCount, localLookup.BookCount);
 
@@ -1539,19 +1998,25 @@ namespace NzbDrone.Core.ImportLists
             const int mappingBatchSize = 250;
             const int mappingReportInterval = 100;
 
-            var reportsNeedingMapping = items
-                .Where(r =>
-                    (r.Book.IsNotNullOrWhiteSpace() || r.EditionGoodreadsId.IsNotNullOrWhiteSpace()) &&
-                    (r.EditionGoodreadsId.IsNullOrWhiteSpace() ||
-                     r.AuthorGoodreadsId.IsNullOrWhiteSpace() ||
-                     r.BookGoodreadsId.IsNullOrWhiteSpace()))
-                .ToList();
+            var reportsNeedingMapping = mappingAlreadyAttempted
+                ? new List<ImportListItemInfo>()
+                : items
+                    .Where(r =>
+                        (r.Book.IsNotNullOrWhiteSpace() || r.EditionGoodreadsId.IsNotNullOrWhiteSpace()) &&
+                        (r.EditionGoodreadsId.IsNullOrWhiteSpace() ||
+                         r.AuthorGoodreadsId.IsNullOrWhiteSpace() ||
+                         r.BookGoodreadsId.IsNullOrWhiteSpace()))
+                    .ToList();
 
             var totalToMap = reportsNeedingMapping.Count;
             var directIdentityCount = items.Count(r => GetAuthorProviderId(r).IsNotNullOrWhiteSpace() && GetBookProviderId(r).IsNotNullOrWhiteSpace());
             var mappedCompleted = 0;
             var mappedReady = 0;
-            var mappedUnavailable = 0;
+            var mappedUnavailable = mappingAlreadyAttempted
+                ? items.Count(r =>
+                    (r.Book.IsNotNullOrWhiteSpace() || r.EditionGoodreadsId.IsNotNullOrWhiteSpace()) &&
+                    (GetAuthorProviderId(r).IsNullOrWhiteSpace() || GetBookProviderId(r).IsNullOrWhiteSpace()))
+                : 0;
             var lastReported = 0;
             var attemptedEarlyAuthorImports = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var allowEarlyAuthorQueueing = totalToMap > 0;
@@ -1707,9 +2172,14 @@ namespace NzbDrone.Core.ImportLists
                                     _logger.ProgressInfo("Import list sync: queued {0} authors while resolving metadata identities", pendingAuthorsQueuedEarly.Count);
                                 }
                             }
+                            else
+                            {
+                                applyFailureCount++;
+                            }
                         }
                         catch (Exception ex)
                         {
+                            applyFailureCount++;
                             _logger.Error(ex, "Failed to add author {0} from import list (early import)", report.Author);
                         }
                     }
@@ -1917,7 +2387,10 @@ namespace NzbDrone.Core.ImportLists
                             AddGenericSpecificBooksToMonitor(config, importList, authorProviderId, booksToMonitor);
                         }
 
-                        QueueAuthorForImportList(importList, authorProviderId, report.Author, config, pendingAuthors, "author pass");
+                        if (!QueueAuthorForImportList(importList, authorProviderId, report.Author, config, pendingAuthors, "author pass"))
+                        {
+                            applyFailureCount++;
+                        }
                     }
                     else
                     {
@@ -1936,6 +2409,7 @@ namespace NzbDrone.Core.ImportLists
                 }
                 catch (Exception ex)
                 {
+                    applyFailureCount++;
                     _logger.Error(ex, "Failed to add author {0} from import list", report.Author);
                     _logger.ProgressError("Import list '{0}': failed to add author '{1}' ({2})", importList.Name, report.Author, ex.Message);
                 }
@@ -1986,6 +2460,7 @@ namespace NzbDrone.Core.ImportLists
                     }
                     catch (Exception ex)
                     {
+                        applyFailureCount++;
                         _logger.Warn(ex, "Import list sync: failed to update queued author config for {0}", authorProviderId);
                     }
                 }
@@ -2480,7 +2955,11 @@ namespace NzbDrone.Core.ImportLists
                                     }
                                 }
 
-                                QueueAuthorForImportList(importList, authorProviderId, report.Author, config, pendingAuthors, "specific book");
+                                if (!QueueAuthorForImportList(importList, authorProviderId, report.Author, config, pendingAuthors, "specific book"))
+                                {
+                                    applyFailureCount++;
+                                }
+
                                 continue;
                             }
 
@@ -2554,6 +3033,7 @@ namespace NzbDrone.Core.ImportLists
                     }
                     catch (Exception ex)
                     {
+                        applyFailureCount++;
                         _logger.Error(ex, "Failed to monitor book {0} from import list", report.Book);
                     }
                 }
@@ -2562,6 +3042,11 @@ namespace NzbDrone.Core.ImportLists
             var unavailableItems = mappedUnavailable + stats.MissingProviderIds;
             var message = $"Import List Sync Completed. Items found: {items.Count}, Existing authors: {stats.ExistingAuthors}, Authors queued: {pendingAuthors.Count}, Books monitored: {booksMonitored}, Unavailable: {unavailableItems}, Excluded: {stats.Excluded}";
             _logger.ProgressInfo(message);
+
+            if (applyFailureCount > 0)
+            {
+                throw new InvalidOperationException($"Import-list apply failed for {applyFailureCount} item operation(s)");
+            }
 
             if (bookIdsToSearch.Any())
             {
@@ -2782,6 +3267,16 @@ namespace NzbDrone.Core.ImportLists
 
         private void MapBookReport(ImportListItemInfo report)
         {
+            MapBookReportInternal(report, allowCacheWrites: true);
+        }
+
+        private void MapBookReportWithoutWrites(ImportListItemInfo report)
+        {
+            MapBookReportInternal(report, allowCacheWrites: false);
+        }
+
+        private void MapBookReportInternal(ImportListItemInfo report, bool allowCacheWrites)
+        {
             if (TryMapBookReportFromLocalLibrary(report) || TryMapBookReportFromIdentityCache(report))
             {
                 return;
@@ -2793,7 +3288,7 @@ namespace NzbDrone.Core.ImportLists
                 {
                     // Prefer the metadata server for mapping edition IDs to canonical work + author IDs.
                     // This avoids app-identifying Goodreads API keys and keeps provider ID mapping centralized.
-                    var mapped = _bookInfoProxy.GetEditionInfo(report.EditionProviderId);
+                    var mapped = _bookInfoProxy.GetEditionInfo(report.EditionProviderId, useCache: allowCacheWrites);
                     var book = mapped.Item2;
                     var author = mapped.Item3?.FirstOrDefault() ?? book?.Author;
 
@@ -2801,7 +3296,10 @@ namespace NzbDrone.Core.ImportLists
                     report.Book = book?.Title;
                     report.Author ??= author?.Name;
                     report.AuthorProviderId ??= GetPreferredAuthorProviderId(author);
-                    CacheBookReportMapping(report);
+                    if (allowCacheWrites)
+                    {
+                        CacheBookReportMapping(report);
+                    }
                 }
                 catch (BookNotFoundException)
                 {
@@ -2815,7 +3313,10 @@ namespace NzbDrone.Core.ImportLists
                 try
                 {
                     var bookProviderId = GetBookProviderId(report);
-                    var mappedWork = _bookInfoProxy.GetWorkInfo(bookProviderId, BookMediaType.Audiobook, AuthorIdentity.NormalizeWorkLookupAuthorHint(bookProviderId, GetAuthorProviderId(report)));
+                    var mappedWork = _bookInfoProxy.GetWorkInfo(bookProviderId,
+                        BookMediaType.Audiobook,
+                        AuthorIdentity.NormalizeWorkLookupAuthorHint(bookProviderId, GetAuthorProviderId(report)),
+                        useCache: allowCacheWrites);
                     var book = mappedWork.Item2;
                     var author = mappedWork.Item3?.FirstOrDefault() ?? book?.Author;
 
@@ -2823,7 +3324,10 @@ namespace NzbDrone.Core.ImportLists
                     report.Book ??= book?.Title;
                     report.Author ??= author?.Name;
                     report.AuthorProviderId ??= GetPreferredAuthorProviderId(author);
-                    CacheBookReportMapping(report);
+                    if (allowCacheWrites)
+                    {
+                        CacheBookReportMapping(report);
+                    }
                 }
                 catch (BookNotFoundException)
                 {
@@ -2896,33 +3400,32 @@ namespace NzbDrone.Core.ImportLists
             _logger.ProgressInfo("Starting Hardcover Library Sync");
 
             var listItems = new List<ImportListItemInfo>();
+            var outcomes = new List<ImportListFetchOutcome>();
+            var startedHistories = new Dictionary<int, ImportListSyncHistory>();
             foreach (var importList in hardcoverImportLists)
             {
+                var startedAt = DateTime.UtcNow;
+                var history = StartHistory(importList.Definition as ImportListDefinition, startedAt, dryRun: false);
+                if (history != null)
+                {
+                    startedHistories[importList.Definition.Id] = history;
+                }
+
                 try
                 {
-                    listItems.AddRange(importList.Fetch());
+                    var fetchedItems = importList.Fetch()?.ToList() ?? new List<ImportListItemInfo>();
+                    listItems.AddRange(fetchedItems);
+                    outcomes.Add(new ImportListFetchOutcome(importList, fetchedItems, startedAt));
                 }
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Failed to fetch list items for {0}", importList.Definition.Name);
+                    outcomes.Add(new ImportListFetchOutcome(importList, null, startedAt, "fetch"));
                 }
             }
 
-            var processed = ProcessListItems(listItems);
-
-            foreach (var importList in hardcoverImportLists)
-            {
-                try
-                {
-                    importList.CommitState();
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex, "Failed to commit state for {0}", importList.Definition.Name);
-                }
-            }
-
-            return processed;
+            var fetch = new ImportListFetchResult(listItems, outcomes.Where(outcome => outcome.Succeeded).Select(outcome => outcome.ImportList).ToList(), outcomes);
+            return ProcessFetchedImportLists(fetch, startedHistories);
         }
     }
 }

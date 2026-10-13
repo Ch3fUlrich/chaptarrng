@@ -262,6 +262,35 @@ namespace Chaptarr.Core.Test.Http
             Assert.That(repositoryState.UpsertCount, Is.Zero);
             Assert.That(client.GetCount, Is.EqualTo(2));
         }
+
+        [Test]
+        public void should_not_write_or_delete_cache_entries_inside_read_only_scope()
+        {
+            var repository = DispatchProxy.Create<ICachedHttpResponseRepository, RepositoryProxy>();
+            var repositoryState = (RepositoryProxy)repository;
+            repositoryState.Seed(new CachedHttpResponse
+            {
+                Url = "https://metadata.test/read-only",
+                Value = "null",
+                StatusCode = (int)HttpStatusCode.Accepted,
+                Expiry = DateTime.UtcNow.AddMinutes(30)
+            });
+            var client = new RecordingHttpClient(request =>
+                new HttpResponse(request, new HttpHeader(), "{\"id\":1}", HttpStatusCode.OK));
+            var service = new CachedHttpResponseService(repository, client, LogManager.GetCurrentClassLogger());
+            var request = new HttpRequest("https://metadata.test/read-only");
+
+            using (service.BeginReadOnlyScope())
+            {
+                var response = service.Get(request, true, TimeSpan.FromMinutes(30), _ => true);
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            }
+
+            Assert.That(repositoryState.DeleteCount, Is.Zero);
+            Assert.That(repositoryState.UpsertCount, Is.Zero);
+            Assert.That(client.GetCount, Is.EqualTo(1));
+        }
+
         [Test]
         public void goodreads_empty_array_should_be_requested_again()
         {

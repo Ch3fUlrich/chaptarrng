@@ -22,11 +22,30 @@ namespace NzbDrone.Core.ImportLists
     {
         public List<ImportListItemInfo> Items { get; }
         public List<IImportList> FetchedLists { get; }
+        public List<ImportListFetchOutcome> Outcomes { get; }
 
-        public ImportListFetchResult(List<ImportListItemInfo> items, List<IImportList> fetchedLists)
+        public ImportListFetchResult(List<ImportListItemInfo> items, List<IImportList> fetchedLists, List<ImportListFetchOutcome> outcomes = null)
         {
             Items = items ?? new List<ImportListItemInfo>();
             FetchedLists = fetchedLists ?? new List<IImportList>();
+            Outcomes = outcomes ?? new List<ImportListFetchOutcome>();
+        }
+    }
+
+    public sealed class ImportListFetchOutcome
+    {
+        public IImportList ImportList { get; }
+        public List<ImportListItemInfo> Items { get; }
+        public DateTime StartedAt { get; }
+        public string FailureStage { get; }
+        public bool Succeeded => FailureStage == null;
+
+        public ImportListFetchOutcome(IImportList importList, List<ImportListItemInfo> items, DateTime startedAt, string failureStage = null)
+        {
+            ImportList = importList;
+            Items = items ?? new List<ImportListItemInfo>();
+            StartedAt = startedAt;
+            FailureStage = failureStage;
         }
     }
 
@@ -79,6 +98,7 @@ namespace NzbDrone.Core.ImportLists
         {
             var result = new List<ImportListItemInfo>();
             var fetchedLists = new List<IImportList>();
+            var outcomes = new List<ImportListFetchOutcome>();
 
             var importLists = _importListFactory.AutomaticAddEnabled();
 
@@ -96,6 +116,7 @@ namespace NzbDrone.Core.ImportLists
             foreach (var importList in importLists)
             {
                 var importListLocal = importList;
+                var startedAt = DateTime.UtcNow;
 
                 // Hardcover Library import lists are synced by a dedicated scheduled task.
                 if (importListLocal is HardcoverLibraryImportList)
@@ -128,12 +149,17 @@ namespace NzbDrone.Core.ImportLists
 
                                  result.AddRange(importListReports);
                                  fetchedLists.Add(importListLocal);
+                                 outcomes.Add(new ImportListFetchOutcome(importListLocal, importListReports.ToList(), startedAt));
                              }
 
                          }
                          catch (Exception e)
                          {
                              _logger.Error(e, "Error during Import List Sync of {0} ({1})", importList.Name, importListLocal.Definition.Name);
+                            lock (result)
+                            {
+                                outcomes.Add(new ImportListFetchOutcome(importListLocal, null, startedAt, "fetch"));
+                            }
                          }
                      }).LogExceptions();
 
@@ -149,7 +175,13 @@ namespace NzbDrone.Core.ImportLists
 
             _logger.Debug("Found {0} total reports from {1} lists", result.Count, importLists.Count);
 
-            return new ImportListFetchResult(result, fetchedLists);
+            var finalizedOutcomes = outcomes.Select(outcome => outcome.Succeeded && outcome.ImportList != null
+                ? new ImportListFetchOutcome(outcome.ImportList,
+                    result.Where(item => item.ImportListId == outcome.ImportList.Definition.Id).ToList(),
+                    outcome.StartedAt)
+                : outcome).ToList();
+
+            return new ImportListFetchResult(result, fetchedLists, finalizedOutcomes);
         }
 
         public List<ImportListItemInfo> FetchSingleList(ImportListDefinition definition)
@@ -163,19 +195,24 @@ namespace NzbDrone.Core.ImportLists
         {
             var result = new List<ImportListItemInfo>();
             var fetchedLists = new List<IImportList>();
+            var outcomes = new List<ImportListFetchOutcome>();
 
             var importList = _importListFactory.GetInstance(definition);
 
             if (importList == null || !definition.EnableAutomaticAdd)
             {
                 _logger.Debug("Import List {0} is not enabled or could not be loaded, skipping.", definition?.Name ?? definition?.Id.ToString());
-                return new ImportListFetchResult(result, fetchedLists);
+                return new ImportListFetchResult(result, fetchedLists, new List<ImportListFetchOutcome>
+                {
+                    new ImportListFetchOutcome(importList, result, DateTime.UtcNow, "fetch")
+                });
             }
 
             var taskList = new List<Task>();
             var taskFactory = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
 
             var importListLocal = importList;
+            var startedAt = DateTime.UtcNow;
 
             var task = taskFactory.StartNew(() =>
             {
@@ -189,12 +226,17 @@ namespace NzbDrone.Core.ImportLists
 
                         result.AddRange(importListReports);
                         fetchedLists.Add(importListLocal);
+                        outcomes.Add(new ImportListFetchOutcome(importListLocal, importListReports.ToList(), startedAt));
                     }
 
                 }
                 catch (Exception e)
                 {
                     _logger.Error(e, "Error during Import List Sync of {0} ({1})", importList.Name, importListLocal.Definition.Name);
+                    lock (result)
+                    {
+                        outcomes.Add(new ImportListFetchOutcome(importListLocal, null, startedAt, "fetch"));
+                    }
                 }
             }).LogExceptions();
 
@@ -207,7 +249,11 @@ namespace NzbDrone.Core.ImportLists
                 .DistinctBy(BuildDedupeKey)
                 .ToList();
 
-            return new ImportListFetchResult(result, fetchedLists);
+            var finalizedOutcomes = outcomes.Select(outcome => outcome.Succeeded
+                ? new ImportListFetchOutcome(outcome.ImportList, result.ToList(), outcome.StartedAt)
+                : outcome).ToList();
+
+            return new ImportListFetchResult(result, fetchedLists, finalizedOutcomes);
         }
 
         private void CompleteFetch(ImportListFetchResult result)

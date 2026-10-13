@@ -2179,7 +2179,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return null;
         }
 
-        public Tuple<string, Book, List<Author>> GetBookInfo(string foreignBookId, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null)
+        public Tuple<string, Book, List<Author>> GetBookInfo(string foreignBookId, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null, bool useCache = true)
         {
             var normalizedForeignBookId = NormalizeGoodreadsProviderId(foreignBookId);
 
@@ -2197,7 +2197,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 try
                 {
-                    return _ranobeDbProxy.GetBookInfo(normalizedForeignBookId) ?? throw new BookNotFoundException(normalizedForeignBookId);
+                    return _ranobeDbProxy.GetBookInfo(normalizedForeignBookId, useCache) ?? throw new BookNotFoundException(normalizedForeignBookId);
                 }
                 catch (BookNotFoundException)
                 {
@@ -2238,7 +2238,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        public Tuple<string, Book, List<Author>> GetWorkInfo(string foreignWorkId, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null)
+        public Tuple<string, Book, List<Author>> GetWorkInfo(string foreignWorkId, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null, bool useCache = true)
         {
             var normalizedForeignWorkId = NormalizeGoodreadsProviderId(foreignWorkId);
 
@@ -2254,7 +2254,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     throw new BookNotFoundException(normalizedForeignWorkId);
                 }
 
-                return GetBookInfo(normalizedForeignWorkId, mediaType, authorHintProviderId);
+                return GetBookInfo(normalizedForeignWorkId, mediaType, authorHintProviderId, useCache);
             }
 
             try
@@ -2284,7 +2284,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        public Tuple<string, Book, List<Author>> GetEditionInfo(string foreignEditionId, BookMediaType mediaType = BookMediaType.Audiobook)
+        public Tuple<string, Book, List<Author>> GetEditionInfo(string foreignEditionId, BookMediaType mediaType = BookMediaType.Audiobook, bool useCache = true)
         {
             var normalizedForeignEditionId = NormalizeGoodreadsProviderId(foreignEditionId);
 
@@ -2297,7 +2297,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 try
                 {
-                    return _ranobeDbProxy.GetEditionInfo(normalizedForeignEditionId) ?? throw new BookNotFoundException(normalizedForeignEditionId);
+                    return _ranobeDbProxy.GetEditionInfo(normalizedForeignEditionId, useCache) ?? throw new BookNotFoundException(normalizedForeignEditionId);
                 }
                 catch (BookNotFoundException)
                 {
