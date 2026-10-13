@@ -17,7 +17,7 @@ namespace Chaptarr.Core.Test.Books
     [TestFixture]
     public class UpdateEditionSelectionOnMetadataProfileChangeServiceFixture
     {
-        private sealed class RecordingCommandQueue : DispatchProxy
+        private class RecordingCommandQueue : DispatchProxy
         {
             public List<Command> PushedCommands { get; } = new List<Command>();
 

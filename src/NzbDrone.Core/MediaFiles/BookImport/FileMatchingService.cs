@@ -5824,12 +5824,87 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 "epub", "mobi", "azw3", "azw", "pdf", "kepub"
             };
 
-            private bool WinnerTitleSubstitutesFileTitle(EditionFtsMatch winner, List<string> queryTokens, out string candidateWord, out string queryWord)
+            private bool WinnerTitleSubstitutesFileTitle(ScoredCandidate selectedCandidate, List<string> queryTokens, out string candidateWord, out string queryWord)
             {
                 candidateWord = null;
                 queryWord = null;
 
-                var title = winner?.BookTitle;
+                var winner = selectedCandidate?.Match;
+                if (winner == null)
+                {
+                    return false;
+                }
+
+                var selectedEvidence = (selectedCandidate.TitleEvidence ?? Array.Empty<EditionTitleEvidence>())
+                    .Where(evidence => evidence != null && !string.IsNullOrWhiteSpace(evidence.FieldValue))
+                    .ToList();
+
+                if (selectedEvidence.Count > 0)
+                {
+                    var supportedTitleVariants = new List<string>
+                    {
+                        winner.EditionTitle,
+                        winner.BookTitle,
+                        StripTrailingParentheticals(winner.EditionTitle)
+                    };
+
+                    if (ReleaseTitleMatchScorer.TryGetKnownSubtitleBaseTitle(
+                        winner.EditionTitle,
+                        winner.EditionSubTitle,
+                        out var subtitleBaseTitle))
+                    {
+                        supportedTitleVariants.Add(subtitleBaseTitle);
+                    }
+
+                    bool TitlesMatch(string left, string right)
+                    {
+                        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                        {
+                            return false;
+                        }
+
+                        var leftTokens = SplitTokens(left).Select(NormalizeTitleComparisonToken).Where(token => token.Length > 0);
+                        var rightTokens = SplitTokens(right).Select(NormalizeTitleComparisonToken).Where(token => token.Length > 0);
+                        return leftTokens.SequenceEqual(rightTokens, StringComparer.OrdinalIgnoreCase);
+                    }
+
+                    if (selectedEvidence.Any(evidence => supportedTitleVariants.Any(title => TitlesMatch(title, evidence.MatchedTitle))))
+                    {
+                        // The selected candidate already has an accepted title proof. Its BookTitle may
+                        // be localized, and its edition may use an explicitly attested subtitle base;
+                        // neither should be vetoed by unrelated words in the metadata token bag.
+                        return false;
+                    }
+
+                    // The all-field token bag may contain unrelated authors, identifiers, or localized
+                    // work titles. Only treat a title substitution as contradictory when every field
+                    // that actually supported the selected candidate independently shows one.
+                    foreach (var evidence in selectedEvidence)
+                    {
+                        var title = string.IsNullOrWhiteSpace(evidence.MatchedTitle)
+                            ? winner.EditionTitle
+                            : evidence.MatchedTitle;
+                        if (!WinnerTitleSubstitutesFileTitle(title, winner.AuthorName, SplitTokens(evidence.FieldValue).ToList(), out var evidenceCandidateWord, out var evidenceQueryWord))
+                        {
+                            return false;
+                        }
+
+                        candidateWord ??= evidenceCandidateWord;
+                        queryWord ??= evidenceQueryWord;
+                    }
+
+                    return candidateWord != null && queryWord != null;
+                }
+
+                var fallbackTitle = winner.EditionTitle ?? winner.BookTitle;
+                return WinnerTitleSubstitutesFileTitle(fallbackTitle, winner.AuthorName, queryTokens, out candidateWord, out queryWord);
+            }
+
+            private bool WinnerTitleSubstitutesFileTitle(string title, string authorName, List<string> queryTokens, out string candidateWord, out string queryWord)
+            {
+                candidateWord = null;
+                queryWord = null;
+
                 if (string.IsNullOrWhiteSpace(title) || queryTokens == null || queryTokens.Count == 0)
                 {
                     return false;
@@ -5841,10 +5916,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     !TitleComparisonStopTokens.Contains(token) &&
                     !SeriesPositionTokenHelper.LooksLikeRomanNumeralToken(token);
 
-                var querySet = new HashSet<string>(queryTokens.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim(TitleTokenTrimChars)), StringComparer.OrdinalIgnoreCase);
-                var candidateTokens = SplitTokens(title).Select(t => t.Trim(TitleTokenTrimChars)).Where(t => t.Length > 0).ToList();
+                var querySet = new HashSet<string>(queryTokens
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .Select(NormalizeTitleComparisonToken)
+                    .Where(t => t.Length > 0), StringComparer.OrdinalIgnoreCase);
+                var candidateTokens = SplitTokens(title).Select(NormalizeTitleComparisonToken).Where(t => t.Length > 0).ToList();
                 var candidateSet = new HashSet<string>(candidateTokens, StringComparer.OrdinalIgnoreCase);
-                var authorSet = new HashSet<string>(SplitTokens(winner.AuthorName ?? string.Empty).Select(t => t.Trim(TitleTokenTrimChars)), StringComparer.OrdinalIgnoreCase);
+                var authorSet = new HashSet<string>(SplitTokens(authorName ?? string.Empty).Select(NormalizeTitleComparisonToken), StringComparer.OrdinalIgnoreCase);
 
                 candidateWord = candidateTokens.FirstOrDefault(t => Meaningful(t) && !querySet.Contains(t));
                 if (candidateWord == null)
@@ -5865,6 +5943,47 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 return queryWord != null;
             }
 
+            private static string NormalizeTitleComparisonToken(string token)
+            {
+                return new string((token ?? string.Empty).Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+            }
+
+            private bool HasExactPrimaryTitleFieldProof(IReadOnlyList<EditionTitleEvidence> evidence, string editionTitle)
+            {
+                if (evidence == null || string.IsNullOrWhiteSpace(editionTitle))
+                {
+                    return false;
+                }
+
+                return evidence.Any(item =>
+                {
+                    if (item == null || string.IsNullOrWhiteSpace(item.FieldValue) || string.IsNullOrWhiteSpace(item.FieldName))
+                    {
+                        return false;
+                    }
+
+                    var fieldName = item.FieldName.Trim();
+                    var separator = fieldName.LastIndexOf(':');
+                    if (separator >= 0 && separator < fieldName.Length - 1)
+                    {
+                        fieldName = fieldName.Substring(separator + 1);
+                    }
+
+                    var isPrimaryTitleField = string.Equals(fieldName, "TITLE", StringComparison.OrdinalIgnoreCase) ||
+                                              string.Equals(fieldName, "TIT2", StringComparison.OrdinalIgnoreCase) ||
+                                              string.Equals(fieldName, "©nam", StringComparison.OrdinalIgnoreCase) ||
+                                              string.Equals(fieldName, "WM/Title", StringComparison.OrdinalIgnoreCase);
+                    if (!isPrimaryTitleField)
+                    {
+                        return false;
+                    }
+
+                    var observedTokens = SplitTokens(item.FieldValue).Select(NormalizeTitleComparisonToken).Where(token => token.Length > 0);
+                    var editionTokens = SplitTokens(editionTitle).Select(NormalizeTitleComparisonToken).Where(token => token.Length > 0);
+                    return observedTokens.SequenceEqual(editionTokens, StringComparer.OrdinalIgnoreCase);
+                });
+            }
+
             private static bool IsAdjacentConcatenation(string word, List<string> tokens)
             {
                 if (word == null || tokens == null)
@@ -5874,13 +5993,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 for (var i = 0; i < tokens.Count - 1; i++)
                 {
-                    var pair = tokens[i] + tokens[i + 1];
+                    var pair = NormalizeTitleComparisonToken(tokens[i]) + NormalizeTitleComparisonToken(tokens[i + 1]);
                     if (pair.Equals(word, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
 
-                    if (i < tokens.Count - 2 && (pair + tokens[i + 2]).Equals(word, StringComparison.OrdinalIgnoreCase))
+                    if (i < tokens.Count - 2 && (pair + NormalizeTitleComparisonToken(tokens[i + 2])).Equals(word, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -5889,40 +6008,78 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 return false;
             }
 
-            private bool WinnerTitleHasSurplusVolumeToken(EditionFtsMatch winner, List<string> queryTokens, out string surplusToken)
+            private bool WinnerTitleHasSurplusVolumeToken(ScoredCandidate selectedCandidate, List<string> queryTokens, out string surplusToken)
             {
                 surplusToken = null;
 
-                var title = winner?.BookTitle;
+                var winner = selectedCandidate?.Match;
+                // EditionTitle is the title whose identity was actually matched. BookTitle may
+                // contain a localized or split-volume work title that differs from this edition.
+                var title = winner?.EditionTitle;
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    title = winner?.BookTitle;
+                }
+
                 if (string.IsNullOrWhiteSpace(title) || queryTokens == null || queryTokens.Count == 0)
                 {
                     return false;
                 }
 
-                var queryTokenSet = new HashSet<string>(queryTokens.Where(t => !string.IsNullOrWhiteSpace(t)), StringComparer.OrdinalIgnoreCase);
+                var queryTokenSet = new HashSet<string>(queryTokens
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .Select(NormalizeTitleComparisonToken), StringComparer.OrdinalIgnoreCase);
                 if (queryTokenSet.Count == 0)
                 {
                     return false;
                 }
 
-                foreach (var token in SplitTokens(title))
+                string detectedSurplusToken = null;
+                bool HasSurplusMarker(string token)
                 {
-                    var trimmed = token.Trim(TitleTokenTrimChars);
-                    if (trimmed.Length == 0 || queryTokenSet.Contains(token) || queryTokenSet.Contains(trimmed))
+                    var trimmed = NormalizeTitleComparisonToken(token.Trim(TitleTokenTrimChars));
+                    if (trimmed.Length == 0 || queryTokenSet.Contains(trimmed))
                     {
-                        continue;
+                        return false;
                     }
 
                     if (trimmed.All(char.IsDigit) ||
                         SeriesPositionTokenHelper.LooksLikeRomanNumeralToken(trimmed) ||
                         SurplusVolumeMarkerTokens.Contains(trimmed))
                     {
-                        surplusToken = trimmed;
+                        detectedSurplusToken = trimmed;
                         return true;
                     }
+
+                    return false;
                 }
 
-                return false;
+                if (SplitTokens(title).Any(HasSurplusMarker))
+                {
+                    surplusToken = detectedSurplusToken;
+                    return true;
+                }
+
+                // The work title can still disqualify a packaging container such as a boxed
+                // set when the specific edition title itself is only the generic series name.
+                var hasSurplusCollectionMarker = !string.Equals(title, winner.BookTitle, StringComparison.OrdinalIgnoreCase) &&
+                    SplitTokens(winner.BookTitle ?? string.Empty).Any(token =>
+                    {
+                        var normalized = NormalizeTitleComparisonToken(token.Trim(TitleTokenTrimChars));
+                        if (!SurplusVolumeMarkerTokens.Contains(normalized) || queryTokenSet.Contains(normalized))
+                        {
+                            return false;
+                        }
+
+                        detectedSurplusToken = normalized;
+                        return true;
+                    });
+                if (hasSurplusCollectionMarker)
+                {
+                    surplusToken = detectedSurplusToken;
+                }
+
+                return hasSurplusCollectionMarker;
             }
 
             private FtsSmokeTestResult RunFtsWithSmokeTest(
@@ -7181,9 +7338,20 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             evidence,
                             seriesPositionEvidence))
                     {
-                        _logger.Debug("[HOLY-GRAIL][{0}] Rejecting generic series-title candidate because no clean title field remains after position evidence: EditionId={1} Title='{2}'",
+                        var fieldEvidence = string.Join(", ", evidence.Select(item =>
+                        {
+                            var field = seriesPositionEvidence.GetField(item?.FieldName);
+                            return $"{item?.FieldName ?? "<unknown>"}:{field?.Disposition.ToString() ?? "NoSignal"}";
+                        }));
+                        var positionFields = string.Join(", ", seriesPositionEvidence.Fields.Select(field =>
+                            $"{field.FieldName}:{field.Disposition}[{string.Join("/", field.DetectedPositions)}]"));
+                        _logger.Debug("[HOLY-GRAIL][{0}] Rejecting generic series-title candidate because no clean title field remains after position evidence: EditionId={1} Title='{2}' Evidence=[{3}] Positions=[{4}] PositionFields=[{5}] TagFields=[{6}]",
                             phase, result.EditionId,
-                            result.EditionTitle?.Length > 60 ? result.EditionTitle.Substring(0, 60) + "..." : result.EditionTitle);
+                            result.EditionTitle?.Length > 60 ? result.EditionTitle.Substring(0, 60) + "..." : result.EditionTitle,
+                            fieldEvidence,
+                            seriesPositionEvidence.DetectedPositions,
+                            positionFields,
+                            string.Join(", ", allTags.Keys));
                         RecordCandidateRejection(result, "SERIES_ONLY");
                         return null;
                     }
@@ -7651,7 +7819,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (WinnerTitleSubstitutesFileTitle(winner, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
+                if (WinnerTitleSubstitutesFileTitle(selectedCandidate, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_WORD_SUBSTITUTION",
                         $"book title has '{substitutedCandidateWord}' while the file evidence has '{substitutedQueryWord}' instead", "contradictory");
@@ -7664,7 +7832,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (WinnerTitleHasSurplusVolumeToken(winner, tokens, out var surplusVolumeToken))
+                if (WinnerTitleHasSurplusVolumeToken(selectedCandidate, tokens, out var surplusVolumeToken))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_SURPLUS_VOLUME_TOKEN",
                         $"book title carries '{surplusVolumeToken}' with no counterpart in the file's title evidence", "contradictory");
@@ -7718,6 +7886,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 public int NarratorMatchCount { get; set; }
                 public int TitleEvidenceTier { get; set; }
                 public int TitleEvidenceCount { get; set; }
+                public bool HasExactTitleTagProof { get; set; }
                 public IReadOnlyList<EditionTitleEvidence> TitleEvidence { get; set; } = Array.Empty<EditionTitleEvidence>();
                 public HashSet<string> TitleEvidenceFields { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 public SeriesPositionEvidence PositionEvidence { get; set; }
@@ -7801,6 +7970,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     Leftovers = leftovers ?? Array.Empty<string>(),
                     TitleEvidenceTier = evidence != null && evidence.Any(e => !e.IsNearExact) ? 1 : 0,
                     TitleEvidenceCount = titleEvidenceFields.Count,
+                    HasExactTitleTagProof = HasExactPrimaryTitleFieldProof(evidence, candidate.EditionTitle),
                     TitleEvidence = evidence ?? Array.Empty<EditionTitleEvidence>(),
                     TitleEvidenceFields = titleEvidenceFields,
                     PositionEvidence = seriesPositionEvidence,
@@ -9386,6 +9556,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = a.HasDirectEditionTitleProof.CompareTo(b.HasDirectEditionTitleProof);
                 if (cmp != 0) return cmp;
 
+                cmp = a.HasExactTitleTagProof.CompareTo(b.HasExactTitleTagProof);
+                if (cmp != 0) return cmp;
+
                 cmp = a.NarratorTier.CompareTo(b.NarratorTier);
                 if (cmp != 0) return cmp;
 
@@ -9401,13 +9574,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = a.SeriesPositionMatch.CompareTo(b.SeriesPositionMatch);
                 if (cmp != 0) return cmp;
 
-                // When the evidence is otherwise tied, an audio file should stay linked to a native
-                // audiobook edition. Representative ebook/print editions remain the fallback when
-                // no equally supported audiobook candidate is available.
-                cmp = a.ReadingFormatMatch.CompareTo(b.ReadingFormatMatch);
+                // A directly evidenced ebook or print representative resolves otherwise
+                // indistinguishable audiobook editions; native audio still wins when its
+                // narrator or duration supplies stronger proof above.
+                cmp = a.RepresentativeRank.CompareTo(b.RepresentativeRank);
                 if (cmp != 0) return cmp;
 
-                cmp = a.RepresentativeRank.CompareTo(b.RepresentativeRank);
+                cmp = a.ReadingFormatMatch.CompareTo(b.ReadingFormatMatch);
                 if (cmp != 0) return cmp;
 
                 cmp = (a.DurationDiff == 0).CompareTo(b.DurationDiff == 0);

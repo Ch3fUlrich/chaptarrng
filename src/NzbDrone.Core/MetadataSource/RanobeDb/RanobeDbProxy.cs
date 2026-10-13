@@ -408,6 +408,7 @@ namespace NzbDrone.Core.MetadataSource.RanobeDb
                 TitleSlug = providerId,
                 ReleaseDate = ParseDate(source.CurrentReleaseDate),
                 PublicationYear = ParseDate(source.CurrentReleaseDate)?.Year,
+                Editions = new List<Edition>(),
                 MediaType = BookMediaType.Ebook,
                 AnyEditionOk = true,
                 Author = author ?? new Author(),

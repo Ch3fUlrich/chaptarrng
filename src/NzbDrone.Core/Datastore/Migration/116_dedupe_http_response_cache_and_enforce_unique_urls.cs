@@ -3,7 +3,7 @@ using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace NzbDrone.Core.Datastore.Migration
 {
-    [Migration(108)]
+    [Migration(116)]
     public class dedupe_http_response_cache_and_enforce_unique_urls : NzbDroneMigrationBase
     {
         protected override void CacheDbUpgrade()

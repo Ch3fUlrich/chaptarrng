@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.MediaFiles
@@ -35,7 +36,7 @@ namespace NzbDrone.Core.MediaFiles
 
         public static MediaInfoModel CreateMediaInfo(IMediaInfoExtractor extractor, string path, int? durationSeconds)
         {
-            var mediaInfo = !string.IsNullOrWhiteSpace(path)
+            var mediaInfo = !string.IsNullOrWhiteSpace(path) && MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(path))
                 ? extractor?.ExtractMediaInfo(path)
                 : null;
 

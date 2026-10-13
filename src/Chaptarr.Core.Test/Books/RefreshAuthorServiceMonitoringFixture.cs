@@ -6,6 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.Messaging.Events;
 
 namespace Chaptarr.Core.Test.Books
@@ -95,6 +96,19 @@ namespace Chaptarr.Core.Test.Books
             }
         }
 
+        private sealed class EmptyImportListExclusionService : IImportListExclusionService
+        {
+            public List<ImportListExclusion> All() => new();
+            public List<ImportListExclusion> FindByForeignId(List<string> foreignIds) => new();
+            public ImportListExclusion Add(ImportListExclusion exclusion) => throw new NotImplementedException();
+            public void Delete(int id) => throw new NotImplementedException();
+            public void Delete(List<int> ids) => throw new NotImplementedException();
+            public void Delete(string foreignId) => throw new NotImplementedException();
+            public ImportListExclusion Get(int id) => throw new NotImplementedException();
+            public ImportListExclusion FindByForeignId(string foreignId) => throw new NotImplementedException();
+            public ImportListExclusion Update(ImportListExclusion exclusion) => throw new NotImplementedException();
+        }
+
         private sealed class TestableRefreshAuthorService : RefreshAuthorService
         {
             public TestableRefreshAuthorService(IBookService bookService, IEventAggregator eventAggregator, Logger logger)
@@ -113,7 +127,7 @@ namespace Chaptarr.Core.Test.Books
                     checkIfAuthorShouldBeRefreshed: null,
                     monitorNewBookService: new MonitorNewBookService(logger),
                     configService: null,
-                    importListExclusionService: null,
+                    importListExclusionService: new EmptyImportListExclusionService(),
                     syncMetadataService: null,
                     syncQueueService: null,
                     rootFolderSettingsResolver: null,

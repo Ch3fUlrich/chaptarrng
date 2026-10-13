@@ -905,14 +905,23 @@ namespace NzbDrone.Core.Parser
             AddTitleVariants(context.PrimaryVariants, primaryTitle);
             context.PrimaryTitle = primaryTitle;
 
-            // Other editions belong to this same work. Searching their names should
-            // still pass identity matching without changing the monitored edition
-            // used by language, format, and profile decisions.
-            AddTitleVariants(context.PrimaryVariants, book?.Title);
-            AddTitleVariants(context.PrimaryVariants, book?.OriginalTitle);
-            foreach (var edition in book?.Editions ?? Enumerable.Empty<Edition>())
+            // AnyEditionOk changes which edition can be accepted after a download; it
+            // must not broaden release identity during search. Otherwise, known sibling
+            // editions can make a result appear to match the monitored edition.
+            if (book?.AnyEditionOk != true)
             {
-                AddTitleVariants(context.PrimaryVariants, BookEditionTitle.GetTitleForBook(book, edition));
+                // Preserve useful alternate titles for normal matching, but don't turn a
+                // shortened base title into proof for a monitored edition whose title
+                // carries a meaningful subtitle or other suffix.
+                AddTitleVariantUnlessShorterThanMonitoredTitle(context.PrimaryVariants, book?.Title, primaryTitle);
+                AddTitleVariantUnlessShorterThanMonitoredTitle(context.PrimaryVariants, book?.OriginalTitle, primaryTitle);
+                foreach (var edition in book?.Editions ?? Enumerable.Empty<Edition>())
+                {
+                    AddTitleVariantUnlessShorterThanMonitoredTitle(
+                        context.PrimaryVariants,
+                        BookEditionTitle.GetTitleForBook(book, edition),
+                        primaryTitle);
+                }
             }
 
             // Keep "series" in this variant so a bare title or an individual volume
@@ -940,6 +949,33 @@ namespace NzbDrone.Core.Parser
             }
 
             return context;
+        }
+
+        private static void AddTitleVariantUnlessShorterThanMonitoredTitle(List<string> variants, string title, string monitoredTitle)
+        {
+            if (!IsShorterMonitoredTitleBase(title, monitoredTitle))
+            {
+                AddTitleVariants(variants, title);
+            }
+        }
+
+        private static bool IsShorterMonitoredTitleBase(string title, string monitoredTitle)
+        {
+            var candidate = NormalizeExpandedVariant(title);
+            var full = NormalizeExpandedVariant(monitoredTitle);
+            if (candidate.Length == 0 || full.Length <= candidate.Length ||
+                !full.StartsWith(candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return full.Substring(candidate.Length).TrimStart().StartsWith(":", StringComparison.Ordinal) ||
+                   full.Substring(candidate.Length).TrimStart().StartsWith(";", StringComparison.Ordinal) ||
+                   full.Substring(candidate.Length).TrimStart().StartsWith("-", StringComparison.Ordinal) ||
+                   full.Substring(candidate.Length).TrimStart().StartsWith("–", StringComparison.Ordinal) ||
+                   full.Substring(candidate.Length).TrimStart().StartsWith("—", StringComparison.Ordinal) ||
+                   full.Substring(candidate.Length).TrimStart().StartsWith("(", StringComparison.Ordinal) ||
+                   full.Substring(candidate.Length).TrimStart().StartsWith("[", StringComparison.Ordinal);
         }
 
         private static IEnumerable<string> GetKnownNarrators(Book book)

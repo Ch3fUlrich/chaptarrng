@@ -86,6 +86,10 @@ receive an explicit environment allowlist and each task's declared settings.
 Every task gets run-owned home, temporary, XDG, and .NET CLI directories. NuGet
 packages use a private cache shared only within the validation run. Test tasks
 run with `CI=true` and `NODE_ENV=test` regardless of the invoking shell's values.
+For Linux Chromium tests, the engine creates a short private symlink under
+`/dev/shm` that points to the isolated task temp directory. This keeps
+Chromium's UNIX-domain socket path within the kernel limit without depending on
+shared `/tmp`; browser temp data still lands in the task directory.
 
 The artifact downloader preserves each runner receipt in its own subdirectory,
 and the reconciler finds `receipt.json` recursively so same-named artifacts do

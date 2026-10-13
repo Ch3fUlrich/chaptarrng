@@ -17,26 +17,25 @@ namespace Chaptarr.Core.Test.Messaging
         {
             public List<CommandModel> Inserted { get; } = new();
             public bool Fail { get; set; }
+            public int? FailOnInsertNumber { get; set; }
 
             protected override object Invoke(MethodInfo method, object[] args)
             {
-                if (method.Name != nameof(ICommandRepository.InsertMany))
+                if (method.Name != nameof(ICommandRepository.Insert))
                 {
                     throw new NotImplementedException(method.Name);
                 }
 
-                if (Fail)
+                if (Fail || FailOnInsertNumber == Inserted.Count + 1)
                 {
-                    throw new InvalidOperationException("Batch rolled back");
+                    throw new InvalidOperationException("Insert failed");
                 }
 
-                foreach (var model in (IEnumerable<CommandModel>)args[0])
-                {
-                    model.Id = Inserted.Count + 1;
-                    Inserted.Add(model);
-                }
+                var model = (CommandModel)args[0];
+                model.Id = Inserted.Count + 1;
+                Inserted.Add(model);
 
-                return null;
+                return model;
             }
         }
 
@@ -64,7 +63,7 @@ namespace Chaptarr.Core.Test.Messaging
         }
 
         [Test]
-        public void should_not_queue_commands_when_the_database_batch_fails()
+        public void should_not_queue_commands_when_the_first_database_insert_fails()
         {
             var repository = DispatchProxy.Create<ICommandRepository, RepositoryProxy>();
             var state = (RepositoryProxy)(object)repository;
@@ -73,6 +72,25 @@ namespace Chaptarr.Core.Test.Messaging
 
             Assert.Throws<InvalidOperationException>(() => manager.PushMany(new List<RefreshAuthorCommand> { new(1, true, false) }));
             Assert.That(manager.All(), Is.Empty);
+        }
+
+        [Test]
+        public void should_keep_successfully_inserted_commands_visible_when_a_later_insert_fails()
+        {
+            var repository = DispatchProxy.Create<ICommandRepository, RepositoryProxy>();
+            var state = (RepositoryProxy)(object)repository;
+            state.FailOnInsertNumber = 2;
+            var manager = new CommandQueueManager(repository, null, new KnownTypes(), LogManager.GetCurrentClassLogger());
+
+            Assert.Throws<InvalidOperationException>(() => manager.PushMany(new List<RefreshAuthorCommand>
+            {
+                new(1, true, false),
+                new(2, true, false)
+            }));
+
+            Assert.That(state.Inserted, Has.Count.EqualTo(1));
+            Assert.That(manager.All(), Has.Count.EqualTo(1));
+            Assert.That(((RefreshAuthorCommand)manager.All()[0].Body).AuthorId, Is.EqualTo(1));
         }
     }
 }

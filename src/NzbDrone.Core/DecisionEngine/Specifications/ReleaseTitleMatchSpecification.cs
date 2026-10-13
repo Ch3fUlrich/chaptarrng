@@ -70,6 +70,12 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return Decision.RejectSoftFilter("Title/Author mismatch", "Matching");
             }
 
+            if (searchCriteria is BookSearchCriteria { InteractiveSearch: true } &&
+                MatchesOnlyBaseOfMonitoredEditionSubtitle(best))
+            {
+                return Decision.RejectSoftFilter("Title/Author mismatch", "Matching");
+            }
+
             if (IsAcceptedMatch(best, identity, _configService?.BookMatchingStrictness ?? BookMatchingStrictness.Balanced))
             {
                 return Decision.Accept();
@@ -92,6 +98,27 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             }
 
             return Decision.Accept();
+        }
+
+        private static bool MatchesOnlyBaseOfMonitoredEditionSubtitle(TitleMatchResult match)
+        {
+            var edition = ReleaseTitleMatchScorer.GetSelectedEdition(match?.Book);
+            var subtitle = edition?.Subtitle;
+            if (string.IsNullOrWhiteSpace(subtitle))
+            {
+                subtitle = match?.Book?.Subtitle;
+            }
+
+            if (edition == null || string.IsNullOrWhiteSpace(edition.Title) || string.IsNullOrWhiteSpace(subtitle) ||
+                !ReleaseTitleMatchScorer.TryGetKnownSubtitleBaseTitle(edition.Title, subtitle, out var baseTitle))
+            {
+                return false;
+            }
+
+            var matchedTokens = ReleaseTitleMatchScorer.Tokenize(match.MatchedVariant);
+            var baseTitleTokens = ReleaseTitleMatchScorer.Tokenize(baseTitle);
+            return matchedTokens.Count > 0 &&
+                   matchedTokens.SequenceEqual(baseTitleTokens, StringComparer.OrdinalIgnoreCase);
         }
 
         internal static bool IsAcceptedMatch(TitleMatchResult match, ReleaseIdentityEvidence identity, BookMatchingStrictness strictness)

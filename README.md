@@ -49,6 +49,12 @@ limits. Dedicated guides explain [import-list preview and history](docs/IMPORT_L
 The feature guide describes the current source checkout; some newer work may
 not be included in the latest published image yet.
 
+The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+defines the later upstream gate: every BookshelfNG feature carried over plus
+every ChaptarrNG feature maintained or actively developed, including
+unpublished work, blocks retirement as a whole and remains an individual
+acceptance gate.
+
 See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
 
 ## Key Features

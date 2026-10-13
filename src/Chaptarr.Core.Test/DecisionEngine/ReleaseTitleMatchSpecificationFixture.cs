@@ -189,7 +189,7 @@ namespace Chaptarr.Core.Test.DecisionEngine
         }
 
         [Test]
-        public void should_reject_interactive_search_result_when_release_omits_the_monitored_edition_subtitle()
+        public void should_require_the_monitored_edition_subtitle_for_interactive_search()
         {
             var author = new Author { Name = "Mitch Albom" };
             var book = new Book
@@ -230,9 +230,15 @@ namespace Chaptarr.Core.Test.DecisionEngine
             var logger = LogManager.GetCurrentClassLogger();
             var spec = new ReleaseTitleMatchSpecification(logger);
 
-            var decision = spec.IsSatisfiedBy(remoteBook, criteria);
+            var withoutSubtitle = spec.IsSatisfiedBy(remoteBook, criteria);
+            release.Title = book.Editions[0].Title;
+            var withSubtitle = spec.IsSatisfiedBy(remoteBook, criteria);
 
-            Assert.That(decision.Accepted, Is.False);
+            Assert.Multiple(() =>
+            {
+                Assert.That(withoutSubtitle.Accepted, Is.False);
+                Assert.That(withSubtitle.Accepted, Is.True);
+            });
         }
 
         [Test]

@@ -18,6 +18,17 @@ namespace Chaptarr.Core.Test.MediaFiles
     [NonParallelizable]
     public class DiskScanMissingFolderLoggingFixture
     {
+        private sealed class NoOpMediaFileTableCleanupService : IMediaFileTableCleanupService
+        {
+            public void Clean(string folder, List<string> filesOnDisk)
+            {
+            }
+
+            public void Clean(string folder, List<string> filesOnDisk, string mediaType)
+            {
+            }
+        }
+
         private LoggingConfiguration _previousConfiguration;
 
         [SetUp]
@@ -34,7 +45,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         }
 
         [Test]
-        public void missing_author_folder_under_available_root_is_debug_not_missing_mount_warning()
+        public void missing_author_folder_under_available_root_cleans_stale_rows_without_mount_warning()
         {
             var root = "/books";
             var target = "/books/Missing Author";
@@ -43,7 +54,10 @@ namespace Chaptarr.Core.Test.MediaFiles
 
             subject.Scan(new List<string> { target }, authorIds: new List<int>());
 
-            Assert.That(memory.Logs, Has.Some.EqualTo($"Debug|Skipping scan for absent folder {target}; root folder {root} is available."));
+            Assert.That(memory.Logs, Has.Some.EqualTo($"Info|Folder {target} no longer exists but root folder {root} is available; cleaning up its tracked files."));
+            Assert.That(memory.Logs, Has.Some.EqualTo($"Debug|Cleaning up media files in DB for folder: {target}"));
+            Assert.That(memory.Logs, Has.Some.EqualTo("Debug|Cleaning audiobook files"));
+            Assert.That(memory.Logs, Has.Some.EqualTo("Debug|Cleaning ebook files"));
             Assert.That(memory.Logs.Any(log => log.StartsWith("Warn|", StringComparison.Ordinal)), Is.False);
         }
 
@@ -89,7 +103,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                 importOrchestrator: null,
                 authorService: authorService,
                 rootFolderService: rootService,
-                mediaFileTableCleanupService: null,
+                mediaFileTableCleanupService: new NoOpMediaFileTableCleanupService(),
                 commandQueueManager: commandQueue,
                 eventAggregator: eventAggregator,
                 logger: LogManager.GetLogger(nameof(DiskScanMissingFolderLoggingFixture)));

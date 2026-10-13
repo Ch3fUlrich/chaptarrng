@@ -282,6 +282,38 @@ The fork also maintains an [Unraid Community Applications
 package](https://github.com/snapetech/chaptarrng-unraid). Check its instructions
 for supported architectures, paths, and upgrade steps.
 
+## ChaptarrNG retirement blockers
+
+Retiring BookshelfNG into ChaptarrNG and retiring ChaptarrNG into upstream
+Chaptarr are separate decisions. The first gate is the complete BookshelfNG
+feature, data, and distribution inventory in the
+[BookshelfNG parity roadmap](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
+BookshelfNG stays active until every capability it added or materially
+extended is present in ChaptarrNG or has a tested, documented replacement.
+
+The later ChaptarrNG-to-Chaptarr gate is cumulative. Upstream Chaptarr must
+preserve the union of **all BookshelfNG capabilities carried into ChaptarrNG**
+and **all features ChaptarrNG maintains or actively develops**. The whole
+union blocks ChaptarrNG retirement; every capability, source-change group,
+and installation channel is also an individual blocker. Similar names or
+partial implementations do not close a blocker. Work counts before release,
+including unpublished work on active branches, open feature PRs, and changes
+already being developed locally.
+
+| Blocker set | Scope to preserve | Evidence required to close |
+| --- | --- | --- |
+| BookshelfNG capabilities carried into ChaptarrNG | Every capability and material enhancement in the BookshelfNG parity roadmap, including its settings, persisted data, identities, clients, and integrations | Demonstrate equivalent behavior on the supported upstream release, including converted data and existing client configurations; pass each row's acceptance checks. |
+| ChaptarrNG released features | Every capability ChaptarrNG introduced, materially extended, or maintains in this guide and the released changelog, including the SeerrNG contract, Direct Download, full-backup encryption, security behavior, and fork-specific operations | Show the behavior in a supported upstream release and validate the relevant APIs, security boundaries, operator workflows, and clients. |
+| ChaptarrNG active and unreleased features | The full active-branch and open-PR scope, even before merge or publication. The pinned branch snapshot at `22a9db6` is 308 commits ahead and 13 behind `origin/main`, across 695 changed paths; its feature families include RanobeDB and Audible metadata, audiobook processing and matching, import safety, external-library connections, MQTT, Prometheus, import-list history, and large-library/UI work. Open PR #72 adds Indonesian and Traditional Chinese; PR #73 adds metadata preferences. | Keep an itemized current snapshot, then prove each capability in upstream. Refresh the snapshot when branches, PRs, or maintained local work change. |
+| Remaining fork-only source changes | Every post-fork source change not already accounted for by the capability rows, including fixes, migrations, APIs, security, build, and platform behavior | Disposition every changed path as retained, ported, or replaced by a verified equivalent. A path count is not feature parity. |
+| Release and installation channels | Each ChaptarrNG release, image, package, updater, and supported upgrade path, plus any channel carrying a migrated BookshelfNG installation | Test the exact published upgrade, configuration/data migration, rollback, and client/update continuity for each channel. |
+
+No gate closes because a feature is merely present in source or because its
+name appears in upstream documentation. The acceptance evidence must target
+the exact supported upstream release and cover behavior, data, configuration,
+security, and affected clients. Any new feature enters the cumulative set as
+soon as ChaptarrNG takes it into active development.
+
 ## Release history
 
 The [changelog](../CHANGELOG.md) records the maintained release line from
@@ -291,7 +323,7 @@ encrypted full backups, and the Direct Download indexer/client with
 browser-assisted fallback. The `v0.9.969` container includes headless Chromium
 on AMD64 and ARM64; ARMv7 retains API-key downloads without browser fallback.
 
-## What would allow replacement
+## SeerrNG replacement criteria
 
 ChaptarrNG could be replaced for SeerrNG when a supported Chaptarr release
 advertises the required capability contract, keeps provider identity and format

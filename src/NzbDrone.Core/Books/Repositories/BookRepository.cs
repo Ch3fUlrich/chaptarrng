@@ -961,6 +961,11 @@ namespace NzbDrone.Core.Books
             }
         }
 
+        private static string GetBookListCleanTitleSortExpression(string bookReference)
+        {
+            return $"LOWER(COALESCE({bookReference}.\"CleanTitle\", {bookReference}.\"Title\", ''))";
+        }
+
         private string GetBookListTitleSortExpression(string bookReference, string trueIndicator)
         {
             var monitoredEditionTitle = $"(SELECT e.\"Title\" FROM \"Editions\" e WHERE e.\"BookId\" = {bookReference}.\"Id\" AND e.\"Monitored\" = {trueIndicator} ORDER BY e.\"Id\" LIMIT 1)";
@@ -985,7 +990,8 @@ namespace NzbDrone.Core.Books
             var sortKeyNormalized = sortKey?.Trim().ToLowerInvariant();
             var sortDirectionNormalized = sortDirection?.Trim().ToUpperInvariant() == "DESC" ? "DESC" : "ASC";
 
-            // Default to title sorting (which uses CleanTitle) to match client-side behavior.
+            // Default to the displayed title. The clean-title sort key has a separate
+            // index-backed expression for large-library pages and jump bars.
             if (string.IsNullOrWhiteSpace(sortKeyNormalized))
             {
                 sortKeyNormalized = "title";
@@ -1008,8 +1014,15 @@ namespace NzbDrone.Core.Books
                     break;
 
                 case "cleantitle":
+                    sortExpr = GetBookListCleanTitleSortExpression("b");
+                    bucketSourceExpr = sortExpr;
+                    orderByExpr = $"{sortExpr} {sortDirectionNormalized}, b.\"Id\" {sortDirectionNormalized}";
+                    break;
+
                 case "title":
-                    sortExpr = GetBookListTitleSortExpression("b", _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1");
+                    sortExpr = GetBookListTitleSortExpression(
+                        "b",
+                        _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1");
                     bucketSourceExpr = sortExpr;
                     orderByExpr = $"{sortExpr} {sortDirectionNormalized}, b.\"Id\" {sortDirectionNormalized}";
                     break;
@@ -1332,10 +1345,11 @@ namespace NzbDrone.Core.Books
             var tableName = TableMapping.Mapper.TableNameMapping(typeof(Book));
             var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
             var bookReference = $"\"{tableName}\"";
+            var cleanTitleSortExpression = GetBookListCleanTitleSortExpression(bookReference);
             var titleSortExpression = GetBookListTitleSortExpression(bookReference, trueIndicator);
             var columnMap = new Dictionary<string, string>
             {
-                ["cleantitle"] = titleSortExpression,
+                ["cleantitle"] = cleanTitleSortExpression,
                 ["title"] = titleSortExpression,
                 ["authortitle"] = "LOWER(\"Authors\".\"Name\")",
                 ["releasedate"] = BuildEffectiveReleaseDateExpression(bookReference),

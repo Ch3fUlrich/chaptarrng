@@ -574,6 +574,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         {
             public bool SkipFreeSpaceCheckWhenImporting { get; set; }
             public bool KeepExistingLibraryFileOnImportConflict { get; set; }
+            public ProperDownloadTypes DownloadPropersAndRepacks { get; set; } = ProperDownloadTypes.PreferAndUpgrade;
             public int MinimumFreeSpaceWhenImporting { get; set; } = 100;
             public int AudiobookConversionConcurrentConversions { get; set; } = 1;
             public int AudiobookConversionMaxCpuThreads { get; set; } = 4;
@@ -588,6 +589,11 @@ namespace Chaptarr.Core.Test.MediaFiles
                 if (targetMethod?.Name == "get_KeepExistingLibraryFileOnImportConflict")
                 {
                     return KeepExistingLibraryFileOnImportConflict;
+                }
+
+                if (targetMethod?.Name == "get_DownloadPropersAndRepacks")
+                {
+                    return DownloadPropersAndRepacks;
                 }
 
                 if (targetMethod?.Name == "get_MinimumFreeSpaceWhenImporting")

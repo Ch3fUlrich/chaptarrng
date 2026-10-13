@@ -172,7 +172,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
             var staleFiles = new List<BookFile>();
             foreach (var file in trackedFiles)
             {
-                if (string.IsNullOrWhiteSpace(file?.Path) || !_diskProvider.FileExists(file.Path))
+                if (string.IsNullOrWhiteSpace(file?.Path) || !IsStillOnDisk(file.Path))
                 {
                     staleFiles.Add(file);
                 }

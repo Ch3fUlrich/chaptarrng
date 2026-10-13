@@ -4482,10 +4482,12 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                 Assert.That(match, Is.Null);
                 }
 
-                [TestCase(false, false)]
-                [TestCase(true, true)]
+                [TestCase(false, false, false)]
+                [TestCase(true, false, true)]
+                [TestCase(true, true, false)]
                 public void should_only_block_generic_series_title_when_no_clean_title_field_remains(
                     bool includeCleanTitleField,
+                    bool isCollectionTitle,
                     bool expectedMatch)
                 {
                     var logger = LogManager.GetCurrentClassLogger();
@@ -4493,13 +4495,13 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
 
                     var fts = new StubEditionFtsRepository(new List<EditionFtsMatch>
                     {
-                        // Wrong candidate first: series-level/boxed-set-ish title
+                        // A clean title can prove a generic series book, but must not turn a boxed set into a single book.
                         new EditionFtsMatch
                         {
                             EditionId = 1,
                             BookId = 49,
                             EditionTitle = "Harry Potter",
-                            BookTitle = "Complete Harry Potter Boxed Set",
+                            BookTitle = isCollectionTitle ? "Complete Harry Potter Boxed Set" : "Harry Potter",
                             AuthorId = 25,
                             AuthorName = "J.K. Rowling",
                         },

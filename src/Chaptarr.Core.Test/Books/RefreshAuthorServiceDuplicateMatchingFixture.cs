@@ -467,6 +467,7 @@ namespace Chaptarr.Core.Test.Books
                 MediaType = BookMediaType.Audiobook,
                 BaseBookId = "az:B09FBT3T7G",
                 UnitKeyHash = unitKeyHash,
+                Added = unitKeyHash == null ? DateTime.MinValue : DateTime.UtcNow,
                 AnyEditionOk = true,
                 Editions = new List<Edition> { new() { Asin = "B09FC52TN9" } }
             };
