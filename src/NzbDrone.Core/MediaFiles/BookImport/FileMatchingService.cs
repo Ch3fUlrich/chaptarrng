@@ -7006,6 +7006,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     var seriesPositionEvidence = GetSeriesPositionEvidence(result, allTags, booksById);
                     var invalidatedTitleEvidenceFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     var titleEvidenceCounted = false;
+                    var hasBookTitleEvidenceProof = false;
+                    var hasAttestedSubtitleBaseTitleProof = false;
 
                     bool IsTitleEvidenceFieldEligible(EditionTitleEvidence item)
                     {
@@ -7063,6 +7065,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         evidence = ApplyStrictSeriesPositionFieldPolicy(GetCandidateTitleEvidence(
                             result.BookTitle,
                             includeDurationGatedNearExact));
+                        hasBookTitleEvidenceProof = evidence?.Count > 0;
                     }
                     if (evidence == null || evidence.Count == 0)
                     {
@@ -7111,6 +7114,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 if (baseTitleEvidence.Count > 0)
                                 {
                                     evidence = baseTitleEvidence;
+                                    hasAttestedSubtitleBaseTitleProof = true;
                                 }
                             }
 
@@ -7323,6 +7327,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         audiobookUndistinguishedEditionFallback);
                     scoredCandidate.HasDurationProof = audiobookDurationMatches;
                     scoredCandidate.HasDirectEditionTitleProof = HasStrongDirectEditionTitleEvidence(directEditionEvidence);
+                    scoredCandidate.HasBookTitleEvidenceProof = hasBookTitleEvidenceProof ||
+                        (string.Equals(result.BookTitle?.Trim(), result.EditionTitle?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                         evidence.Any(item => item?.IsNearExact == true));
+                    scoredCandidate.HasAttestedSubtitleBaseTitleProof = hasAttestedSubtitleBaseTitleProof;
                     scoredCandidate.TitleOccurrenceExplanations = BuildTitleOccurrenceExplanations(
                         result,
                         evidence,
@@ -7651,7 +7659,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (WinnerTitleSubstitutesFileTitle(winner, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
+                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                    WinnerTitleSubstitutesFileTitle(winner, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_WORD_SUBSTITUTION",
                         $"book title has '{substitutedCandidateWord}' while the file evidence has '{substitutedQueryWord}' instead", "contradictory");
@@ -7664,7 +7675,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (WinnerTitleHasSurplusVolumeToken(winner, tokens, out var surplusVolumeToken))
+                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                    WinnerTitleHasSurplusVolumeToken(winner, tokens, out var surplusVolumeToken))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_SURPLUS_VOLUME_TOKEN",
                         $"book title carries '{surplusVolumeToken}' with no counterpart in the file's title evidence", "contradictory");
@@ -7730,6 +7744,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 public int AudiobookProofTier { get; set; }
                 public bool HasDurationProof { get; set; }
                 public bool HasDirectEditionTitleProof { get; set; }
+                public bool HasBookTitleEvidenceProof { get; set; }
+                public bool HasAttestedSubtitleBaseTitleProof { get; set; }
                 public int RepresentativeRank { get; set; }
                 public bool UndistinguishedAudiobookEditionFallback { get; set; }
                 public string MatchedVia { get; set; }

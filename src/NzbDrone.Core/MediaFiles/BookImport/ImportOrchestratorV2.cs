@@ -1552,7 +1552,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             {
                 FilterFilesType.None => true,
                 FilterFilesType.Matched => knownFile.EditionId == 0,
-                FilterFilesType.Known => knownFile.EditionId == 0 || !IsKnownFileUnchanged(diskFile, knownFile),
+                FilterFilesType.Known => !IsKnownFileUnchanged(diskFile, knownFile),
                 _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Unrecognized file filter")
             };
         }

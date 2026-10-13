@@ -276,11 +276,10 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
                 var rootFolder = _rootFolderService.GetBestRootFolder(path);
-                if (rootFolder?.IsCalibreLibrary == true && rootFolder.CalibreSettings != null)
+                if (rootFolder?.IsCalibreLibrary == true)
                 {
-                    // Calibre owns the library directory. Retry deletion of tracked records through
-                    // Calibre, but never recycle the whole folder or touch untracked Calibre books.
-                    DeleteCalibreBooksUnderPath(path, rootFolder.CalibreSettings, author);
+                    // The synchronous handler deletes tracked Calibre records before author cleanup.
+                    // Do not repeat that external deletion here, and never recycle the library folder.
                     continue;
                 }
 

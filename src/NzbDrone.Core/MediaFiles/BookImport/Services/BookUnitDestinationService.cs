@@ -160,9 +160,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
 
             // Check files on BOOK level, not edition - prevents different folders from collapsing onto same book
             // when they match different editions of the same work
-            var existingFiles = _mediaFileService.GetFilesByBook(canonicalBook.Id) ?? new List<BookFile>();
+            var trackedFiles = _mediaFileService.GetFilesByBook(canonicalBook.Id) ?? new List<BookFile>();
+            trackedFiles.RemoveAll(f => string.IsNullOrWhiteSpace(f?.Path));
 
-            var staleRowCount = existingFiles.RemoveAll(f => string.IsNullOrWhiteSpace(f?.Path) || !_diskProvider.FileExists(f.Path));
+            var existingFiles = trackedFiles.Where(f => IsStillOnDisk(f.Path)).ToList();
+            var staleRowCount = trackedFiles.Count - existingFiles.Count;
             if (staleRowCount > 0)
             {
                 _logger.Debug("[UNIT-DEST] Ignored {0} tracked files missing from disk on BookId={1} while resolving unit destination", staleRowCount, canonicalBook.Id);
@@ -170,10 +172,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
 
             if (existingFiles.Count == 0)
             {
-                // No existing files on canonical book → reuse canonical
-                var dest0 = (canonicalBook.Id, canonicalEdition.Id);
-                if (!string.IsNullOrWhiteSpace(cacheKey)) _unitDestCache[cacheKey] = dest0;
-                return dest0;
+                // Reuse an empty record, or a record whose files were replaced in this unit's folder.
+                // Missing files from a different folder still identify another copy, so keep it separate.
+                if (trackedFiles.Count == 0 || OnlyReplacedFilesRemain(trackedFiles, canonicalEdition.Title, canonicalBook.MediaType, unitKey))
+                {
+                    var dest0 = (canonicalBook.Id, canonicalEdition.Id);
+                    if (!string.IsNullOrWhiteSpace(cacheKey)) _unitDestCache[cacheKey] = dest0;
+                    return dest0;
+                }
             }
 
             // Check if existing files belong to the same unit key
@@ -233,6 +239,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
         // no longer on disk. A file that is still there, or one in a different folder, is a real copy.
         private bool OnlyReplacedFilesRemain(List<BookFile> existingFiles, string editionTitle, BookMediaType mediaType, string unitKey)
         {
+            if (existingFiles == null || existingFiles.Count == 0)
+            {
+                return false;
+            }
+
             var incomingFolder = FolderOfUnitKey(unitKey);
 
             foreach (var file in existingFiles)

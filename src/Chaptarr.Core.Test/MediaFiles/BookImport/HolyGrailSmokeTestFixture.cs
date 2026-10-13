@@ -4550,7 +4550,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
 
 	                    if (includeCleanTitleField)
 	                    {
-	                        tags["TITLE"] = new List<string> { "Harry Potter" };
+                        tags["TITLE"] = new List<string> { "Harry Potter and the Order of the Phoenix" };
 	                    }
 
 	                    var file = new DiscoveredFileWithMetadata
@@ -4565,7 +4565,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
 	                    if (expectedMatch)
 	                    {
 	                        Assert.That(match, Is.Not.Null);
-	                        Assert.That(match.EditionId, Is.EqualTo(1));
+                        Assert.That(match.EditionId, Is.EqualTo(2));
 	                    }
 	                    else
 	                    {

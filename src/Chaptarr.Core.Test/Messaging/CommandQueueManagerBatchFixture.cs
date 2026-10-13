@@ -20,23 +20,31 @@ namespace Chaptarr.Core.Test.Messaging
 
             protected override object Invoke(MethodInfo method, object[] args)
             {
-                if (method.Name != nameof(ICommandRepository.InsertMany))
-                {
-                    throw new NotImplementedException(method.Name);
-                }
-
                 if (Fail)
                 {
                     throw new InvalidOperationException("Batch rolled back");
                 }
 
-                foreach (var model in (IEnumerable<CommandModel>)args[0])
+                if (method.Name == nameof(ICommandRepository.Insert))
                 {
+                    var model = (CommandModel)args[0];
                     model.Id = Inserted.Count + 1;
                     Inserted.Add(model);
+                    return model;
                 }
 
-                return null;
+                if (method.Name == nameof(ICommandRepository.InsertMany))
+                {
+                    foreach (var model in (IEnumerable<CommandModel>)args[0])
+                    {
+                        model.Id = Inserted.Count + 1;
+                        Inserted.Add(model);
+                    }
+
+                    return null;
+                }
+
+                throw new NotImplementedException(method.Name);
             }
         }
 

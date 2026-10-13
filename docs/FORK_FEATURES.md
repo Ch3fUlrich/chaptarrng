@@ -16,6 +16,20 @@ changes rather than listing every fix or dependency update; the
 [repository history](https://github.com/snapetech/chaptarrng/commits/main/)
 records each commit.
 
+The published release is the comparison baseline, not the limit of the
+retirement scope. ChaptarrNG's later commits and active changes must also be
+reviewed. The BookshelfNG consolidation adds another required feature set; it
+does not replace or reduce ChaptarrNG's existing maintained features.
+
+At this review, the shared upstream comparison commit `e67374f` to ChaptarrNG
+`dc53d0a` spans 427 commits and 960 net-changed paths. The active consolidation
+worktree has 15 tracked changes: five product files, eight Core test fixtures,
+and two documentation files. These counts describe source history, not feature
+parity, and must be regenerated against the exact upstream and candidate
+revisions at any later retirement review. **Confidence:** high for these
+pinned repository counts, moderate for the feature-level upstream comparison,
+and unknown for semantic equivalence until the matrix checks pass.
+
 The application keeps reporting its name as `Chaptarr` through its
 Readarr-compatible API so existing clients can identify it. **ChaptarrNG**
 names the maintained repository and its fork-owned releases and packages.
@@ -157,14 +171,49 @@ encrypted full backups, and the Direct Download indexer/client with
 browser-assisted fallback. The `v0.9.969` container includes headless Chromium
 on AMD64 and ARM64; ARMv7 retains API-key downloads without browser fallback.
 
+## ChaptarrNG retirement blockers
+
+Retiring ChaptarrNG into upstream Chaptarr has a cumulative scope. Upstream
+must retain or replace **both** (1) ChaptarrNG's own maintained features and
+active changes and (2) every BookshelfNG feature carried into the consolidated
+ChaptarrNG product. The combined set blocks retirement as a whole, and every
+row below is an independent gate. A matching feature name, a README claim, or
+similar code does not close a row; the supported upstream release must pass
+behavioral, data, security, and packaging checks.
+
+| Combined capability family | ChaptarrNG features to retain | BookshelfNG contribution to the consolidated product | Upstream Chaptarr retirement gate |
+| --- | --- | --- | --- |
+| SeerrNG API and request lifecycle | Capability discovery; format/provider identity; format-scoped routes; paged library scans; pending-import status/retry/cancel; restricted SeerrNG key | Readarr-compatible format routes, format-specific availability, and existing client settings and identities | Upstream must expose an equivalent stable contract and scoped credential; run unchanged SeerrNG request, polling, availability, pending-work, and authorization probes. Its existing pending-import engine alone is not the contract. |
+| Metadata providers and identity | Chaptarr's resolver, V5 pipeline, and provider-specific identities | Native Hardcover client and controls; selectable supplemental catalogs; per-field source choices; Goodreads/Readarr continuity and qualified IDs | Keep both identity models resolvable or provide tested migration/adapter behavior; preserve provider choice, credentials, caches, rate-limit handling, and refresh policy. |
+| Matching, recovery, and edition preferences | Narrator/publisher-aware matching and native import behavior | Cross-catalog unmapped recovery; normalized title/identifier search; configurable thresholds; weighted edition terms; preferred series; narrator tags and evidence | Preserve candidate ranking, identity constraints, missing-data neutrality, ambiguity handling, manual review, and no-false-match/no-delete behavior with the original edge cases. |
+| Format records, profiles, and storage | ChaptarrNG's media-specific models, roots, and standalone ebook/audiobook workflows | Multiple compatible formats on a book; format-specific folders and profile overrides; previewable moves and extra-file handling | Preserve file-to-book relationships, profile fallback, paths, move previews, collisions, and sibling-format isolation; convert existing data without moving media unexpectedly. |
+| Audiobook processing and tags | Native conversion, multipart handling, and Chaptarr metadata | Opt-in M4B merge behavior, chapter/part semantics, and BookshelfNG's byte-preserving MPEG-4 `chpl` TagLib patch | Prove chapter preservation, order, tags, source retention, conversion failure recovery, and representative M4B compatibility. |
+| Acquisition and download safety | Built-in Direct Download indexer/client, staged state, API-key downloads, browser fallback, redirect validation | Existing-torrent adoption/seeding preservation and BookshelfNG-specific source ordering, transfer recovery, and client compatibility | Keep both acquisition paths and their security boundaries; test wrong-category and seeding cases, URL order, private-network redirect rejection, interrupted transfer recovery, and supported architectures. |
+| Standalone integrations and privacy | ChaptarrNG standalone app and its supported integrations | BookLore BookDrop, Calibre, MyAnonamouse, Audiobookshelf sidecars, and optional aggregate-only diagnostics | Preserve every integration and its settings/data contract; diagnostics must remain a separate explicit opt-in and must not be enabled by migration. |
+| Backup, authentication, and security | Encrypted full-backup archives; API-key controls, login throttling, response redaction, update verification, and request hardening | Encrypted portable backups; legacy API/query-key aliases; trusted-proxy and request-limit behavior; Bookshelf secrets and existing credentials | Restore existing ChaptarrNG and Bookshelf archives; preserve credentials and rollback; keep restrictions at least as strong and never log secrets. |
+| Release, package, and update channels | ChaptarrNG GHCR releases, Unraid/YunoHost identities, and its supported update path | BookshelfNG's GHCR/Docker Hub tags, Unraid template, native installers, Linux package channels, Helm, and legacy update behavior | Provide tested channel-specific transition artifacts, retain package/image/service/data identities where required, and demonstrate rollback. No single redirect reaches every installed copy. |
+| Data and API compatibility | Existing ChaptarrNG databases, configuration, local IDs, and SeerrNG links | BookshelfNG databases/configuration and their provider identities, local IDs, settings, histories, and files | Keep each source recoverable; perform explicit staged conversion; preserve or reconcile identities and references; prove rollback, upgrade, and restart behavior for populated fixtures. |
+| Complete fork history and active changes | Every ChaptarrNG commit after the shared fork base, including current in-progress changes | Every BookshelfNG commit/path in the pinned consolidation inventory | Generate and review the exact source-to-upstream commit/path inventory at retirement time. Retain, port, or prove equivalence for every behavior; a proposed removal remains blocked until an explicit maintainer decision. |
+
+All gates are open until tested against a supported upstream release. The
+current upstream comparison is pinned above; it does not prove equivalence for
+later upstream commits. BookshelfNG's current inventory and migration evidence
+are recorded in its
+[consolidation report](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
+and [feature matrix](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
+The candidate contains some ports and passes the recorded Chaptarr Core suite,
+but the published `v0.9.969` release has no populated BookshelfNG converter or
+channel bridge. Until conversion, parity, consumer probes, and the applicable
+channel upgrades pass, neither BookshelfNG nor ChaptarrNG can be described as
+seamlessly replaceable.
+
 ## What would allow replacement
 
-ChaptarrNG could be replaced for SeerrNG when a supported Chaptarr release
-advertises the required capability contract, keeps provider identity and format
-scoped through lookup/add/status, exposes paged library reads and safe
-pending-import read/retry/cancel operations, and offers a credential limited to
-those routes. Chaptarr already contains a pending-import engine, so SeerrNG
-needs matching exposed semantics rather than a second queue implementation.
-Keep Direct Download and full-backup encryption available upstream or replace
-those standalone needs before retiring the fork. Verify the exact upstream
-release with SeerrNG before switching.
+ChaptarrNG can be retired into upstream Chaptarr only when a supported upstream
+release satisfies every row in the combined matrix, the complete post-fork
+commit/path inventory is retained, ported, or proven equivalent, and the exact
+release passes the ChaptarrNG and SeerrNG validation suites plus the data and
+packaging upgrade tests. Chaptarr already contains a pending-import engine, so
+SeerrNG needs matching exposed semantics rather than a second queue
+implementation. Keeping only the SeerrNG API contract while dropping
+standalone or BookshelfNG capabilities does not satisfy the retirement gate.

@@ -23,6 +23,22 @@ We forked Chaptarr so SeerrNG can rely on a book backend with explicit ebook/aud
 
 The application continues to identify itself as `Chaptarr` through its Readarr-compatible API so SeerrNG can detect it. **ChaptarrNG** is the name of this maintained repository, its container image, and its Unraid template.
 
+### BookshelfNG consolidation status
+
+The proposed BookshelfNG consolidation is cumulative: the goal is to carry
+BookshelfNG's enhanced features into ChaptarrNG while keeping ChaptarrNG's own
+maintained features and active work. That combined feature set would also have
+to be preserved upstream before ChaptarrNG could later be retired into
+Chaptarr. The [combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+tracks both sets.
+
+The published `0.9.969` release does not include a populated BookshelfNG
+database converter or a BookshelfNG package/channel bridge. Do not point
+ChaptarrNG at a BookshelfNG `/config` directory or treat the projects as
+drop-in replacements yet. See the current
+[BookshelfNG consolidation report](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
+for migration and release evidence.
+
 ChaptarrNG is independently maintained and is not affiliated with the Servarr team or the Readarr, Sonarr, Radarr, Lidarr, or Prowlarr projects.
 
 The backend is built on .NET 10 LTS. Docker images include the ASP.NET Core

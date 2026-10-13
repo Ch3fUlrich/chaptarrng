@@ -169,6 +169,7 @@ namespace NzbDrone.Core.MediaFiles
                     _repository.Update(job);
 
                     _activeConversions.TryGetValue(downloadId, out active);
+                    active?.Cancellation.Cancel();
                 }
                 else
                 {
@@ -184,7 +185,6 @@ namespace NzbDrone.Core.MediaFiles
             if (active != null)
             {
                 _trackingService?.Cancel(downloadId);
-                active.Cancellation.Cancel();
                 _signal.Set();
             }
             else
