@@ -1,7 +1,7 @@
 {
   "repository": "Chaptarr/chaptarr",
   "snapshotAt": "2026-10-12T21:17:51+00:00",
-  "forkHead": "4fd9696",
+  "forkHead": "2b4b1f4",
   "scope": "All visible issues and PRs with descriptions, discussion and review snapshots; open PR patches compared against the initial fork. Patch applicability is not a completion claim.",
   "completionRule": "Each actionable requirement needs implementation evidence and relevant passing validation. Closed or merged upstream state alone does not prove fork coverage. Conflicts and external dependencies require explicit disposition.",
   "counts": {
@@ -1137,10 +1137,17 @@
       "title": "[FEATURE] Add low-cardinality Prometheus metrics for operational health",
       "url": "https://github.com/Chaptarr/chaptarr/issues/75",
       "kind": "issue",
-      "auditStatus": "unreviewed",
+      "auditStatus": "implemented-awaiting-final-validation",
       "relatedItems": [],
-      "implementationEvidence": [],
-      "validationEvidence": [],
+      "implementationEvidence": [
+        "Commit 2b4b1f4 adds an independently enabled Kestrel metrics listener (disabled by default, loopback-bound by default) that serves only GET /metrics and returns 404 for other paths.",
+        "Exports queue depth/status, active health counts and worst health state, scheduled task result/duration, import-list sync results, and download/import lifecycle outcomes. Labels are fixed enums; task types and user-controlled values are omitted.",
+        "Added an operator guide with scrape configuration and exposure guidance, plus regression fixtures for result counters, duration buckets, queue/health snapshots, and sensitive/high-cardinality labels."
+      ],
+      "validationEvidence": [
+        "git diff --cached --check passed. Metrics contract fixtures were added but not run, and no unit or integration tests were run, per the user instruction.",
+        "A full Core build was not rerun: the prior build stops at the SixLabors.ImageSharp license target before C# compilation; that gate was not bypassed."
+      ],
       "sourceUpdatedAt": "2026-10-03T19:45:08Z",
       "body": "## Goal\n\nExpose a Prometheus-compatible metrics endpoint for Chaptarr operational health without requiring operators to scrape logs or repeatedly poll multiple API resources.\n\n## Why\n\nToday, queue state, scheduled-task duration, health checks, import-list outcomes, and download/import activity must be reconstructed from separate API calls and logs. First-class metrics would make regressions, stalled workflows, and capacity problems visible before they become user-facing failures.\n\n## Requirements\n\n- **R1:** Expose a Prometheus-compatible endpoint that can be enabled independently of the interactive API.\n- **R2:** Export low-cardinality gauges/counters/histograms for health state, queue depth, task duration/result, import-list sync results, download outcomes, and import outcomes.\n- **R3:** Do not use book titles, author names, paths, URLs, API keys, provider identifiers, or other user-controlled values as labels.\n- **R4:** Document authentication/network exposure expectations and example Prometheus scrape configuration.\n- **R5:** Keep metric names and labels stable enough for dashboards and alerts.\n\n## Acceptance criteria\n\n- Prometheus can scrape the endpoint successfully.\n- A scheduled task success and failure update the expected counters and duration metric.\n- Queue and health gauges agree with the corresponding API resources.\n- Automated tests reject high-cardinality or sensitive labels.\n- Metrics can be disabled without changing existing API behavior.\n\n## Likely implementation areas\n\n- `src/NzbDrone.Host/`\n- `src/Chaptarr.Api.V1/System/`\n- Scheduled task, queue, import-list, download, and import event handlers\n- Documentation and integration tests\n\n## Out of scope\n\n- Bundling Prometheus or Grafana.\n- Shipping deployment-specific dashboards or alert thresholds.",
       "comments": []
