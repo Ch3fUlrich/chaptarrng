@@ -95,7 +95,7 @@ namespace NzbDrone.Core.MediaFiles
             return conn.ExecuteScalar<DateTime?>(@"SELECT MAX(bf.""DateAdded"")
                                                   FROM ""BookFiles"" bf
                                                   INNER JOIN ""Editions"" e ON e.""Id"" = bf.""EditionId""
-                                                  INNER JOIN ""Books"" b ON b.""Id"" = e.""BookId"");
+                                                  INNER JOIN ""Books"" b ON b.""Id"" = e.""BookId""");
         }
 
         public List<BookFile> GetMappedFilePathEvidenceByAuthor(int authorId, string mediaType)
