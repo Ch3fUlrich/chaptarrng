@@ -7,22 +7,14 @@ on:
         description: Discord embed title
         required: true
         type: string
-        default: ChaptarrNG is now available on YunoHost
       url:
         description: HTTPS link opened by the embed
         required: true
         type: string
-        default: https://github.com/YunoHost-Apps/chaptarrng_ynh
       body:
         description: Announcement text
         required: true
         type: string
-        default: |
-          ChaptarrNG now has amd64 and arm64 packages for YunoHost. Install directly with:
-          `sudo yunohost app install https://github.com/YunoHost-Apps/chaptarrng_ynh --debug`
-
-          The YunoHost catalog submission is under review:
-          https://github.com/YunoHost/apps/pull/3635
 
 permissions:
   contents: read

@@ -245,31 +245,8 @@ jobs:
       sha: ${{ needs.release.outputs.sha }}
       branch: ${{ github.ref_name }}
 
-  yunohost-assets:
-    needs: [release, docker]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: read
-    steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.release.outputs.sha }}
-        persist-credentials: false
-
-    - name: Build YunoHost bundles from the released GHCR image
-      env:
-        TAG: ${{ needs.release.outputs.tag }}
-      run: ./build-tools/package-yunohost-release-assets.sh "$TAG"
-
-    - name: Attach YunoHost bundles to the release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ needs.release.outputs.tag }}
-      run: gh release upload "$TAG" dist-yunohost/*.tar.gz --clobber
-
   publish-release:
-    needs: [release, docker, yunohost-assets]
+    needs: [release, docker]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -302,7 +279,7 @@ jobs:
 
   announce-discord:
     name: Announce release to Discord
-    needs: [release, docker, yunohost-assets, publish-release]
+    needs: [release, docker, publish-release]
     runs-on: ubuntu-latest
     permissions:
       contents: read
