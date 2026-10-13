@@ -2,16 +2,16 @@
 
 ## Existing support and verified gap
 
-ChaptarrNG already has a `Core/*.json` catalog system, server-side fallback to English, and a System > UI Language setting. There are 45 checked-in core catalogs, including Spanish, German, Arabic, Hindi, Japanese, Korean, Vietnamese, and Simplified Chinese. The runtime language list currently maps Chinese to `zh_CN` and Brazilian Portuguese to `pt_BR`; the existence of other catalog variants does not by itself make them selectable.
+ChaptarrNG already has a `Core/*.json` catalog system, server-side fallback to English, and a System > UI Language setting. There are 45 checked-in core catalogs, including Spanish, German, Arabic, Hindi, Japanese, Korean, Vietnamese, Simplified Chinese, Traditional Chinese, and Indonesian. The runtime language list already maps Chinese to `zh_CN` and Brazilian Portuguese to `pt_BR`; this PR adds selectable mappings for the existing Traditional Chinese and Indonesian catalogs.
 
-The AudioBookShelf root-mapping UI adds 17 English messages that were missing from every checked locale. This PR fills them for the selectable `es`, `de`, `zh_CN`, `ja`, `fr`, `pt_BR`, `ar`, `ko`, `hi`, and `vi` catalogs. It reuses the current localization service and does not add a second language preference.
+The AudioBookShelf root-mapping UI adds 17 English messages that were missing from every checked locale. The first slice filled them for the selectable es, de, zh_CN, ja, fr, pt_BR, ar, ko, hi, and vi catalogs. This continuation exposes the existing Indonesian and Traditional Chinese catalogs and translates all 19 root-mapping messages for those two locales. It reuses the current localization service and does not add a second language preference.
 
 ## Next implementation steps
 
 1. Keep new Chaptarr-specific messages in the existing core catalog and add them to the highest-priority selectable locale files first.
 2. Add a coverage report for recently introduced UI keys and keep token placeholders identical to English.
-3. Decide separately whether to expose the existing Spanish-Mexico and Traditional-Chinese catalog variants in the UI; do not imply those variants are selectable until the language mapping supports them.
-4. Add explicit `lang` and `dir` behavior for Arabic, Persian, and Hebrew, then review forms, tables, navigation, and modals at narrow and desktop widths.
+3. Decide separately whether to expose the existing Spanish-Mexico catalog variant in the UI; do not imply it is selectable until the language mapping supports it.
+4. Review forms, tables, navigation, and modals at narrow and desktop widths with the existing Arabic and Hebrew `lang` and `dir` behavior; full RTL layout remains separate.
 5. Keep book, author, edition, file, and integration names as supplied; use the UI locale only for interface copy and locale-aware date/number formatting.
 
 ## First-pass locale order
@@ -39,4 +39,4 @@ Translate interface labels, help, empty states, validation, notifications, and e
 
 ## Implemented in this PR
 
-The localization endpoint now reports the selected interface locale, and the browser applies it to the document language and reading direction. Arabic and Hebrew select right-to-left flow. Full page-level RTL layout review and conversion of remaining physical CSS properties are still required before claiming complete RTL support.
+System > UI Language now offers Indonesian and Traditional Chinese through the existing locale service, alongside the prior first-wave choices. Their AudioBookShelf root-mapping labels, guidance, loading states, and errors are translated, and untranslated messages continue to fall back to English. Arabic and Hebrew continue to use right-to-left document direction; full-page RTL layout review remains separate.
