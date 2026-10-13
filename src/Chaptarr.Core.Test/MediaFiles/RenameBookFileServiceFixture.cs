@@ -170,7 +170,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                 ExistingFiles.Add(path);
                 for (var folder = Path.GetDirectoryName(path); !string.IsNullOrEmpty(folder); folder = Path.GetDirectoryName(folder))
                 {
-                    ExistingFolders.Add(folder);
+                    ExistingFolders.Add(NormalizePath(folder));
                 }
             }
 
@@ -209,7 +209,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                     Operations.Add($"CreateFolder {folder}");
                     for (; !string.IsNullOrEmpty(folder); folder = Path.GetDirectoryName(folder))
                     {
-                        ExistingFolders.Add(folder);
+                        ExistingFolders.Add(NormalizePath(folder));
                     }
 
                     return null;
@@ -277,7 +277,15 @@ namespace Chaptarr.Core.Test.MediaFiles
 
         private static string NormalizePath(string path)
         {
-            return path == null ? null : Path.GetFullPath(path).Replace('\\', '/');
+            if (path == null)
+            {
+                return null;
+            }
+
+            var fullPath = Path.GetFullPath(path);
+            return Path.DirectorySeparatorChar == '\\'
+                ? fullPath.Replace('/', '\\')
+                : fullPath.Replace('\\', '/');
         }
 
         private static BookFile BookFile(int id, string path, Quality quality, string mediaType)
@@ -540,8 +548,8 @@ namespace Chaptarr.Core.Test.MediaFiles
             var mover = new RecordingMoveBookFiles { PlanFactory = (_, _) => plan };
             var diskProvider = DispatchProxy.Create<IDiskProvider, DiskProviderProxy>();
             var diskProxy = (DiskProviderProxy)(object)diskProvider;
-            diskProxy.ExistingFolders.Add(sourceAuthorFolder);
-            diskProxy.ExistingFolders.Add(sourceBookFolder);
+            diskProxy.ExistingFolders.Add(NormalizePath(sourceAuthorFolder));
+            diskProxy.ExistingFolders.Add(NormalizePath(sourceBookFolder));
             var service = CreateService(author, mediaFileService, mover, new RecordingEventAggregator(), diskProvider);
 
             service.Execute(new RenameFilesCommand(author.Id, new List<int> { file.Id }, true));
