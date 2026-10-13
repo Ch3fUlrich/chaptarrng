@@ -32,6 +32,7 @@ namespace Chaptarr.Api.V1.Books
         public string LocalBookId { get; set; }
         public string ForeignEditionId { get; set; }
         public string BaseBookId { get; set; }
+        public string WantedVersion { get; set; }
 
         // Individual provider IDs for frontend compatibility
         public string HardcoverBookId { get; set; }
