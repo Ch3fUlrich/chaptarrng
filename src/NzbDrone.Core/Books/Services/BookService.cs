@@ -8,6 +8,7 @@ using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Datastore;
@@ -2854,7 +2855,7 @@ namespace NzbDrone.Core.Books
                 }
             }
 
-            var rowLanguage = language ?? EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language);
+            var rowLanguage = language ?? Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language);
             return AddWantedEditionForEdition(baseBook, selectedEdition, mediaType, rowLanguage, isVariantRequest, selection.AsNewVariant);
         }
 
@@ -2865,7 +2866,7 @@ namespace NzbDrone.Core.Books
 
         private static bool SameLanguage(string editionLanguage, string canonical)
         {
-            return string.Equals(EditionMetadataProfileFilter.NormalizeLanguageBucket(editionLanguage), canonical, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(editionLanguage), canonical, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool SameIsbn(string isbn, string requested)
@@ -2909,7 +2910,7 @@ namespace NzbDrone.Core.Books
                 throw new InvalidOperationException($"Edition {editionId} does not belong to book {bookId}");
             }
 
-            return AddWantedEditionForEdition(baseBook, selectedEdition, baseBook.MediaType, EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language), asNewVariant, asNewVariant).Book;
+            return AddWantedEditionForEdition(baseBook, selectedEdition, baseBook.MediaType, Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language), asNewVariant, asNewVariant).Book;
         }
 
         private WantedEditionResult AddWantedEditionForEdition(Book baseBook, Edition selectedEdition, BookMediaType mediaType, string rowLanguage, bool isVariantRequest, bool asNewVariant)
@@ -2921,7 +2922,7 @@ namespace NzbDrone.Core.Books
                     .Where(b => string.Equals(b.BaseBookId, baseBook.BaseBookId, StringComparison.OrdinalIgnoreCase))
                     .Where(b => b.Id != baseBook.Id && b.MediaType == mediaType)
                     .Where(b => b.TitleSlug.IsNotNullOrWhiteSpace() && b.TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0)
-                    .Where(b => string.Equals(EditionMetadataProfileFilter.NormalizeLanguageBucket(b.LanguageCode), rowLanguage, StringComparison.OrdinalIgnoreCase))
+                    .Where(b => string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(b.LanguageCode), rowLanguage, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(b => b.Id)
                     .FirstOrDefault();
 
