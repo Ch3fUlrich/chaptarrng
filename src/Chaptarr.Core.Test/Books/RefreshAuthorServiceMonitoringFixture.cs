@@ -96,18 +96,17 @@ namespace Chaptarr.Core.Test.Books
             }
         }
 
-        private sealed class StubImportListExclusionService : IImportListExclusionService
+        private sealed class EmptyImportListExclusionService : IImportListExclusionService
         {
             public List<ImportListExclusion> All() => new();
-
-            public ImportListExclusion Add(ImportListExclusion importListExclusion) => throw new NotImplementedException();
+            public List<ImportListExclusion> FindByForeignId(List<string> foreignIds) => new();
+            public ImportListExclusion Add(ImportListExclusion exclusion) => throw new NotImplementedException();
             public void Delete(int id) => throw new NotImplementedException();
             public void Delete(List<int> ids) => throw new NotImplementedException();
             public void Delete(string foreignId) => throw new NotImplementedException();
             public ImportListExclusion Get(int id) => throw new NotImplementedException();
             public ImportListExclusion FindByForeignId(string foreignId) => throw new NotImplementedException();
-            public List<ImportListExclusion> FindByForeignId(List<string> foreignIds) => throw new NotImplementedException();
-            public ImportListExclusion Update(ImportListExclusion importListExclusion) => throw new NotImplementedException();
+            public ImportListExclusion Update(ImportListExclusion exclusion) => throw new NotImplementedException();
         }
 
         private sealed class TestableRefreshAuthorService : RefreshAuthorService
@@ -128,7 +127,7 @@ namespace Chaptarr.Core.Test.Books
                     checkIfAuthorShouldBeRefreshed: null,
                     monitorNewBookService: new MonitorNewBookService(logger),
                     configService: null,
-                    importListExclusionService: new StubImportListExclusionService(),
+                    importListExclusionService: new EmptyImportListExclusionService(),
                     syncMetadataService: null,
                     syncQueueService: null,
                     rootFolderSettingsResolver: null,

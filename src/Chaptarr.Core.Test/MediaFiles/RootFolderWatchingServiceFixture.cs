@@ -27,6 +27,19 @@ namespace Chaptarr.Core.Test.MediaFiles
             }
         }
 
+        private class EmptyAuthorServiceProxy : DispatchProxy
+        {
+            protected override object Invoke(MethodInfo targetMethod, object[] args)
+            {
+                if (targetMethod?.Name == nameof(IAuthorService.AllAuthorPaths))
+                {
+                    return new Dictionary<int, string>();
+                }
+
+                throw new NotImplementedException($"Test proxy does not implement IAuthorService.{targetMethod?.Name}");
+            }
+        }
+
         private sealed class StubCommandQueueManager : IManageCommandQueue
         {
             public List<Command> Pushed { get; } = new();
@@ -249,7 +262,7 @@ namespace Chaptarr.Core.Test.MediaFiles
 
             return new RootFolderWatchingService(
                 DispatchProxy.Create<IRootFolderService, ThrowingProxy<IRootFolderService>>(),
-                DispatchProxy.Create<IAuthorService, ThrowingProxy<IAuthorService>>(),
+                DispatchProxy.Create<IAuthorService, EmptyAuthorServiceProxy>(),
                 commandQueueManager,
                 config,
                 diskProvider,

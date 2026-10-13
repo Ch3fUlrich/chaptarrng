@@ -138,7 +138,7 @@ namespace NzbDrone.Core.Books
                 }
 
                 // Audiobook book rows always retain a non-audio representative per language
-                // (best RF=3 ebook, else RF=1 print) so users have an ebook safety net for
+                // (best RF=3/4 ebook, else RF=1 print) so users have an ebook safety net for
                 // self-narrated and unprovable-narrator titles even when audio editions exist.
                 // Ebook book rows skip the print companion when ebooks are present.
                 var hasNative = groupEditions.Any(e => e.ReadingFormatId == nativeFormat);
@@ -328,7 +328,8 @@ namespace NzbDrone.Core.Books
             {
                 return edition.ReadingFormatId switch
                 {
-                    3 => 2,
+                    // Hardcover format 4 is classified as an ebook elsewhere in import flows.
+                    3 or 4 => 2,
                     1 => 1,
                     _ => 0
                 };

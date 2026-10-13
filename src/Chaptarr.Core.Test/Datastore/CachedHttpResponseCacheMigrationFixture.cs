@@ -38,7 +38,7 @@ namespace Chaptarr.Core.Test.Datastore
                         (
                             SELECT 1
                             UNION ALL
-                            SELECT version + 1 FROM versions WHERE version < 107
+                        SELECT version + 1 FROM versions WHERE version < 115
                         )
                         INSERT INTO ""VersionInfo"" (""Version"", ""AppliedOn"", ""Description"")
                         SELECT version, CURRENT_TIMESTAMP, 'test baseline' FROM versions;
@@ -64,7 +64,7 @@ namespace Chaptarr.Core.Test.Datastore
                 var migrationController = new MigrationController(LogManager.GetLogger(nameof(CachedHttpResponseCacheMigrationFixture)), null);
                 migrationController.Migrate(
                     connectionString,
-                    new MigrationContext(MigrationType.Cache, 108),
+                    new MigrationContext(MigrationType.Cache, 118),
                     DatabaseType.SQLite);
 
                 using (var connection = new SqliteConnection(connectionString))

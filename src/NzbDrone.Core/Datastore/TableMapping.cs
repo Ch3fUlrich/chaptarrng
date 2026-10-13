@@ -125,6 +125,7 @@ namespace NzbDrone.Core.Datastore
 
             Mapper.Entity<PendingAuthorImport>("PendingAuthorImport").RegisterModel();
             Mapper.Entity<ImportListBookIdentityCache>("ImportListBookIdentityCache").RegisterModel();
+            Mapper.Entity<ImportListSyncHistory>("ImportListSyncHistory").RegisterModel();
             Mapper.Entity<PendingImport>("PendingImport").RegisterModel();
 
             Mapper.Entity<Series>("Series").RegisterModel()

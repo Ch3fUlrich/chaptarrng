@@ -143,6 +143,12 @@ namespace NzbDrone.Core.Notifications
                 return true;
             }
 
+            if (author == null)
+            {
+                _logger.DebugSafe("Unable to match notification '{0}' tags because author metadata is unavailable", definition.Name);
+                return false;
+            }
+
             if (definition.Tags.Intersect(author.Tags).Any())
             {
                 _logger.Debug("Notification and author have one or more intersecting tags.");
@@ -207,8 +213,15 @@ namespace NzbDrone.Core.Notifications
         public void Handle(BookImportedEvent message)
         {
             var isLibraryImport = !message.NewDownload;
+            var releaseImportNotifications = _notificationFactory.OnReleaseImportEnabled();
 
-            if (isLibraryImport && _notificationFactory.OnReleaseImportEnabled().All(n => !n.NotifyOnLibraryImports))
+            _logger.Debug("[NOTIFY] Handling imported book '{0}' (BookId={1}, NewDownload={2}, EnabledReleaseImportNotifications={3})",
+                message.Book?.Title ?? "<unknown>",
+                message.Book?.Id ?? 0,
+                message.NewDownload,
+                releaseImportNotifications.Count);
+
+            if (isLibraryImport && releaseImportNotifications.All(n => !n.NotifyOnLibraryImports))
             {
                 _logger.Info("Skipping OnReleaseImport for '{0}' (BookId={1}): import was not from a tracked download",
                     message.Book?.Title ?? "<unknown>",
@@ -238,12 +251,14 @@ namespace NzbDrone.Core.Notifications
                 OldFiles = message.OldFiles,
             };
 
-            foreach (var notification in _notificationFactory.OnReleaseImportEnabled())
+            foreach (var notification in releaseImportNotifications)
             {
                 try
                 {
                     if (isLibraryImport && !notification.NotifyOnLibraryImports)
                     {
+                        _logger.Debug("[NOTIFY] Skipping OnReleaseImport for library import to {0}; that notification only accepts tracked downloads",
+                            notification.Definition.Name);
                         continue;
                     }
 
@@ -251,8 +266,17 @@ namespace NzbDrone.Core.Notifications
                     {
                         if (downloadMessage.OldFiles.Empty() || ((NotificationDefinition)notification.Definition).OnUpgrade)
                         {
+                            _logger.Debug("[NOTIFY] Sending OnReleaseImport for book '{0}' to {1}",
+                                book.Title,
+                                notification.Definition.Name);
                             notification.OnReleaseImport(downloadMessage);
                             _notificationStatusService.RecordSuccess(notification.Definition.Id);
+                        }
+                        else
+                        {
+                            _logger.Debug("[NOTIFY] Skipping OnReleaseImport for book '{0}' to {1}; upgrade notifications are disabled",
+                                book.Title,
+                                notification.Definition.Name);
                         }
                     }
                 }
@@ -563,16 +587,25 @@ namespace NzbDrone.Core.Notifications
         public void Handle(BookImportIncompleteEvent message)
         {
             // TODO: Build out this message so that we can pass on what failed and what was successful
+            var trackedDownload = message?.TrackedDownload;
+            var sourceTitle = trackedDownload?.DownloadItem?.Title ?? trackedDownload?.ImportItem?.Title;
+            if (string.IsNullOrWhiteSpace(sourceTitle))
+            {
+                sourceTitle = "an unknown download";
+            }
+
             var downloadMessage = new BookDownloadMessage
             {
-                Message = GetBookIncompleteImportMessage(message.TrackedDownload.DownloadItem.Title)
+                Message = GetBookIncompleteImportMessage(sourceTitle)
             };
+
+            var author = trackedDownload?.RemoteBook?.Author;
 
             foreach (var notification in _notificationFactory.OnImportFailureEnabled())
             {
                 try
                 {
-                    if (ShouldHandleAuthor(notification.Definition, message.TrackedDownload.RemoteBook.Author))
+                    if (ShouldHandleAuthor(notification.Definition, author))
                     {
                         notification.OnImportFailure(downloadMessage);
                         _notificationStatusService.RecordSuccess(notification.Definition.Id);

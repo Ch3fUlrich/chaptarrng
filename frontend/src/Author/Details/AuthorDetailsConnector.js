@@ -571,7 +571,7 @@ class AuthorDetailsConnector extends Component {
       selectedMediaType,
       authorHasAudiobookConfig,
       authorHasEbookConfig,
-      setSelectedMediaType: setMediaType
+      setSelectedMediaType: selectMediaType
     } = this.props;
 
     if (!authorLoaded || this._userSelectedMediaType) {
@@ -581,12 +581,12 @@ class AuthorDetailsConnector extends Component {
     const normalizedSelected = (selectedMediaType || '').toString().toLowerCase() === 'ebook' ? 'ebook' : 'audiobook';
 
     if (normalizedSelected === 'audiobook' && !authorHasAudiobookConfig && authorHasEbookConfig) {
-      setMediaType({ mediaType: 'ebook' });
+      selectMediaType({ mediaType: 'ebook' });
       return true;
     }
 
     if (normalizedSelected === 'ebook' && !authorHasEbookConfig && authorHasAudiobookConfig) {
-      setMediaType({ mediaType: 'audiobook' });
+      selectMediaType({ mediaType: 'audiobook' });
       return true;
     }
 

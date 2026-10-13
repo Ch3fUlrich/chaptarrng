@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Configuration
         bool SkipFreeSpaceCheckWhenImporting { get; set; }
         int MinimumFreeSpaceWhenImporting { get; set; }
         bool CopyUsingHardlinks { get; set; }
+        bool KeepExistingLibraryFileOnImportConflict { get; set; }
         bool ImportExtraFiles { get; set; }
         string ExtraFileExtensions { get; set; }
         bool WatchLibraryForChanges { get; set; }
@@ -86,6 +87,7 @@ namespace NzbDrone.Core.Configuration
         string PlexClientIdentifier { get; }
 
         //Metadata
+        string AudibleMarketplace { get; set; }
         string MetadataSource { get; set; }
         string MetadataServerUrl { get; set; }
         string HardcoverApiToken { get; set; }

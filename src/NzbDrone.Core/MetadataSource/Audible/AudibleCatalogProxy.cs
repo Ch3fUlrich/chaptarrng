@@ -5,11 +5,12 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using NLog;
+using NzbDrone.Common.Instrumentation;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource.Audible.Resources;
-using NzbDrone.Common.Instrumentation;
 
 namespace NzbDrone.Core.MetadataSource.Audible
 {
@@ -21,7 +22,6 @@ namespace NzbDrone.Core.MetadataSource.Audible
 
     public class AudibleCatalogProxy : IAudibleCatalogProxy
     {
-        private const string API_BASE_URL = "https://api.audible.com";
         private const int CACHE_TTL_HOURS = 24;
         private const string SEARCH_RESPONSE_GROUPS = "product_desc,contributors,media,product_attrs";
         private static readonly string[] AudibleUserAgents =
@@ -35,18 +35,16 @@ namespace NzbDrone.Core.MetadataSource.Audible
         };
 
         private readonly ICachedHttpResponseService _cachedHttpClient;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
-        private readonly IHttpRequestBuilderFactory _requestBuilder;
 
-        public AudibleCatalogProxy(ICachedHttpResponseService cachedHttpClient, Logger logger)
+        public AudibleCatalogProxy(ICachedHttpResponseService cachedHttpClient,
+                                   Logger logger,
+                                   IConfigService configService)
         {
             _cachedHttpClient = cachedHttpClient;
             _logger = logger;
-
-            _requestBuilder = new HttpRequestBuilder(API_BASE_URL + "/{route}")
-                .Accept(HttpAccept.Json)
-                .KeepAlive()
-                .CreateFactory();
+            _configService = configService;
         }
 
         public AudibleCatalogBookResource GetBookInfo(string asin, bool useCache = true)
@@ -55,12 +53,13 @@ namespace NzbDrone.Core.MetadataSource.Audible
             {
                 _logger.DebugSafe("Getting book info from Audible catalog for ASIN: {0}", asin);
 
-                var httpRequest = _requestBuilder.Create()
+                var marketplace = AudibleMarketplaceOptions.Get(_configService?.AudibleMarketplace);
+                var httpRequest = CreateRequestBuilder(marketplace).Create()
                     .SetSegment("route", $"1.0/catalog/products/{asin}")
                     .AddQueryParam("response_groups", SEARCH_RESPONSE_GROUPS)
                     .Build();
 
-                ApplyAudibleHeaders(httpRequest);
+                ApplyAudibleHeaders(httpRequest, marketplace);
                 httpRequest.AllowAutoRedirect = true;
                 httpRequest.SuppressHttpError = true;
 
@@ -84,7 +83,7 @@ namespace NzbDrone.Core.MetadataSource.Audible
                 }
 
                 var response = Json.Deserialize<AudibleCatalogProductResponse>(httpResponse.Content);
-                var bookInfo = MapProduct(response?.Product);
+                var bookInfo = MapProduct(response?.Product, marketplace);
 
                 _logger.DebugSafe("Retrieved book info from Audible catalog for: {0} - {1}", asin, bookInfo?.Title);
                 return bookInfo;
@@ -105,7 +104,8 @@ namespace NzbDrone.Core.MetadataSource.Audible
                 var sanitizedQuery = SanitizeSearchQuery(query);
                 _logger.DebugSafe("Sanitized query: {0}", sanitizedQuery);
 
-                var httpRequest = _requestBuilder.Create()
+                var marketplace = AudibleMarketplaceOptions.Get(_configService?.AudibleMarketplace);
+                var httpRequest = CreateRequestBuilder(marketplace).Create()
                     .SetSegment("route", "1.0/catalog/products")
                     .AddQueryParam("keywords", sanitizedQuery)
                     .AddQueryParam("num_results", "20")
@@ -113,7 +113,7 @@ namespace NzbDrone.Core.MetadataSource.Audible
                     .AddQueryParam("response_groups", SEARCH_RESPONSE_GROUPS)
                     .Build();
 
-                ApplyAudibleHeaders(httpRequest);
+                ApplyAudibleHeaders(httpRequest, marketplace);
                 _logger.Debug("Audible catalog request URL: {0}", httpRequest.Url);
 
                 httpRequest.AllowAutoRedirect = true;
@@ -145,7 +145,7 @@ namespace NzbDrone.Core.MetadataSource.Audible
 
                 var response = Json.Deserialize<AudibleCatalogProductsResponse>(content);
                 var searchResults = response?.Products?
-                    .Select(MapProduct)
+                    .Select(product => MapProduct(product, marketplace))
                     .Where(product => product != null)
                     .ToList();
 
@@ -159,7 +159,15 @@ namespace NzbDrone.Core.MetadataSource.Audible
             }
         }
 
-        private AudibleCatalogBookResource MapProduct(AudibleCatalogProductResource product)
+        private IHttpRequestBuilderFactory CreateRequestBuilder(AudibleMarketplaceDescriptor marketplace)
+        {
+            return new HttpRequestBuilder(marketplace.ApiBaseUrl + "/{route}")
+                .Accept(HttpAccept.Json)
+                .KeepAlive()
+                .CreateFactory();
+        }
+
+        private AudibleCatalogBookResource MapProduct(AudibleCatalogProductResource product, AudibleMarketplaceDescriptor marketplace)
         {
             if (product == null || string.IsNullOrWhiteSpace(product.Asin) || string.IsNullOrWhiteSpace(product.Title))
             {
@@ -179,7 +187,7 @@ namespace NzbDrone.Core.MetadataSource.Audible
                 Publisher = product.PublisherName,
                 Language = product.Language,
                 ReleaseDate = product.ReleaseDate ?? product.IssueDate ?? product.PublicationDateTime,
-                Link = $"https://www.audible.com/pd/{product.Asin}",
+                Link = $"{marketplace.StorefrontBaseUrl}/pd/{product.Asin}",
                 Sku = product.Sku,
                 SkuGroup = product.SkuLite,
                 IsListenable = product.IsListenable,
@@ -203,13 +211,13 @@ namespace NzbDrone.Core.MetadataSource.Audible
             };
         }
 
-        private static void ApplyAudibleHeaders(HttpRequest request)
+        private static void ApplyAudibleHeaders(HttpRequest request, AudibleMarketplaceDescriptor marketplace)
         {
             request.Headers.Add("User-Agent", AudibleUserAgents[RandomNumberGenerator.GetInt32(AudibleUserAgents.Length)]);
             request.Headers.Add("Accept", "application/json,text/json,*/*;q=0.8");
-            request.Headers.Add("Accept-Language", "en-US,en;q=0.9");
-            request.Headers.Add("Origin", "https://www.audible.com");
-            request.Headers.Add("Referer", "https://www.audible.com/");
+            request.Headers.Add("Accept-Language", marketplace.AcceptLanguage);
+            request.Headers.Add("Origin", marketplace.StorefrontBaseUrl);
+            request.Headers.Add("Referer", marketplace.StorefrontBaseUrl + "/");
             request.Headers.Add("Sec-Fetch-Dest", "empty");
             request.Headers.Add("Sec-Fetch-Mode", "cors");
             request.Headers.Add("Sec-Fetch-Site", "same-site");

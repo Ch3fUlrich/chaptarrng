@@ -159,7 +159,9 @@ namespace NzbDrone.Core.RootFolders
 
             // Start an initial scan so existing on-disk files can be discovered and imported.
             _logger.InfoSafe($"Starting initial scan of new root folder '{rootFolder.Path}'");
-            _commandQueueManager.Push(new RescanFoldersCommand(new List<string> { rootFolder.Path }, FilterFilesType.None, null, true));
+            _commandQueueManager.Push(
+                new RescanFoldersCommand(new List<string> { rootFolder.Path }, FilterFilesType.None, null, true),
+                priority: CommandPriority.High);
 
             return rootFolder;
         }

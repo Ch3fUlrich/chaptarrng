@@ -253,7 +253,7 @@ class Bookshelf extends Component {
         columnIndex={0}
         rowIndex={rowIndex}
       >
-        {({ registerChild }) => (
+        {({ measure, registerChild }) => (
           <VirtualTableRow
             ref={registerChild}
             style={style}
@@ -262,6 +262,7 @@ class Bookshelf extends Component {
               key={item.id}
               authorId={item.id}
               selectedMediaType={selectedMediaType}
+              onBooksLoaded={measure}
               isSelected={selectedState[item.id]}
               onSelectedChange={this.onSelectedChange}
             />

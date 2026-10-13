@@ -78,7 +78,7 @@ namespace Chaptarr.Core.Test.AuthorStats
         }
 
         [Test]
-        public void should_use_monitored_edition_date_and_file_escape_with_book_date_fallback()
+        public void should_use_monitored_edition_date_and_file_escape_with_book_date_fallback_for_both_media_types()
         {
             WithRepository((repository, connectionString) =>
             {
@@ -90,14 +90,24 @@ INSERT INTO ""Books"" (""Id"", ""AuthorId"", ""MediaType"", ""AudiobookMonitored
     (30, 1, 0, 1, 0, '2000-01-01'),
     (31, 1, 0, 1, 0, '2099-01-01'),
     (32, 1, 0, 1, 0, '2000-01-01'),
-    (33, 1, 0, 1, 0, '2099-01-01');
+    (33, 1, 0, 1, 0, '2099-01-01'),
+    (40, 1, 1, 0, 1, '2000-01-01'),
+    (41, 1, 1, 0, 1, '2099-01-01'),
+    (42, 1, 1, 0, 1, '2000-01-01'),
+    (43, 1, 1, 0, 1, '2099-01-01'),
+    (44, 1, 1, 0, 1, NULL);
 INSERT INTO ""Editions"" (""Id"", ""BookId"", ""Monitored"", ""ReleaseDate"") VALUES
     (300, 30, 1, '2099-01-01'),
     (310, 31, 0, '2099-01-01'),
     (320, 32, 0, NULL),
-    (330, 33, 1, '2000-01-01');
+    (330, 33, 1, '2000-01-01'),
+    (400, 40, 1, '2099-01-01'),
+    (410, 41, 0, '2099-01-01'),
+    (420, 42, 0, NULL),
+    (430, 43, 1, '2000-01-01');
 INSERT INTO ""BookFiles"" (""Id"", ""EditionId"", ""Size"") VALUES
-    (3000, 300, 50);
+    (3000, 300, 50),
+    (4000, 400, 50);
 ");
                 }
 
@@ -117,6 +127,19 @@ INSERT INTO ""BookFiles"" (""Id"", ""EditionId"", ""Size"") VALUES
                     Assert.That(stats[33].TotalBookCount, Is.EqualTo(1));
                     Assert.That(stats[33].BookCount, Is.EqualTo(1), "The monitored edition date takes precedence over the book date");
                     Assert.That(stats[33].AvailableBookCount, Is.Zero);
+                });
+
+                var ebookStats = repository.AuthorStatistics(1, "ebook").ToDictionary(stat => stat.BookId);
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(ebookStats[40].BookCount, Is.EqualTo(1), "A file makes a future monitored edition count as available");
+                    Assert.That(ebookStats[40].AvailableBookCount, Is.EqualTo(1));
+                    Assert.That(ebookStats[41].BookCount, Is.Zero, "A future book date is not yet in the progress denominator");
+                    Assert.That(ebookStats[41].AvailableBookCount, Is.Zero);
+                    Assert.That(ebookStats[42].BookCount, Is.EqualTo(1), "The book date is used when no monitored edition exists");
+                    Assert.That(ebookStats[43].BookCount, Is.EqualTo(1), "The monitored edition date takes precedence over the book date");
+                    Assert.That(ebookStats[44].BookCount, Is.EqualTo(1), "A missing release date remains eligible");
                 });
             });
         }

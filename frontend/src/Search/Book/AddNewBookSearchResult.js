@@ -255,14 +255,14 @@ class AddNewBookSearchResult extends Component {
                 />
 
                 {
-                  !canAdd ?
+                  canAdd ?
+                    null :
                     <Icon
                       className={styles.notAddableIcon}
                       name={icons.BAN}
                       size={28}
                       title="Not addable: missing upstream provider book/work ID or author ID"
-                    /> :
-                    null
+                    />
                 }
 
                 {

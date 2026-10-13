@@ -40,6 +40,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
             "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"
         };
 
+        private static readonly HashSet<string> VolumeMarkerWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "part", "book", "volume", "vol", "no"
+        };
+
         public static bool IsStructuralGlueToken(string token)
         {
             return !string.IsNullOrWhiteSpace(token) && StructuralGlueTokens.Contains(token.Trim());
@@ -119,7 +124,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
                 {
                     if (!consumed.Contains(index) &&
                         !IsStructuralGlueToken(fieldTokens[index]) &&
-                        !(allowVolumeMarkerGaps && IsVolumeMarkerGapToken(fieldTokens[index])))
+                        !(allowVolumeMarkerGaps && IsVolumeMarkerGapToken(fieldTokens, index)))
                     {
                         gapIsClean = false;
                         break;
@@ -138,16 +143,25 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
             return false;
         }
 
-        private static bool IsVolumeMarkerGapToken(string token)
+        private static bool IsVolumeMarkerGapToken(IReadOnlyList<string> fieldTokens, int index)
         {
-            if (string.IsNullOrWhiteSpace(token))
+            if (fieldTokens == null || index < 0 || index >= fieldTokens.Count || string.IsNullOrWhiteSpace(fieldTokens[index]))
             {
                 return false;
             }
 
-            var trimmed = token.Trim();
+            var trimmed = fieldTokens[index].Trim();
+            if (VolumeMarkerGapTokens.Contains(trimmed))
+            {
+                return true;
+            }
 
-            return trimmed.All(char.IsDigit) || VolumeMarkerGapTokens.Contains(trimmed);
+            // A number is a harmless gap only when it is attached to an explicit marker
+            // such as "Book 3" or "Vol. 2". An unrelated number between title tokens can
+            // be a conflicting series position and must remain visible to title matching.
+            return trimmed.All(char.IsDigit) &&
+                   ((index > 0 && VolumeMarkerWords.Contains(fieldTokens[index - 1])) ||
+                    (index + 1 < fieldTokens.Count && VolumeMarkerWords.Contains(fieldTokens[index + 1])));
         }
 
         public static bool TokensMatchExactOrSynonym(string requiredToken, string fieldToken)

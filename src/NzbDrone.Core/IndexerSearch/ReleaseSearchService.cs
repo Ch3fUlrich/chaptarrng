@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch.Definitions;
@@ -26,7 +26,7 @@ namespace NzbDrone.Core.IndexerSearch
 
     public class ReleaseSearchService : ISearchForReleases
     {
-        private static readonly Regex CollapsedWhitespace = new Regex(@"\s+", RegexOptions.Compiled);
+        private const int MaxAlternateEditionSearchTitles = 5;
 
         private readonly IIndexerFactory _indexerFactory;
         private readonly IBookService _bookService;
@@ -138,36 +138,78 @@ namespace NzbDrone.Core.IndexerSearch
 
             searchSpec.BookTitle = GetSearchBookTitle(book, selectedEdition) ?? string.Empty;
             searchSpec.BookIsbn = GetSearchBookIsbn(book, selectedEdition);
+            var alternateSearchTitles = GetAlternateEditionSearchTitles(book, searchSpec.BookTitle, author?.Name);
             if (book.ReleaseDate.HasValue)
             {
                 searchSpec.BookYear = book.ReleaseDate.Value.Year;
             }
 
-            var decisions = await Dispatch(indexer => indexer.Fetch(searchSpec), searchSpec);
+            var decisions = await Dispatch(indexer => indexer.Fetch(searchSpec), searchSpec, alternateSearchTitles);
             return DeDupeDecisions(decisions);
+        }
+
+        internal static List<string> GetAlternateEditionSearchTitles(Book book, string primaryTitle, string authorName)
+        {
+            if (book == null)
+            {
+                return new List<string>();
+            }
+
+            var seenQueries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var primaryQuery = GetSearchQueryKey(primaryTitle, authorName);
+            if (!string.IsNullOrWhiteSpace(primaryQuery))
+            {
+                seenQueries.Add(primaryQuery);
+            }
+
+            // Search language variants already present for this work, preferring English
+            // titles when available. Matching and profile checks still use the monitored
+            // edition; these values only change the text sent to indexers.
+            var editionCandidates = (book.Editions ?? new List<Edition>())
+                .Where(edition => edition != null && !string.IsNullOrWhiteSpace(edition.Title))
+                .OrderByDescending(edition => edition.Language?.CanonicalizeLanguage() == "eng")
+                .ThenBy(edition => edition.Id)
+                .Select(edition => (Title: GetSearchBookTitle(book, edition), edition.Language, edition.Id))
+                .Where(candidate => !string.IsNullOrWhiteSpace(candidate.Title))
+                .ToList();
+
+            var candidates = editionCandidates
+                .Where(candidate => candidate.Language?.CanonicalizeLanguage() == "eng")
+                .ToList();
+
+            if (!string.IsNullOrWhiteSpace(book.OriginalTitle))
+            {
+                candidates.Add((book.OriginalTitle, null, int.MaxValue - 1));
+            }
+
+            if (!string.IsNullOrWhiteSpace(book.Title))
+            {
+                candidates.Add((book.Title, null, int.MaxValue));
+            }
+
+            candidates.AddRange(editionCandidates
+                .Where(candidate => candidate.Language?.CanonicalizeLanguage() != "eng"));
+
+            return candidates
+                .Where(candidate =>
+                {
+                    var query = GetSearchQueryKey(candidate.Title, authorName);
+                    return !string.IsNullOrWhiteSpace(query) && seenQueries.Add(query);
+                })
+                .Select(candidate => candidate.Title)
+                .Take(MaxAlternateEditionSearchTitles)
+                .ToList();
+        }
+
+        private static string GetSearchQueryKey(string title, string authorName)
+        {
+            var mainTitle = BookSearchCriteria.GetMainSearchTitle(title, authorName);
+            return string.IsNullOrWhiteSpace(mainTitle) ? null : SearchCriteriaBase.GetQueryTitle(mainTitle);
         }
 
         internal static string GetSearchBookTitle(Book book, Edition selectedEdition)
         {
-            if (book == null)
-            {
-                return string.Empty;
-            }
-
-            // Keep searches honest: use the monitored edition title (the one displayed in the UI),
-            // falling back to the book title if needed.
-            var selectedTitle = selectedEdition?.Title;
-            if (!string.IsNullOrWhiteSpace(selectedTitle))
-            {
-                // An omnibus edition is named after every work it collects ("A Game of Thrones / A
-                // Clash of Kings"). Searching for that whole string finds nothing, because releases
-                // are named after a book, not after the compilation that happens to contain it. When
-                // the book being searched for is itself one of the collected works, search for it by
-                // name instead of for the compilation.
-                return GetCollectedWorkTitle(selectedTitle, book.Title) ?? selectedTitle;
-            }
-
-            return book.Title ?? string.Empty;
+            return BookEditionTitle.GetTitleForBook(book, selectedEdition);
         }
 
         internal static string GetSearchBookIsbn(Book book, Edition selectedEdition)
@@ -256,47 +298,6 @@ namespace NzbDrone.Core.IndexerSearch
                 .Replace('‘', '\'');
         }
 
-        /// <summary>
-        /// Returns the book's own title when <paramref name="editionTitle"/> is a slash-separated
-        /// compilation that lists it as one of its works; otherwise null, leaving the caller's title
-        /// untouched. Deliberately conservative: a slash inside a phrase ("Horror/Sci-Fi") only ever
-        /// yields segments that fail the equality check, so such titles are left alone.
-        /// </summary>
-        internal static string GetCollectedWorkTitle(string editionTitle, string bookTitle)
-        {
-            if (string.IsNullOrWhiteSpace(editionTitle) || string.IsNullOrWhiteSpace(bookTitle))
-            {
-                return null;
-            }
-
-            var segments = editionTitle.Split('/');
-            if (segments.Length < 2)
-            {
-                return null;
-            }
-
-            var normalisedBookTitle = NormaliseTitleSegment(bookTitle);
-            if (normalisedBookTitle.Length == 0)
-            {
-                return null;
-            }
-
-            foreach (var segment in segments)
-            {
-                if (string.Equals(NormaliseTitleSegment(segment), normalisedBookTitle, StringComparison.OrdinalIgnoreCase))
-                {
-                    return bookTitle.Trim();
-                }
-            }
-
-            return null;
-        }
-
-        private static string NormaliseTitleSegment(string value)
-        {
-            return CollapsedWhitespace.Replace(value ?? string.Empty, " ").Trim();
-        }
-
         internal static bool HasConfiguredQualityProfileForMediaType(Author author, BookMediaType mediaType)
         {
             if (author == null)
@@ -367,7 +368,10 @@ namespace NzbDrone.Core.IndexerSearch
             return author?.Id > 0 ? _bookService.GetBooksByAuthor(author.Id) : new List<Book>();
         }
 
-        private async Task<List<DownloadDecision>> Dispatch(Func<IIndexer, Task<IList<ReleaseInfo>>> searchAction, SearchCriteriaBase criteriaBase)
+        private async Task<List<DownloadDecision>> Dispatch(
+            Func<IIndexer, Task<IList<ReleaseInfo>>> searchAction,
+            SearchCriteriaBase criteriaBase,
+            IReadOnlyList<string> alternateSearchTitles = null)
         {
             var indexers = criteriaBase.InteractiveSearch ?
                 _indexerFactory.InteractiveSearchEnabled() :
@@ -390,23 +394,51 @@ namespace NzbDrone.Core.IndexerSearch
                 criteriaBase.Books != null ? string.Join(", ", criteriaBase.Books.Select(b => b.Title)) : "None",
                 string.Join(", ", indexers.Select(i => i.Definition.Name)));
 
-            var tasks = indexers.Select(indexer => DispatchIndexer(searchAction, indexer, criteriaBase));
+            var reports = await FetchReports(indexers, searchAction, criteriaBase);
+            var decisions = reports.Count == 0
+                ? new List<DownloadDecision>()
+                : MakeSearchDecisions(reports, requestedMediaType, criteriaBase);
 
-            var batch = await Task.WhenAll(tasks);
-
-            var reports = batch.SelectMany(x => x).ToList();
-
-            if (requestedMediaType.HasValue && criteriaBase?.Books?.Count == 1)
+            var bookSearchCriteria = criteriaBase as BookSearchCriteria;
+            if (bookSearchCriteria != null && indexers.Count > 0 && alternateSearchTitles?.Count > 0 && !decisions.Any(decision => decision.Approved))
             {
-                var originalCount = reports.Count;
-                reports = FilterReportsByRequestedMediaType(reports, requestedMediaType.Value);
-                var filteredOutCount = originalCount - reports.Count;
-
-                if (filteredOutCount > 0)
+                foreach (var alternateTitle in alternateSearchTitles)
                 {
-                    _logger.Debug("Filtered {0} cross-media releases for requested media type {1}", filteredOutCount, requestedMediaType.Value);
+                    _logger.Debug("No approved release found for the monitored edition title; trying alternate edition title '{0}'", alternateTitle);
+                    bookSearchCriteria.SearchTitleOverride = alternateTitle;
+
+                    try
+                    {
+                        var alternateReports = await FetchReports(indexers, searchAction, criteriaBase);
+                        if (alternateReports.Count > 0)
+                        {
+                            reports.AddRange(alternateReports);
+                            decisions = MakeSearchDecisions(reports, requestedMediaType, criteriaBase);
+                        }
+                    }
+                    finally
+                    {
+                        bookSearchCriteria.SearchTitleOverride = null;
+                    }
+
+                    if (decisions.Any(decision => decision.Approved))
+                    {
+                        break;
+                    }
                 }
             }
+
+            if (reports.Count == 0)
+            {
+                decisions = MakeSearchDecisions(reports, requestedMediaType, criteriaBase);
+            }
+
+            var filteredReports = FilterReportsByRequestedMediaType(reports, requestedMediaType, criteriaBase);
+            if (filteredReports.Count < reports.Count)
+            {
+                _logger.Debug("Filtered {0} cross-media releases for requested media type {1}", reports.Count - filteredReports.Count, requestedMediaType.Value);
+            }
+            reports = filteredReports;
 
             _logger.ProgressDebug("Total of {0} reports were found for {1} from {2} indexers", reports.Count, criteriaBase, indexers.Count);
 
@@ -442,7 +474,26 @@ namespace NzbDrone.Core.IndexerSearch
                 _bookService.UpdateLastSearchTime(criteriaBase.Books);
             }
 
-            return _makeDownloadDecision.GetSearchDecision(reports, criteriaBase).ToList();
+            return decisions;
+        }
+
+        private async Task<List<ReleaseInfo>> FetchReports(
+            IEnumerable<IIndexer> indexers,
+            Func<IIndexer, Task<IList<ReleaseInfo>>> searchAction,
+            SearchCriteriaBase criteriaBase)
+        {
+            var tasks = indexers.Select(indexer => DispatchIndexer(searchAction, indexer, criteriaBase));
+            var batch = await Task.WhenAll(tasks);
+            return batch.SelectMany(results => results).ToList();
+        }
+
+        private List<DownloadDecision> MakeSearchDecisions(
+            List<ReleaseInfo> reports,
+            BookMediaType? requestedMediaType,
+            SearchCriteriaBase criteriaBase)
+        {
+            var candidates = FilterReportsByRequestedMediaType(reports, requestedMediaType, criteriaBase);
+            return _makeDownloadDecision.GetSearchDecision(candidates, criteriaBase).ToList();
         }
 
         private async Task<IList<ReleaseInfo>> DispatchIndexer(Func<IIndexer, Task<IList<ReleaseInfo>>> searchAction, IIndexer indexer, SearchCriteriaBase criteriaBase)
@@ -468,10 +519,15 @@ namespace NzbDrone.Core.IndexerSearch
         }
 
 
-        private List<ReleaseInfo> FilterReportsByRequestedMediaType(List<ReleaseInfo> reports, BookMediaType requestedMediaType)
+        private List<ReleaseInfo> FilterReportsByRequestedMediaType(List<ReleaseInfo> reports, BookMediaType? requestedMediaType, SearchCriteriaBase criteriaBase)
         {
+            if (!requestedMediaType.HasValue || criteriaBase?.Books?.Count != 1)
+            {
+                return reports;
+            }
+
             return (reports ?? new List<ReleaseInfo>())
-                .Where(report => IsCompatibleWithRequestedMediaType(report, requestedMediaType))
+                .Where(report => IsCompatibleWithRequestedMediaType(report, requestedMediaType.Value))
                 .ToList();
         }
 

@@ -120,13 +120,12 @@ function createMapStateToProps() {
       // Apply hide unmonitored/missing filter ONLY if not searching
       // When searching, show all results regardless of monitored/missing status
       if (hideUnmonitoredMissing && !filterValue && booksInSeries.length > 0) {
-        const mediaType = effectiveMediaType;
         booksInSeries = booksInSeries.filter((book) => {
           // Show the book if:
           // 1. It's monitored for the current media type, OR
           // 2. It has files (not missing)
           // Hide only if: unmonitored AND missing
-          const isMonitored = mediaType === 'audiobook' ?
+          const isMonitored = effectiveMediaType === 'audiobook' ?
             book.audiobookMonitored :
             book.ebookMonitored;
           const hasFiles = book.statistics && book.statistics.bookFileCount > 0;

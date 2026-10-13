@@ -57,7 +57,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
         }
 
         [Test]
-        public void routine_scan_should_skip_known_unchanged_unmapped_file()
+        public void routine_scan_should_retry_known_unchanged_unmapped_file()
         {
             var root = Directory.CreateDirectory(Path.Combine(TestContext.CurrentContext.WorkDirectory, $"stage_filter_{Guid.NewGuid():N}")).FullName;
             try
@@ -72,7 +72,8 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                     EditionId = 0
                 };
 
-                Assert.That(ShouldStageFile(diskFile, knownFile, forceStage: false), Is.False);
+                Assert.That(ShouldStageFile(diskFile, knownFile, forceStage: false), Is.True,
+                    "unmapped files are restaged on routine scans so matching can retry after library metadata changes");
             }
             finally
             {

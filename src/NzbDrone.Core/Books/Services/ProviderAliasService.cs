@@ -145,6 +145,12 @@ namespace NzbDrone.Core.Books
                 case "audible":
                 case "audnexus":
                     return "az";
+                case "rn":
+                case "ranobedb":
+                    return "rn";
+                case "rnr":
+                case "ranobedb-release":
+                    return "rnr";
                 default:
                     return null;
             }

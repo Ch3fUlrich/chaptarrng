@@ -28,6 +28,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Instrumentation;
 using NzbDrone.Core.Lifecycle;
+using NzbDrone.Core.Metrics;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Host.AccessControl;
 using NzbDrone.Http.Authentication;
@@ -258,6 +259,37 @@ namespace NzbDrone.Host
                 AllowStatusCode404Response = true,
                 ExceptionHandler = errorHandler.HandleException
             });
+
+            var metricsEnabled = Configuration.GetValue<bool?>("Chaptarr:Metrics:Enabled") ?? Configuration.GetValue<bool?>("MetricsEnabled") ?? false;
+            if (metricsEnabled)
+            {
+                var metricsPort = Configuration.GetValue<int?>("Chaptarr:Metrics:Port") ?? Configuration.GetValue<int?>("MetricsPort") ?? 9797;
+                var metricsService = app.ApplicationServices.GetRequiredService<IOperationalMetricsService>();
+
+                // Metrics use a separate listener and intentionally bypass API authentication.
+                // The listener branch only serves /metrics and returns 404 for every other path.
+                app.MapWhen(context => context.Connection.LocalPort == metricsPort, metricsApp =>
+                {
+                    metricsApp.Run(async context =>
+                    {
+                        if (!HttpMethods.IsGet(context.Request.Method))
+                        {
+                            context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                            return;
+                        }
+
+                        if (context.Request.Path != "/metrics")
+                        {
+                            context.Response.StatusCode = StatusCodes.Status404NotFound;
+                            return;
+                        }
+
+                        context.Response.ContentType = "text/plain; version=0.0.4; charset=utf-8";
+                        context.Response.Headers["Cache-Control"] = "no-store";
+                        await context.Response.WriteAsync(metricsService.RenderPrometheusText());
+                    });
+                });
+            }
 
             app.UseRouting();
             app.UseCors();

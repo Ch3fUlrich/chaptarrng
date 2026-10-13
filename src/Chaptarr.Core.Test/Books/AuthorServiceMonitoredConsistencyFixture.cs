@@ -87,6 +87,7 @@ namespace Chaptarr.Core.Test.Books
             public Author FindByAudnexusId(string audnexusId) => throw new NotImplementedException();
             public Author FindByOpenLibraryId(string openLibraryId) => throw new NotImplementedException();
             public Author FindByGoogleBooksId(string googleBooksAuthorId) => throw new NotImplementedException();
+            public Author FindByRanobeDbId(string ranobeDbAuthorId) => throw new NotImplementedException();
             public List<int> GetAuthorIdsByMetadataProfileId(int metadataProfileId) => new List<int>();
             public Dictionary<int, string> AllAuthorPaths() => throw new NotImplementedException();
             public Dictionary<int, List<int>> AllAuthorTags() => throw new NotImplementedException();

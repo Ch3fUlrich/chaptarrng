@@ -1,5 +1,6 @@
 // Chunk Cleanup Utility
 // Detects and handles old cached webpack chunks that interfere with the app
+/* eslint-disable filenames/match-exported */
 
 const KNOWN_OLD_CHUNKS = [
   'index.html-1.js',
@@ -46,23 +47,22 @@ function handleChunkError() {
 
   // Force a hard reload to bypass cache
   setTimeout(() => {
-    // Clear service worker caches if any.
-    // This wipes ALL caches including those managed by the service worker
-    // (precache + runtime).  This is intentional — stale chunks must be
-    // evicted.  The SW self-heals on the next navigation thanks to
-    // skipWaiting + clientsClaim, which re-populates precache and
-    // runtime caches on subsequent fetches.
+    // Clear only this app's caches; other apps may share the same origin.
     if ('caches' in window) {
       caches.keys().then((names) => {
-        names.forEach((name) => {
+        const chaptarrCaches = names.filter((name) => name.startsWith('chaptarr-'));
+        return Promise.all(chaptarrCaches.map((name) => {
           console.log('[ChunkCleanup] Clearing cache:', name);
-          caches.delete(name);
-        });
-      });
+          return caches.delete(name);
+        }));
+      }).then(
+        () => window.location.reload(),
+        () => window.location.reload()
+      );
+      return;
     }
 
-    // Force reload with cache bypass
-    window.location.reload(true);
+    window.location.reload();
   }, 2000);
 }
 
@@ -103,7 +103,7 @@ function checkChunkMismatch() {
   });
 }
 
-export default function chunkCleanup() {
+export default function initializeChunkCleanup() {
   console.log('[ChunkCleanup] Initializing chunk cleanup detection');
 
   // Check for problematic chunks on load

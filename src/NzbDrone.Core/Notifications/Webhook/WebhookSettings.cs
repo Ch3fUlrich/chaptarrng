@@ -108,6 +108,9 @@ namespace NzbDrone.Core.Notifications.Webhook
         [FieldDefinition(3, Label = "Password", Type = FieldType.Password, Privacy = PrivacyLevel.Password)]
         public string Password { get; set; }
 
+        [FieldDefinition(4, Label = "WebhookIncludeCanonicalEvents", Type = FieldType.Checkbox, HelpText = "WebhookIncludeCanonicalEventsHelpText")]
+        public bool IncludeCanonicalEvents { get; set; }
+
         public NzbDroneValidationResult Validate()
         {
             return new NzbDroneValidationResult(Validator.Validate(this));

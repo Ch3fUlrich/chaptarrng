@@ -112,6 +112,6 @@ case "$job_temp_resolved" in
   *) fail 'Private job temporary storage escaped RUNNER_TEMP.' ;;
 esac
 
-printf 'PRIVATE_RUNNER_TEMP=%s\nTMPDIR=%s\nTMP=%s\nTEMP=%s\n' \
-  "$job_temp_resolved" "$job_temp_resolved" "$job_temp_resolved" "$job_temp_resolved" >> "$GITHUB_ENV"
+printf 'PRIVATE_RUNNER_TEMP=%s\nTMPDIR=%s\nTMP=%s\nTEMP=%s\nAQUA_ROOT_DIR=%s/aqua\n' \
+  "$job_temp_resolved" "$job_temp_resolved" "$job_temp_resolved" "$job_temp_resolved" "$job_temp_resolved" >> "$GITHUB_ENV"
 printf 'path=%s\n' "$job_temp_resolved" >> "$GITHUB_OUTPUT"

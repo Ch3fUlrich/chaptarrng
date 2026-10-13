@@ -11,6 +11,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         private static readonly Regex BoxSetSuffix = new Regex(@"\s+(?:series\s+)?\d+[\s-]+books?\s+(?:box(?:ed)?\s+)?set\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public string BookTitle { get; set; }
+        public string SearchTitleOverride { get; set; }
         public int BookYear { get; set; }
         public string BookIsbn { get; set; }
         public string Disambiguation { get; set; }
@@ -19,7 +20,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         // Search the main title section; the matcher still validates against the monitored edition title.
         // Including the author here can double-apply author terms (hurting recall) and breaks book-search endpoints
         // that expect a clean title (e.g., Newznab's t=book&author=...&title=...).
-        public string BookQuery => GetQueryTitle(GetMainSearchTitle(BookTitle, Author?.Name));
+        public string BookQuery => GetQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
 
         // Audible-style titles end in a series position ("..., Book 4") that release names almost never
         // carry. Null when the title has no such suffix, so callers can skip the extra search tier.
@@ -27,7 +28,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         {
             get
             {
-                var mainTitle = GetMainSearchTitle(BookTitle, Author?.Name)?.Trim();
+                var mainTitle = GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name)?.Trim();
                 if (string.IsNullOrWhiteSpace(mainTitle))
                 {
                     return null;

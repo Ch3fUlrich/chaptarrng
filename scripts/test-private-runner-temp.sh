@@ -73,6 +73,8 @@ for name in PRIVATE_RUNNER_TEMP TMPDIR TMP TEMP; do
   grep -Fxq "$name=$private_temp" "$github_env" \
     || { printf '%s was not pointed at the private job directory.\n' "$name" >&2; exit 1; }
 done
+grep -Fxq "AQUA_ROOT_DIR=$private_temp/aqua" "$github_env" \
+  || { printf 'Aqua root was not pointed inside the private job directory.\n' >&2; exit 1; }
 
 mkdir -m 700 -- "$unsafe_parent"
 chmod 775 -- "$unsafe_parent"

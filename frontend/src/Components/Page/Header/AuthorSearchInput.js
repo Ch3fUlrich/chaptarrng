@@ -164,7 +164,8 @@ class AuthorSearchInput extends Component {
     return [
       { type: ADD_NEW_TYPE, title: trimmedQuery, provider: 'hardcover', providerLabel: 'Hardcover', isDisabled: !isHardcoverConfigured },
       { type: ADD_NEW_TYPE, title: trimmedQuery, provider: 'goodreads', providerLabel: 'Goodreads' },
-      { type: ADD_NEW_TYPE, title: trimmedQuery, provider: 'audible', providerLabel: 'Audiobooks' }
+      { type: ADD_NEW_TYPE, title: trimmedQuery, provider: 'audible', providerLabel: 'Audiobooks' },
+      { type: ADD_NEW_TYPE, title: trimmedQuery, provider: 'ranobedb', providerLabel: 'RanobeDB light novels' }
     ];
   }
 

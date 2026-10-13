@@ -51,10 +51,11 @@ function createMapStateToProps() {
       schema,
       author
     ) => {
-      let {
-        items,
+      const {
+        items: bookFileItems,
         ...otherProps
       } = bookFiles;
+      let items = bookFileItems;
 
       // CRITICAL FIX: Filter by authorId to prevent showing files from other authors during imports
       // This fixes the bug where SignalR broadcasts add all files to the global store

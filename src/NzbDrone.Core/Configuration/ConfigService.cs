@@ -241,6 +241,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("CopyUsingHardlinks", value); }
         }
 
+        public bool KeepExistingLibraryFileOnImportConflict
+        {
+            get { return GetValueBoolean("KeepExistingLibraryFileOnImportConflict", false); }
+
+            set { SetValue("KeepExistingLibraryFileOnImportConflict", value); }
+        }
+
         public bool ImportExtraFiles
         {
             get { return GetValueBoolean("ImportExtraFiles", false); }
@@ -393,6 +400,16 @@ namespace NzbDrone.Core.Configuration
             get { return GetValue("ChownGroup", ""); }
 
             set { SetValue("ChownGroup", value); }
+        }
+
+        public string AudibleMarketplace
+        {
+            get
+            {
+                return AudibleMarketplaceOptions.Normalize(GetValue("AudibleMarketplace", AudibleMarketplaceOptions.Default));
+            }
+
+            set { SetValue("AudibleMarketplace", AudibleMarketplaceOptions.Normalize(value)); }
         }
 
         public string MetadataSource

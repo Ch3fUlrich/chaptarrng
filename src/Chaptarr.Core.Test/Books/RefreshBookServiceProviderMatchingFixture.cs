@@ -55,14 +55,14 @@ namespace Chaptarr.Core.Test.Books
                 _bookInfo = bookInfo;
             }
 
-            public Tuple<string, Book, List<Author>> GetBookInfo(string id, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null) => _bookInfo;
-            public Tuple<string, Book, List<Author>> GetWorkInfo(string id, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null)
+            public Tuple<string, Book, List<Author>> GetBookInfo(string id, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null, bool useCache = true) => _bookInfo;
+            public Tuple<string, Book, List<Author>> GetWorkInfo(string id, BookMediaType mediaType = BookMediaType.Audiobook, string authorHintProviderId = null, bool useCache = true)
             {
                 GetWorkInfoCalls++;
                 return _bookInfo;
             }
 
-            public Tuple<string, Book, List<Author>> GetEditionInfo(string id, BookMediaType mediaType = BookMediaType.Audiobook) => _bookInfo;
+            public Tuple<string, Book, List<Author>> GetEditionInfo(string id, BookMediaType mediaType = BookMediaType.Audiobook, bool useCache = true) => _bookInfo;
         }
 
         private sealed class StubAuthorInfo : IProvideAuthorInfo

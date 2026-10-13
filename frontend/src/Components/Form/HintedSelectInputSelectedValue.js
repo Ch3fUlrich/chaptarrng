@@ -22,7 +22,7 @@ function HintedSelectInputSelectedValue(props) {
       className={styles.selectedValue}
       {...otherProps}
     >
-      <div className={styles.valueText}>
+      <div className={styles.valueText} title={!isMultiSelect ? value : undefined}>
         {
           isMultiSelect ?
             value.map((key, index) => {
@@ -43,7 +43,7 @@ function HintedSelectInputSelectedValue(props) {
 
       {
         hint != null && includeHint ?
-          <div className={styles.hintText}>
+          <div className={styles.hintText} title={hint}>
             {hint}
           </div> :
           null

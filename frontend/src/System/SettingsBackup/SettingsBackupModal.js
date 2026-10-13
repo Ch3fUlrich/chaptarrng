@@ -56,9 +56,8 @@ function SettingsBackupModal({ isOpen, onModalClose }) {
     {
       // Only fetch when the modal is open; enabled=false suspends the query.
       enabled: isOpen,
-      // Locations are fetched once per modal open; staleTime keeps cached data
-      // if the user closes and reopens quickly.
-      staleTime: 0,
+      // Avoid refetching locations when the user closes and quickly reopens.
+      staleTime: 30000,
       retry: 0
     }
   );

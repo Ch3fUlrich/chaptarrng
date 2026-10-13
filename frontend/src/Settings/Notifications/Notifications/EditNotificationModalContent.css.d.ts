@@ -5,6 +5,7 @@ interface CssExports {
   'absMappingBadge': string;
   'absMappingDestination': string;
   'absMappingGridHeader': string;
+  'absMappingLoadButton': string;
   'absMappingHelp': string;
   'absMappingPath': string;
   'absMappingRow': string;

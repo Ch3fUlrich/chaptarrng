@@ -112,14 +112,14 @@ class TagInputConnector extends Component {
     } = this.props;
 
     const currentValue = value || [];
-    const newValue = id != null ?
-      currentValue.filter((tagId) => tagId !== id) :
-      currentValue.slice();
-
     if (id == null) {
+      const newValue = currentValue.slice();
       newValue.splice(index, 1);
+      this.props.onChange({ name, value: newValue });
+      return;
     }
 
+    const newValue = currentValue.filter((tagId) => tagId !== id);
     this.props.onChange({
       name,
       value: newValue

@@ -74,6 +74,7 @@ namespace NzbDrone.Core.Books
 	        PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
 	        PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBooksPaged(offset, pageSize, sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
 	        List<int> GetBookIds(bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null, bool? monitored = null, bool? missing = null, bool? wanted = null) => throw new NotImplementedException();
+        HashSet<int> GetAuthorIdsWithBooks() => new HashSet<int>();
 	        List<string> GetAllGenres() => throw new NotImplementedException();
 	    }
 
@@ -448,6 +449,9 @@ namespace NzbDrone.Core.Books
 		                case "gb":
 		                    matches = Query(b => b.GoogleBooksId == providerId && b.MediaType == mediaType);
 		                    break;
+	                case "rn":
+	                    matches = Query(b => b.RanobeDbBookId == providerId && b.MediaType == mediaType);
+	                    break;
 		                case "az":
                     {
                         var normalizedAz = providerId.Contains(":")
@@ -530,30 +534,63 @@ namespace NzbDrone.Core.Books
 
         //x.Id == null is converted to SQL, so warning incorrect
 #pragma warning disable CS0472
-        private SqlBuilder BooksWithoutFilesBuilder(DateTime currentTime) => Builder()
-            .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
-            .Join<Book, Edition>((b, e) => b.Id == e.BookId)
-            .LeftJoin<Edition, BookFile>((t, f) => t.Id == f.EditionId)
-            .Where<BookFile>(f => f.Id == null)
-            .Where<Edition>(e => e.Monitored == true)
-            .Where<Book>(a => a.ReleaseDate <= currentTime);
+        private SqlBuilder BooksWithoutFilesBuilder(DateTime currentTime)
+        {
+            var effectiveReleaseDate = BuildEffectiveReleaseDateExpression("\"Books\"");
+
+            return Builder()
+                .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
+                .Join<Book, Edition>((b, e) => b.Id == e.BookId)
+                .LeftJoin<Edition, BookFile>((t, f) => t.Id == f.EditionId)
+                .Where<BookFile>(f => f.Id == null)
+                .Where<Edition>(e => e.Monitored == true)
+                .Where($"{effectiveReleaseDate} <= @currentTime", new { currentTime });
+        }
 #pragma warning restore CS0472
 
         // A semi-join answers "does this book have a monitored edition without files" without
         // materialising and sorting one row per edition just to count distinct books.
-        private SqlBuilder BooksWithoutFilesCountBuilder(DateTime currentTime) => Builder()
-            .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
-            .Where("EXISTS (SELECT 1 FROM \"Editions\" \"CountEditions\" WHERE \"CountEditions\".\"BookId\" = \"Books\".\"Id\" AND \"CountEditions\".\"Monitored\" = true AND NOT EXISTS (SELECT 1 FROM \"BookFiles\" \"CountFiles\" WHERE \"CountFiles\".\"EditionId\" = \"CountEditions\".\"Id\"))")
-            .Where<Book>(a => a.ReleaseDate <= currentTime);
+        private SqlBuilder BooksWithoutFilesCountBuilder(DateTime currentTime)
+        {
+            var effectiveReleaseDate = BuildEffectiveReleaseDateExpression("\"Books\"");
+
+            return Builder()
+                .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
+                .Where("EXISTS (SELECT 1 FROM \"Editions\" \"CountEditions\" WHERE \"CountEditions\".\"BookId\" = \"Books\".\"Id\" AND \"CountEditions\".\"Monitored\" = true AND NOT EXISTS (SELECT 1 FROM \"BookFiles\" \"CountFiles\" WHERE \"CountFiles\".\"EditionId\" = \"CountEditions\".\"Id\"))")
+                .Where($"{effectiveReleaseDate} <= @currentTime", new { currentTime });
+        }
 
         public PagingSpec<Book> BooksWithoutFiles(PagingSpec<Book> pagingSpec)
         {
             var currentTime = DateTime.UtcNow;
+            var sortColumnOverride = IsReleaseDateSort(pagingSpec.SortKey)
+                ? BuildEffectiveReleaseDateExpression("\"Books\"")
+                : null;
 
-            pagingSpec.Records = GetPagedRecords(BooksWithoutFilesBuilder(currentTime), pagingSpec, QueryBooksWithAuthor);
+            pagingSpec.Records = GetPagedRecords(BooksWithoutFilesBuilder(currentTime), pagingSpec, QueryBooksWithAuthor, sortColumnOverride);
             pagingSpec.TotalRecords = GetPagedRecordCount(BooksWithoutFilesCountBuilder(currentTime).SelectCount(), pagingSpec);
 
             return pagingSpec;
+        }
+
+        private string BuildEffectiveReleaseDateExpression(string bookReference)
+        {
+            var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
+
+            return $@"COALESCE(
+                        (SELECT ""Editions"".""ReleaseDate""
+                         FROM ""Editions""
+                         WHERE ""Editions"".""BookId"" = {bookReference}.""Id""
+                           AND ""Editions"".""Monitored"" = {trueIndicator}
+                         ORDER BY ""Editions"".""Id""
+                         LIMIT 1),
+                        {bookReference}.""ReleaseDate"")";
+        }
+
+        private static bool IsReleaseDateSort(string sortKey)
+        {
+            return string.Equals(sortKey, nameof(Book.ReleaseDate), StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(sortKey, $"Books.{nameof(Book.ReleaseDate)}", StringComparison.OrdinalIgnoreCase);
         }
 
         public List<BookSearchTarget> GetMissingBookSearchTargets(BookMediaType? mediaType, int? authorId)
@@ -924,12 +961,37 @@ namespace NzbDrone.Core.Books
             }
         }
 
+        private static string GetBookListCleanTitleSortExpression(string bookReference)
+        {
+            return $"LOWER(COALESCE({bookReference}.\"CleanTitle\", {bookReference}.\"Title\", ''))";
+        }
+
+        private string GetBookListTitleSortExpression(string bookReference, string trueIndicator)
+        {
+            var monitoredEditionTitle = $"(SELECT e.\"Title\" FROM \"Editions\" e WHERE e.\"BookId\" = {bookReference}.\"Id\" AND e.\"Monitored\" = {trueIndicator} ORDER BY e.\"Id\" LIMIT 1)";
+            return $"LOWER(COALESCE({monitoredEditionTitle}, {bookReference}.\"CleanTitle\", {bookReference}.\"Title\", ''))";
+        }
+
+        private string GetBookListNarratorSortExpression(string bookReference, string trueIndicator)
+        {
+            var narratorNames = _database.DatabaseType == DatabaseType.PostgreSQL
+                ? "NULLIF(translate(COALESCE(e.\"NarratorNames\", ''), '[]\"\"', ''), '')"
+                : "(SELECT GROUP_CONCAT(value, ', ') FROM json_each(CASE WHEN json_valid(e.\"NarratorNames\") AND json_type(e.\"NarratorNames\") = 'array' THEN e.\"NarratorNames\" ELSE '[]' END) WHERE value IS NOT NULL AND value != '')";
+            var monitoredEditionNarrator = $"(SELECT COALESCE({narratorNames}, NULLIF(e.\"Narrator\", '')) FROM \"Editions\" e WHERE e.\"BookId\" = {bookReference}.\"Id\" AND e.\"Monitored\" = {trueIndicator} ORDER BY e.\"Id\" LIMIT 1)";
+            var hasFiles = $"EXISTS (SELECT 1 FROM \"BookFiles\" narrator_file JOIN \"Editions\" narrator_file_edition ON narrator_file_edition.\"Id\" = narrator_file.\"EditionId\" WHERE narrator_file_edition.\"BookId\" = {bookReference}.\"Id\")";
+
+            // Keep the SQL sort aligned with BookResource: an unpinned audiobook without files
+            // intentionally hides narrator metadata, and narrator names take precedence.
+            return $"CASE WHEN {bookReference}.\"MediaType\" = {(int)BookMediaType.Audiobook} AND {bookReference}.\"AnyEditionOk\" = {trueIndicator} AND NOT ({hasFiles}) THEN 'zzz' ELSE COALESCE(NULLIF(LOWER({monitoredEditionNarrator}), ''), 'zzz') END";
+        }
+
         public BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null)
         {
             var sortKeyNormalized = sortKey?.Trim().ToLowerInvariant();
             var sortDirectionNormalized = sortDirection?.Trim().ToUpperInvariant() == "DESC" ? "DESC" : "ASC";
 
-            // Default to title sorting (which uses CleanTitle) to match client-side behavior.
+            // Default to the displayed title. The clean-title sort key has a separate
+            // index-backed expression for large-library pages and jump bars.
             if (string.IsNullOrWhiteSpace(sortKeyNormalized))
             {
                 sortKeyNormalized = "title";
@@ -952,8 +1014,15 @@ namespace NzbDrone.Core.Books
                     break;
 
                 case "cleantitle":
+                    sortExpr = GetBookListCleanTitleSortExpression("b");
+                    bucketSourceExpr = sortExpr;
+                    orderByExpr = $"{sortExpr} {sortDirectionNormalized}, b.\"Id\" {sortDirectionNormalized}";
+                    break;
+
                 case "title":
-                    sortExpr = "LOWER(COALESCE(b.\"CleanTitle\", b.\"Title\", ''))";
+                    sortExpr = GetBookListTitleSortExpression(
+                        "b",
+                        _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1");
                     bucketSourceExpr = sortExpr;
                     orderByExpr = $"{sortExpr} {sortDirectionNormalized}, b.\"Id\" {sortDirectionNormalized}";
                     break;
@@ -1033,7 +1102,7 @@ namespace NzbDrone.Core.Books
 
             if (wanted == true)
             {
-                whereConditions.Add("b.\"ReleaseDate\" <= @wantedCutoff");
+                whereConditions.Add(BuildEffectiveReleaseDateExpression("b") + " <= @wantedCutoff");
                 parameters.Add("wantedCutoff", DateTime.UtcNow);
             }
 
@@ -1155,6 +1224,8 @@ namespace NzbDrone.Core.Books
             string normalizedMediaTypeForFiles = null;
             var normalizedMediaType = mediaType?.Trim().ToLowerInvariant();
             var tableName = TableMapping.Mapper.TableNameMapping(typeof(Book));
+            var bookReference = $"\"{tableName}\"";
+            var effectiveReleaseDate = BuildEffectiveReleaseDateExpression(bookReference);
             var missingOrWanted = missing == true || wanted == true;
             var effectiveMonitored = missingOrWanted ? true : monitored;
 
@@ -1221,7 +1292,7 @@ namespace NzbDrone.Core.Books
 
             if (wanted == true)
             {
-                builder.Where($@"""{tableName}"".""ReleaseDate"" <= @wantedCutoff", new { wantedCutoff = DateTime.UtcNow });
+                builder.Where($"{effectiveReleaseDate} <= @wantedCutoff", new { wantedCutoff = DateTime.UtcNow });
             }
 
             return builder;
@@ -1252,6 +1323,12 @@ namespace NzbDrone.Core.Books
             }
         }
 
+        public HashSet<int> GetAuthorIdsWithBooks()
+        {
+            using var conn = _database.OpenConnection();
+            return conn.Query<int>(@"SELECT DISTINCT ""AuthorId"" FROM ""Books"" WHERE ""AuthorId"" > 0").ToHashSet();
+        }
+
         public PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null)
         {
             offset = Math.Max(0, offset);
@@ -1267,19 +1344,21 @@ namespace NzbDrone.Core.Books
 
             var tableName = TableMapping.Mapper.TableNameMapping(typeof(Book));
             var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
+            var bookReference = $"\"{tableName}\"";
+            var cleanTitleSortExpression = GetBookListCleanTitleSortExpression(bookReference);
+            var titleSortExpression = GetBookListTitleSortExpression(bookReference, trueIndicator);
             var columnMap = new Dictionary<string, string>
             {
-                ["cleantitle"] = $"LOWER(COALESCE(\"{tableName}\".\"CleanTitle\", \"{tableName}\".\"Title\", ''))",
-                ["title"] = $"LOWER(COALESCE(\"{tableName}\".\"CleanTitle\", \"{tableName}\".\"Title\", ''))",
+                ["cleantitle"] = cleanTitleSortExpression,
+                ["title"] = titleSortExpression,
                 ["authortitle"] = "LOWER(\"Authors\".\"Name\")",
-                ["releasedate"] = $"\"{tableName}\".\"ReleaseDate\"",
+                ["releasedate"] = BuildEffectiveReleaseDateExpression(bookReference),
                 ["added"] = $"\"{tableName}\".\"Added\"",
                 ["id"] = $"\"{tableName}\".\"Id\"",
                 ["sizeondisk"] = "COALESCE(\"FileStatistics\".\"SizeOnDisk\", 0)",
                 ["authorname"] = "LOWER(COALESCE(\"Authors\".\"SortName\", \"Authors\".\"Name\", ''))",
 
-                // The list shows the narrator of the monitored edition; books without one sort last when ascending.
-                ["narrator"] = $"COALESCE(NULLIF(LOWER((SELECT \"Editions\".\"Narrator\" FROM \"Editions\" WHERE \"Editions\".\"BookId\" = \"{tableName}\".\"Id\" AND \"Editions\".\"Monitored\" = {trueIndicator} ORDER BY \"Editions\".\"Id\" LIMIT 1)), ''), 'zzz')",
+                ["narrator"] = GetBookListNarratorSortExpression(bookReference, trueIndicator),
                 ["duration"] = $"COALESCE(\"{tableName}\".\"DurationMinutes\", 0)",
                 ["bookfilecount"] = "COALESCE(\"FileStatistics\".\"BookFileCount\", 0)",
                 ["qualityprofileid"] = $"COALESCE(CASE WHEN \"{tableName}\".\"MediaType\" = 1 THEN \"Authors\".\"EbookQualityProfileId\" ELSE \"Authors\".\"AudiobookQualityProfileId\" END, 0)",

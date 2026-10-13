@@ -36,8 +36,13 @@ dotnet restore src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj
 dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 dotnet build src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore -p:UseSharedCompilation=false
 unset SIXLABORS_LICENSE_KEY
-export PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright"
-pwsh ./_tests/net10.0/playwright.ps1 install chromium
+if [ "$(uname -s)" = Linux ]; then
+  export PLAYWRIGHT_BROWSERS_PATH="$(mktemp -d "${TMPDIR:-/tmp}/chaptarr-playwright.XXXXXX")"
+  pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
+else
+  export PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright"
+  pwsh ./_tests/net10.0/playwright.ps1 install chromium
+fi
 TRUSTED_LAUNCHER=/path/to/trusted-test-launcher.mjs
 node "$TRUSTED_LAUNCHER" "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node "$TRUSTED_LAUNCHER" "$PWD" --playwright-cache "$PLAYWRIGHT_BROWSERS_PATH" -- node scripts/validation-engine/engine.mjs --tests-only
@@ -89,8 +94,11 @@ The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same
 checkout. Linux direct-download tests need the Playwright Chromium cache. CI
 installs it in a run-specific cache and passes only that cache path to the NUnit
-task. Local Linux runs should set PLAYWRIGHT_BROWSERS_PATH for both browser
-installation and the trusted launcher; the launcher mounts the cache read-only.
+task. The self-hosted Linux runner invokes PowerShell through Aqua with
+`AQUA_ROOT_DIR` inside the private job directory, so package downloads do not
+write to the shared runner installation. Local Linux runs should set
+`PLAYWRIGHT_BROWSERS_PATH` for both browser installation and the trusted
+launcher; the launcher mounts the cache read-only.
 The engine passes the cache path only to the Core task and keeps its per-task
 home, temporary, XDG, and environment settings private. The PostgreSQL task is
 GitHub-only and assigned to the dedicated PostgreSQL node: CI supplies three
@@ -120,6 +128,10 @@ receive an explicit environment allowlist and each task's declared settings.
 Every task gets run-owned home, temporary, XDG, and .NET CLI directories. NuGet
 packages use a private cache shared only within the validation run. Test tasks
 run with `CI=true` and `NODE_ENV=test` regardless of the invoking shell's values.
+For Linux Chromium tests, the engine creates a short private symlink under
+`/dev/shm` that points to the isolated task temp directory. This keeps
+Chromium's UNIX-domain socket path within the kernel limit without depending on
+shared `/tmp`; browser temp data still lands in the task directory.
 
 The artifact downloader preserves each runner receipt in its own subdirectory,
 and the reconciler finds `receipt.json` recursively so same-named artifacts do

@@ -12929,7 +12929,8 @@
             "nullable": true
           },
           "monitored": {
-            "type": "boolean"
+            "type": "boolean",
+            "nullable": true
           },
           "audiobookMonitored": {
             "type": "boolean",
@@ -13690,6 +13691,10 @@
             "nullable": true
           },
           "openLibraryWorkId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ranobeDbBookId": {
             "type": "string",
             "nullable": true
           },
@@ -15965,6 +15970,10 @@
             "type": "string",
             "nullable": true
           },
+          "ranobeDbBookId": {
+            "type": "string",
+            "nullable": true
+          },
           "hardcoverAuthorId": {
             "type": "string",
             "nullable": true
@@ -15982,6 +15991,10 @@
             "nullable": true
           },
           "audnexusAuthorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ranobeDbAuthorId": {
             "type": "string",
             "nullable": true
           },
@@ -16895,6 +16908,9 @@
             "format": "int32"
           },
           "copyUsingHardlinks": {
+            "type": "boolean"
+          },
+          "keepExistingLibraryFileOnImportConflict": {
             "type": "boolean"
           },
           "importExtraFiles": {

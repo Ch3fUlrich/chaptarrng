@@ -333,7 +333,7 @@ namespace NzbDrone.Core.Configuration
             }
         }
 
-        public string InstallationId => GetValue("InstallationId", Guid.NewGuid().ToString());
+        public string InstallationId => GetValue("InstallationId", Guid.NewGuid().ToString("N"), true);
 
         public bool UpdateAutomatically => _updateOptions.Automatically ?? GetValueBoolean("UpdateAutomatically", OsInfo.IsWindows, false);
 

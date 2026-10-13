@@ -459,6 +459,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     }
 
                     item.Rejections = decision.Rejections;
+                    item.MatchProvenance = decision.Item.MatchProvenance?.Clone();
                     item.Size = decision.Item.Size;
 
                     result.Add(item);
@@ -535,6 +536,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             }
 
             item.Rejections = rejections;
+            item.MatchProvenance = decision.Item.MatchProvenance?.Clone();
             item.Tags = decision.Item.RawTags?.AllTags ?? new Dictionary<string, List<string>>();
             item.AdditionalFile = decision.Item.AdditionalFile;
             item.ReplaceExistingFiles = replaceExistingFiles;

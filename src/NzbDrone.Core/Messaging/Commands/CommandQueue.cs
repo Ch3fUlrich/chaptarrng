@@ -220,6 +220,14 @@ namespace NzbDrone.Core.Messaging.Commands
                                 continue;
                             }
 
+                            // Release selection must observe a stable library inventory. Searches wait for
+                            // active disk work, and disk work waits for an active search, independent of the
+                            // configured concurrency for ordinary disk-access groups.
+                            if (IsBlockedByLibraryState(candidate.Body, startedCommands))
+                            {
+                                continue;
+                            }
+
                             // Respect disk access groups: most disk work remains exclusive, while selected
                             // groups can opt into a bounded concurrency limit.
                             if (IsBlockedByDiskAccess(candidate.Body, startedCommands))
@@ -279,6 +287,21 @@ namespace NzbDrone.Core.Messaging.Commands
                 string.Equals(c.Body.DiskAccessGroup ?? c.Name, candidateGroup, StringComparison.OrdinalIgnoreCase));
 
             return startedInGroup >= limit;
+        }
+
+        private static bool IsBlockedByLibraryState(Command candidate, List<CommandModel> startedCommands)
+        {
+            if (candidate.RequiresLibraryState)
+            {
+                return startedCommands.Any(command => command.Body.RequiresDiskAccess || command.Body.RequiresLibraryState);
+            }
+
+            if (candidate.RequiresDiskAccess)
+            {
+                return startedCommands.Any(command => command.Body.RequiresLibraryState);
+            }
+
+            return false;
         }
     }
 }

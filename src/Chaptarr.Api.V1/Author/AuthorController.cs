@@ -1074,6 +1074,7 @@ namespace Chaptarr.Api.V1.Author
 
 	            var author = _authorService.GetAuthor(authorResource.Id);
                 var wasSyncEnabled = author.SyncMonitoredAcrossFormats == true;
+                var storedMonitoringState = StoredAuthorMonitoringState.Capture(author);
 
 	            if (moveFiles)
 	            {
@@ -1090,6 +1091,7 @@ namespace Chaptarr.Api.V1.Author
 	            }
 
 	            var model = authorResource.ToModel(author, facadeContext);
+	            CascadeExplicitMonitoredIntoMediaTypeSettings(authorResource, model, facadeContext, storedMonitoringState);
 	            var updatedAuthor = _authorService.UpdateAuthor(model);
 
                 var shouldReconcile = updatedAuthor.SyncMonitoredAcrossFormats == true &&
@@ -1106,6 +1108,69 @@ namespace Chaptarr.Api.V1.Author
 
 	            return Accepted(updatedAuthor.Id);
 	        }
+
+        // ToModel applies changes to the stored author in place, so capture the previous
+        // paths and monitoring gates before mapping the request.
+        internal readonly record struct StoredAuthorMonitoringState(
+            string AudiobookRootFolderPath,
+            string EbookRootFolderPath,
+            bool? AudiobookMonitored,
+            bool? EbookMonitored,
+            bool WasMonitored)
+        {
+            public static StoredAuthorMonitoringState Capture(NzbDrone.Core.Books.Author author)
+            {
+                return new StoredAuthorMonitoringState(
+                    author.AudiobookRootFolderPath,
+                    author.EbookRootFolderPath,
+                    author.AudiobookMonitored,
+                    author.EbookMonitored,
+                    author.IsMonitoredFromMediaSettings());
+            }
+        }
+
+        internal static void CascadeExplicitMonitoredIntoMediaTypeSettings(
+            AuthorResource resource,
+            NzbDrone.Core.Books.Author author,
+            ReadarrFacadeContext facadeContext,
+            StoredAuthorMonitoringState stored)
+        {
+            if (resource == null || author == null || facadeContext != null || !resource.Monitored.HasValue)
+            {
+                return;
+            }
+
+            var requestedMonitored = resource.Monitored.Value;
+            var overallStateChanged = requestedMonitored != stored.WasMonitored;
+
+            var audiobookGainingRootFolder = string.IsNullOrWhiteSpace(stored.AudiobookRootFolderPath) &&
+                                             !string.IsNullOrWhiteSpace(author.AudiobookRootFolderPath);
+            var audiobookConfigured = !string.IsNullOrWhiteSpace(stored.AudiobookRootFolderPath) || audiobookGainingRootFolder;
+            var audiobookGateChanged = resource.AudiobookMonitored.HasValue &&
+                                       resource.AudiobookMonitored != stored.AudiobookMonitored;
+            var audiobookNeedsCascade = audiobookConfigured && (overallStateChanged || audiobookGainingRootFolder) ||
+                                        !requestedMonitored && stored.AudiobookMonitored == true;
+
+            if (!audiobookGateChanged && audiobookNeedsCascade)
+            {
+                author.AudiobookMonitored = requestedMonitored;
+                author.AudiobookSettingsManuallyOverridden = true;
+            }
+
+            var ebookGainingRootFolder = string.IsNullOrWhiteSpace(stored.EbookRootFolderPath) &&
+                                         !string.IsNullOrWhiteSpace(author.EbookRootFolderPath);
+            var ebookConfigured = !string.IsNullOrWhiteSpace(stored.EbookRootFolderPath) || ebookGainingRootFolder;
+            var ebookGateChanged = resource.EbookMonitored.HasValue &&
+                                   resource.EbookMonitored != stored.EbookMonitored;
+            var ebookNeedsCascade = ebookConfigured && (overallStateChanged || ebookGainingRootFolder) ||
+                                    !requestedMonitored && stored.EbookMonitored == true;
+
+            if (!ebookGateChanged && ebookNeedsCascade)
+            {
+                author.EbookMonitored = requestedMonitored;
+                author.EbookSettingsManuallyOverridden = true;
+            }
+        }
 
         private bool HasSyncMonitoredAcrossFormatsEligibility(NzbDrone.Core.Books.Author author)
         {

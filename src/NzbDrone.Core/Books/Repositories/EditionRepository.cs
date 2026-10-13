@@ -13,6 +13,7 @@ namespace NzbDrone.Core.Books
     public interface IEditionRepository : IBasicRepository<Edition>
     {
         List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType);
+        List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
         Edition FindByForeignEditionId(string foreignEditionId);
         List<Edition> FindAllByForeignEditionId(string foreignEditionId);
         Edition FindByHardcoverEditionId(string hardcoverEditionId);
@@ -64,6 +65,25 @@ namespace NzbDrone.Core.Books
                 builder = builder.Join<Edition, Book>((e, b) => e.BookId == b.Id)
                     .Where<Book>(b => b.MediaType == bookMediaType);
             }
+
+            var sql = builder.AddSelectTemplate(typeof(Edition));
+            return _database.Query<Edition>(sql.RawSql, sql.Parameters).ToList();
+        }
+
+        public List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType)
+        {
+            var uniqueAuthorIds = authorIds?.Distinct().ToArray() ?? Array.Empty<int>();
+            if (uniqueAuthorIds.Length == 0)
+            {
+                return new List<Edition>();
+            }
+
+            var monitored = true;
+            var builder = Builder()
+                .Select(_bookListColumns)
+                .Join<Edition, Book>((edition, book) => edition.BookId == book.Id)
+                .Where<Edition>(edition => edition.Monitored == monitored)
+                .Where<Book>(book => Enumerable.Contains(uniqueAuthorIds, book.AuthorId) && book.MediaType == mediaType);
 
             var sql = builder.AddSelectTemplate(typeof(Edition));
             return _database.Query<Edition>(sql.RawSql, sql.Parameters).ToList();

@@ -33,15 +33,20 @@ namespace Chaptarr.Core.Test.Books
                     ""GoodreadsAuthorId"" TEXT NULL,
                     ""AudnexusAuthorId"" TEXT NULL,
                     ""OpenLibraryAuthorId"" TEXT NULL,
-                    ""GoogleBooksAuthorId"" TEXT NULL
+                    ""GoogleBooksAuthorId"" TEXT NULL,
+                    ""RanobeDbAuthorId"" TEXT NULL
                 );
                 CREATE UNIQUE INDEX ""UX_Authors_HardcoverAuthorId"" ON ""Authors"" (""HardcoverAuthorId"");
                 CREATE UNIQUE INDEX ""UX_Authors_GoodreadsAuthorId"" ON ""Authors"" (""GoodreadsAuthorId"");
                 CREATE UNIQUE INDEX ""UX_Authors_AudnexusAuthorId"" ON ""Authors"" (""AudnexusAuthorId"");
                 CREATE UNIQUE INDEX ""UX_Authors_OpenLibraryAuthorId"" ON ""Authors"" (""OpenLibraryAuthorId"");
                 CREATE UNIQUE INDEX ""UX_Authors_GoogleBooksAuthorId"" ON ""Authors"" (""GoogleBooksAuthorId"");
+                CREATE UNIQUE INDEX ""UX_Authors_RanobeDbAuthorId"" ON ""Authors"" (""RanobeDbAuthorId"");
 
-                INSERT INTO ""Authors"" (""Id"", ""AudnexusAuthorId"") VALUES (416, 'az:B000APO0PQ');
+                INSERT INTO ""Authors"" (
+                    ""Id"", ""HardcoverAuthorId"", ""GoodreadsAuthorId"", ""AudnexusAuthorId"",
+                    ""OpenLibraryAuthorId"", ""GoogleBooksAuthorId"", ""RanobeDbAuthorId"")
+                VALUES (416, 'hc:123', 'gr:12345', 'az:B000APO0PQ', 'ol:123', 'gb:123', 'rdb:123');
                 INSERT INTO ""Authors"" (""Id"") VALUES (1577);
             ");
         }
@@ -74,8 +79,12 @@ namespace Chaptarr.Core.Test.Books
             var target = new Author
             {
                 Id = 1577,
+                HardcoverAuthorId = "hc:123",
+                GoodreadsAuthorId = "gr:12345",
                 AudnexusAuthorId = "az:B000APO0PQ",
-                GoodreadsAuthorId = "gr:12345"
+                OpenLibraryAuthorId = "ol:123",
+                GoogleBooksAuthorId = "gb:123",
+                RanobeDbAuthorId = "rdb:123"
             };
 
             using var connection = new SqliteConnection(_connectionString);
@@ -87,16 +96,30 @@ namespace Chaptarr.Core.Test.Books
                 transaction.Commit();
             }
 
-            var survivor = connection.QuerySingle(@"SELECT ""AudnexusAuthorId"", ""GoodreadsAuthorId"" FROM ""Authors"" WHERE ""Id"" = 1577;");
+            var survivor = connection.QuerySingle(@"SELECT ""HardcoverAuthorId"", ""GoodreadsAuthorId"", ""AudnexusAuthorId"",
+                ""OpenLibraryAuthorId"", ""GoogleBooksAuthorId"", ""RanobeDbAuthorId"" FROM ""Authors"" WHERE ""Id"" = 1577;");
+            Assert.That((string)survivor.HardcoverAuthorId, Is.EqualTo("hc:123"));
             Assert.That((string)survivor.AudnexusAuthorId, Is.EqualTo("az:B000APO0PQ"));
             Assert.That((string)survivor.GoodreadsAuthorId, Is.EqualTo("gr:12345"));
+            Assert.That((string)survivor.OpenLibraryAuthorId, Is.EqualTo("ol:123"));
+            Assert.That((string)survivor.GoogleBooksAuthorId, Is.EqualTo("gb:123"));
+            Assert.That((string)survivor.RanobeDbAuthorId, Is.EqualTo("rdb:123"));
             Assert.That(connection.ExecuteScalar<long>(@"SELECT COUNT(*) FROM ""Authors"" WHERE ""Id"" = 416;"), Is.EqualTo(0));
         }
 
         [Test]
         public void rollback_should_leave_the_source_untouched()
         {
-            var target = new Author { Id = 1577, AudnexusAuthorId = "az:B000APO0PQ" };
+            var target = new Author
+            {
+                Id = 1577,
+                HardcoverAuthorId = "hc:123",
+                GoodreadsAuthorId = "gr:12345",
+                AudnexusAuthorId = "az:B000APO0PQ",
+                OpenLibraryAuthorId = "ol:123",
+                GoogleBooksAuthorId = "gb:123",
+                RanobeDbAuthorId = "rdb:123"
+            };
 
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
@@ -106,9 +129,23 @@ namespace Chaptarr.Core.Test.Books
                 transaction.Rollback();
             }
 
-            var source = connection.QuerySingle(@"SELECT ""AudnexusAuthorId"" FROM ""Authors"" WHERE ""Id"" = 416;");
+            var source = connection.QuerySingle(@"SELECT ""HardcoverAuthorId"", ""GoodreadsAuthorId"", ""AudnexusAuthorId"",
+                ""OpenLibraryAuthorId"", ""GoogleBooksAuthorId"", ""RanobeDbAuthorId"" FROM ""Authors"" WHERE ""Id"" = 416;");
+            Assert.That((string)source.HardcoverAuthorId, Is.EqualTo("hc:123"));
+            Assert.That((string)source.GoodreadsAuthorId, Is.EqualTo("gr:12345"));
             Assert.That((string)source.AudnexusAuthorId, Is.EqualTo("az:B000APO0PQ"));
-            Assert.That(connection.ExecuteScalar<string>(@"SELECT ""AudnexusAuthorId"" FROM ""Authors"" WHERE ""Id"" = 1577;"), Is.Null);
+            Assert.That((string)source.OpenLibraryAuthorId, Is.EqualTo("ol:123"));
+            Assert.That((string)source.GoogleBooksAuthorId, Is.EqualTo("gb:123"));
+            Assert.That((string)source.RanobeDbAuthorId, Is.EqualTo("rdb:123"));
+
+            var survivor = connection.QuerySingle(@"SELECT ""HardcoverAuthorId"", ""GoodreadsAuthorId"", ""AudnexusAuthorId"",
+                ""OpenLibraryAuthorId"", ""GoogleBooksAuthorId"", ""RanobeDbAuthorId"" FROM ""Authors"" WHERE ""Id"" = 1577;");
+            Assert.That((string)survivor.HardcoverAuthorId, Is.Null);
+            Assert.That((string)survivor.GoodreadsAuthorId, Is.Null);
+            Assert.That((string)survivor.AudnexusAuthorId, Is.Null);
+            Assert.That((string)survivor.OpenLibraryAuthorId, Is.Null);
+            Assert.That((string)survivor.GoogleBooksAuthorId, Is.Null);
+            Assert.That((string)survivor.RanobeDbAuthorId, Is.Null);
         }
     }
 }

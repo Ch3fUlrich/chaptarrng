@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Indexers;
@@ -27,7 +30,7 @@ namespace Chaptarr.Core.Test.Indexers
             public NewznabCapabilities GetCapabilities(NewznabSettings settings, int? proxyId) => _capabilities;
         }
 
-        private static NewznabRequestGenerator CreateGenerator(bool supportsBookSearch = true)
+        private static NewznabRequestGenerator CreateGenerator(bool supportsBookSearch = true, Logger logger = null, string indexerName = "Fixture Newznab")
         {
             var capabilities = new NewznabCapabilities
             {
@@ -35,7 +38,7 @@ namespace Chaptarr.Core.Test.Indexers
                 SupportedBookSearchParameters = supportsBookSearch ? new[] { "q", "author", "title" } : new[] { "q" }
             };
 
-            return new NewznabRequestGenerator(new StubCapabilitiesProvider(capabilities))
+            return new NewznabRequestGenerator(new StubCapabilitiesProvider(capabilities), logger ?? LogManager.GetCurrentClassLogger(), indexerName)
             {
                 MaxPages = 1,
                 Settings = new NewznabSettings
@@ -154,6 +157,30 @@ namespace Chaptarr.Core.Test.Indexers
             var interactive = generator.GetSearchRequests(Criteria("Book 4", interactive: true));
 
             Assert.That(interactive.Tiers, Is.EqualTo(automatic.Tiers));
+        }
+
+        [Test]
+        public void should_warn_when_no_categories_are_selected_for_the_searched_media_type()
+        {
+            var memory = new MemoryTarget("newznab-category-warning")
+            {
+                Layout = "${level}|${message}"
+            };
+            var configuration = new LoggingConfiguration();
+            configuration.AddRule(LogLevel.Warn, LogLevel.Fatal, memory);
+            using var logFactory = new LogFactory { Configuration = configuration };
+
+            var generator = CreateGenerator(logger: logFactory.GetLogger("NewznabRequestGeneratorFixture"), indexerName: "Ebook Only Indexer");
+            generator.Settings.Categories = new[] { 7000, 7020 };
+            var criteria = Criteria("The Book of Lost Things", interactive: false);
+            criteria.Books = new List<Book> { new Book { MediaType = BookMediaType.Audiobook } };
+
+            var requests = generator.GetSearchRequests(criteria);
+            var generatedRequests = requests.GetTier(0).SelectMany(tier => tier).ToList();
+
+            Assert.That(generatedRequests, Is.Empty);
+            Assert.That(memory.Logs, Has.Count.EqualTo(1));
+            Assert.That(memory.Logs.Single(), Does.StartWith("Warn|").And.Contain("Ebook Only Indexer").And.Contain("audiobook"));
         }
     }
 }

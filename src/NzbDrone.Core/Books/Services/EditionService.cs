@@ -9,6 +9,7 @@ using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Books.Extensions;
 // using NzbDrone.Core.MediaFiles.BookImport.Identification; // Disabled - old identification system
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Parser;
 using NzbDrone.Common.Instrumentation;
 
@@ -26,6 +27,7 @@ namespace NzbDrone.Core.Books
         Edition GetEditionByProviderAndId(string providerPrefix, string providerId);
         List<Edition> GetEditionsByProviderAndId(string providerPrefix, string providerId);
         List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType);
+        List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
         void InsertMany(List<Edition> editions);
         void InsertMany(List<Edition> editions, IDbConnection connection, IDbTransaction transaction);
         void UpdateMany(List<Edition> editions);
@@ -151,6 +153,14 @@ namespace NzbDrone.Core.Books
                             string.Equals(normalized, id, StringComparison.Ordinal) ? null : _editionRepository.FindAllByAsin(id));
                     }
 
+                case "rnr":
+                    {
+                        var foreignEditionId = id.Contains(":")
+                            ? ProviderIdHelper.Normalize(id, "rnr")
+                            : ProviderIdHelper.WithPrefix("rnr", id);
+                        return _editionRepository.FindAllByForeignEditionId(foreignEditionId);
+                    }
+
                 case "isbn":
                     {
                         var normalized = id.Replace("-", string.Empty).Replace(" ", string.Empty);
@@ -195,6 +205,7 @@ namespace NzbDrone.Core.Books
         private static bool IsExpectedPluralSingularLookup(string providerPrefix)
         {
             return string.Equals(providerPrefix, "az", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(providerPrefix, "rnr", StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(providerPrefix, "isbn", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -224,6 +235,11 @@ namespace NzbDrone.Core.Books
         public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType)
         {
             return _editionRepository.GetMonitoredEditionsForBookList(mediaType);
+        }
+
+        public List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType)
+        {
+            return _editionRepository.GetMonitoredEditionsForAuthors(authorIds, mediaType);
         }
 
 	        public void InsertMany(List<Edition> editions)

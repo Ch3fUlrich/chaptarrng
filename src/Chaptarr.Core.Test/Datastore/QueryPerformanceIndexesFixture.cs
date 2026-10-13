@@ -16,7 +16,7 @@ using NzbDrone.Core.Messaging.Events;
 namespace Chaptarr.Core.Test.Datastore
 {
     // Runs the real migrations into a fresh database, then checks the plans SQLite picks for
-    // the queries migration 108 was written for. With no ANALYZE statistics, SQLite plans from
+    // the queries migration 109 was written for. With no ANALYZE statistics, SQLite plans from
     // the schema alone, so an empty database plans these queries the same way a full one does.
     [TestFixture]
     public class QueryPerformanceIndexesFixture
@@ -149,12 +149,12 @@ namespace Chaptarr.Core.Test.Datastore
         }
 
         [Test]
-        public void should_read_a_title_sorted_book_page_from_the_index_instead_of_sorting()
+        public void should_read_a_clean_title_sorted_book_page_from_the_index_instead_of_sorting()
         {
             var captured = new CapturedStatements();
             var repository = new BookRepository(new MainDatabase(CreateDatabase(captured)), new StubEventAggregator());
 
-            repository.GetBooksPaged(0, 200, "title", "ASC", true, "audiobook", null, null);
+            repository.GetBooksPaged(0, 200, "cleantitle", "ASC", true, "audiobook", null, null);
             var plan = PlanFor(captured.Sql.Last(sql => sql.Contains("LIMIT 200")));
 
             Assert.Multiple(() =>
@@ -165,12 +165,12 @@ namespace Chaptarr.Core.Test.Datastore
         }
 
         [Test]
-        public void should_count_the_title_jump_bar_from_the_index_alone()
+        public void should_count_the_clean_title_jump_bar_from_the_index_alone()
         {
             var captured = new CapturedStatements();
             var repository = new BookRepository(new MainDatabase(CreateDatabase(captured)), new StubEventAggregator());
 
-            repository.GetBookBuckets("title", "ASC", true, "audiobook", null, null);
+            repository.GetBookBuckets("cleantitle", "ASC", true, "audiobook", null, null);
             var plan = PlanFor(captured.Sql.Last(sql => sql.Contains("Bucket")));
 
             Assert.That(plan, Has.Some.Contains("COVERING INDEX IX_Books_MediaType_TitleSort"), string.Join(" | ", plan));

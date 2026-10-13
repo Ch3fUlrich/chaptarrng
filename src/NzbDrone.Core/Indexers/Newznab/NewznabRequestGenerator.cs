@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.IndexerSearch.Definitions;
@@ -10,14 +11,18 @@ namespace NzbDrone.Core.Indexers.Newznab
     public class NewznabRequestGenerator : IIndexerRequestGenerator
     {
         protected readonly INewznabCapabilitiesProvider _capabilitiesProvider;
+        private readonly Logger _logger;
+        private readonly string _indexerName;
         public int MaxPages { get; set; }
         public int PageSize { get; set; }
         public NewznabSettings Settings { get; set; }
         public int? ProxyId { get; set; }
 
-        public NewznabRequestGenerator(INewznabCapabilitiesProvider capabilitiesProvider)
+        public NewznabRequestGenerator(INewznabCapabilitiesProvider capabilitiesProvider, Logger logger, string indexerName)
         {
             _capabilitiesProvider = capabilitiesProvider;
+            _logger = logger;
+            _indexerName = indexerName.IsNullOrWhiteSpace() ? "Newznab" : indexerName;
 
             MaxPages = 30;
             PageSize = 100;
@@ -67,7 +72,16 @@ namespace NzbDrone.Core.Indexers.Newznab
         public virtual IndexerPageableRequestChain GetSearchRequests(BookSearchCriteria searchCriteria)
         {
             var pageableRequests = new IndexerPageableRequestChain();
-            var searchCategories = SearchMediaTypeHelper.FilterCategoriesForMediaType(Settings.Categories, SearchMediaTypeHelper.GetRequestedMediaType(searchCriteria));
+            var requestedMediaType = SearchMediaTypeHelper.GetRequestedMediaType(searchCriteria);
+            var configuredCategories = (Settings.Categories ?? Enumerable.Empty<int>()).Distinct().ToList();
+            var searchCategories = SearchMediaTypeHelper.FilterCategoriesForMediaType(configuredCategories, requestedMediaType);
+
+            if (requestedMediaType.HasValue && configuredCategories.Count > 0 && searchCategories.Count == 0)
+            {
+                _logger.Warn("Newznab indexer '{0}' has no {1} categories selected; this search will send no indexer requests",
+                    _indexerName,
+                    requestedMediaType.Value.ToString().ToLowerInvariant());
+            }
 
             if (SupportsBookSearch)
             {

@@ -52,7 +52,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Jim Butcher" };
             var book = new Book
@@ -93,7 +94,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Jim Butcher" };
             var book = new Book
@@ -196,7 +198,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 new CacheManager(),
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Brandon Sanderson" };
             book.Author = author;
@@ -224,7 +227,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Jim Butcher" };
             var book = new Book { Author = author };
@@ -259,7 +263,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Jim Butcher" };
             var book = new Book
@@ -305,7 +310,8 @@ namespace Chaptarr.Core.Test.Organizer
                 new StubQualityDefinitionService(),
                 cacheManager,
                 new StubCustomFormatCalculationService(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             var author = new Author { Name = "Jim Butcher" };
             var book = new Book { Author = author };

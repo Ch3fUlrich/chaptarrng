@@ -26,7 +26,7 @@ namespace NzbDrone.Core.MediaCover
 
     public class MediaCoverProxy : IMediaCoverProxy
     {
-        private const int MaxCacheEntries = 20000;
+        private const int MaxCacheEntries = 100000;
         private const int MaxImageRedirects = 5;
         private const int MaxImageBytes = 20 * 1024 * 1024;
         private static readonly TimeSpan ImageRequestTimeout = TimeSpan.FromSeconds(30);
@@ -34,14 +34,13 @@ namespace NzbDrone.Core.MediaCover
         private readonly IHttpClient _httpClient;
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IConfigService _configService;
-        private readonly ICached<string> _cache;
+        private readonly BoundedCache<string> _cache = new BoundedCache<string>(MaxCacheEntries, StringComparer.Ordinal);
 
-        public MediaCoverProxy(IHttpClient httpClient, IConfigFileProvider configFileProvider, IConfigService configService, ICacheManager cacheManager)
+        public MediaCoverProxy(IHttpClient httpClient, IConfigFileProvider configFileProvider, IConfigService configService)
         {
             _httpClient = httpClient;
             _configFileProvider = configFileProvider;
             _configService = configService;
-            _cache = cacheManager.GetCache<string>(GetType());
         }
 
         public string RegisterUrl(string url)
@@ -52,13 +51,6 @@ namespace NzbDrone.Core.MediaCover
             }
 
             var hash = url.SHA256Hash();
-
-            _cache.ClearExpired();
-
-            if (_cache.Count >= MaxCacheEntries)
-            {
-                _cache.Clear();
-            }
 
             _cache.Set(hash, url, TimeSpan.FromHours(24));
 
@@ -122,16 +114,12 @@ namespace NzbDrone.Core.MediaCover
                 return false;
             }
 
-            resolved = _cache.Find(segments[index + 1]);
-
-            return resolved.IsNotNullOrWhiteSpace();
+            return _cache.TryGetValue(segments[index + 1], out resolved) && resolved.IsNotNullOrWhiteSpace();
         }
 
         public string GetUrl(string hash)
         {
-            var result = _cache.Find(hash);
-
-            if (result == null)
+            if (!_cache.TryGetValue(hash, out var result) || result == null)
             {
                 throw new KeyNotFoundException("Url no longer in cache");
             }

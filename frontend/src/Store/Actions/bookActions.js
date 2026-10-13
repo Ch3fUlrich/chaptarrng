@@ -711,7 +711,7 @@ export const actionHandlers = handleThunks({
     }).request;
 
     promise.then((data) => {
-      const books = Array.isArray(data) ? data : data?.books;
+      const books = Array.isArray(data) ? data : ((data && data.books) || null);
 
       if (books && Array.isArray(books) && books.length) {
         const bookData = books[0];
@@ -783,7 +783,7 @@ export const actionHandlers = handleThunks({
 
     promise.then((data) => {
       // Handle different response formats - data might be the array directly or wrapped in a response object
-      const books = Array.isArray(data) ? data : data?.books;
+      const books = Array.isArray(data) ? data : ((data && data.books) || null);
 
       if (books && Array.isArray(books)) {
         dispatch(batchActions(

@@ -88,7 +88,7 @@ for (const requiredPhrase of [
   'one absolute `http://` or `https://` URL per line',
   'The first occurrence remains in the configured order',
   'The API Key field is masked',
-  'It does not contact the URLs',
+  'without requesting a real file',
   'up to three attempts',
   'On restart, Chaptarr reloads Direct state',
   'Only absolute HTTP and HTTPS URLs are accepted',

@@ -31,11 +31,14 @@ namespace Chaptarr.Core.Test.MediaFiles
         private sealed class RecordingImportApprovedBooks : IImportApprovedBooks
         {
             public List<ImportDecision<LocalBook>> Decisions { get; private set; } = new();
+            public bool ReturnResultForEachDecision { get; set; }
 
             public List<ImportResult> Import(List<ImportDecision<LocalBook>> decisions, bool replaceExisting, DownloadClientItem downloadClientItem = null, ImportMode importMode = ImportMode.Auto, CancellationToken cancellationToken = default)
             {
                 Decisions = decisions ?? new List<ImportDecision<LocalBook>>();
-                return new List<ImportResult>();
+                return ReturnResultForEachDecision
+                    ? Decisions.Select(decision => new ImportResult(decision, "Recorded test decision")).ToList()
+                    : new List<ImportResult>();
             }
 
             public string CheckExistingDestinationConflict(LocalBook localBook, Book book, Author author) => null;
@@ -56,6 +59,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             public FileMatchResult InitialResult { get; set; } = new();
             public FileMatchResult RematchResult { get; set; } = new();
             public bool UseRematchResultWhenAuthorRestricted { get; set; }
+            public bool ReturnUnmatchedWhenInitialResultIsEmpty { get; set; }
 
             /// <summary>
             /// When set, any call whose context permits path/filename evidence gets this result instead.
@@ -87,7 +91,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                     return Task.FromResult(RematchResult);
                 }
 
-                return Task.FromResult(InitialResult);
+                return Task.FromResult(GetInitialResult(filesWithMetadata));
             }
 
             public Task<FileMatchResult> MatchFilesToLibraryAsync(DiscoveredFileWithMetadata[] filesWithMetadata, int? restrictToAuthorId, MatchingContext context)
@@ -110,7 +114,24 @@ namespace Chaptarr.Core.Test.MediaFiles
                     return Task.FromResult(RematchResult);
                 }
 
-                return Task.FromResult(InitialResult);
+                return Task.FromResult(GetInitialResult(filesWithMetadata));
+            }
+
+            private FileMatchResult GetInitialResult(DiscoveredFileWithMetadata[] filesWithMetadata)
+            {
+                if (!ReturnUnmatchedWhenInitialResultIsEmpty ||
+                    InitialResult?.MatchedFiles?.Length > 0 ||
+                    InitialResult?.UnmatchedFiles?.Length > 0)
+                {
+                    return InitialResult;
+                }
+
+                return new FileMatchResult
+                {
+                    UnmatchedFiles = (filesWithMetadata ?? Array.Empty<DiscoveredFileWithMetadata>())
+                        .Select(file => new UnmatchedFile { File = file, Reason = "No local match" })
+                        .ToArray()
+                };
             }
 
             public EditionFtsMatch HolyGrailMatch(int? authorId, IEnumerable<string> allTagTokens, BookMediaType mediaType) => throw new NotImplementedException();
@@ -451,8 +472,8 @@ namespace Chaptarr.Core.Test.MediaFiles
 
             try
             {
-                var matchingService = new StubFileMatchingService();
-                var importApprovedBooks = new RecordingImportApprovedBooks();
+                var matchingService = new StubFileMatchingService { ReturnUnmatchedWhenInitialResultIsEmpty = true };
+                var importApprovedBooks = new RecordingImportApprovedBooks { ReturnResultForEachDecision = true };
                 var service = new DownloadedBooksImportService(
                     new StubDiskProvider(),
                     new StubDiskScanService(),
@@ -475,9 +496,10 @@ namespace Chaptarr.Core.Test.MediaFiles
                 RejectionType Classify(DownloadClientItem downloadClientItem)
                 {
                     var results = service.ProcessPath(tempDir, ImportMode.Auto, author: null, downloadClientItem: downloadClientItem);
-                    Assert.That(results, Has.Count.EqualTo(1), $"Expected one result for {downloadClientItem.FileListConfidence} file list [{string.Join(", ", downloadClientItem.FilePaths)}]");
+                    Assert.That(results, Has.Count.EqualTo(1), $"Expected one classification result for {downloadClientItem.FileListConfidence} file list");
                     var rejections = results[0].ImportDecision?.Rejections;
-                    Assert.That(rejections, Is.Not.Null.And.Not.Empty, $"Expected a rejection for {downloadClientItem.FileListConfidence} file list");
+                    Assert.That(rejections, Is.Not.Null.And.Not.Empty,
+                        $"Expected a rejection for {downloadClientItem.FileListConfidence} file list containing [{string.Join(", ", downloadClientItem.FilePaths ?? new List<string>())}]; result errors: {string.Join("; ", results[0].Errors ?? new List<string>())}");
                     return rejections.Single().Type;
                 }
 
@@ -507,6 +529,9 @@ namespace Chaptarr.Core.Test.MediaFiles
                 Assert.That(Classify(authoritativeNonMediaList), Is.EqualTo(RejectionType.Permanent));
                 File.WriteAllBytes(existingMedia, new byte[] { 1, 2, 3, 4 });
                 Assert.That(Classify(partiallyVisibleAuthoritativeMediaList), Is.EqualTo(RejectionType.Temporary));
+
+                matchingService.Calls.Clear();
+                importApprovedBooks.Decisions.Clear();
 
                 var detailedResult = service.ProcessPath(
                     tempDir,

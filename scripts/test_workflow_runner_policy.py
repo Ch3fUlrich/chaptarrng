@@ -30,6 +30,18 @@ def job_block(source: str, job: str) -> str:
     return "\n".join(body)
 
 
+def step_block(source: str, name: str) -> str:
+    lines = source.splitlines()
+    marker = f"    - name: {name}"
+    start = lines.index(marker)
+    body = []
+    for line in lines[start + 1 :]:
+        if line.startswith("    - name:"):
+            break
+        body.append(line)
+    return "\n".join(body)
+
+
 class WorkflowRunnerPolicyTests(unittest.TestCase):
     def test_push_trigger_is_main_only(self) -> None:
         push = event_block(WORKFLOW.read_text(encoding="utf-8"), "push")
@@ -145,6 +157,19 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
                 check=True,
                 capture_output=True,
             )
+
+    def test_self_hosted_aqua_tools_use_the_private_root(self) -> None:
+        source = WORKFLOW.read_text(encoding="utf-8")
+        install = step_block(source, "Install Chromium on the self-hosted Linux runner")
+
+        self.assertIn("export AQUA_ROOT_DIR=\"$PRIVATE_RUNNER_TEMP/aqua\"", install)
+        aqua_command = (
+            '"$aqua_root/bin/aqua" exec -- pwsh '
+            './_tests/net10.0/playwright.ps1 install chromium'
+        )
+        self.assertIn(aqua_command, install)
+        self.assertIn('export AQUA_CONFIG="$aqua_config"', install)
+        self.assertIn('export AQUA_POLICY_CONFIG="$aqua_policy_config"', install)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
       "allowJs": true,
       "checkJs": false,
       "strict": false,
+      "skipLibCheck": true,
       "jsx": "react",
       "module": "esnext",
       "moduleResolution": "bundler",

@@ -26,6 +26,7 @@
     <PackageReference Include="TagLibSharp-Lidarr" />
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="Equ" />
+    <PackageReference Include="MQTTnet" />
     <PackageReference Include="MonoTorrent" />
     <PackageReference Include="PdfSharpCore" />
     <PackageReference Include="Microsoft.Playwright" />

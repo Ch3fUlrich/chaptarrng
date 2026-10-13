@@ -539,6 +539,11 @@ namespace NzbDrone.Core.Books
                     var author = _authorService.FindByProviderId("gb", local.GoogleBooksAuthorId);
                     if (author != null) return author;
                 }
+                if (!string.IsNullOrEmpty(local.RanobeDbAuthorId))
+                {
+                    var author = _authorService.FindByProviderId("rn", local.RanobeDbAuthorId);
+                    if (author != null) return author;
+                }
             }
 
             return null;
@@ -2366,13 +2371,26 @@ namespace NzbDrone.Core.Books
                 var authorsWithETags = new List<MetadataSource.BookInfo.V5.V5AuthorETag>();
                 var authorDiffItemGroups = new List<(int AuthorId, List<MetadataSource.BookInfo.V5.V5AuthorETag> Items)>();
                 var requestedIdsByAuthorId = new Dictionary<int, HashSet<string>>();
+                var ranobeOnlyAuthors = new List<Author>();
 
                 foreach (var author in authors)
                 {
-                    var providerIds = GetAuthorDiffProviderIds(author);
+                    var providerIds = GetAuthorDiffProviderIds(author)
+                        .Where(id => !id.StartsWith("rn:", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
                     if (providerIds.Count == 0)
                     {
-                        _logger.Warn("[BULK-SYNC] Author {0} has no provider IDs, skipping", author.Name);
+                        if (!string.IsNullOrWhiteSpace(author.RanobeDbAuthorId))
+                        {
+                            // This provider owns the complete child list only when it is the author's sole source.
+                            // Refreshing a mixed-provider author from RanobeDB could prune books the API cannot see.
+                            ranobeOnlyAuthors.Add(author);
+                        }
+                        else
+                        {
+                            _logger.Warn("[BULK-SYNC] Author {0} has no supported metadata-server provider IDs, skipping", author.Name);
+                        }
+
                         continue;
                     }
 
@@ -2397,16 +2415,21 @@ namespace NzbDrone.Core.Books
 
                 if (!authorsWithETags.Any())
                 {
-                    _logger.Warn("[BULK-SYNC] No authors with provider IDs found");
-                    _logger.ProgressInfo("No refreshable authors found.");
-                    return false;
+                    if (ranobeOnlyAuthors.Count == 0)
+                    {
+                        _logger.Warn("[BULK-SYNC] No authors with supported provider IDs found");
+                        _logger.ProgressInfo("No refreshable authors found.");
+                        return false;
+                    }
+
+                    return RefreshRanobeOnlyAuthors(ranobeOnlyAuthors, forceRefresh);
                 }
 
                 if (_authorInfo is not BookInfoProxy bookInfoProxy)
                 {
                     _logger.Error("[BULK-SYNC] Bulk author diff requires BookInfoProxy; no legacy author refresh fallback is available.");
                     _logger.ProgressInfo("Bulk author sync endpoint unavailable.");
-                    return false;
+                    return RefreshRanobeOnlyAuthors(ranobeOnlyAuthors, forceRefresh);
                 }
 
                 // Call bulk changes endpoint
@@ -2421,7 +2444,7 @@ namespace NzbDrone.Core.Books
                 if (changesResponse == null)
                 {
                     _logger.Warn("[BULK-SYNC] No response from bulk changes endpoint");
-                    return false;
+                    return RefreshRanobeOnlyAuthors(ranobeOnlyAuthors, forceRefresh);
                 }
 
                 _logger.Debug("[BULK-SYNC] Bulk diff returned {0} refresh candidate(s), {1} deleted, {2} merged",
@@ -2633,6 +2656,7 @@ namespace NzbDrone.Core.Books
                     ReportServerDeletedAuthors(deletedIdsToReport, reportingAuthors);
                 }
 
+                updated |= RefreshRanobeOnlyAuthors(ranobeOnlyAuthors, forceRefresh);
                 return updated;
             }
             catch (Exception e)
@@ -2645,6 +2669,37 @@ namespace NzbDrone.Core.Books
                 bulkStopwatch.Stop();
                 _logger.Debug("[AUTHOR-REFRESH-TIMING] Bulk sync for {0} requested authors finished in {1}ms", authorIds.Count, bulkStopwatch.ElapsedMilliseconds);
             }
+        }
+
+        private bool RefreshRanobeOnlyAuthors(IEnumerable<Author> authors, bool forceRefresh)
+        {
+            var updated = false;
+            foreach (var author in authors ?? Enumerable.Empty<Author>())
+            {
+                try
+                {
+                    var ranobeAuthorId = author.RanobeDbAuthorId;
+                    var remoteAuthor = GetSkyhookData(
+                        author,
+                        forceRefresh: forceRefresh,
+                        bypassEtag: forceRefresh,
+                        authorIdentifierOverride: ranobeAuthorId);
+                    if (remoteAuthor != null && RefreshEntityInfoIfRemoteDataAvailable(author, remoteAuthor, true, false, null))
+                    {
+                        updated = true;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "[BULK-SYNC] RanobeDB refresh failed for author {0}", author.Name);
+                }
+            }
+
+            return updated;
         }
 
         private void StampAuthorsChecked(IEnumerable<Author> authors)
@@ -2981,7 +3036,8 @@ namespace NzbDrone.Core.Books
                 (provider == "gr" && ProviderIdHelper.Normalize(a.GoodreadsAuthorId, "gr") == normalizedPrefixedId) ||
                 (provider == "ol" && ProviderIdHelper.Normalize(a.OpenLibraryAuthorId, "ol") == normalizedPrefixedId) ||
                 (provider == "gb" && ProviderIdHelper.Normalize(a.GoogleBooksAuthorId, "gb") == normalizedPrefixedId) ||
-                (provider == "az" && ProviderIdHelper.Normalize(a.AudnexusAuthorId, "az") == normalizedPrefixedId));
+                (provider == "az" && ProviderIdHelper.Normalize(a.AudnexusAuthorId, "az") == normalizedPrefixedId) ||
+                (provider == "rn" && ProviderIdHelper.Normalize(a.RanobeDbAuthorId, "rn") == normalizedPrefixedId));
 
             if (author != null)
             {
@@ -3159,7 +3215,8 @@ namespace NzbDrone.Core.Books
                 target.GoodreadsAuthorId,
                 target.AudnexusAuthorId,
                 target.OpenLibraryAuthorId,
-                target.GoogleBooksAuthorId
+                target.GoogleBooksAuthorId,
+                target.RanobeDbAuthorId
             };
 
             try
@@ -3176,12 +3233,14 @@ namespace NzbDrone.Core.Books
                 var mergedAudnexusId = target.AudnexusAuthorId;
                 var mergedOpenLibraryId = target.OpenLibraryAuthorId;
                 var mergedGoogleBooksId = target.GoogleBooksAuthorId;
+                var mergedRanobeDbId = target.RanobeDbAuthorId;
 
                 target.HardcoverAuthorId = originalTargetProviderIds.HardcoverAuthorId;
                 target.GoodreadsAuthorId = originalTargetProviderIds.GoodreadsAuthorId;
                 target.AudnexusAuthorId = originalTargetProviderIds.AudnexusAuthorId;
                 target.OpenLibraryAuthorId = originalTargetProviderIds.OpenLibraryAuthorId;
                 target.GoogleBooksAuthorId = originalTargetProviderIds.GoogleBooksAuthorId;
+                target.RanobeDbAuthorId = originalTargetProviderIds.RanobeDbAuthorId;
                 _authorService.UpdateAuthor(target);
 
                 target.HardcoverAuthorId = mergedHardcoverId;
@@ -3189,6 +3248,7 @@ namespace NzbDrone.Core.Books
                 target.AudnexusAuthorId = mergedAudnexusId;
                 target.OpenLibraryAuthorId = mergedOpenLibraryId;
                 target.GoogleBooksAuthorId = mergedGoogleBooksId;
+                target.RanobeDbAuthorId = mergedRanobeDbId;
 
                 using var connection = _mainDatabase.OpenConnection();
                 using var transaction = connection.BeginTransaction();
@@ -3238,7 +3298,8 @@ namespace NzbDrone.Core.Books
                     ""GoodreadsAuthorId"" = NULL,
                     ""AudnexusAuthorId"" = NULL,
                     ""OpenLibraryAuthorId"" = NULL,
-                    ""GoogleBooksAuthorId"" = NULL
+                    ""GoogleBooksAuthorId"" = NULL,
+                    ""RanobeDbAuthorId"" = NULL
                   WHERE ""Id"" = @Id;",
                 new { Id = sourceId },
                 transaction);
@@ -3249,7 +3310,8 @@ namespace NzbDrone.Core.Books
                     ""GoodreadsAuthorId"" = @GoodreadsAuthorId,
                     ""AudnexusAuthorId"" = @AudnexusAuthorId,
                     ""OpenLibraryAuthorId"" = @OpenLibraryAuthorId,
-                    ""GoogleBooksAuthorId"" = @GoogleBooksAuthorId
+                    ""GoogleBooksAuthorId"" = @GoogleBooksAuthorId,
+                    ""RanobeDbAuthorId"" = @RanobeDbAuthorId
                   WHERE ""Id"" = @Id;",
                 new
                 {
@@ -3258,6 +3320,7 @@ namespace NzbDrone.Core.Books
                     target.AudnexusAuthorId,
                     target.OpenLibraryAuthorId,
                     target.GoogleBooksAuthorId,
+                    target.RanobeDbAuthorId,
                     Id = target.Id
                 },
                 transaction);
@@ -3270,6 +3333,7 @@ namespace NzbDrone.Core.Books
             survivor.AudnexusAuthorId ??= source.AudnexusAuthorId;
             survivor.OpenLibraryAuthorId ??= source.OpenLibraryAuthorId;
             survivor.GoogleBooksAuthorId ??= source.GoogleBooksAuthorId;
+            survivor.RanobeDbAuthorId ??= source.RanobeDbAuthorId;
             survivor.RemoteProviderIds = AuthorIdentity.MergeProviderIdentityTokens(survivor, source);
 
             survivor.AudiobookRootFolderPath ??= source.AudiobookRootFolderPath;

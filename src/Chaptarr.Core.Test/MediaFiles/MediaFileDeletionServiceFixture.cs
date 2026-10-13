@@ -118,12 +118,13 @@ namespace Chaptarr.Core.Test.MediaFiles
                     return Files;
                 }
 
-                if (string.Equals(targetMethod?.Name, nameof(IMediaFileService.GetFilesWithBasePath), StringComparison.Ordinal))
+                if (string.Equals(targetMethod?.Name, nameof(IMediaFileService.GetFilesWithBasePath), StringComparison.Ordinal) &&
+                    args?.Length == 1 &&
+                    args[0] is string basePath)
                 {
-                    var path = (string)args[0];
                     return Files.Where(file =>
                             !string.IsNullOrWhiteSpace(file?.Path) &&
-                            (path.PathEquals(file.Path) || path.IsParentPath(file.Path)))
+                            (basePath.PathEquals(file.Path) || basePath.IsParentPath(file.Path)))
                         .ToList();
                 }
 

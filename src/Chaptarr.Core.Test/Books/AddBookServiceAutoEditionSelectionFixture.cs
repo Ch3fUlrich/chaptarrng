@@ -1086,6 +1086,47 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void should_allow_format_four_ebook_as_audiobook_representative_with_none_metadata_profile()
+        {
+            var profile = new MetadataProfile
+            {
+                Id = 33,
+                Name = MetadataProfileService.NONE_PROFILE_NAME,
+                MinPopularity = MetadataProfileService.NONE_PROFILE_MIN_POPULARITY
+            };
+            var author = new Author { Id = 33, AudiobookMetadataProfileId = profile.Id };
+            var book = new Book
+            {
+                AuthorId = author.Id,
+                Author = author,
+                Title = "Brave New World",
+                MediaType = BookMediaType.Audiobook,
+                Editions = new List<Edition>
+                {
+                    new Edition
+                    {
+                        ForeignEditionId = "hc:format-four-ebook",
+                        Title = "Brave New World",
+                        Language = "eng",
+                        ReadingFormatId = 4
+                    }
+                }
+            };
+
+            var service = BuildService(
+                new StubAuthorService(author),
+                new StubBookService(),
+                new StubEditionService(Array.Empty<Edition>()),
+                new StubMetadataProfileService(profile));
+
+            InvokeApplyEditionRetentionForAdd(service, book, requestedEditionId: null);
+
+            Assert.That(book.Editions.Select(e => e.ForeignEditionId), Is.EqualTo(new[] { "hc:format-four-ebook" }));
+            AssertSingleMonitoredEdition(book.Editions, "hc:format-four-ebook");
+            Assert.That(book.ForeignEditionId, Is.EqualTo("hc:format-four-ebook"));
+        }
+
+        [Test]
         public void should_protect_requested_representative_when_pruning_before_direct_book_insert_if_no_native_survives()
         {
             var profile = new MetadataProfile { Id = 17, AllowedLanguages = "eng" };

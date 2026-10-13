@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,6 +17,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetMappedFilePathEvidenceByAuthor(int authorId, string mediaType);
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByBooks(List<int> bookIds);
+        DateTime? GetLatestImportDate() => null;
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
         List<BookFile> GetUnmappedFiles(string mediaType);
@@ -85,6 +87,15 @@ namespace NzbDrone.Core.MediaFiles
         public List<BookFile> GetFilesByAuthor(int authorId)
         {
             return Query(MappedFilesBuilder().Where<Book>(b => b.AuthorId == authorId));
+        }
+
+        public DateTime? GetLatestImportDate()
+        {
+            using var conn = _database.OpenConnection();
+            return conn.ExecuteScalar<DateTime?>(@"SELECT MAX(bf.""DateAdded"")
+                                                  FROM ""BookFiles"" bf
+                                                  INNER JOIN ""Editions"" e ON e.""Id"" = bf.""EditionId""
+                                                  INNER JOIN ""Books"" b ON b.""Id"" = e.""BookId""");
         }
 
         public List<BookFile> GetMappedFilePathEvidenceByAuthor(int authorId, string mediaType)

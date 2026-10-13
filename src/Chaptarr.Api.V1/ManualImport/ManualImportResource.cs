@@ -6,6 +6,7 @@ using Chaptarr.Api.V1.CustomFormats;
 using Chaptarr.Http.REST;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
@@ -36,6 +37,7 @@ namespace Chaptarr.Api.V1.ManualImport
         public int IndexerFlags { get; set; }
         public IEnumerable<Rejection> Rejections { get; set; }
         public List<string> Warnings { get; set; }
+        public MatchProvenance MatchProvenance { get; set; }
         public Dictionary<string, List<string>> Tags { get; set; }
         public bool AdditionalFile { get; set; }
         public bool ReplaceExistingFiles { get; set; }
@@ -84,6 +86,7 @@ namespace Chaptarr.Api.V1.ManualImport
                 IndexerFlags = model.IndexerFlags,
                 Rejections = model.Rejections ?? new List<Rejection>(),
                 Warnings = model.Warnings ?? new List<string>(),
+                MatchProvenance = model.MatchProvenance?.Clone(),
                 Tags = model.Tags ?? new Dictionary<string, List<string>>(),
 
                 AdditionalFile = model.AdditionalFile,

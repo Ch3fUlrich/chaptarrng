@@ -43,9 +43,10 @@ namespace NzbDrone.Core.Indexers.MyAnonaMouse
 
             // MAM_TRACE: Log search criteria
             Logger.Trace("MAM_SEARCH_START: Book search initiated");
-            Logger.Trace("MAM_SEARCH_CRITERIA: Author='{0}', BookTitle='{1}', BookQuery='{2}'",
+            Logger.Trace("MAM_SEARCH_CRITERIA: Author='{0}', BookTitle='{1}', SearchTitle='{2}', BookQuery='{3}'",
                 searchCriteria.Author?.Name ?? "Unknown",
                 searchCriteria.BookTitle ?? "Unknown",
+                searchCriteria.SearchTitleOverride ?? "(primary)",
                 bookQuery ?? "Unknown");
 
             Logger.Trace("MAM_SEARCH_MODE: Using JSON API");
@@ -221,7 +222,7 @@ namespace NzbDrone.Core.Indexers.MyAnonaMouse
 
         private static string GetSafeBookQuery(BookSearchCriteria searchCriteria)
         {
-            var title = BookSearchCriteria.GetMainSearchTitle(searchCriteria?.BookTitle, searchCriteria?.Author?.Name);
+            var title = BookSearchCriteria.GetMainSearchTitle(searchCriteria?.SearchTitleOverride ?? searchCriteria?.BookTitle, searchCriteria?.Author?.Name);
             return string.IsNullOrWhiteSpace(title) ? string.Empty : SearchCriteriaBase.GetQueryTitle(title);
         }
 

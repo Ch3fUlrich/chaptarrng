@@ -8,6 +8,7 @@ A Snapetech-maintained Chaptarr fork for audiobook and eBook libraries.
 
 [![License](https://img.shields.io/github/license/snapetech/chaptarrng)](https://github.com/snapetech/chaptarrng/blob/main/LICENSE)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/platform/support/policy)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/nqFGsGUug2)
 
 </div>
 
@@ -54,11 +55,26 @@ runtime, while source builds require the .NET 10 SDK.
 - **Pending-import integration:** Chaptarr's current development branch also has pending author imports. ChaptarrNG exposes that asynchronous work through the SeerrNG capability contract and keeps retry/cancel behavior safe when multiple requests share an import.
 - **Restricted service access:** ChaptarrNG `0.9.941` and later can use a SeerrNG-only API key for supported book requests, searches, library status, and pending imports without granting global administration or destructive access.
 - **Standalone additions maintained here:** An optional built-in indexer and download client can search configured ebook sources, use API-key downloads, and optionally fall back to browser-assisted links. Full backup archives can use passphrase-based authenticated encryption; the direct Chaptarr project separately offers encryption for quick-start settings backups.
+- **Safer list and file workflows:** Preview an import list's next sync, inspect durable per-list sync history, and review import matching evidence. Imports check occupied destinations before writing; supported archives can be extracted, and multipart audiobooks can be merged or converted with progress and cancellation.
+- **More metadata and library connections:** RanobeDB adds light-novel ebook metadata. Optional AudioBookShelf, Calibre, and Grimmory connections synchronize library data, while Emby/Jellyfin can refresh after an import.
+- **Operations and automation:** An optional MQTT gateway publishes library snapshots and lifecycle events, including Home Assistant discovery. A separate Prometheus listener exposes low-cardinality metrics. Large library views use paged reads, and long author deletions run in the background.
 - **Fork-owned distribution:** ChaptarrNG publishes its own images and maintains an Unraid package. Its [fork feature guide](docs/FORK_FEATURES.md) compares these additions with the parent project.
 
-The [fork feature guide](docs/FORK_FEATURES.md) maps these changes to setup,
-API, security, and distribution documentation. The [changelog](CHANGELOG.md)
-has the release-by-release record.
+The [fork feature guide](docs/FORK_FEATURES.md) covers the additions and their
+limits. Dedicated guides explain [import-list preview and history](docs/IMPORT_LIST_SYNC.md),
+[external library connections](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md),
+[MQTT and canonical events](docs/MQTT_GATEWAY.md), and
+[Prometheus metrics](docs/PROMETHEUS_METRICS.md). The
+[changelog](CHANGELOG.md) records changes by released version.
+The feature guide describes the current source checkout; some newer work may
+not be included in the latest published image yet.
+
+The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+defines the later upstream gate: every BookshelfNG feature carried over plus
+every ChaptarrNG feature maintained or actively developed, including
+unpublished work, blocks retirement as a whole and remains an individual
+acceptance gate. Carrying over a BookshelfNG capability adds to this set; it
+does not replace or reduce ChaptarrNG's own blockers.
 
 See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
 
@@ -71,17 +87,23 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/b
   each request to its matching format
 * **Publisher Aware** - Special handling for dramatized audiobooks and multi-part releases
 * **Audio Formats** - Handles M4B, MP3 chapters, and multi-file audiobooks
-* **MP3 → M4B Conversion** - Optionally convert MP3 audiobooks into a single chaptered M4B, with chapter preservation or insertion if missing (powered by [m4b-tool](https://github.com/sandreas/m4b-tool))
+* **MP3 → M4B Conversion** - Convert new downloads or books already in the library into a single chaptered M4B, with chapter preservation or insertion if missing. Conversion shows progress and can be cancelled (powered by [m4b-tool](https://github.com/sandreas/m4b-tool))
+* **Multipart Audiobooks** - Optionally merge eligible multi-part audiobook downloads into one M4B after checking the final destination
 
 ### Organization
 * **Dual Media Libraries** - You can have separate root folders for audiobooks and eBooks or choose to have your eBooks placed alongside your audiobooks
 * **Matching** - Match audiobook and eBook files using tags, folders, and release metadata
 * **Series Management** - Automatically organize books by series
 * **Metadata Profiles** - Control allowed languages, rank preferred edition terms, and choose the series name used in filenames and generated metadata. Stronger match evidence remains authoritative.
+* **Genre Filtering** - Exclude configured genres, such as comics or graphic novels, through metadata profiles
 * **Flexible Renaming** - Customizable file naming with audiobook-specific tokens
 
 ### Integration & Automation
 * **Standard *arr Integrations** - Works with the usual *arr-family download clients and indexer protocols
+* **External Libraries** - Connect AudioBookShelf, Calibre Content Server, and Grimmory for supported refresh, import, metadata, cover, and edit-forwarding workflows; see the [integration guide](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md) for the direction and limits of each connection
+* **Emby and Jellyfin** - Refresh the media-server library after a grabbed release is imported
+* **MQTT and Webhooks** - Publish snapshots and canonical lifecycle events to MQTT, with optional Home Assistant discovery and opt-in canonical events for existing webhooks
+* **Import Lists** - Preview the next sync and review durable per-list history before relying on automatic-add behavior
 
 ### Quality & Upgrades
 * **Automatic Upgrades** - Replace lower quality versions automatically
@@ -90,6 +112,17 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/b
 ## Metadata
 
 ChaptarrNG is not compatible with Readarr's metadata sources. It uses Chaptarr's modular pipeline to resolve entities across metadata providers and aggregate their data through automated refinement and consensus. Metadata work remains an ongoing effort.
+
+For light-novel eBooks, ChaptarrNG can search RanobeDB explicitly and store its
+work and release IDs alongside the normal eBook records. RanobeDB's public API
+is currently v0 and is for non-commercial use; ChaptarrNG applies a conservative
+local request throttle below the API's 60-per-minute guidance. ChaptarrNG links
+results back to RanobeDB and does not import its descriptions or cover images,
+which have separate licensing conditions. If several instances or other clients
+share an IP address, keep their combined requests below the service limit.
+See the [RanobeDB API documentation](https://ranobedb.org/api/docs/v0) and
+[database licensing notes](https://ranobedb.org/about) before enabling this
+source.
 
 ## Getting Started
 
@@ -138,6 +171,32 @@ wget https://raw.githubusercontent.com/snapetech/chaptarrng/main/docker-compose.
 # Edit paths in docker-compose.yml
 docker compose up -d
 ```
+
+#### Memory limits for large libraries
+
+The Compose example does not set a memory limit because the right value depends
+on the host and library. For a large initial scan, set a container limit sized
+for the memory the host can spare. Without a cgroup limit, .NET may size its
+garbage-collection heap from all the memory visible to the process, including
+the full VM or host. Docker Compose's [`mem_limit`](https://docs.docker.com/reference/compose-file/services/#mem_limit)
+sets a container memory limit; .NET uses that limit when sizing its heap. On a
+Docker-in-LXC setup, make sure the Docker container itself has a limit visible
+inside the container rather than relying only on the LXC allocation.
+
+For example, add this under the `chaptarrng` service and choose a value that
+fits your host and workload:
+
+```yaml
+mem_limit: 4g # Example only; size this for your host and library.
+```
+
+When a container memory limit is visible, .NET's default GC heap hard limit is
+75% of that limit. If you choose to override it with
+`DOTNET_GCHeapHardLimitPercent`, note that .NET parses the environment-variable
+value as hexadecimal: `55` (or `0x55`) means 85%, while `85` means 133%.
+Consider the memory needed outside the GC heap before increasing the percentage.
+See Microsoft's [.NET GC configuration reference](https://learn.microsoft.com/dotnet/core/runtime-config/garbage-collector#heap-hard-limit-percent)
+for details.
 
 ### PostgreSQL (Optional)
 
@@ -213,6 +272,21 @@ Only absolute HTTP and HTTPS URLs are accepted. URLs with embedded credentials a
 
 The feature is not a general-purpose web downloader. It depends on a source returning a supported, bounded response and a usable direct file URL. Access controls, rate limits, expiring links, changed page formats, unavailable mirrors, and licensing restrictions can cause a previously working URL to fail. A provider Test cannot detect those runtime conditions. Monitor the queue and failed items, keep backups of the configuration and library, and remove stale staging data after confirming that no queued or import-pending item references it.
 
+### Unraid Community Applications
+
+ChaptarrNG's Unraid template is maintained in the dedicated
+[ChaptarrNG Unraid package repository](https://github.com/snapetech/chaptarrng-unraid).
+It installs the maintained fork image, maps the web interface on port `8789`,
+and provides separate paths for appdata, audiobooks, ebooks, and downloads.
+The image uses `PUID=99` and `PGID=100` by default; change those values to match
+the ownership of your media shares.
+
+To make ChaptarrNG searchable in Community Applications, submit the package
+repository URL `https://github.com/snapetech/chaptarrng-unraid` through
+Unraid's Community Apps submission flow and complete its validation scan.
+Stable releases from the application repository's `main` branch publish the
+`latest` image to GHCR.
+
 ## Building from Source
 Building from source requires the .NET 10 SDK, Node.js, and Yarn. When running ChaptarrNG natively, install FFmpeg for your operating system and make sure both `ffmpeg` and `ffprobe` are available on the `PATH` used to start the application. Normal source builds do not bundle them automatically; the ChaptarrNG Docker image already includes them.
 
@@ -254,29 +328,18 @@ dotnet _output/publish/Chaptarr.Console.dll
 
 Note: the inherited assembly is named `Chaptarr.dll` on Linux/macOS and `Chaptarr.Console.dll` on Windows.
 
-### Unraid Community Applications
-
-ChaptarrNG's Unraid template is maintained in the dedicated
-[ChaptarrNG Unraid package repository](https://github.com/snapetech/chaptarrng-unraid).
-It installs the maintained fork image, maps the web interface on port `8789`,
-and provides separate paths for appdata, audiobooks, ebooks, and downloads.
-The image uses `PUID=99` and `PGID=100` by default; change those values to match
-the ownership of your media shares.
-
-To make ChaptarrNG searchable in Community Applications, submit the package
-repository URL `https://github.com/snapetech/chaptarrng-unraid` through
-Unraid's Community Apps submission flow and complete its validation scan.
-Stable releases from the application repository's `main` branch publish the
-`latest` image to GHCR.
-
-
 ## Documentation
 - [UI localization roadmap](docs/localization-roadmap.md): current locale order, translated high-use strings, and remaining catalog work
 
 - Default ChaptarrNG web UI: http://localhost:8789
 - Default username/password: Set on first launch
 - [Fork changes and capabilities](docs/FORK_FEATURES.md): feature overview and links to detailed setup and API references
+- [Import-list preview and history](docs/IMPORT_LIST_SYNC.md): dry-run behavior, saved sync outcomes, retention, and refresh settings
+- [External library integrations](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md): setup and synchronization boundaries for AudioBookShelf, Calibre, Grimmory, and Emby/Jellyfin
+- [MQTT Gateway](docs/MQTT_GATEWAY.md): broker settings, Home Assistant discovery, snapshots, events, and canonical webhook requests
+- [Prometheus metrics](docs/PROMETHEUS_METRICS.md): listener configuration, scrape setup, metric names, and network exposure
 - [ImageSharp build-license guide](docs/development/imagesharp-license.md): why source builds need a Six Labors license, how to obtain one, and where to configure it
+- [Validation engine guide](docs/development/validation-engine.md): local and CI validation tasks, progress reporting, and receipt checks
 - [Changelog](CHANGELOG.md): release-by-release changes shipped by the fork
 - [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md): setup and request lifecycle
 - [SeerrNG integration contract](docs/SEERRNG_INTEGRATION.md): capabilities, service-key setup, and integration smoke test

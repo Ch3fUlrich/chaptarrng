@@ -58,6 +58,25 @@ const writeBookTagOptions = [
   }
 ];
 
+const audibleMarketplaceOptions = [
+  ['us', 'AudibleMarketplaceUs'],
+  ['uk', 'AudibleMarketplaceUk'],
+  ['fr', 'AudibleMarketplaceFr'],
+  ['de', 'AudibleMarketplaceDe'],
+  ['it', 'AudibleMarketplaceIt'],
+  ['es', 'AudibleMarketplaceEs'],
+  ['ca', 'AudibleMarketplaceCa'],
+  ['au', 'AudibleMarketplaceAu'],
+  ['in', 'AudibleMarketplaceIn'],
+  ['jp', 'AudibleMarketplaceJp'],
+  ['br', 'AudibleMarketplaceBr']
+].map(([key, translationKey]) => ({
+  key,
+  get value() {
+    return translate(translationKey);
+  }
+}));
+
 // Temporary toggle: hide Calibre-specific metadata controls in the GUI.
 const SHOW_CALIBRE_UI = false;
 
@@ -88,6 +107,21 @@ function MetadataProvider(props) {
       {
         hasSettings && !isFetching && !error &&
           <Form>
+            <FieldSet legend={translate('AudibleCatalog')}>
+              <FormGroup>
+                <FormLabel>{translate('AudibleMarketplace')}</FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.SELECT}
+                  name="audibleMarketplace"
+                  helpText={translate('AudibleMarketplaceHelpText')}
+                  values={audibleMarketplaceOptions}
+                  onChange={onInputChange}
+                  {...settings.audibleMarketplace}
+                />
+              </FormGroup>
+            </FieldSet>
+
             {
               SHOW_CALIBRE_UI &&
                 <FieldSet legend={translate('CalibreMetadata')}>

@@ -57,6 +57,22 @@ namespace Chaptarr.Core.Test.Indexers
         }
 
         [Test]
+        public void should_query_an_alternate_edition_title_without_replacing_the_primary_title()
+        {
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Karin Slaughter" },
+                BookTitle = "Mooie Meisjes",
+                SearchTitleOverride = "Pretty Girls"
+            };
+
+            var chain = CreateGenerator().GetSearchRequests(searchCriteria);
+
+            Assert.That(GetRequestPayload(chain, 0), Does.Contain("Pretty Girls"));
+            Assert.That(searchCriteria.BookTitle, Is.EqualTo("Mooie Meisjes"));
+        }
+
+        [Test]
         public void should_add_book_number_fallback_as_last_tier_for_interactive_search()
         {
             var generator = CreateGenerator();

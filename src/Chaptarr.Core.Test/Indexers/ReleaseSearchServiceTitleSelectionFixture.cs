@@ -36,6 +36,85 @@ namespace Chaptarr.Core.Test.Indexers
         }
 
         [Test]
+        public void book_query_should_use_alternate_search_title_without_changing_monitored_title()
+        {
+            var criteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Karin Slaughter" },
+                BookTitle = "Mooie Meisjes",
+                SearchTitleOverride = "Pretty Girls"
+            };
+
+            Assert.That(criteria.BookQuery, Is.EqualTo("Pretty+Girls"));
+            Assert.That(criteria.BookTitle, Is.EqualTo("Mooie Meisjes"));
+        }
+
+        [Test]
+        public void should_offer_distinct_alternate_edition_titles_with_english_first()
+        {
+            var book = new Book
+            {
+                Title = "Mooie Meisjes",
+                OriginalTitle = "Pretty Girls",
+                Editions = new List<Edition>
+                {
+                    new Edition { Id = 1, Title = "Mooie Meisjes", Language = "nld", Monitored = true },
+                    new Edition { Id = 2, Title = "Pretty Girls", Language = "eng" },
+                    new Edition { Id = 3, Title = "Blutige Fesseln", Language = "deu" },
+                    new Edition { Id = 4, Title = "Pretty Girls", Language = "eng" }
+                }
+            };
+
+            var titles = ReleaseSearchService.GetAlternateEditionSearchTitles(book, "Mooie Meisjes", "Karin Slaughter");
+
+            Assert.That(titles, Is.EqualTo(new[] { "Pretty Girls", "Blutige Fesseln" }));
+        }
+
+        [Test]
+        public async Task book_search_should_try_known_edition_titles_after_the_primary_title_has_no_approved_results()
+        {
+            var author = new Author
+            {
+                Id = 18,
+                Name = "Karin Slaughter",
+                EbookMonitored = true,
+                EbookQualityProfileId = 2,
+                Books = new List<Book>()
+            };
+            var book = new Book
+            {
+                Id = 1625,
+                Author = author,
+                AuthorId = author.Id,
+                Title = "Mooie Meisjes",
+                EbookMonitored = true,
+                MediaType = BookMediaType.Ebook,
+                Editions = new List<Edition>
+                {
+                    new Edition { Id = 1, Title = "Mooie Meisjes", Language = "nld", Monitored = true },
+                    new Edition { Id = 2, Title = "Pretty Girls", Language = "eng" },
+                    new Edition { Id = 3, Title = "Blutige Fesseln", Language = "deu" }
+                }
+            };
+            author.Books.Add(book);
+
+            var indexer = new RecordingIndexer();
+            var subject = new ReleaseSearchService(
+                new SingleIndexerFactory(indexer),
+                DispatchProxy.Create<NzbDrone.Core.Books.IBookService, UnusedBookServiceProxy>(),
+                DispatchProxy.Create<NzbDrone.Core.Books.IAuthorService, UnusedAuthorServiceProxy>(),
+                null,
+                DispatchProxy.Create<IMakeDownloadDecision, EmptyDecisionMakerProxy>(),
+                LogManager.GetLogger("ReleaseSearchServiceTitleSelectionFixture"));
+
+            await subject.BookSearch(book, false, true, false);
+
+            Assert.That(indexer.SearchTitleOverrides, Is.EqualTo(new[] { null, "Pretty Girls", "Blutige Fesseln" }));
+            Assert.That(indexer.LastBookSearchCriteria?.SearchTitleOverride, Is.Null);
+            Assert.That(indexer.LastBookSearchCriteria?.BookTitle, Is.EqualTo("Mooie Meisjes"));
+        }
+
+        [Test]
         public void should_use_selected_edition_title_when_any_edition_ok()
         {
             var englishEdition = new Edition { Title = "Harry Potter and the Philosopher's Stone", Language = "eng" };
@@ -403,6 +482,7 @@ namespace Chaptarr.Core.Test.Indexers
         private class RecordingIndexer : IIndexer
         {
             public BookSearchCriteria LastBookSearchCriteria { get; private set; }
+            public List<string> SearchTitleOverrides { get; } = new();
 
             public bool SupportsRss => false;
             public bool SupportsSearch => true;
@@ -420,6 +500,7 @@ namespace Chaptarr.Core.Test.Indexers
             public Task<IList<ReleaseInfo>> Fetch(BookSearchCriteria searchCriteria)
             {
                 LastBookSearchCriteria = searchCriteria;
+                SearchTitleOverrides.Add(searchCriteria.SearchTitleOverride);
                 return Task.FromResult<IList<ReleaseInfo>>(new List<ReleaseInfo>());
             }
 

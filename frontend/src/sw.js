@@ -11,6 +11,7 @@
 // This file is processed by workbox-webpack-plugin at build time.
 // self.__WB_MANIFEST is injected by InjectManifest but intentionally unused
 // (see "no precache" note above).
+// Workbox replaces this reference with the generated manifest at build time.
 // eslint-disable-next-line no-underscore-dangle, no-unused-vars
 const _WB_MANIFEST = self.__WB_MANIFEST || [];
 
@@ -35,6 +36,12 @@ setCacheNameDetails({
 // Remove old precache entries from previous workbox versions.
 cleanupOutdatedCaches();
 
+const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const escapedScopePath = scopePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const apiRoutePattern = new RegExp(`^${escapedScopePath}/api/`);
+const hubRoutePattern = new RegExp(`^${escapedScopePath}/(?:signalr|hub)(?:/|$)`, 'i');
+const serviceRoutePatterns = [apiRoutePattern, hubRoutePattern];
+
 // ── Activation ───────────────────────────────────────────────
 // skipWaiting + clients.claim ensure a freshly-deployed SW takes
 // control immediately instead of waiting for the next navigation.
@@ -57,15 +64,6 @@ registerRoute(
 // on first load after a deploy (a stale index.html referencing deleted
 // [contenthash] chunks).
 //
-// NOTE — Sub-path deployment limitation:
-// The precache manifest URLs use build-time publicPath '/' (e.g.
-// '/runtime-abc.js').  This works correctly for the default root
-// deployment (urlBase='/').  Deploying under a sub-path (urlBase≠'/')
-// requires additional workbox configuration (e.g. a manifestTransforms
-// that prefixes URLs, or runtime URL modification) and is a known
-// limitation needing live-server testing.  Do NOT use modifyURLPrefix
-// to strip '/' — that breaks matching for sub-path deployments and
-// also corrupts matching for the default root case.
 registerRoute(
   new NavigationRoute(
     new NetworkFirst({
@@ -76,7 +74,7 @@ registerRoute(
       ]
     }),
     {
-      denylist: [/^\/api\//, /\/signalr/i, /\/hub/i]
+      denylist: serviceRoutePatterns
     }
   )
 );
@@ -87,10 +85,7 @@ registerRoute(
 // negotiation traffic.  Strict regexes prevent false positives
 // (e.g. matching a path like /apiology).
 registerRoute(
-  ({ url }) =>
-    (/^\/api\//).test(url.pathname) ||
-    (/\/signalr/i).test(url.pathname) ||
-    (/\/hub/i).test(url.pathname),
+  ({ url }) => serviceRoutePatterns.some((pattern) => pattern.test(url.pathname)),
   new NetworkOnly()
 );
 
@@ -99,7 +94,7 @@ registerRoute(
 // and common image types.  These are content-hashed at build time
 // so they never change in-place — cache-first is safe.
 registerRoute(
-  ({ url, request }) => {
+  ({ url }) => {
     // Only cache same-origin requests (respects urlBase prefix).
     if (url.origin !== self.location.origin) {
       return false;

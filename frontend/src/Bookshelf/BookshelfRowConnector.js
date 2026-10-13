@@ -59,10 +59,20 @@ class BookshelfRowConnector extends Component {
 
   componentDidMount() {
     this.fetchBooksIfNeeded();
+
+    // CellMeasurer may have measured the loading state before this row mounted.
+    if (this.props.isBooksLoaded) {
+      this.props.onBooksLoaded?.();
+    }
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
     this.fetchBooksIfNeeded();
+
+    // Re-measure after the spinner is replaced with the loaded book tiles.
+    if (!prevProps.isBooksLoaded && this.props.isBooksLoaded) {
+      this.props.onBooksLoaded?.();
+    }
   }
 
   fetchBooksIfNeeded() {
@@ -119,6 +129,7 @@ BookshelfRowConnector.propTypes = {
   selectedMediaType: PropTypes.oneOf(['audiobook', 'ebook']).isRequired,
   isBooksLoaded: PropTypes.bool.isRequired,
   hasBooksError: PropTypes.bool.isRequired,
+  onBooksLoaded: PropTypes.func,
   toggleBooksMonitored: PropTypes.func.isRequired,
   fetchBookshelfBooks: PropTypes.func.isRequired
 };

@@ -451,10 +451,10 @@ namespace Chaptarr.Core.Test.MediaFiles
             public List<Call> Calls { get; } = new();
             public Action OnImport { get; set; }
 
-            public string CheckExistingDestinationConflict(LocalBook localBook, Book book, Author author)
-            {
-                return null;
-            }
+            public string CheckExistingDestinationConflict(
+                LocalBook localBook,
+                Book book,
+                Author author) => null;
 
             public List<ImportResult> Import(
                 List<ImportDecision<LocalBook>> decisions,
