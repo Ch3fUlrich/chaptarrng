@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+    types: [ opened, edited, reopened, synchronize ]
   workflow_call:
     secrets:
       SIXLABORS_LICENSE_KEY:
@@ -19,7 +20,7 @@ on:
 # batch of merges costs one build of the combined result rather than one each.
 # Release-called runs are never cancelled - that would silently drop the gate.
 concurrency:
-  group: build-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}
+  group: build-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event.action == 'edited' && 'metadata' || 'source' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 permissions:
@@ -28,7 +29,7 @@ permissions:
 jobs:
   release-notes:
     name: Release-note contract
-    if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot' && (github.event.action != 'edited' || github.event.changes.body != null)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,10 +48,16 @@ jobs:
       env:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
         PR_BODY: ${{ github.event.pull_request.body }}
       shell: bash
       run: |
         set -euo pipefail
+        git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/remotes/pull/${PR_NUMBER}/head"
+        if ! git cat-file -e "${HEAD_SHA}^{commit}"; then
+          echo "::error::Pull request head ${HEAD_SHA} is unavailable after fetching refs/pull/${PR_NUMBER}/head"
+          exit 1
+        fi
         body_file="$RUNNER_TEMP/pr-body.md"
         printf '%s' "$PR_BODY" > "$body_file"
         node scripts/check-release-notes.mjs \
@@ -63,8 +70,9 @@ jobs:
           --head "$HEAD_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
 
   build:
-    # Only validated main-branch code can use the local runner; PRs and other matrix legs stay hosted.
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && fromJSON('["self-hosted","Linux","X64","host"]') || matrix.os }}
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
+    # Pull request code always uses hosted runners; only main uses the local Linux runner.
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && fromJSON('["self-hosted","Linux","X64","host"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +89,10 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         fetch-depth: 0
+
+    - name: Test self-hosted runner trust boundary
+      if: matrix.os == 'ubuntu-latest'
+      run: python3 scripts/test_workflow_runner_policy.py
 
     - name: Test private runner temporary storage setup
       if: runner.os == 'Linux'
@@ -231,14 +243,24 @@ jobs:
         SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: dotnet build src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore -p:UseSharedCompilation=false
 
-    - name: Install Chromium for direct-download browser tests
+    - name: Configure Chromium cache for direct-download browser tests
       if: runner.os == 'Linux'
       env:
         PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
-      run: |
-        echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
-        pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
-    
+      run: echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
+
+    - name: Install Chromium on the self-hosted Linux runner
+      if: runner.os == 'Linux' && runner.environment == 'self-hosted'
+      env:
+        PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
+      run: pwsh ./_tests/net10.0/playwright.ps1 install chromium
+
+    - name: Install Chromium and system dependencies on GitHub-hosted Linux
+      if: runner.os == 'Linux' && runner.environment != 'self-hosted'
+      env:
+        PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
+      run: pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
+
     - name: Test
       id: validation
       env:
@@ -291,6 +313,7 @@ jobs:
         if-no-files-found: error
 
   postgres-migrations:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     runs-on: ubuntu-latest
     services:
       postgres:

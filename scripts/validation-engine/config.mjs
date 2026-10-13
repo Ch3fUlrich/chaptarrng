@@ -34,6 +34,7 @@ export const validation = {
     'release-notes/20261012-validation-environment-isolation.md',
     'release-notes/20261012-validation-playwright-cache.md',
     'release-notes/20261012-trusted-test-sandbox.md',
+    'release-notes/20261012-validation-sandbox-hardening.md',
   ],
   runtimes: [
     { command: process.execPath, args: ['--version'], versionPattern: '^v26\\.10\\.0$' },

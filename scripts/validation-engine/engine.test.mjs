@@ -1,10 +1,10 @@
 // Copyright (C) ChaptarrNG contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createPlan, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
+import { createPlan, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, runTask, sha256GitText } from './engine.mjs';
 
 function withEnvironmentVariable(name, value, action) {
   const previous = process.env[name];
@@ -99,6 +99,28 @@ test('source fingerprints normalize Git text line endings across runner operatin
   const crlf = Buffer.from('first line\r\nsecond line\r\n');
   assert.equal(sha256GitText(lf), sha256GitText(crlf));
   assert.notEqual(sha256GitText(lf), sha256GitText(Buffer.from('first line\nchanged line\n')));
+});
+
+test('validation task logs are size bounded and mark truncated output', async (t) => {
+  const runRoot = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-log-'));
+  mkdirSync(runRoot, { recursive: true });
+  t.after(() => rmSync(runRoot, { recursive: true, force: true }));
+  const outputBytes = 16 * 1024 * 1024 + 1;
+  const spec = {
+    id: 'log-limit-fixture',
+    command: [
+      process.execPath,
+      '-e',
+      'process.stdout.write(Buffer.alloc(' + outputBytes + ', 120));process.stdout.write("VALIDATION_TEST_CASES_PASSED=1")',
+    ],
+    timeoutSeconds: 30,
+  };
+  const result = await runTask({ id: spec.id }, runRoot, spec);
+  const log = readFileSync(path.join(runRoot, result.logFile));
+  assert.equal(result.status, 'passed');
+  assert.equal(result.outputBytes, outputBytes + Buffer.byteLength('VALIDATION_TEST_CASES_PASSED=1'));
+  assert.equal(log.length, 16 * 1024 * 1024);
+  assert.match(log.toString('utf8'), /\[validation log truncated after 16 MiB\]\n$/u);
 });
 
 test('task environments use an allowlist and run-owned user and temporary directories', (t) => {

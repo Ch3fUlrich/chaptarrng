@@ -20,6 +20,8 @@ namespace Chaptarr.Core.Test.Indexers
         {
             public Dictionary<string, string> GetLocalizationDictionary() => new();
 
+            public string GetCurrentLocale() => "en";
+
             public string GetLocalizedString(string phrase) => phrase;
 
             public string GetLocalizedString(string phrase, Dictionary<string, object> tokens) => phrase;

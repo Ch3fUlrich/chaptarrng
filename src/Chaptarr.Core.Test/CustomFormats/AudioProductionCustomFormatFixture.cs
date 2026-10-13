@@ -31,6 +31,8 @@ namespace Chaptarr.Core.Test.CustomFormats
                 return new Dictionary<string, string>();
             }
 
+            public string GetCurrentLocale() => "en";
+
             public string GetLocalizedString(string phrase)
             {
                 return phrase;

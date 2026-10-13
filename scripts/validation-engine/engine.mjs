@@ -5,6 +5,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import {
   closeSync,
   existsSync,
+  fsyncSync,
   lstatSync,
   mkdirSync,
   openSync,
@@ -30,6 +31,8 @@ const APPROVED_TASK_PASS_ENVIRONMENT = new Map([
   ['dotnet-core-tests', new Set(['PLAYWRIGHT_BROWSERS_PATH'])],
 ]);
 const MAX_OUTPUT = 1024 * 1024;
+const MAX_LOG_BYTES = 16 * 1024 * 1024;
+const LOG_TRUNCATION_MARKER = Buffer.from('\n[validation log truncated after 16 MiB]\n');
 const PROGRESS_INTERVAL_MS = 60_000;
 
 function hash(value) { return createHash('sha256').update(value).digest('hex'); }
@@ -389,40 +392,71 @@ function hashArtifacts(task) {
   });
 }
 
-async function runTask(task, runRoot) {
-  const spec = validation.tasks.find((item) => item.id === task.id);
+export async function runTask(task, runRoot, testSpec = null) {
+  const spec = testSpec ?? validation.tasks.find((item) => item.id === task.id);
   const resultXml = path.join(runRoot, `${task.id}.nunit.xml`);
   const args = spec.command.slice(1).map((arg) => arg.replaceAll('{RESULTS}', resultXml));
   const logPath = path.join(runRoot, `${task.id}.log`);
   const logFd = openSync(logPath, 'wx', 0o600);
+  const logContentLimit = MAX_LOG_BYTES - LOG_TRUNCATION_MARKER.length;
+  let logBytesWritten = 0;
+  let logTruncated = false;
+  let logError = null;
   const stdout = [];
   const stderr = [];
   let outputBytes = 0;
+  const persist = (chunk) => {
+    if (logError) return;
+    const length = Math.min(chunk.length, logContentLimit - logBytesWritten);
+    let offset = 0;
+    try {
+      while (offset < length)
+        offset += writeSync(logFd, chunk, offset, length - offset);
+    } catch (error) {
+      logError = error.message;
+      return;
+    }
+    logBytesWritten += length;
+    if (length < chunk.length) logTruncated = true;
+  };
   const capture = (parts, chunk) => {
-    writeSync(logFd, chunk);
     outputBytes += chunk.length;
+    persist(chunk);
     parts.push(chunk.toString('utf8'));
     while (parts.reduce((sum, part) => sum + part.length, 0) > MAX_OUTPUT) parts.shift();
   };
   const artifactsBefore = hashArtifacts(spec);
   const startedAt = new Date().toISOString();
   const started = Date.now();
-  const child = spawn(spec.command[0], args, {
-    cwd: ROOT,
-    env: isolatedChildEnvironment(spec, runRoot),
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: process.platform !== 'win32',
-    windowsHide: true,
-  });
-  child.stdout.on('data', (chunk) => capture(stdout, chunk));
-  child.stderr.on('data', (chunk) => capture(stderr, chunk));
   let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; terminate(child); }, (spec.timeoutSeconds ?? 3600) * 1000);
-  const exit = await new Promise((resolve) => {
-    child.once('error', (error) => resolve({ code: null, signal: null, error }));
-    child.once('close', (code, signal) => resolve({ code, signal, error: null }));
-  }).finally(() => clearTimeout(timer));
-  closeSync(logFd);
+  let child;
+  let exit;
+  try {
+    child = spawn(spec.command[0], args, {
+      cwd: ROOT,
+      env: isolatedChildEnvironment(spec, runRoot),
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
+      windowsHide: true,
+    });
+    child.stdout.on('data', (chunk) => capture(stdout, chunk));
+    child.stderr.on('data', (chunk) => capture(stderr, chunk));
+    const timer = setTimeout(() => { timedOut = true; terminate(child); }, (spec.timeoutSeconds ?? 3600) * 1000);
+    exit = await new Promise((resolve) => {
+      child.once('error', (error) => resolve({ code: null, signal: null, error }));
+      child.once('close', (code, signal) => resolve({ code, signal, error: null }));
+    }).finally(() => clearTimeout(timer));
+  } finally {
+    try {
+      if (logTruncated && !logError)
+        writeSync(logFd, LOG_TRUNCATION_MARKER);
+      fsyncSync(logFd);
+    } catch (error) {
+      logError ??= error.message;
+    } finally {
+      closeSync(logFd);
+    }
+  }
 
   const output = `${stdout.join('')}\n${stderr.join('')}`;
   let activeCases = null;
@@ -463,7 +497,7 @@ async function runTask(task, runRoot) {
   }
   const artifactsAfter = hashArtifacts(spec);
   const artifactsChanged = stable(artifactsBefore) !== stable(artifactsAfter);
-  const status = timedOut || exit.error || exit.code !== 0 || summaryError || artifactsChanged ||
+  const status = timedOut || exit.error || exit.code !== 0 || summaryError || artifactsChanged || logError ||
     activeCases === null || activeCases < 1 || failedCases > 0 ? 'failed' : 'passed';
   return {
     taskId: task.id,
@@ -472,7 +506,7 @@ async function runTask(task, runRoot) {
     durationMs: Date.now() - started,
     exitCode: exit.code,
     signal: exit.signal,
-    error: exit.error?.message ?? summaryError ?? (artifactsChanged ? 'compiled test artifact changed during execution' : null),
+    error: exit.error?.message ?? summaryError ?? (artifactsChanged ? 'compiled test artifact changed during execution' : null) ?? logError,
     timedOut,
     outputBytes,
     logSha256: hash(readFileSync(logPath)),

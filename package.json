@@ -20,8 +20,7 @@
     "check-translations": "node frontend/build/check-missing-translation-keys.js",
     "analyze": "ANALYZER=true webpack --env production --config ./frontend/build/webpack.config.js",
     "stylelint-linux": "stylelint $(find frontend -name '*.css') --config frontend/.stylelintrc",
-    "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc",
-    "sync-yunohost-package": "node scripts/sync-yunohost-package.mjs"
+    "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc"
   },
   "sideEffects": [
     "**/*.css"
