@@ -26,7 +26,7 @@ namespace NzbDrone.Core.Books
         /// series (an umbrella like "The Cosmere Universe" loses to "The Stormlight Archive"),
         /// with stable tie-breakers so the same book always resolves to the same series.
         /// </summary>
-        public static SeriesBookLink SelectDisplayLink(IEnumerable<SeriesBookLink> links)
+        public static SeriesBookLink SelectDisplayLink(IEnumerable<SeriesBookLink> links, string preferredSeries = null)
         {
             if (links == null)
             {
@@ -35,7 +35,8 @@ namespace NzbDrone.Core.Books
 
             return links
                 .Where(link => link != null && ResolveSeriesTitle(link).IsNotNullOrWhiteSpace())
-                .OrderByDescending(link => link.IsPrimary)
+                .OrderBy(link => GetPreferredSeriesTermIndex(ResolveSeriesTitle(link), preferredSeries))
+                .ThenByDescending(link => link.IsPrimary)
                 .ThenByDescending(link => link.Position.IsNotNullOrWhiteSpace())
                 .ThenBy(link => GetSeriesSize(link))
                 .ThenBy(link => link.SeriesPosition <= 0 ? int.MaxValue : link.SeriesPosition)
@@ -49,9 +50,9 @@ namespace NzbDrone.Core.Books
         /// one link, or a null pair when none of the links resolve to a titled series. This is the
         /// pair every consumer (API label, file naming, the refresh-time repair) should agree on.
         /// </summary>
-        public static (string Title, string Position) Resolve(IEnumerable<SeriesBookLink> links)
+        public static (string Title, string Position) Resolve(IEnumerable<SeriesBookLink> links, string preferredSeries = null)
         {
-            var link = SelectDisplayLink(links);
+            var link = SelectDisplayLink(links, preferredSeries);
 
             return link == null
                 ? (null, null)
@@ -62,9 +63,9 @@ namespace NzbDrone.Core.Books
         /// Builds the display label ("Malazan Book of the Fallen #9") for the book's series links,
         /// or null when none of them resolve to a titled series.
         /// </summary>
-        public static string Build(IEnumerable<SeriesBookLink> links)
+        public static string Build(IEnumerable<SeriesBookLink> links, string preferredSeries = null)
         {
-            var (title, position) = Resolve(links);
+            var (title, position) = Resolve(links, preferredSeries);
 
             return Format(title, position);
         }
@@ -100,6 +101,24 @@ namespace NzbDrone.Core.Books
             return position.IsNullOrWhiteSpace()
                 ? seriesTitle.Trim()
                 : $"{seriesTitle.Trim()} #{position.Trim()}";
+        }
+
+        public static int GetPreferredSeriesTermIndex(string seriesTitle, string preferredSeries)
+        {
+            if (seriesTitle.IsNullOrWhiteSpace() || preferredSeries.IsNullOrWhiteSpace())
+            {
+                return int.MaxValue;
+            }
+
+            var terms = preferredSeries
+                .Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(term => term.Trim())
+                .Where(term => term.IsNotNullOrWhiteSpace())
+                .ToList();
+
+            var index = terms.FindIndex(term => seriesTitle.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            return index >= 0 ? index : int.MaxValue;
         }
 
         private static string ResolveSeriesTitle(SeriesBookLink link)

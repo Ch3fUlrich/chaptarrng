@@ -113,6 +113,37 @@ namespace Chaptarr.Core.Test.Profiles.Metadata
         }
 
         [Test]
+        public void resource_should_round_trip_preferred_edition_and_series_terms()
+        {
+            var profile = CreateProfile(8, MetadataProfileType.Ebook);
+            profile.PreferredEditionTerms = "3|kindle\n1|epub";
+            profile.PreferredSeries = "The Expanse, Dresden Files";
+
+            var resource = MetadataApi.MetadataProfileResourceMapper.ToResource(profile);
+            var model = MetadataApi.MetadataProfileResourceMapper.ToModel(resource);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(resource.PreferredEditionTerms, Is.EqualTo(profile.PreferredEditionTerms));
+                Assert.That(resource.PreferredSeries, Is.EqualTo(profile.PreferredSeries));
+                Assert.That(model.PreferredEditionTerms, Is.EqualTo(profile.PreferredEditionTerms));
+                Assert.That(model.PreferredSeries, Is.EqualTo(profile.PreferredSeries));
+            });
+        }
+
+        [Test]
+        public void schema_should_initialize_preferred_terms_for_new_profiles()
+        {
+            var resource = new MetadataApi.MetadataProfileSchemaController().GetAll();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(resource.PreferredEditionTerms, Is.Empty);
+                Assert.That(resource.PreferredSeries, Is.Empty);
+            });
+        }
+
+        [Test]
         public void update_should_not_refresh_authors_when_allowed_languages_are_equivalent()
         {
             var previous = CreateProfile(1, MetadataProfileType.Audiobook);

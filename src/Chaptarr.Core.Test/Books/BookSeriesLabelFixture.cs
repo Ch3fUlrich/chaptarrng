@@ -61,6 +61,30 @@ namespace Chaptarr.Core.Test.Books
         }
 
         [Test]
+        public void preferred_series_should_override_provider_primary_status()
+        {
+            var links = new List<SeriesBookLink>
+            {
+                Link(2, "Companion Novellas", "1", isPrimary: false, workCount: 2),
+                Link(1, "Malazan Book of the Fallen", "9", isPrimary: true, workCount: 10)
+            };
+
+            Assert.That(BookSeriesLabel.Build(links, "Companion Novellas"), Is.EqualTo("Companion Novellas #1"));
+        }
+
+        [Test]
+        public void preferred_series_terms_should_be_ranked_in_order_case_insensitively()
+        {
+            var links = new List<SeriesBookLink>
+            {
+                Link(1, "Dresden Files", "9"),
+                Link(2, "The Expanse", "2", isPrimary: false)
+            };
+
+            Assert.That(BookSeriesLabel.Build(links, "the expanse\nDresden"), Is.EqualTo("The Expanse #2"));
+        }
+
+        [Test]
         public void should_prefer_a_link_that_carries_a_position()
         {
             var links = new List<SeriesBookLink>

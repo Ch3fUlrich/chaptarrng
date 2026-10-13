@@ -54,6 +54,8 @@ function EditMetadataProfileModalContent(props) {
     skipMissingIdentifierOmnibus,
     skipOmnibus,
     allowedLanguages,
+    preferredEditionTerms,
+    preferredSeries,
     ignored,
     ignoredGenres,
     minPages
@@ -69,6 +71,8 @@ function EditMetadataProfileModalContent(props) {
   const skipMissingIdentifierOmnibusField = fieldWithDefault(skipMissingIdentifierOmnibus, false);
   const skipOmnibusField = fieldWithDefault(skipOmnibus, false);
   const allowedLanguagesField = fieldWithDefault(allowedLanguages, '');
+  const preferredEditionTermsField = fieldWithDefault(preferredEditionTerms, '');
+  const preferredSeriesField = fieldWithDefault(preferredSeries, '');
   const ignoredField = fieldWithDefault(ignored, []);
   const ignoredGenresField = fieldWithDefault(ignoredGenres, []);
 
@@ -258,6 +262,34 @@ function EditMetadataProfileModalContent(props) {
                   placeholder={translate('AllowedLanguagesPlaceholder')}
                   kind={kinds.SUCCESS}
                   delimiters={['Tab', 'Enter', ',']}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('PreferredEditionTerms')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.TEXT_AREA}
+                  name="preferredEditionTerms"
+                  {...preferredEditionTermsField}
+                  helpText={translate('PreferredEditionTermsHelpText')}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('PreferredSeries')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.TEXT_AREA}
+                  name="preferredSeries"
+                  {...preferredSeriesField}
+                  helpText={translate('PreferredSeriesHelpText')}
                   onChange={onInputChange}
                 />
               </FormGroup>

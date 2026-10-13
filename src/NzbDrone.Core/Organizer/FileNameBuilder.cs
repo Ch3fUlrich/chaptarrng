@@ -433,13 +433,15 @@ namespace NzbDrone.Core.Organizer
             // The links are the authoritative membership, so name and position are taken from the
             // display link as a pair: the stored pair may be stale until the next refresh rewrites it,
             // and filling one half from each source can put one series' number on another's title.
-            var (seriesName, seriesPosition) = BookSeriesLabel.Resolve(edition.Book?.SeriesLinks);
+            var book = edition.Book;
+            var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+            var (seriesName, seriesPosition) = BookSeriesLabel.Resolve(book?.SeriesLinks, preferredSeries);
 
             // Fall back to the stored pair when no link resolves (not always loaded during renaming).
             if (seriesName.IsNullOrWhiteSpace())
             {
-                seriesName = edition.Book?.SeriesName;
-                seriesPosition = edition.Book?.SeriesPosition;
+                seriesName = book?.SeriesName;
+                seriesPosition = book?.SeriesPosition;
             }
 
             // Series name only (returns empty if no series)

@@ -12,7 +12,9 @@ namespace Chaptarr.Api.V1.Profiles.Metadata
         {
             var profile = new MetadataProfile
             {
-                AllowedLanguages = ""
+                AllowedLanguages = "",
+                PreferredEditionTerms = "",
+                PreferredSeries = ""
             };
 
             return profile.ToResource();

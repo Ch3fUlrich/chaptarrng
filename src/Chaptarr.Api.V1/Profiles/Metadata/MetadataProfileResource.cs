@@ -24,6 +24,8 @@ namespace Chaptarr.Api.V1.Profiles.Metadata
         // This property can receive either a string or an array from the frontend
         [JsonConverter(typeof(AllowedLanguagesConverter))]
         public string AllowedLanguages { get; set; }
+        public string PreferredEditionTerms { get; set; }
+        public string PreferredSeries { get; set; }
         public int MinPages { get; set; }
         public List<string> Ignored { get; set; }
         public List<string> IgnoredGenres { get; set; }
@@ -95,6 +97,8 @@ namespace Chaptarr.Api.V1.Profiles.Metadata
                 SkipOmnibus = model.SkipOmnibus,
                 SkipMissingAsin = model.SkipMissingAsin,
                 AllowedLanguages = model.AllowedLanguages,
+                PreferredEditionTerms = model.PreferredEditionTerms,
+                PreferredSeries = model.PreferredSeries,
                 MinPages = model.MinPages,
                 Ignored = model.Ignored,
                 IgnoredGenres = model.IgnoredGenres
@@ -127,6 +131,8 @@ namespace Chaptarr.Api.V1.Profiles.Metadata
                 SkipOmnibus = resource.SkipOmnibus,
                 SkipMissingAsin = resource.SkipMissingAsin,
                 AllowedLanguages = resource.AllowedLanguages,
+                PreferredEditionTerms = resource.PreferredEditionTerms,
+                PreferredSeries = resource.PreferredSeries,
                 MinPages = resource.MinPages,
                 Ignored = resource.Ignored ?? new List<string>(),
                 IgnoredGenres = resource.IgnoredGenres ?? new List<string>()

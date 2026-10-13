@@ -14,7 +14,7 @@ namespace NzbDrone.Core.Books.Calibre
 
         private static readonly char[] TokenSeparators = { ' ', ':', '-', ',', '.', '(', ')' };
 
-        public static SeriesBookLink Select(Book book)
+        public static SeriesBookLink Select(Book book, string preferredSeries = null)
         {
             var links = book?.SeriesLinks?
                 .Where(x => x?.Series?.Value?.Title.IsNotNullOrWhiteSpace() == true)
@@ -28,7 +28,8 @@ namespace NzbDrone.Core.Books.Calibre
             var bookTokens = Tokenize(book.Title);
 
             return links
-                .OrderBy(x => ContainsNonAscii(x.Series.Value.Title) ? 1 : 0)
+                .OrderBy(x => BookSeriesLabel.GetPreferredSeriesTermIndex(x.Series.Value.Title, preferredSeries))
+                .ThenBy(x => ContainsNonAscii(x.Series.Value.Title) ? 1 : 0)
                 .ThenByDescending(x => x.Series.Value.WorkCount)
                 .ThenByDescending(x => Tokenize(x.Series.Value.Title).Intersect(bookTokens).Any() ? 1 : 0)
                 .ThenByDescending(x => x.IsPrimary)

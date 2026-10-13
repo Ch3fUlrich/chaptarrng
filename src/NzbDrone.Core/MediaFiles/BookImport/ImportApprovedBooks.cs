@@ -1790,7 +1790,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 title = localBook?.Book?.Title;
             }
 
-            var seriesLink = CalibreSeriesSelector.Select(localBook?.Book);
+            var book = localBook?.Book;
+            var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+            var seriesLink = CalibreSeriesSelector.Select(book, preferredSeries);
             double? seriesIndex = null;
 
             if (double.TryParse(seriesLink?.Position, out var parsedIndex))

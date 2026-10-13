@@ -25,12 +25,15 @@ The application continues to identify itself as `Chaptarr` through its Readarr-c
 
 ### BookshelfNG consolidation status
 
-The proposed BookshelfNG consolidation is cumulative: the goal is to carry
-BookshelfNG's enhanced features into ChaptarrNG while keeping ChaptarrNG's own
-maintained features and active work. That combined feature set would also have
-to be preserved upstream before ChaptarrNG could later be retired into
-Chaptarr. The [combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
-tracks both sets.
+The proposed BookshelfNG consolidation carries its enhanced features into
+ChaptarrNG without dropping ChaptarrNG's own work. BookshelfNG's retirement
+gate is whether its capabilities are carried into and validated in ChaptarrNG.
+ChaptarrNG has a separate, later upstream-retirement gate: the complete union
+of those ported capabilities and every feature ChaptarrNG maintains or is
+actively adding, including work not yet in a published release, must be
+preserved upstream. That union blocks retirement as a whole. The
+[combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+tracks both gates and the individual blockers.
 
 The published `0.9.969` release does not include a populated BookshelfNG
 database converter or a BookshelfNG package/channel bridge. Do not point
@@ -73,7 +76,7 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/b
 * **Dual Media Libraries** - You can have separate root folders for audiobooks and eBooks or choose to have your eBooks placed alongside your audiobooks
 * **Matching** - Match audiobook and eBook files using tags, folders, and release metadata
 * **Series Management** - Automatically organize books by series
-* **Metadata Profiles** - Control which languages are allowed in your library, so foreign and non-English content works the way you want
+* **Metadata Profiles** - Control allowed languages, rank preferred edition terms, and choose the series name used in filenames and generated metadata. Stronger match evidence remains authoritative.
 * **Flexible Renaming** - Customizable file naming with audiobook-specific tokens
 
 ### Integration & Automation

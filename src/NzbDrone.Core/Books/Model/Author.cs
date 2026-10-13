@@ -130,6 +130,16 @@ namespace NzbDrone.Core.Books
         public LazyLoaded<MetadataProfile> AudiobookMetadataProfile { get; set; }
         [MemberwiseEqualityIgnore]
         public LazyLoaded<MetadataProfile> EbookMetadataProfile { get; set; }
+
+        public MetadataProfile GetMetadataProfileFor(BookMediaType mediaType)
+        {
+            var mediaSpecificProfile = mediaType == BookMediaType.Ebook
+                ? EbookMetadataProfile?.Value
+                : AudiobookMetadataProfile?.Value;
+
+            return mediaSpecificProfile ?? MetadataProfile?.Value;
+        }
+
         [MemberwiseEqualityIgnore]
         public List<Book> Books { get; set; }
         [MemberwiseEqualityIgnore]
