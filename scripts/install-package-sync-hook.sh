@@ -5,11 +5,10 @@ repo_root="$(git rev-parse --show-toplevel)"
 source_repo="$(basename "$repo_root")"
 source_hook="$repo_root/.githooks/post-commit"
 sync_script="$repo_root/scripts/sync-unraid-package.sh"
-yunohost_sync_script="$repo_root/scripts/sync-yunohost-package.mjs"
 local_hooks_dir="$(git -C "$repo_root" config --local --path core.hooksPath || true)"
 effective_hooks_dir="$(git -C "$repo_root" config --path core.hooksPath || true)"
 
-if [[ ! -f "$source_hook" || ! -f "$sync_script" || ! -f "$yunohost_sync_script" ]]; then
+if [[ ! -f "$source_hook" || ! -f "$sync_script" ]]; then
 	echo "A tracked package sync hook or script is missing from $repo_root." >&2
 	exit 1
 fi

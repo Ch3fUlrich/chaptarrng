@@ -33,9 +33,9 @@ contract or key scope.
 
 ChaptarrNG also maintains standalone additions that operators may use without
 SeerrNG: the built-in Direct Download indexer/client, authenticated encryption
-for full backup archives, fork-owned release images, and the fork's Unraid and
-YunoHost packages. Chaptarr has its own encrypted quick-start settings backup;
-the full-backup capability is the distinction recorded here.
+for full backup archives, fork-owned release images, and the fork's Unraid
+package. Chaptarr has its own encrypted quick-start settings backup; the
+full-backup capability is the distinction recorded here.
 
 ## Format-aware books and SeerrNG requests
 
@@ -137,16 +137,15 @@ verification of update binaries. The SeerrNG service key is separately scoped
 to its supported routes. See the [README security guidance](../README.md#security)
 for configuration details.
 
-## Releases and packages
+## Releases and distribution
 
 ChaptarrNG publishes versioned stable releases from its maintained `main`
 branch and builds fork-owned container images for GHCR. Release notes and the
 changelog summarize user-facing changes and required operator actions.
 
 The fork also maintains an [Unraid Community Applications
-package](https://github.com/snapetech/chaptarrng-unraid) and a [YunoHost
-package](https://github.com/YunoHost-Apps/chaptarrng_ynh). Check each package's
-instructions for supported architectures, paths, and upgrade steps.
+package](https://github.com/snapetech/chaptarrng-unraid). Check its instructions
+for supported architectures, paths, and upgrade steps.
 
 ## Release history
 
