@@ -11,7 +11,7 @@ A Snapetech-maintained Chaptarr fork for audiobook and eBook libraries.
 
 </div>
 
-<div align="center"><a href='https://ko-fi.com/snapetech' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Support Snapetech on Ko-fi' /></a></div>
+Support ChaptarrNG development on [Ko-fi](https://ko-fi.com/snapetech).
 
 > **ChaptarrNG is beta software.** It is under active development, and breaking changes are possible. Keep regular backups and avoid pointing it at a library you cannot afford to lose.
 
