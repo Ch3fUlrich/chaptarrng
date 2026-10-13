@@ -53,7 +53,8 @@ The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-b
 defines the later upstream gate: every BookshelfNG feature carried over plus
 every ChaptarrNG feature maintained or actively developed, including
 unpublished work, blocks retirement as a whole and remains an individual
-acceptance gate.
+acceptance gate. Carrying over a BookshelfNG capability adds to this set; it
+does not replace or reduce ChaptarrNG's own blockers.
 
 See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
 
