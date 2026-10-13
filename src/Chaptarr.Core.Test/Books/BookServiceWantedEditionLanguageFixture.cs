@@ -316,7 +316,8 @@ namespace Chaptarr.Core.Test.Books
                 Title = "Test Book",
                 TitleSlug = "test-book",
                 MediaType = BookMediaType.Ebook,
-                BaseBookId = "work-1",
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
                 Editions = new List<Edition> { englishEdition, germanEdition }
             };
 
@@ -345,14 +346,14 @@ namespace Chaptarr.Core.Test.Books
                 Assert.That(result.Created, Is.True);
                 Assert.That(result.Book.Id, Is.Not.EqualTo(baseBook.Id));
                 Assert.That(result.Book.MediaType, Is.EqualTo(BookMediaType.Ebook));
-                Assert.That(result.Book.BaseBookId, Is.EqualTo("work-1"));
+                Assert.That(result.Book.BaseBookId, Is.EqualTo("hc:1"));
                 Assert.That(result.Book.LanguageCode, Is.EqualTo("deu"));
                 Assert.That(result.Book.TitleSlug, Does.Contain("_wanted_ebook_deu_"));
                 
                 var newBook = repo.Get(result.Book.Id);
                 Assert.That(newBook, Is.Not.Null);
                 
-                var insertedRows = repo.All().Count(b => b.BaseBookId == "work-1");
+                var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
                 Assert.That(insertedRows, Is.EqualTo(2));
                 
                 var baseBookStored = repo.Get(baseBook.Id);
@@ -374,7 +375,8 @@ namespace Chaptarr.Core.Test.Books
                 Title = "Test Book",
                 TitleSlug = "test-book",
                 MediaType = BookMediaType.Ebook,
-                BaseBookId = "work-1",
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
                 Editions = new List<Edition> { englishEdition, germanEdition }
             };
 
@@ -404,7 +406,7 @@ namespace Chaptarr.Core.Test.Books
                 Assert.That(result2.Created, Is.False);
                 Assert.That(result2.Book.Id, Is.EqualTo(result1.Book.Id));
                 
-                var insertedRows = repo.All().Count(b => b.BaseBookId == "work-1");
+                var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
                 Assert.That(insertedRows, Is.EqualTo(2));
             });
         }
@@ -422,7 +424,8 @@ namespace Chaptarr.Core.Test.Books
                 Title = "Test Book",
                 TitleSlug = "test-book",
                 MediaType = BookMediaType.Ebook,
-                BaseBookId = "work-1",
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
                 Editions = new List<Edition> { englishEdition }
             };
 
@@ -447,7 +450,7 @@ namespace Chaptarr.Core.Test.Books
 
             Assert.Throws<WantedVersionNotFoundException>(() => sut.AddWantedEdition(baseBook.Id, selection));
             
-            var insertedRows = repo.All().Count(b => b.BaseBookId == "work-1");
+            var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
             Assert.That(insertedRows, Is.EqualTo(1));
         }
 
@@ -464,7 +467,8 @@ namespace Chaptarr.Core.Test.Books
                 Title = "Test Book",
                 TitleSlug = "test-book",
                 MediaType = BookMediaType.Ebook,
-                BaseBookId = "work-1",
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
                 Editions = new List<Edition> { englishEdition }
             };
 
@@ -489,7 +493,7 @@ namespace Chaptarr.Core.Test.Books
 
             Assert.Throws<WantedVersionNotFoundException>(() => sut.AddWantedEdition(baseBook.Id, selection));
             
-            var insertedRows = repo.All().Count(b => b.BaseBookId == "work-1");
+            var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
             Assert.That(insertedRows, Is.EqualTo(1));
         }
     }
