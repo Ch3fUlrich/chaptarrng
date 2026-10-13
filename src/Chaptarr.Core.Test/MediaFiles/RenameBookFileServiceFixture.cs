@@ -275,7 +275,10 @@ namespace Chaptarr.Core.Test.MediaFiles
             }
         }
 
-        private static string NormalizePath(string path) => path?.Replace('\\', '/');
+        private static string NormalizePath(string path)
+        {
+            return path == null ? null : Path.GetFullPath(path).Replace('\\', '/');
+        }
 
         private static BookFile BookFile(int id, string path, Quality quality, string mediaType)
         {
@@ -513,7 +516,8 @@ namespace Chaptarr.Core.Test.MediaFiles
         [Test]
         public void should_remove_only_empty_directories_bounded_by_the_actual_source_author_folder()
         {
-            var rootFolder = @"C:\books".AsOsAgnostic();
+            var pathRoot = Path.GetPathRoot(Environment.CurrentDirectory) ?? Path.DirectorySeparatorChar.ToString();
+            var rootFolder = Path.Combine(pathRoot, "books");
             var sourceAuthorFolder = Path.Combine(rootFolder, "George R. R. Martin");
             var sourceBookFolder = Path.Combine(sourceAuthorFolder, "Wild Cards");
             var canonicalAuthorFolder = Path.Combine(rootFolder, "George R.R. Martin");
@@ -549,9 +553,12 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(diskProxy.DeletedFolders, Does.Not.Contain(NormalizePath(rootFolder)));
         }
 
-        private static readonly string HobbFolder = Path.Combine(Path.DirectorySeparatorChar.ToString(), "audiobooks", "Robin Hobb");
+        private static readonly string HobbFolder = Path.Combine(
+            Path.GetPathRoot(Environment.CurrentDirectory) ?? Path.DirectorySeparatorChar.ToString(),
+            "audiobooks",
+            "Robin Hobb");
         private static readonly string OldBookFolder = Path.Combine(HobbFolder, "L'Assassin Royal", "L'apprenti assassin");
-        private static readonly string NewBookFolder = Path.Combine(HobbFolder, "L'Assassin royal", "01 - L'apprenti assassin");
+        private static readonly string NewBookFolder = Path.Combine(HobbFolder, "L'Assassin du Roi", "01 - L'apprenti assassin");
 
         private static (RenameBookFileService Service, DiskProviderProxy Disk, RecordingMoveBookFiles Mover, RecordingEventAggregator Events, StubMediaFileService Files)
             CreateAudiobookFolderScenario(List<BookFile> files, Func<BookFile, string> destinationFactory)
@@ -602,7 +609,7 @@ namespace Chaptarr.Core.Test.MediaFiles
 
             Assert.That(scenario.Disk.Operations, Is.EqualTo(new[]
             {
-                $"CreateFolder {NormalizePath(Path.Combine(HobbFolder, "L'Assassin royal"))}",
+                $"CreateFolder {NormalizePath(Path.Combine(HobbFolder, "L'Assassin du Roi"))}",
                 $"MoveFolder {NormalizePath(OldBookFolder)} -> {NormalizePath(NewBookFolder)}"
             }));
             Assert.That(scenario.Mover.MovedFileIds, Is.Empty);
