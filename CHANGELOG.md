@@ -196,11 +196,6 @@ history grouped from conventional commits.
 
 ### User-facing changes
 
-#### Added
-
-- **Distribution:** ChaptarrNG now offers amd64 and arm64 packages for YunoHost, giving operators a native installation path alongside its existing container and Unraid distributions.
-  - **Action required:** Run sudo yunohost app install https://github.com/YunoHost-Apps/chaptarrng_ynh --debug.
-
 #### Fixed
 
 - **App Experience:** NG-branded icons and bundled frontend assets refresh the app's presentation and downloads. Cookie-authenticated users can open the web UI, and unusually long Transmission ETAs no longer break queue responses.
