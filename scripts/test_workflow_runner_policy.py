@@ -60,6 +60,19 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
         self.assertIn("github.event.action != 'edited'", migrations)
         self.assertIn("github.event.action == 'edited' && 'metadata' || 'source'", source)
 
+    def test_release_note_check_fetches_the_pr_head_after_merge(self) -> None:
+        source = WORKFLOW.read_text(encoding="utf-8")
+        release_notes = job_block(source, "release-notes")
+
+        self.assertIn("PR_NUMBER: ${{ github.event.pull_request.number }}", release_notes)
+        fetch = (
+            'git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:'
+            'refs/remotes/pull/${PR_NUMBER}/head"'
+        )
+        self.assertIn(fetch, release_notes)
+        self.assertIn('git cat-file -e "${HEAD_SHA}^{commit}"', release_notes)
+        self.assertLess(release_notes.index(fetch), release_notes.index("node scripts/check-release-notes.mjs"))
+
 
 if __name__ == "__main__":
     unittest.main()
