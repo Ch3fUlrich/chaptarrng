@@ -263,6 +263,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
         // no longer on disk. A file that is still there, or one in a different folder, is a real copy.
         private bool OnlyReplacedFilesRemain(List<BookFile> existingFiles, string editionTitle, BookMediaType mediaType, string unitKey)
         {
+            if (existingFiles == null || existingFiles.Count == 0)
+            {
+                return false;
+            }
+
             var incomingFolder = FolderOfUnitKey(unitKey);
 
             foreach (var file in existingFiles)

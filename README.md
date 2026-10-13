@@ -24,6 +24,26 @@ We forked Chaptarr so SeerrNG can rely on a book backend with explicit ebook/aud
 
 The application continues to identify itself as `Chaptarr` through its Readarr-compatible API so SeerrNG can detect it. **ChaptarrNG** is the name of this maintained repository, its container image, and its Unraid template.
 
+### BookshelfNG consolidation status
+
+The proposed BookshelfNG consolidation carries its enhanced features into
+ChaptarrNG without dropping ChaptarrNG's own work. BookshelfNG's retirement
+gate is whether its capabilities are carried into and validated in ChaptarrNG.
+ChaptarrNG has a separate, later upstream-retirement gate: the complete union
+of those ported capabilities and every feature ChaptarrNG maintains or is
+actively adding, including work not yet in a published release, must be
+preserved upstream. That union blocks retirement as a whole. The
+[combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+tracks both gates and the individual blockers, including active development
+that is not in a release yet.
+
+The published `0.9.969` release does not include a populated BookshelfNG
+database converter or a BookshelfNG package/channel bridge. Do not point
+ChaptarrNG at a BookshelfNG `/config` directory or treat the projects as
+drop-in replacements yet. See the current
+[BookshelfNG consolidation report](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
+for migration and release evidence.
+
 ChaptarrNG is independently maintained and is not affiliated with the Servarr team or the Readarr, Sonarr, Radarr, Lidarr, or Prowlarr projects.
 
 The backend is built on .NET 10 LTS. Docker images include the ASP.NET Core
@@ -74,7 +94,7 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/b
 * **Dual Media Libraries** - You can have separate root folders for audiobooks and eBooks or choose to have your eBooks placed alongside your audiobooks
 * **Matching** - Match audiobook and eBook files using tags, folders, and release metadata
 * **Series Management** - Automatically organize books by series
-* **Metadata Profiles** - Control which languages are allowed in your library, so foreign and non-English content works the way you want
+* **Metadata Profiles** - Control allowed languages, rank preferred edition terms, and choose the series name used in filenames and generated metadata. Stronger match evidence remains authoritative.
 * **Genre Filtering** - Exclude configured genres, such as comics or graphic novels, through metadata profiles
 * **Flexible Renaming** - Customizable file naming with audiobook-specific tokens
 

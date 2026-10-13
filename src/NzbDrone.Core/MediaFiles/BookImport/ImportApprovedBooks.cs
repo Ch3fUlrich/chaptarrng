@@ -1199,9 +1199,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 return false;
                             }
 
-                            return batchState == null ||
-                                   (!batchState.ProtectedDestinationPaths.Contains(f.Path) &&
-                                    (f.Id <= 0 || !batchState.ProtectedFileIds.Contains(f.Id)));
+                            return conversionSourcePaths.Contains(f.Path) &&
+                                   IsReplaceableExistingFile(f, localBook.Path, f.EditionId, true, batchState);
                         })
                         .ToList();
 
@@ -1997,7 +1996,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 title = localBook?.Book?.Title;
             }
 
-            var seriesLink = CalibreSeriesSelector.Select(localBook?.Book);
+            var book = localBook?.Book;
+            var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+            var seriesLink = CalibreSeriesSelector.Select(book, preferredSeries);
             double? seriesIndex = null;
 
             if (double.TryParse(seriesLink?.Position, out var parsedIndex))

@@ -165,9 +165,9 @@ class TagInputConnector extends Component {
 TagInputConnector.propTypes = {
   name: PropTypes.string.isRequired,
   value: PropTypes.arrayOf(PropTypes.number).isRequired,
-  values: PropTypes.array,
   tags: PropTypes.arrayOf(PropTypes.object).isRequired,
   allTags: PropTypes.arrayOf(PropTypes.object).isRequired,
+  values: PropTypes.array,
   onChange: PropTypes.func.isRequired,
   addTag: PropTypes.func.isRequired
 };

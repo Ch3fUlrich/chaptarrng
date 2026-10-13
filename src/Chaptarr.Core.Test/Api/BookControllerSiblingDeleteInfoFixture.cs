@@ -142,6 +142,7 @@ namespace Chaptarr.Core.Test.Api
                     mediaFileService: mediaFileService ?? new StubMediaFileService(),
                     mediaCoverProxy: null,
                     coverMapper: null,
+                    mediaCoverProxy: null,
                     upgradableSpecification: null,
                     signalRBroadcaster: null,
                     commandQueueManager: null,

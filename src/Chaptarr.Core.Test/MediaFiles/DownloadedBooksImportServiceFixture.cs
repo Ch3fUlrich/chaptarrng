@@ -469,7 +469,6 @@ namespace Chaptarr.Core.Test.MediaFiles
             var missingNfo = Path.Combine(tempDir, "Missing.nfo");
             File.WriteAllBytes(existingArchive, new byte[] { 1, 2, 3, 4 });
             File.WriteAllBytes(existingNfo, new byte[] { 1, 2, 3, 4 });
-            File.WriteAllBytes(existingMedia, new byte[] { 1, 2, 3, 4 });
 
             try
             {
@@ -499,9 +498,9 @@ namespace Chaptarr.Core.Test.MediaFiles
                     var results = service.ProcessPath(tempDir, ImportMode.Auto, author: null, downloadClientItem: downloadClientItem);
                     Assert.That(results, Has.Count.EqualTo(1), $"Expected one classification result for {downloadClientItem.FileListConfidence} file list");
                     var rejections = results[0].ImportDecision?.Rejections;
-                    Assert.That(rejections, Has.Count.EqualTo(1),
-                        $"Expected one rejection for {downloadClientItem.FileListConfidence} file list containing [{string.Join(", ", downloadClientItem.FilePaths ?? new List<string>())}]; result errors: {string.Join("; ", results[0].Errors ?? new List<string>())}");
-                    return rejections[0].Type;
+                    Assert.That(rejections, Is.Not.Null.And.Not.Empty,
+                        $"Expected a rejection for {downloadClientItem.FileListConfidence} file list containing [{string.Join(", ", downloadClientItem.FilePaths ?? new List<string>())}]; result errors: {string.Join("; ", results[0].Errors ?? new List<string>())}");
+                    return rejections.Single().Type;
                 }
 
                 var authoritativeMediaList = new DownloadClientItem
@@ -528,6 +527,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                 Assert.That(Classify(authoritativeMediaList), Is.EqualTo(RejectionType.Temporary));
                 Assert.That(Classify(degradedMediaList), Is.EqualTo(RejectionType.Permanent));
                 Assert.That(Classify(authoritativeNonMediaList), Is.EqualTo(RejectionType.Permanent));
+                File.WriteAllBytes(existingMedia, new byte[] { 1, 2, 3, 4 });
                 Assert.That(Classify(partiallyVisibleAuthoritativeMediaList), Is.EqualTo(RejectionType.Temporary));
 
                 matchingService.Calls.Clear();

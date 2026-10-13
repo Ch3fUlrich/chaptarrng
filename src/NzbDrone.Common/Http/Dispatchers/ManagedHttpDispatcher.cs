@@ -79,7 +79,11 @@ namespace NzbDrone.Common.Http.Dispatchers
 
             using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, request.CancellationToken);
 
-            if (request.ContentData != null)
+            if (request.Content != null)
+            {
+                requestMessage.Content = request.Content;
+            }
+            else if (request.ContentData != null)
             {
                 requestMessage.Content = new ByteArrayContent(request.ContentData);
             }

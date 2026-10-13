@@ -164,6 +164,8 @@ namespace Chaptarr.Core.Test.Datastore
                 CREATE TABLE ""Authors"" (
                     ""Id"" INTEGER PRIMARY KEY,
                     ""Monitored"" INTEGER NOT NULL,
+                    ""AudiobookRootFolderPath"" TEXT NULL,
+                    ""EbookRootFolderPath"" TEXT NULL,
                     ""AudiobookMonitorExisting"" INTEGER NULL,
                     ""AudiobookMonitorFuture"" INTEGER NULL,
                     ""EbookMonitorExisting"" INTEGER NULL,

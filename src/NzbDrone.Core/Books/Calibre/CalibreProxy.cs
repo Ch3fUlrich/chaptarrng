@@ -373,7 +373,8 @@ namespace NzbDrone.Core.Books.Calibre
 
             if (selected.Contains("series"))
             {
-                var serieslink = CalibreSeriesSelector.Select(book);
+                var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+                var serieslink = CalibreSeriesSelector.Select(book, preferredSeries);
                 var seriesTitle = serieslink?.Series?.Value?.Title;
 
                 if (seriesTitle.IsNotNullOrWhiteSpace())
@@ -600,7 +601,8 @@ namespace NzbDrone.Core.Books.Calibre
         {
             var edition = file.Edition;
             var book = edition.Book;
-            var serieslink = CalibreSeriesSelector.Select(book);
+            var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+            var serieslink = CalibreSeriesSelector.Select(book, preferredSeries);
 
             var series = serieslink?.Series.Value;
             double? seriesIndex = null;

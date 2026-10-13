@@ -1283,6 +1283,7 @@ namespace NzbDrone.Core.Books
                     e.BookId AS BookId,
                     COALESCE(NULLIF(LOWER(TRIM(e.Language)), ''), 'unknown') AS Lang,
                     e.Title AS EditionTitle,
+                    e.EditionFormat AS EditionFormat,
                     e.MatchingTitle AS MatchingTitle,
                     e.Subtitle AS EditionSubTitle,
                     b.Title AS BookTitle,
@@ -1318,6 +1319,7 @@ namespace NzbDrone.Core.Books
                     e.""BookId"" AS BookId,
                     COALESCE(NULLIF(LOWER(TRIM(e.""Language"")), ''), 'unknown') AS Lang,
                     e.""Title"" AS EditionTitle,
+                    e.""EditionFormat"" AS EditionFormat,
                     e.""MatchingTitle"" AS MatchingTitle,
                     e.""Subtitle"" AS EditionSubTitle,
                     b.""Title"" AS BookTitle,
@@ -1932,6 +1934,7 @@ namespace NzbDrone.Core.Books
                                 e.BookId AS BookId,
                                 COALESCE(NULLIF(LOWER(TRIM(e.Language)), ''), 'unknown') AS Lang,
                                 e.Title AS EditionTitle,
+                                e.EditionFormat AS EditionFormat,
                                 e.Subtitle AS EditionSubTitle,
                                 b.Title AS BookTitle,
 	                                b.AuthorId AS AuthorId,
@@ -1963,6 +1966,7 @@ namespace NzbDrone.Core.Books
                                 e.BookId AS BookId,
                                 COALESCE(NULLIF(LOWER(TRIM(e.Language)), ''), 'unknown') AS Lang,
                                 e.Title AS EditionTitle,
+                                e.EditionFormat AS EditionFormat,
                                 e.Subtitle AS EditionSubTitle,
                                 b.Title AS BookTitle,
 	                                b.AuthorId AS AuthorId,
@@ -2187,6 +2191,7 @@ namespace NzbDrone.Core.Books
                         e.""BookId"" AS BookId,
                         COALESCE(NULLIF(LOWER(TRIM(e.""Language"")), ''), 'unknown') AS Lang,
                         e.""Title"" AS EditionTitle,
+                        e.""EditionFormat"" AS EditionFormat,
                         e.""Subtitle"" AS EditionSubTitle,
                         b.""Title"" AS BookTitle,
 	                        b.""AuthorId"" AS AuthorId,
@@ -2249,6 +2254,7 @@ namespace NzbDrone.Core.Books
 	        public string ForeignEditionId { get; set; }
 	        public int BookId { get; set; }
 	        public string EditionTitle { get; set; }
+	        public string EditionFormat { get; set; }
 	        public string MatchingTitle { get; set; }
 	        public string EditionSubTitle { get; set; }
 	        public string BookTitle { get; set; }

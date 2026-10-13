@@ -28,6 +28,7 @@ using NzbDrone.Core.MediaFiles.TagExtraction;
 using NzbDrone.Core.Parser;
 using System.Text.RegularExpressions;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Profiles.Metadata;
 
 namespace NzbDrone.Core.MediaFiles.BookImport
 {
@@ -7190,6 +7191,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         seriesPositionTags);
                     var invalidatedTitleEvidenceFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     var titleEvidenceCounted = false;
+                    var hasBookTitleEvidenceProof = false;
+                    var hasAttestedSubtitleBaseTitleProof = false;
 
                     bool IsTitleEvidenceFieldEligible(EditionTitleEvidence item)
                     {
@@ -7247,6 +7250,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         evidence = ApplyStrictSeriesPositionFieldPolicy(GetCandidateTitleEvidence(
                             result.BookTitle,
                             includeDurationGatedNearExact));
+                        hasBookTitleEvidenceProof = evidence?.Count > 0;
                     }
                     if (evidence == null || evidence.Count == 0)
                     {
@@ -7295,6 +7299,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 if (baseTitleEvidence.Count > 0)
                                 {
                                     evidence = baseTitleEvidence;
+                                    hasAttestedSubtitleBaseTitleProof = true;
                                 }
                             }
 
@@ -7518,6 +7523,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         audiobookUndistinguishedEditionFallback);
                     scoredCandidate.HasDurationProof = audiobookDurationMatches;
                     scoredCandidate.HasDirectEditionTitleProof = HasStrongDirectEditionTitleEvidence(directEditionEvidence);
+                    scoredCandidate.HasBookTitleEvidenceProof = hasBookTitleEvidenceProof ||
+                        (string.Equals(result.BookTitle?.Trim(), result.EditionTitle?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                         evidence.Any(item => item?.IsNearExact == true));
+                    scoredCandidate.HasAttestedSubtitleBaseTitleProof = hasAttestedSubtitleBaseTitleProof;
                     scoredCandidate.TitleOccurrenceExplanations = BuildTitleOccurrenceExplanations(
                         result,
                         evidence,
@@ -7594,8 +7603,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     try
                     {
                         var editionRankingPriority = mediaType == BookMediaType.Ebook
-                            ? "titleEvidenceTier,exactYear,closestYear,publisherMatches,author,seriesName,seriesPosition,readingFormat,fewerLeftovers,ftsScore"
-                            : "titleEvidenceTier,audiobookProofTier,durationProof,directEditionTitleProof,representativeRank,narratorTier,narratorMatches,author,seriesName,seriesPosition,readingFormat,closestDuration,exactYear,closestYear,fewerLeftovers,ftsScore,providerIdentityTie";
+                            ? "titleEvidenceTier,exactYear,closestYear,publisherMatches,author,seriesName,seriesPosition,readingFormat,fewerLeftovers,preferredEditionTerms,ftsScore"
+                            : "titleEvidenceTier,audiobookProofTier,durationProof,directEditionTitleProof,representativeRank,narratorTier,narratorMatches,author,seriesName,seriesPosition,readingFormat,closestDuration,exactYear,closestYear,fewerLeftovers,preferredEditionTerms,ftsScore,providerIdentityTie";
                         var rankingPriority = string.Equals(selectionScope, "global-stage2-selected-provider-book", StringComparison.OrdinalIgnoreCase)
                             ? "stage2ProviderBookScore," + editionRankingPriority
                             : selectionScope?.StartsWith("global-", StringComparison.OrdinalIgnoreCase) == true
@@ -7646,7 +7655,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 Title = candidate.EditionTitle ?? candidate.BookTitle,
                                 Rank = i + 1,
                                 Reason = i == 0 ? "production-winner-at-this-scope" : "eligible-runner-up",
-                                Detail = $"titleProof={titleProof} in {scored.TitleEvidenceCount} field(s) [{evidenceFields}]; audiobookProof={audiobookProof}; durationProof={scored.HasDurationProof}; directEditionTitleProof={scored.HasDirectEditionTitleProof}; narrator={narratorProof}; author={scored.AuthorMatch}; series={scored.SeriesNameMatch}; position={scored.SeriesPositionMatch}; nativeFormat={scored.ReadingFormatMatch}; durationDiff={durationDiff}; yearDiff={yearDiff}; publisherMatches={scored.PublisherMatchCount}; leftovers={scored.LeftoverCount}; fts={scored.Bm25Score.ToString("R", CultureInfo.InvariantCulture)}",
+                                Detail = $"titleProof={titleProof} in {scored.TitleEvidenceCount} field(s) [{evidenceFields}]; audiobookProof={audiobookProof}; durationProof={scored.HasDurationProof}; directEditionTitleProof={scored.HasDirectEditionTitleProof}; narrator={narratorProof}; author={scored.AuthorMatch}; series={scored.SeriesNameMatch}; position={scored.SeriesPositionMatch}; nativeFormat={scored.ReadingFormatMatch}; durationDiff={durationDiff}; yearDiff={yearDiff}; publisherMatches={scored.PublisherMatchCount}; leftovers={scored.LeftoverCount}; preferredEditionScore={scored.PreferredEditionScore.ToString("R", CultureInfo.InvariantCulture)}; fts={scored.Bm25Score.ToString("R", CultureInfo.InvariantCulture)}",
                                 Data = new Dictionary<string, string>
                                 {
                                     ["selectionScope"] = selectionScope ?? string.Empty,
@@ -7673,6 +7682,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                     ["publisherMatchCount"] = scored.PublisherMatchCount.ToString(CultureInfo.InvariantCulture),
                                     ["leftoverCount"] = scored.LeftoverCount.ToString(CultureInfo.InvariantCulture),
                                     ["leftovers"] = leftovers,
+                                    ["preferredEditionScore"] = scored.PreferredEditionScore.ToString("R", CultureInfo.InvariantCulture),
                                     ["bm25Score"] = scored.Bm25Score.ToString("R", CultureInfo.InvariantCulture),
                                     ["undistinguishedAudiobookEditionFallback"] = scored.UndistinguishedAudiobookEditionFallback.ToString(CultureInfo.InvariantCulture)
                                 }
@@ -7846,7 +7856,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (WinnerTitleSubstitutesFileTitle(selectedCandidate, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
+                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                    WinnerTitleSubstitutesFileTitle(selectedCandidate, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_WORD_SUBSTITUTION",
                         $"book title has '{substitutedCandidateWord}' while the file evidence has '{substitutedQueryWord}' instead", "contradictory");
@@ -7859,7 +7872,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (WinnerTitleHasSurplusVolumeToken(selectedCandidate, tokens, out var surplusVolumeToken))
+                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                    WinnerTitleHasSurplusVolumeToken(selectedCandidate, tokens, out var surplusVolumeToken))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_SURPLUS_VOLUME_TOKEN",
                         $"book title carries '{surplusVolumeToken}' with no counterpart in the file's title evidence", "contradictory");
@@ -7920,12 +7936,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 public bool AuthorMatch { get; set; }
                 public int PublisherMatchCount { get; set; }
                 public bool SeriesNameMatch { get; set; }
+                public double PreferredEditionScore { get; set; }
                 public bool HasMatchingPositionSignal { get; set; }
                 public bool SeriesPositionMatch { get; set; }
                 public bool ReadingFormatMatch { get; set; }
                 public int AudiobookProofTier { get; set; }
                 public bool HasDurationProof { get; set; }
                 public bool HasDirectEditionTitleProof { get; set; }
+                public bool HasBookTitleEvidenceProof { get; set; }
+                public bool HasAttestedSubtitleBaseTitleProof { get; set; }
                 public int RepresentativeRank { get; set; }
                 public bool UndistinguishedAudiobookEditionFallback { get; set; }
                 public string MatchedVia { get; set; }
@@ -8075,6 +8094,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                     // Series name match — majority of tokens must appear (Python parity)
                     var book = TryGetBookCached(candidate.BookId, booksById);
+                    var metadataProfile = book?.Author?.GetMetadataProfileFor(mediaType);
+                    scored.PreferredEditionScore = PreferredEditionTermMatcher.Score(
+                        metadataProfile?.PreferredEditionTerms,
+                        candidate.EditionTitle,
+                        candidate.EditionFormat,
+                        candidate.Publisher);
                     var seriesName = book?.SeriesName;
                     if (!string.IsNullOrWhiteSpace(seriesName) && tagTokens.Count > 0)
                     {
@@ -9631,6 +9656,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = b.LeftoverCount.CompareTo(a.LeftoverCount);
                 if (cmp != 0) return cmp;
 
+                cmp = a.PreferredEditionScore.CompareTo(b.PreferredEditionScore);
+                if (cmp != 0) return cmp;
+
                 cmp = a.Bm25Score.CompareTo(b.Bm25Score);
                 if (cmp != 0) return cmp;
 
@@ -9690,6 +9718,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 if (cmp != 0) return cmp;
 
                 cmp = b.LeftoverCount.CompareTo(a.LeftoverCount);
+                if (cmp != 0) return cmp;
+
+                cmp = a.PreferredEditionScore.CompareTo(b.PreferredEditionScore);
                 if (cmp != 0) return cmp;
 
                 return a.Bm25Score.CompareTo(b.Bm25Score);

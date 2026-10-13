@@ -69,6 +69,7 @@ namespace Chaptarr.Core.Test.Api
                     mediaFileService: null,
                     mediaCoverProxy: null,
                     coverMapper: null,
+                    mediaCoverProxy: null,
                     upgradableSpecification: null,
                     signalRBroadcaster: null,
                     commandQueueManager: null,

@@ -21,21 +21,36 @@ namespace Chaptarr.Core.Test.Messaging
 
             protected override object Invoke(MethodInfo method, object[] args)
             {
-                if (method.Name != nameof(ICommandRepository.Insert))
+                if (method.Name == nameof(ICommandRepository.Insert))
                 {
-                    throw new NotImplementedException(method.Name);
+                    if (Fail || FailOnInsertNumber == Inserted.Count + 1)
+                    {
+                        throw new InvalidOperationException("Insert failed");
+                    }
+
+                    var model = (CommandModel)args[0];
+                    model.Id = Inserted.Count + 1;
+                    Inserted.Add(model);
+                    return model;
                 }
 
-                if (Fail || FailOnInsertNumber == Inserted.Count + 1)
+                if (method.Name == nameof(ICommandRepository.InsertMany))
                 {
-                    throw new InvalidOperationException("Insert failed");
+                    foreach (var model in (IEnumerable<CommandModel>)args[0])
+                    {
+                        if (Fail || FailOnInsertNumber == Inserted.Count + 1)
+                        {
+                            throw new InvalidOperationException("Insert failed");
+                        }
+
+                        model.Id = Inserted.Count + 1;
+                        Inserted.Add(model);
+                    }
+
+                    return null;
                 }
 
-                var model = (CommandModel)args[0];
-                model.Id = Inserted.Count + 1;
-                Inserted.Add(model);
-
-                return model;
+                throw new NotImplementedException(method.Name);
             }
         }
 

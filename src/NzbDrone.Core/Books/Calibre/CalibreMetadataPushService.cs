@@ -232,7 +232,8 @@ namespace NzbDrone.Core.Books.Calibre
             }
 
             var title = ResolveTitle(files, book);
-            var seriesLink = CalibreSeriesSelector.Select(book);
+            var preferredSeries = book.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+            var seriesLink = CalibreSeriesSelector.Select(book, preferredSeries);
             var series = seriesLink?.Series?.Value?.Title;
             double? seriesIndex = null;
 

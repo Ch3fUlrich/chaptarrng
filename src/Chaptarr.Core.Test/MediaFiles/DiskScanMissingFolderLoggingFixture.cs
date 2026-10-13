@@ -186,5 +186,18 @@ namespace Chaptarr.Core.Test.MediaFiles
                 throw new NotImplementedException($"Test proxy does not implement IManageCommandQueue.{targetMethod?.Name}");
             }
         }
+
+        public class MediaFileTableCleanupServiceProxy : DispatchProxy
+        {
+            protected override object Invoke(MethodInfo targetMethod, object[] args)
+            {
+                if (targetMethod?.Name == nameof(IMediaFileTableCleanupService.Clean))
+                {
+                    return null;
+                }
+
+                throw new NotImplementedException($"Test proxy does not implement IMediaFileTableCleanupService.{targetMethod?.Name}");
+            }
+        }
     }
 }

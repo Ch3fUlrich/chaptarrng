@@ -66,7 +66,10 @@ function SettingsBackupModal({ isOpen, onModalClose }) {
     () => (Array.isArray(locationsData) ? locationsData : []),
     [locationsData]
   );
-  const firstWritable = locations.find((l) => l && l.writable && l.exists);
+  const firstWritable = useMemo(
+    () => locations.find((location) => location && location.writable && location.exists),
+    [locations]
+  );
   const { rootFolder, fileName, passphrase, passphraseConfirm, categories, overwriteExistingFile, isSaving, saveError, saveResult } = formState;
 
   // Sync rootFolder from fetched locations (only when locations change or on reset)

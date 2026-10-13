@@ -1549,6 +1549,10 @@
   "Posters": "Posters",
   "Preferred": "Preferred",
   "PreferredBitrate": "Preferred Bitrate",
+  "PreferredEditionTerms": "Preferred Edition Terms",
+  "PreferredEditionTermsHelpText": "Rank edition title, format, or publisher terms from strongest to weakest. Use one weight and term per line, such as 3|audible or 1|ebook.",
+  "PreferredSeries": "Preferred Series",
+  "PreferredSeriesHelpText": "List preferred series names in order, separated by commas or lines. A matching series is chosen before provider primary status and series position.",
   "PreferencesBeforeFileFormatHelpText": "Custom Format score decides first; final file format breaks ties. With conversion on, file format means the format you will keep. The same order is used for grabs and upgrades.",
   "PreferencesBeforeFileFormatRecommended": "Preferences before file format (recommended)",
   "PreferDramatizedFullCastPreset": "Prefer dramatized / full-cast (+50)",
@@ -2286,5 +2290,8 @@
   "Year": "Year",
   "Yes": "Yes",
   "YesCancel": "Yes, Cancel",
-  "Yesterday": "Yesterday"
+  "Yesterday": "Yesterday",
+  "BookLoreBaseUrlHelpText": "Base URL of your BookLore server, such as http://booklore:6060.",
+  "BookLoreUsernameHelpText": "BookLore account with permission to upload files.",
+  "BookLorePasswordHelpText": "Password for the BookLore account. New imports are uploaded to BookLore BookDrop for review."
 }

@@ -125,6 +125,7 @@ namespace Chaptarr.Core.Test.Api
                 {
                     [nameof(IMapCoversToLocal.ConvertToLocalUrls)] = (_, _) => null
                 }),
+                mediaCoverProxy: null,
                 upgradableSpecification: ThrowingProxy<IUpgradableSpecification>(),
                 signalRBroadcaster: null,
                 commandQueueManager: ThrowingProxy<IManageCommandQueue>(),
@@ -242,6 +243,7 @@ namespace Chaptarr.Core.Test.Api
                 {
                     [nameof(IMapCoversToLocal.ConvertToLocalUrls)] = (_, _) => null
                 }),
+                mediaCoverProxy: null,
                 upgradableSpecification: ThrowingProxy<IUpgradableSpecification>(),
                 signalRBroadcaster: Proxy<IBroadcastSignalRMessage>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {

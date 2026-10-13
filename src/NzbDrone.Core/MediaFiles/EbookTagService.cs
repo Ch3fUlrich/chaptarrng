@@ -283,7 +283,8 @@ namespace NzbDrone.Core.MediaFiles
                 return;
             }
 
-            var (seriesName, position) = BookSeriesLabel.Resolve(book.SeriesLinks);
+            var preferredSeries = book.Author?.GetMetadataProfileFor(BookMediaType.Ebook)?.PreferredSeries;
+            var (seriesName, position) = BookSeriesLabel.Resolve(book.SeriesLinks, preferredSeries);
             if (seriesName.IsNullOrWhiteSpace())
             {
                 seriesName = book.SeriesName;

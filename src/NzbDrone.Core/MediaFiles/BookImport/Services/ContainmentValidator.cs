@@ -906,7 +906,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
                 GetFieldTokensForTitleAlignment(editionTokens, fieldTokens),
                 allowNearExact: false,
                 allowTransposition: false,
-                allowVolumeMarkerGaps: true,
+                // When the candidate title contains its own number, a second number in the
+                // observed title is a competing identity signal, not harmless volume decoration.
+                allowVolumeMarkerGaps: !editionTokens.Any(token => token.All(char.IsDigit)),
                 out _);
         }
 

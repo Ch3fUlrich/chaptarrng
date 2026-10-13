@@ -26,8 +26,9 @@ namespace Chaptarr.Core.Test.Extras
             {
                 if (targetMethod?.Name == nameof(IDiskProvider.FileExists) && args?.Length == 1 && args[0] is string path)
                 {
-                    Probes.Add(path);
-                    return ExistingFiles.Contains(path);
+                    var normalizedPath = NormalizePath(path);
+                    Probes.Add(normalizedPath);
+                    return ExistingFiles.Contains(normalizedPath);
                 }
 
                 throw new NotImplementedException($"Test proxy does not implement IDiskProvider.{targetMethod?.Name}");
@@ -96,6 +97,8 @@ namespace Chaptarr.Core.Test.Extras
 
         private static MetadataFile Row(int id, string relative, int? bookFileId = null) =>
             new MetadataFile { Id = id, AuthorId = 1, RelativePath = relative, BookFileId = bookFileId };
+
+        private static string NormalizePath(string path) => path?.Replace('\\', '/');
 
         [Test]
         public void should_delete_every_missing_row_in_a_single_batch_not_one_delete_per_row()

@@ -122,7 +122,10 @@ namespace Chaptarr.Core.Test.MediaFiles
                     args?.Length == 1 &&
                     args[0] is string basePath)
                 {
-                    return Files.Where(file => basePath.IsParentPath(file.Path)).ToList();
+                    return Files.Where(file =>
+                            !string.IsNullOrWhiteSpace(file?.Path) &&
+                            (basePath.PathEquals(file.Path) || basePath.IsParentPath(file.Path)))
+                        .ToList();
                 }
 
                 throw new NotImplementedException($"Test proxy does not implement IMediaFileService.{targetMethod?.Name}");
@@ -740,7 +743,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                 new RootFolder { Path = "/audiobooks", FolderType = FolderType.Audiobook },
                 calibreRootFolder);
 
-            var ebookFile = new BookFile { Id = 1, Path = author.EbookPath + "/Storm Front.epub", CalibreId = 88 };
+            var ebookFile = new BookFile { Id = 1, Path = author.EbookPath + "/Storm Front.epub", CalibreId = 101 };
             var audiobookFile = new BookFile { Id = 2, Path = author.AudiobookPath + "/Storm Front.m4b" };
 
             var mediaFileService = DispatchProxy.Create<IMediaFileService, GetFilesByAuthorOnlyMediaFileServiceProxy>();

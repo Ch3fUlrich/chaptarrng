@@ -31,6 +31,11 @@ namespace NzbDrone.Core.Datastore.Migration.Framework
 
         public void Migrate(string connectionString, MigrationContext migrationContext, DatabaseType databaseType)
         {
+            if (migrationContext.MigrationType == MigrationType.Main)
+            {
+                DatabaseLineageGuard.Validate(connectionString, databaseType);
+            }
+
             var sw = Stopwatch.StartNew();
 
             _logger.Info("*** Migrating {0} database ***", databaseType);

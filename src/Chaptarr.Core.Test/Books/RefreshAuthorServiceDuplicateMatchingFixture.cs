@@ -461,19 +461,19 @@ namespace Chaptarr.Core.Test.Books
             var refreshBookService = new StubRefreshBookService();
             var service = new TestableRefreshAuthorService(bookService, mediaFileService, refreshBookService, LogManager.GetCurrentClassLogger());
 
-            Book Local(int id, string unitKeyHash = null) => new()
+            Book Local(int id, string unitKeyHash = null, DateTime? added = null) => new()
             {
                 Id = id,
                 MediaType = BookMediaType.Audiobook,
                 BaseBookId = "az:B09FBT3T7G",
                 UnitKeyHash = unitKeyHash,
-                Added = unitKeyHash == null ? DateTime.MinValue : DateTime.UtcNow,
+                Added = added ?? (unitKeyHash == null ? DateTime.MinValue : DateTime.UtcNow.AddDays(-2)),
                 AnyEditionOk = true,
                 Editions = new List<Edition> { new() { Asin = "B09FC52TN9" } }
             };
 
             var original = Local(1);
-            var explicitCopy = Local(2, "copy-unit");
+            var explicitCopy = Local(2, "copy-unit", DateTime.UtcNow);
             var refreshManufactured = Local(3);
             var remote = new Book
             {

@@ -89,6 +89,7 @@ namespace NzbDrone.Core.ImportLists
             _authorLibraryService = authorLibraryService;
             _pendingAuthorImportService = pendingAuthorImportService;
             _bookIdentityCacheRepository = bookIdentityCacheRepository;
+            _importListStatusService = importListStatusService;
             _rootFolderService = rootFolderService;
             _rootFolderSettingsResolver = rootFolderSettingsResolver;
             _eventAggregator = eventAggregator;

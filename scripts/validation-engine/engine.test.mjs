@@ -75,7 +75,29 @@ test('inventory assigns test, migration, and contract files to explicit owners',
 test('NUnit summary keeps native pass, failure, skip and inconclusive totals', () => {
   assert.deepEqual(parseNUnitSummary(
     '<test-run total="140" passed="128" failed="2" skipped="7" inconclusive="3" result="Failed"/>',
-  ), { total: 140, passed: 128, failed: 2, skipped: 7, inconclusive: 3, result: 'Failed' });
+  ), {
+    total: 140,
+    passed: 128,
+    failed: 2,
+    skipped: 7,
+    inconclusive: 3,
+    result: 'Failed',
+    failedTestNames: [],
+    failedTestNamesTruncated: false,
+  });
+});
+
+test('NUnit receipt records bounded failed test names without including failure messages', () => {
+  const testCases = Array.from({ length: 102 }, (_, index) =>
+    `<test-case id="${index}" name="Fixture.case_${index}" result="${index < 101 ? 'Failed' : 'Passed'}"/>`,
+  ).join('');
+  const summary = parseNUnitSummary(
+    `<test-run total="102" passed="1" failed="101" skipped="0" inconclusive="0" result="Failed">${testCases}</test-run>`,
+  );
+
+  assert.equal(summary.failedTestNames.length, 100);
+  assert.deepEqual(summary.failedTestNames.slice(0, 2), ['Fixture.case_0', 'Fixture.case_1']);
+  assert.equal(summary.failedTestNamesTruncated, true);
 });
 
 test('Node TAP summary accounts for pass, fail, skip, todo, and cancelled cases', () => {

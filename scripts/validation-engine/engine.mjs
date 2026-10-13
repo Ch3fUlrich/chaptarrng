@@ -369,6 +369,13 @@ export function parseNUnitSummary(xml) {
   const root = xml.match(/<test-run\b[^>]*>/)?.[0];
   if (!root) throw new Error('NUnit XML is missing its test-run summary');
   const attrs = Object.fromEntries([...root.matchAll(/([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/g)].map((match) => [match[1], match[2]]));
+  const failedTestNames = [];
+  for (const match of xml.matchAll(/<test-case\b[^>]*>/g)) {
+    const tag = match[0];
+    const result = tag.match(/\bresult="([^"]+)"/)?.[1];
+    const name = tag.match(/\bname="([^"]+)"/)?.[1];
+    if (result === 'Failed' && name) failedTestNames.push(name);
+  }
   const summary = {
     total: Number(attrs.total ?? attrs.testcasecount),
     passed: Number(attrs.passed),
@@ -380,7 +387,11 @@ export function parseNUnitSummary(xml) {
   if (![summary.total, summary.passed, summary.failed, summary.skipped, summary.inconclusive].every(Number.isFinite) || summary.total < 1) {
     throw new Error('NUnit XML has missing, invalid, or zero case counts');
   }
-  return summary;
+  return {
+    ...summary,
+    failedTestNames: failedTestNames.slice(0, 100),
+    failedTestNamesTruncated: failedTestNames.length > 100,
+  };
 }
 
 function formatElapsed(milliseconds) {
@@ -509,6 +520,8 @@ export async function runTask(task, runRoot, testSpec = null) {
   let failedCases = null;
   let skippedCases = null;
   let inconclusiveCases = null;
+  let failedTestNames = [];
+  let failedTestNamesTruncated = false;
   let summaryError = null;
   if (task.id === 'dotnet-core-tests') {
     try {
@@ -518,6 +531,8 @@ export async function runTask(task, runRoot, testSpec = null) {
       failedCases = summary.failed;
       skippedCases = summary.skipped;
       inconclusiveCases = summary.inconclusive;
+      failedTestNames = summary.failedTestNames;
+      failedTestNamesTruncated = summary.failedTestNamesTruncated;
       if (summary.result && summary.result !== 'Passed') summaryError = `NUnit reported ${summary.result}`;
     } catch (error) { summaryError = error.message; }
   } else if (spec.resultFormat === 'node-test') {
@@ -557,6 +572,8 @@ export async function runTask(task, runRoot, testSpec = null) {
     failedCases,
     skippedCases,
     inconclusiveCases,
+    failedTestNames,
+    failedTestNamesTruncated,
     inventory: task.inventory,
     artifactInputs: artifactsBefore,
   };
