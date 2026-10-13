@@ -51,8 +51,57 @@ namespace NzbDrone.Core.Books
         private readonly Logger _logger;
         private EditionRefreshMatchingIndex _editionRefreshMatchingIndex;
 
-        // Cache for book metadata during refresh
-        private readonly Dictionary<string, Author> _bookMetadataCache = new Dictionary<string, Author>();
+        // Cache for book metadata during one refresh. This service is a singleton and RefreshAuthor commands for different
+        // authors run concurrently (they neither require disk access nor are type exclusive), so the cache is held per
+        // async flow, never shared between refreshes (a plain Dictionary shared across threads can also be corrupted).
+        private static readonly System.Threading.AsyncLocal<Dictionary<string, Author>> CurrentBookMetadataCache = new System.Threading.AsyncLocal<Dictionary<string, Author>>();
+
+        protected Dictionary<string, Author> _bookMetadataCache => CurrentBookMetadataCache.Value ??= new Dictionary<string, Author>();
+
+        // Opens a fresh metadata cache for one refresh and restores the previous one when disposed (also on exceptions).
+        // Every entry point that reaches GetSkyhookData must open a scope: executor threads keep their AsyncLocal value
+        // between commands, so a cache that is never closed would live on the thread (stale results, unbounded growth).
+        protected IDisposable BeginBookMetadataCacheScope()
+        {
+            var previous = CurrentBookMetadataCache.Value;
+            CurrentBookMetadataCache.Value = new Dictionary<string, Author>();
+            return new BookMetadataCacheScope(previous);
+        }
+
+        private sealed class BookMetadataCacheScope : IDisposable
+        {
+            private readonly Dictionary<string, Author> _previous;
+
+            public BookMetadataCacheScope(Dictionary<string, Author> previous)
+            {
+                _previous = previous;
+            }
+
+            public void Dispose()
+            {
+                CurrentBookMetadataCache.Value = _previous;
+            }
+        }
+
+        // chaptarr #182: the author-level match (SortChildren's GetMatchingExistingChildren), keyed by
+        // local book id, for the duration of one RefreshBookInfo(...) call. GetRemoteData consults it before
+        // falling back to independently re-deriving a match.
+        //
+        // This service is a singleton and RefreshAuthor commands for different authors run concurrently
+        // (RefreshAuthorCommand neither requires disk access nor is type exclusive, and there are several
+        // command threads), so the hint must never be shared between refreshes: keep it per async flow.
+        private static readonly System.Threading.AsyncLocal<Dictionary<int, Book>> CurrentMatchedRemoteByLocalIdHint = new System.Threading.AsyncLocal<Dictionary<int, Book>>();
+
+        protected Dictionary<int, Book> _currentMatchedRemoteByLocalIdHint
+        {
+            get => CurrentMatchedRemoteByLocalIdHint.Value;
+            set => CurrentMatchedRemoteByLocalIdHint.Value = value;
+        }
+
+        // The current author refresh's local books (and the work groups derived from them). AsyncLocal because this
+        // service is a singleton and RefreshAuthor commands for different authors run concurrently (they neither
+        // require disk access nor are type exclusive), so the hint must never be shared between refreshes.
+        private static readonly System.Threading.AsyncLocal<AuthorBooksHint> CurrentAuthorBooksHint = new System.Threading.AsyncLocal<AuthorBooksHint>();
 
         public RefreshBookService(IBookService bookService,
                                   IAuthorService authorService,
@@ -284,18 +333,37 @@ namespace NzbDrone.Core.Books
             var result = new RemoteData();
             var hasAuthorScopedRemoteSnapshot = remote != null;
 
+            // chaptarr #182: prefer the match the author-level refresh already made (SortChildren's
+            // GetMatchingExistingChildren) over independently re-deriving one below. When the remote list
+            // has more than one plausible candidate for this book, re-deriving here can disagree with that
+            // already-made decision, which desyncs "is this book classified as changed" (decided once,
+            // upstream) from "what remote data actually gets applied" (decided again, here) - see the hint
+            // parameter's own doc comment on the RefreshBookInfo overload that sets it.
+            Book book = null;
+            if (local?.Id > 0 &&
+                _currentMatchedRemoteByLocalIdHint != null &&
+                _currentMatchedRemoteByLocalIdHint.TryGetValue(local.Id, out var hintedBook) &&
+                hintedBook != null &&
+                HasUsableRemoteEditions(local, hintedBook, "author-refresh match hint"))
+            {
+                book = hintedBook;
+            }
+
             // Find matching book by any provider ID.
             // With dual-instance architecture, remote can contain both audiobook and ebook instances that share provider IDs,
             // so prefer matching by MediaType to avoid cross-contaminating metadata/editions between instances.
-            var matchingBooks = BookIdentity.FindWorkFirstMatches(
-                remote?.Where(x => x.MediaType == local.MediaType),
-                local);
-
-            var book = matchingBooks.FirstOrDefault();
-
-            if (book != null && !HasUsableRemoteEditions(local, book, "author payload"))
+            if (book == null)
             {
-                book = null;
+                var matchingBooks = BookIdentity.FindWorkFirstMatches(
+                    remote?.Where(x => x.MediaType == local.MediaType),
+                    local);
+
+                book = matchingBooks.FirstOrDefault();
+
+                if (book != null && !HasUsableRemoteEditions(local, book, "author payload"))
+                {
+                    book = null;
+                }
             }
 
             if (book == null && !hasAuthorScopedRemoteSnapshot)
@@ -719,13 +787,24 @@ namespace NzbDrone.Core.Books
 
         protected override void SaveEntity(Book local)
         {
-            // Use UpdateMany to avoid firing the book edited event
-            _bookService.UpdateMany(new List<Book> { local });
+            // Use UpdateMany to avoid firing the book edited event.
+            // The hint-aware overload isn't on IBookService (see BookService.UpdateMany for why) - use it
+            // when the concrete type is available (always true in production DI), otherwise fall back to
+            // the plain interface call exactly as before.
+            if (_bookService is BookService concreteBookService)
+            {
+                concreteBookService.UpdateMany(new List<Book> { local }, CurrentAuthorBooksHint.Value);
+            }
+            else
+            {
+                _bookService.UpdateMany(new List<Book> { local });
+            }
         }
 
         protected override void DeleteEntity(Book local, bool deleteFiles)
         {
             _bookService.DeleteBook(local.Id, deleteFiles);
+            CurrentAuthorBooksHint.Value?.Remove(local.Id);
         }
 
         protected override List<Edition> GetRemoteChildren(Book local, Book remote)
@@ -918,13 +997,16 @@ namespace NzbDrone.Core.Books
 
         private EditionRefreshMatchingIndex GetEditionRefreshMatchingIndex(List<Edition> existingChildren)
         {
-            if (_editionRefreshMatchingIndex?.Source == existingChildren)
+            // Read the shared one-entry memo once: another refresh can replace the field between the check and the return.
+            var current = _editionRefreshMatchingIndex;
+            if (current?.Source == existingChildren)
             {
-                return _editionRefreshMatchingIndex;
+                return current;
             }
 
-            _editionRefreshMatchingIndex = EditionRefreshMatchingIndex.Build(existingChildren, _logger);
-            return _editionRefreshMatchingIndex;
+            var built = EditionRefreshMatchingIndex.Build(existingChildren, _logger);
+            _editionRefreshMatchingIndex = built;
+            return built;
         }
 
         private sealed class EditionRefreshMatchingIndex
@@ -1117,10 +1199,46 @@ namespace NzbDrone.Core.Books
                 .Select(e => e.Book?.MediaType)
                 .FirstOrDefault(mt => mt.HasValue);
 
+            var monitoredBefore = all.FirstOrDefault(e => e.Monitored)?.Id;
+
             _editionSelector.EnsureSingleMonitoredEdition(all, fileCountsByEditionId, mediaType);
 
             PersistMonitoredChanges(children, beforeMonitoredById);
             Debug.Assert(all.Count(e => e.Monitored) == 1, "exactly one edition monitored");
+
+            var monitored = all.FirstOrDefault(e => e.Monitored);
+
+            if (monitored != null && monitored.Id != monitoredBefore)
+            {
+                ReconcileCoverForMonitoredEdition(monitored, all);
+            }
+        }
+
+        private void ReconcileCoverForMonitoredEdition(Edition monitored, List<Edition> editions)
+        {
+            var bookId = monitored.BookId;
+
+            if (bookId <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var book = _bookService.GetBook(bookId);
+
+                if (book == null)
+                {
+                    return;
+                }
+
+                book.Editions = editions;
+                _mediaCoverService.EnsureBookCovers(book);
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to reconcile the cover for book {0} after its monitored edition changed", bookId);
+            }
         }
 
         private static void PersistMonitoredChanges(SortedChildren children, Dictionary<int, bool> beforeMonitoredById)
@@ -1185,16 +1303,85 @@ namespace NzbDrone.Core.Books
             return _refreshEditionService.RefreshEditionInfo(localChildren.Added, localChildren.Updated, localChildren.Merged, localChildren.Deleted, localChildren.UpToDate, remoteChildren, forceUpdateFileTags);
         }
 
-        protected override void PublishEntityUpdatedEvent(Book entity)
+        protected override void PublishEntityUpdatedEvent(Book entity, Author remoteData)
         {
-            // Fetch fresh from DB so all lazy loads are available
-            _eventAggregator.PublishEvent(new BookUpdatedEvent(_bookService.GetBook(entity.Id)));
+            // PERF (chaptarr #163): this used to unconditionally call _bookService.GetBook(entity.Id),
+            // which re-queries Books+Authors+Editions+BookFiles from scratch for every single book that
+            // changed during a refresh. On an author-scoped refresh, GetLocalChildren already batch-loaded
+            // Editions/BookFiles for every book up front (see RefreshAuthorService.HydrateLocalChildrenForRefresh),
+            // and remoteData IS this book's author, already in memory - so in the common case nothing here
+            // needs to touch the database at all.
+            //
+            // Only fall back to the original full DB fetch when the entity actually lacks that data (e.g. a
+            // merge target fetched via GetEntityByForeignId, or a direct single-book refresh call that didn't
+            // pre-hydrate), so behavior for every other caller/subscriber is unchanged.
+            // Check IsLoaded on the Lazy* backing fields directly - reading .Editions/.BookFiles/.Author
+            // themselves would transparently fire the very per-book queries this is trying to avoid,
+            // since those are lazy-loading proxies that query on first access.
+            var hydrated = entity;
+
+            if (hydrated.LazyEditions?.IsLoaded != true || hydrated.LazyBookFiles?.IsLoaded != true)
+            {
+                hydrated = _bookService.GetBook(entity.Id);
+            }
+            else if (hydrated.LazyAuthor?.IsLoaded != true)
+            {
+                hydrated.Author = remoteData;
+            }
+
+            _eventAggregator.PublishEvent(new BookUpdatedEvent(hydrated));
         }
 
         public bool RefreshBookInfo(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
         {
+            return RefreshBookInfoCore(books, remoteBooks, remoteData, forceBookRefresh, forceUpdateFileTags, lastUpdate);
+        }
+
+        // PERF/correctness (chaptarr #182): not part of IRefreshBookService - same reasoning as
+        // BookService.UpdateMany's non-interface hint overload (see that class for why adding a
+        // parameter to the interface method would break every hand-written IBookService test double).
+        // RefreshAuthorService (the only caller that has this hint available - it's the same match
+        // SortChildren already decided in GetMatchingExistingChildren) holds a concrete RefreshBookService
+        // reference check instead, so every other caller/test double is completely unaffected.
+        //
+        // Without this, GetRemoteData independently re-derives "which remote item matches this local
+        // book" via BookIdentity.FindWorkFirstMatches over the raw remote list - a second matching pass
+        // that can disagree with the one SortChildren already did, when the remote list has more than one
+        // plausible candidate for a book (e.g. the metadata source returning two entries that share a
+        // provider id). When they disagree, the book gets classified as changed on every single refresh
+        // (SortChildren's pass sees a real diff) but the field write never lands (GetRemoteData's own pass
+        // resolves to a different, already-matching remote item) - an unfixable "N books updated" loop.
+        public bool RefreshBookInfo(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate, Dictionary<int, Book> matchedRemoteByLocalIdHint)
+        {
+            var previousMatchHint = _currentMatchedRemoteByLocalIdHint;
+            _currentMatchedRemoteByLocalIdHint = matchedRemoteByLocalIdHint;
+            try
+            {
+                return RefreshBookInfoCore(books, remoteBooks, remoteData, forceBookRefresh, forceUpdateFileTags, lastUpdate);
+            }
+            finally
+            {
+                _currentMatchedRemoteByLocalIdHint = previousMatchHint;
+            }
+        }
+
+        private bool RefreshBookInfoCore(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
+        {
+            var previousHint = CurrentAuthorBooksHint.Value;
+            try
+            {
+                return RefreshBookInfoInner(books, remoteBooks, remoteData, forceBookRefresh, forceUpdateFileTags, lastUpdate);
+            }
+            finally
+            {
+                CurrentAuthorBooksHint.Value = previousHint;
+            }
+        }
+
+        private bool RefreshBookInfoInner(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
+        {
             var updated = false;
-            _bookMetadataCache.Clear();
+            using var metadataCacheScope = BeginBookMetadataCacheScope();
 
             // Defensive: the caller can accidentally include the same DB row multiple times (e.g. duplicate
             // matching during author refresh). De-dupe by database ID to avoid double-processing / double-deletes.
@@ -1224,6 +1411,8 @@ namespace NzbDrone.Core.Books
 
                 books = deduped;
             }
+
+            CurrentAuthorBooksHint.Value = new AuthorBooksHint(books);
 
             // Group books by provider ID to ensure all books with same provider ID update together
             var groups = books
@@ -1255,6 +1444,19 @@ namespace NzbDrone.Core.Books
                 // This ensures audiobook and ebook with same provider ID update together
                 foreach (var book in group)
                 {
+                    // PERF (chaptarr #163): Book.Author is a lazy-loaded property - reading it for the
+                    // FIRST time anywhere below (comparisons in UpdateEntity, the hydration check in
+                    // PublishEntityUpdatedEvent, etc.) transparently fires a per-book
+                    // "Authors JOIN Books WHERE Books.Id = $1" query. remoteData already IS this book's
+                    // author, in memory, identical for every book in this author-scoped call - assign it
+                    // up front so every later read is served from memory instead of the database.
+                    // Check LazyAuthor.IsLoaded directly, never book.Author itself - reading the
+                    // materializing property is exactly the self-defeating mistake this fix avoids.
+                    if (book != null && book.LazyAuthor?.IsLoaded != true)
+                    {
+                        book.Author = remoteData;
+                    }
+
                     _logger.Debug("Refreshing book {0} (ID: {1}) in group {2}", book.Title, book.Id, groupKey);
                     updated |= RefreshEntityInfo(book, remoteBooks, remoteData, true, forceUpdateFileTags, lastUpdate);
                 }
@@ -1265,11 +1467,13 @@ namespace NzbDrone.Core.Books
 
         public bool RefreshBookInfo(Book book, List<Book> remoteBooks, Author remoteData, bool forceUpdateFileTags)
         {
+            using var metadataCacheScope = BeginBookMetadataCacheScope();
             return RefreshEntityInfo(book, remoteBooks, remoteData, true, forceUpdateFileTags, null);
         }
 
         public bool RefreshBookInfo(Book book)
         {
+            using var metadataCacheScope = BeginBookMetadataCacheScope();
             var data = GetSkyhookData(book);
 
             if (data == null)

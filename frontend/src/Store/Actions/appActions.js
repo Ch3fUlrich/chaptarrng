@@ -1,4 +1,5 @@
-import _ from 'lodash';
+import findIndex from 'lodash/findIndex';
+import remove from 'lodash/remove';
 import { createAction } from 'redux-actions';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
@@ -200,7 +201,7 @@ export const reducers = createHandleActions({
   [SHOW_MESSAGE]: function(state, { payload }) {
     const newState = getSectionState(state, messagesSection);
     const items = newState.items;
-    const index = _.findIndex(items, { id: payload.id });
+    const index = findIndex(items, { id: payload.id });
 
     newState.items = [...items];
 
@@ -219,7 +220,7 @@ export const reducers = createHandleActions({
     const newState = getSectionState(state, messagesSection);
 
     newState.items = [...newState.items];
-    _.remove(newState.items, { id: payload.id });
+    remove(newState.items, { id: payload.id });
 
     return updateSectionState(state, messagesSection, newState);
   },
@@ -257,10 +258,10 @@ export const reducers = createHandleActions({
 
   [TOGGLE_HIDE_UNMONITORED_MISSING]: function(state) {
     const newValue = !state.hideUnmonitoredMissing;
-    
+
     // Save to localStorage for persistence
     localStorage.setItem('hideUnmonitoredMissing', JSON.stringify(newValue));
-    
+
     return Object.assign({}, state, {
       hideUnmonitoredMissing: newValue
     });
@@ -268,10 +269,10 @@ export const reducers = createHandleActions({
 
   [SET_SELECTED_MEDIA_TYPE]: function(state, { payload }) {
     const mediaType = payload.mediaType;
-    
+
     // Save to localStorage for persistence
     localStorage.setItem('selectedMediaType', mediaType);
-    
+
     return Object.assign({}, state, {
       selectedMediaType: mediaType
     });

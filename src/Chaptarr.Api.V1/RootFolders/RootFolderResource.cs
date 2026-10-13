@@ -36,6 +36,8 @@ namespace Chaptarr.Api.V1.RootFolders
         // DELETED: DefaultMetadataProfileId, DefaultQualityProfileId, DefaultAudiobookMetadataProfileId, DefaultEbookMetadataProfileId - use media-specific settings
         public HashSet<int> DefaultTags { get; set; }
         public bool IsCalibreLibrary { get; set; }
+        public bool ReapCalibreDuplicates { get; set; }
+        public bool AutoPushCalibreMetadata { get; set; }
         public string Host { get; set; }
         public int Port { get; set; }
         public string UrlBase { get; set; }
@@ -89,6 +91,12 @@ namespace Chaptarr.Api.V1.RootFolders
         public bool Accessible { get; set; }
         public long? FreeSpace { get; set; }
         public long? TotalSpace { get; set; }
+
+        // True when at least one author's AudiobookRootFolderPath or EbookRootFolderPath
+        // points at this folder. Mirrors RootFolderController.UpdateRootFolder's own
+        // fail-closed type-change guard, so the UI can disable the "Import Mixed Content?"
+        // control up front instead of only surfacing the rejection after Save.
+        public bool HasAssignedAuthors { get; set; }
     }
 
     public static class RootFolderResourceMapper
@@ -109,6 +117,8 @@ namespace Chaptarr.Api.V1.RootFolders
                 // REMOVED: DefaultMetadataProfileId, DefaultQualityProfileId, DefaultAudiobookMetadataProfileId, DefaultEbookMetadataProfileId
                 DefaultTags = model.DefaultTags,
                 IsCalibreLibrary = model.IsCalibreLibrary,
+                ReapCalibreDuplicates = model.ReapCalibreDuplicates,
+                AutoPushCalibreMetadata = model.AutoPushCalibreMetadata,
                 Host = model.CalibreSettings?.Host,
                 Port = model.CalibreSettings?.Port ?? 0,
                 UrlBase = model.CalibreSettings?.UrlBase,
@@ -162,7 +172,7 @@ namespace Chaptarr.Api.V1.RootFolders
             };
         }
 
-        public static RootFolderResource ToResource(this RootFolder model, IEnumerable<RootFolder> allRootFolders, string defaultAudiobookRootFolderPath, string defaultEbookRootFolderPath)
+        public static RootFolderResource ToResource(this RootFolder model, IEnumerable<RootFolder> allRootFolders, string defaultAudiobookRootFolderPath, string defaultEbookRootFolderPath, bool hasAssignedAuthors = false)
         {
             var resource = model.ToResource();
             if (resource == null)
@@ -172,6 +182,7 @@ namespace Chaptarr.Api.V1.RootFolders
 
             resource.IsEffectiveDefaultAudiobook = IsEffectiveDefaultRootFolder(model, allRootFolders, FolderType.Audiobook, defaultAudiobookRootFolderPath);
             resource.IsEffectiveDefaultEbook = IsEffectiveDefaultRootFolder(model, allRootFolders, FolderType.Ebook, defaultEbookRootFolderPath);
+            resource.HasAssignedAuthors = hasAssignedAuthors;
 
             return resource;
         }
@@ -230,6 +241,8 @@ namespace Chaptarr.Api.V1.RootFolders
                 // Migration 025 will drop these columns from the database
                 DefaultTags = resource.DefaultTags ?? new HashSet<int>(),
                 IsCalibreLibrary = resource.IsCalibreLibrary,
+                ReapCalibreDuplicates = resource.ReapCalibreDuplicates,
+                AutoPushCalibreMetadata = resource.AutoPushCalibreMetadata,
                 CalibreSettings = cs,
                 FolderType = (NzbDrone.Core.RootFolders.FolderType)resource.FolderType,
                 PlaceEbooksWithAudiobooks = resource.PlaceEbooksWithAudiobooks,
@@ -648,11 +661,11 @@ namespace Chaptarr.Api.V1.RootFolders
             return models.Select(ToResource).ToList();
         }
 
-        public static List<RootFolderResource> ToResource(this IEnumerable<RootFolder> models, IEnumerable<RootFolder> allRootFolders, string defaultAudiobookRootFolderPath, string defaultEbookRootFolderPath)
+        public static List<RootFolderResource> ToResource(this IEnumerable<RootFolder> models, IEnumerable<RootFolder> allRootFolders, string defaultAudiobookRootFolderPath, string defaultEbookRootFolderPath, Func<RootFolder, bool> hasAssignedAuthors = null)
         {
             var allFolders = (allRootFolders ?? Enumerable.Empty<RootFolder>()).ToList();
 
-            return models.Select(model => model.ToResource(allFolders, defaultAudiobookRootFolderPath, defaultEbookRootFolderPath)).ToList();
+            return models.Select(model => model.ToResource(allFolders, defaultAudiobookRootFolderPath, defaultEbookRootFolderPath, hasAssignedAuthors?.Invoke(model) ?? false)).ToList();
         }
     }
 }

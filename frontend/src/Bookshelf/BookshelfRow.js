@@ -3,8 +3,11 @@ import React, { Component } from 'react';
 import AuthorNameLink from 'Author/AuthorNameLink';
 import { getAuthorStatusDetails } from 'Author/AuthorStatus';
 import Icon from 'Components/Icon';
+import Button from 'Components/Link/Button';
+import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
+import translate from 'Utilities/String/translate';
 import BookshelfBook from './BookshelfBook';
 import styles from './BookshelfRow.css';
 
@@ -20,6 +23,9 @@ class BookshelfRow extends Component {
       titleSlug,
       authorName,
       books,
+      isBooksLoaded,
+      hasBooksError,
+      onRetryBooksPress,
       isSelected,
       onSelectedChange,
       onBookMonitoredPress
@@ -55,6 +61,21 @@ class BookshelfRow extends Component {
 
         <VirtualTableRowCell className={styles.books}>
           {
+            hasBooksError &&
+              <Button onPress={onRetryBooksPress}>
+                {translate('Retry')}
+              </Button>
+          }
+
+          {
+            !isBooksLoaded && !hasBooksError && !books.length &&
+              <LoadingIndicator
+                className={styles.booksLoading}
+                size={20}
+              />
+          }
+
+          {
             books.map((book) => {
               return (
                 <BookshelfBook
@@ -77,6 +98,9 @@ BookshelfRow.propTypes = {
   titleSlug: PropTypes.string.isRequired,
   authorName: PropTypes.string.isRequired,
   books: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isBooksLoaded: PropTypes.bool.isRequired,
+  hasBooksError: PropTypes.bool.isRequired,
+  onRetryBooksPress: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,
   onSelectedChange: PropTypes.func.isRequired,
   onBookMonitoredPress: PropTypes.func.isRequired

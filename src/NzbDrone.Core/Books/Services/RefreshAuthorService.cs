@@ -64,7 +64,17 @@ namespace NzbDrone.Core.Books
         private readonly IMainDatabase _mainDatabase;
         private readonly Logger _logger;
         private BookRefreshMatchingIndex _bookRefreshMatchingIndex;
-        private List<Book> _authorRefreshRehomeBlueprint;
+
+        // The remote book snapshot of the author refresh in progress. RefreshAuthor commands for different authors run
+        // concurrently on this singleton, so it is held per async flow: a shared field let one refresh re-home editions
+        // using another author's snapshot, or null it under a refresh still using it.
+        private static readonly System.Threading.AsyncLocal<List<Book>> CurrentAuthorRefreshRehomeBlueprint = new System.Threading.AsyncLocal<List<Book>>();
+
+        private List<Book> _authorRefreshRehomeBlueprint
+        {
+            get => CurrentAuthorRefreshRehomeBlueprint.Value;
+            set => CurrentAuthorRefreshRehomeBlueprint.Value = value;
+        }
 
         private static readonly SemaphoreSlim AuthorMetadataRefreshGate = new SemaphoreSlim(1, 1);
         // SMS /authors/diff hard-rejects requests above 10,000 items and caps the body at 1MB;
@@ -636,7 +646,7 @@ namespace NzbDrone.Core.Books
                         }
 
                         skipped++;
-                        logger?.Error("[REMOTE-BOOK-DATA] {0}: skipping remote book '{1}' for author '{2}' because it has no editions. MediaType={3}, ProviderIds=[{4}]",
+                        logger?.Debug("[REMOTE-BOOK-DATA] {0}: skipping remote book '{1}' for author '{2}' because it has no editions. MediaType={3}, ProviderIds=[{4}]",
                             logContext,
                             book?.Title ?? "Unknown",
                             local?.Name ?? "Unknown",
@@ -1542,10 +1552,10 @@ namespace NzbDrone.Core.Books
                 return true;
             }
 
-            if (!string.IsNullOrWhiteSpace(book.UnitKeyHash))
+            if (!string.IsNullOrWhiteSpace(book.UnitKeyHash) &&
+                // The grace window covers clones whose files are still attaching or converting.
+                (HasKnownFiles(book) || book.Added > DateTime.UtcNow.AddHours(-24)))
             {
-                // UnitKeyHash is the durable identity of an intentional multi-copy row. Refresh
-                // may update it from the server pocket, but must never merge it away as a duplicate.
                 return true;
             }
 
@@ -1564,13 +1574,16 @@ namespace NzbDrone.Core.Books
 
         private BookRefreshMatchingIndex GetBookRefreshMatchingIndex(List<Book> existingChildren)
         {
-            if (_bookRefreshMatchingIndex?.Source == existingChildren)
+            // Read the shared one-entry memo once: another refresh can replace the field between the check and the return.
+            var current = _bookRefreshMatchingIndex;
+            if (current?.Source == existingChildren)
             {
-                return _bookRefreshMatchingIndex;
+                return current;
             }
 
-            _bookRefreshMatchingIndex = BookRefreshMatchingIndex.Build(existingChildren, _logger);
-            return _bookRefreshMatchingIndex;
+            var built = BookRefreshMatchingIndex.Build(existingChildren, _logger);
+            _bookRefreshMatchingIndex = built;
+            return built;
         }
 
         private sealed class BookRefreshMatchingIndex
@@ -1578,6 +1591,7 @@ namespace NzbDrone.Core.Books
             private readonly Dictionary<string, List<Book>> _booksByProviderToken;
             private readonly Dictionary<int, int> _sourceOrderByBookId;
             private readonly HashSet<int> _activeBookIds;
+            private readonly Dictionary<BookMediaType, HashSet<string>> _consumedStableWorkTokensByType = new Dictionary<BookMediaType, HashSet<string>>();
 
             private BookRefreshMatchingIndex(
                 List<Book> source,
@@ -1667,6 +1681,7 @@ namespace NzbDrone.Core.Books
                 if (existingChild?.Id > 0)
                 {
                     _activeBookIds.Remove(existingChild.Id);
+                    ConsumeStableWorkTokens(existingChild);
                 }
 
                 foreach (var child in mergedChildren ?? Enumerable.Empty<Book>())
@@ -1674,9 +1689,59 @@ namespace NzbDrone.Core.Books
                     if (child?.Id > 0)
                     {
                         _activeBookIds.Remove(child.Id);
+                        ConsumeStableWorkTokens(child);
                     }
                 }
             }
+
+            private void ConsumeStableWorkTokens(Book book)
+            {
+                if (!_consumedStableWorkTokensByType.TryGetValue(book.MediaType, out var tokens))
+                {
+                    tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    _consumedStableWorkTokensByType[book.MediaType] = tokens;
+                }
+
+                tokens.UnionWith(BookIdentity.GetStableWorkProviderIdentityTokens(book));
+            }
+
+            public bool HasConsumedStableWorkOverlap(Book remote)
+            {
+                if (remote == null ||
+                    !_consumedStableWorkTokensByType.TryGetValue(remote.MediaType, out var tokens) ||
+                    tokens.Count == 0)
+                {
+                    return false;
+                }
+
+                return BookIdentity.GetStableWorkProviderIdentityTokens(remote).Overlaps(tokens);
+            }
+        }
+
+        protected override bool ShouldSkipChildAdd(Author entity, Book remoteChild)
+        {
+            var index = _bookRefreshMatchingIndex;
+            if (index == null || !index.HasConsumedStableWorkOverlap(remoteChild))
+            {
+                return false;
+            }
+
+            _logger.Info("[REFRESH-DUP-GUARD] Remote book '{0}' shares stable work identity with a local book already matched in this refresh pass; skipping duplicate add", remoteChild?.Title);
+            return true;
+        }
+
+        // See RefreshEntityServiceBase.SortChildren for why this needs to be deterministic: without it,
+        // ambiguous same-titled remote pockets (e.g. several "Dune" editions) can claim a different local
+        // row on every refresh purely because the metadata source didn't return them in the same order,
+        // producing spurious "N books updated/deleted" churn even when nothing actually changed. Sorting by
+        // the remote item's own stable identity tokens makes claim order a function of the data itself.
+        protected override List<Book> OrderRemoteChildrenForMatching(List<Book> remoteChildren)
+        {
+            return (remoteChildren ?? new List<Book>())
+                .OrderBy(b => BookIdentity.GetStableWorkProviderIdentityTokens(b).OrderBy(t => t, StringComparer.OrdinalIgnoreCase).FirstOrDefault() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(b => b?.ForeignEditionId ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(b => b?.Title ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         protected override Tuple<Book, List<Book>> GetMatchingExistingChildren(List<Book> existingChildren, Book remote)
@@ -1852,6 +1917,8 @@ namespace NzbDrone.Core.Books
         {
             _logger.Debug("ProcessChildren: Processing {0} new books for author {1}", children.Added.Count, entity.Name);
 
+            var deletionExclusions = _importListExclusionService.All();
+
             foreach (var book in children.Added)
             {
                 // Store original narrator for logging
@@ -1859,6 +1926,20 @@ namespace NzbDrone.Core.Books
 
                 var audioMonitor = ShouldMonitorNewBook(book, entity, isAudiobook: true);
                 var ebookMonitor = ShouldMonitorNewBook(book, entity, isAudiobook: false);
+
+                if ((audioMonitor || ebookMonitor) && deletionExclusions.Count > 0)
+                {
+                    var providerIds = new HashSet<string>(ImportListExclusionBookMatcher.GetCanonicalProviderIds(book), StringComparer.OrdinalIgnoreCase);
+
+                    // Deleted with an exclusion; recreate the catalog row unmonitored so it stays gone.
+                    if (providerIds.Count > 0 &&
+                        deletionExclusions.Any(e => providerIds.Contains(e.ForeignId) && (!e.MediaType.HasValue || e.MediaType == book.MediaType)))
+                    {
+                        audioMonitor = false;
+                        ebookMonitor = false;
+                        _logger.Debug("[MONITORING-REFRESH] '{0}' was previously deleted with an exclusion; recreating unmonitored", book.Title);
+                    }
+                }
 
                 // Set monitoring flags (metadata profile filtering will happen after insertion)
                 book.AudiobookMonitored = audioMonitor;
@@ -2070,15 +2151,23 @@ namespace NzbDrone.Core.Books
                     .Select(g => g.First())
                     .ToList();
 
+                // chaptarr #182: hand the already-decided match down instead of letting RefreshBookService
+                // re-derive it independently - see RefreshBookService.RefreshBookInfo's hint-overload doc
+                // comment and GetRemoteData for why re-deriving it separately can disagree.
+                if (_refreshBookService is RefreshBookService concreteRefreshBookService)
+                {
+                    return concreteRefreshBookService.RefreshBookInfo(booksToRefresh, remoteChildren, remoteData, forceChildRefresh, forceUpdateFileTags, lastUpdate, localChildren.MatchedRemoteByLocalId);
+                }
+
                 return _refreshBookService.RefreshBookInfo(booksToRefresh, remoteChildren, remoteData, forceChildRefresh, forceUpdateFileTags, lastUpdate);
             }
 
-        protected override void PublishEntityUpdatedEvent(Author entity)
+        protected override void PublishEntityUpdatedEvent(Author entity, Author remoteData)
         {
             _eventAggregator.PublishEvent(new AuthorUpdatedEvent(entity));
         }
 
-        protected override void PublishRefreshCompleteEvent(Author entity)
+        protected override void PublishRefreshCompleteEvent(Author entity, bool anyChanges)
         {
             _logger.Debug("[SERIES-DEBUG] PublishRefreshCompleteEvent called for author '{0}' (ID: {1})",
                 entity.Name, entity.Id);
@@ -2087,7 +2176,7 @@ namespace NzbDrone.Core.Books
                 // IMPORTANT: We don't process series here anymore because books might not be committed to DB yet
                 // Series processing is now handled in a separate event handler after books are guaranteed to be in the database
 
-            _eventAggregator.PublishEvent(new AuthorRefreshCompleteEvent(entity));
+            _eventAggregator.PublishEvent(new AuthorRefreshCompleteEvent(entity, anyChanges));
         }
 
         protected override void PublishChildrenUpdatedEvent(Author entity, List<Book> newChildren, List<Book> updateChildren, List<Book> deleteChildren)

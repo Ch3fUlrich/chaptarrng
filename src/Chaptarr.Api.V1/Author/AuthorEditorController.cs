@@ -247,7 +247,9 @@ namespace Chaptarr.Api.V1.Author
 
             if (syncSkippedCount > 0)
             {
-                Response.Headers["X-Chaptarr-Warning"] = $"Sync was enabled for {syncEnabledCount} author(s). {syncSkippedCount} author(s) were skipped because both audiobook and ebook root folders are required.";
+                Response.Headers["X-Chaptarr-Warning"] = $"Sync was enabled for {syncEnabledCount} author(s). {syncSkippedCount} author(s) were skipped because both audiobook and ebook root folders are required. " +
+                    "In Author Editor, switch the media type filter to Audiobooks, select the skipped authors, and set a Root Folder (this only assigns the path - it won't move any files unless you choose to). " +
+                    "Repeat with the filter set to eBooks, then re-run Sync Monitored Audio/eBooks.";
             }
 
             return Accepted(updatedAuthors.ToResource());
@@ -338,11 +340,19 @@ namespace Chaptarr.Api.V1.Author
         }
 
         [HttpDelete]
-        public object DeleteAuthor([FromBody] AuthorEditorResource resource)
+        public IActionResult DeleteAuthor([FromBody] AuthorEditorResource resource)
         {
-            _authorService.DeleteAuthors(resource.AuthorIds, false);
+            // See AuthorController.DeleteAuthor - a bulk selection can add up to just as many books
+            // as one huge author, so this goes through the same size-gated path instead of always
+            // blocking the request on every synchronous BookDeletedEvent subscriber.
+            var queued = _authorService.DeleteAuthorsSyncOrQueue(resource.AuthorIds, resource.DeleteFiles);
 
-            return new { };
+            if (queued)
+            {
+                return Accepted(new { });
+            }
+
+            return Ok(new { });
         }
     }
 }

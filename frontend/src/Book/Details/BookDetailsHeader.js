@@ -1,4 +1,3 @@
-import moment from 'moment';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import TextTruncate from 'react-text-truncate';
@@ -14,6 +13,7 @@ import MonitorToggleButton from 'Components/MonitorToggleButton';
 import Tooltip from 'Components/Tooltip/Tooltip';
 import { icons, kinds, sizes, tooltipPositions } from 'Helpers/Props';
 import fonts from 'Styles/Variables/fonts';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import formatDurationMinutes from 'Utilities/Date/formatDurationMinutes';
 import formatBytes from 'Utilities/Number/formatBytes';
 import stripHtml from 'Utilities/String/stripHtml';
@@ -243,9 +243,12 @@ class BookDetailsHeader extends Component {
             </Measure>
 
             <div className={styles.details}>
-              <div>
-                {seriesTitle}
-              </div>
+              {
+                !!seriesTitle &&
+                  <div>
+                    {seriesTitle}
+                  </div>
+              }
 
               <div>
                 <AuthorNameLink
@@ -313,7 +316,7 @@ class BookDetailsHeader extends Component {
 
                     <span className={styles.sizeOnDisk}>
                       {
-                        moment(releaseDate).format(shortDateFormat)
+                        dayjs(releaseDate).format(shortDateFormat)
                       }
                     </span>
                   </Label>
@@ -408,7 +411,7 @@ BookDetailsHeader.propTypes = {
   width: PropTypes.number.isRequired,
   titleSlug: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
-  seriesTitle: PropTypes.string.isRequired,
+  seriesTitle: PropTypes.string,
   pageCount: PropTypes.number,
   overview: PropTypes.string,
   statistics: PropTypes.object.isRequired,

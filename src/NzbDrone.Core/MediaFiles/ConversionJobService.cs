@@ -19,6 +19,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         int WorkerConcurrency { get; }
         ConversionJob Get(string downloadId);
+        List<ConversionJob> GetNonCompleted();
         ConversionJob Enqueue(ConversionJobRequest request);
         bool IsActive(string downloadId);
         bool Cancel(string downloadId);
@@ -70,6 +71,11 @@ namespace NzbDrone.Core.MediaFiles
         public ConversionJob Get(string downloadId)
         {
             return _repository.FindByDownloadId(downloadId);
+        }
+
+        public List<ConversionJob> GetNonCompleted()
+        {
+            return _repository.NonCompleted();
         }
 
         public ConversionJob Enqueue(ConversionJobRequest request)
@@ -163,6 +169,7 @@ namespace NzbDrone.Core.MediaFiles
                     _repository.Update(job);
 
                     _activeConversions.TryGetValue(downloadId, out active);
+                    active?.Cancellation.Cancel();
                 }
                 else
                 {
@@ -178,7 +185,6 @@ namespace NzbDrone.Core.MediaFiles
             if (active != null)
             {
                 _trackingService?.Cancel(downloadId);
-                active.Cancellation.Cancel();
                 _signal.Set();
             }
             else
@@ -489,6 +495,7 @@ namespace NzbDrone.Core.MediaFiles
                             TempDirectory = request.WorkFolder,
                             AudioBitrate = request.AudioBitrate,
                             AudioChannels = request.AudioChannels,
+                            NoConversion = request.NoConversion,
                             ExpectedSourceDuration = TimeSpan.FromTicks(request.ExpectedSourceDurationTicks),
                             Jobs = threadPlan.ParallelFiles,
                             FfmpegThreads = threadPlan.FfmpegThreads,
@@ -801,6 +808,7 @@ namespace NzbDrone.Core.MediaFiles
                        manifest.TargetQualityId == request.TargetQualityId &&
                        manifest.AudioBitrate == request.AudioBitrate &&
                        manifest.AudioChannels == request.AudioChannels &&
+                       manifest.NoConversion == request.NoConversion &&
                        string.Equals(manifest.TagSignature, request.TagSignature, StringComparison.Ordinal) &&
                        manifest.Sources.Count == request.Sources.Count &&
                        manifest.Sources.Zip(request.Sources, SourcesMatch).All(matches => matches);
@@ -830,6 +838,7 @@ namespace NzbDrone.Core.MediaFiles
                 TargetQualityName = request.TargetQualityName,
                 AudioBitrate = request.AudioBitrate,
                 AudioChannels = request.AudioChannels,
+                NoConversion = request.NoConversion,
                 TagMode = request.TagOptions?.Mode,
                 TagSignature = request.TagSignature,
                 Sources = request.Sources

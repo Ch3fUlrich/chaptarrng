@@ -79,6 +79,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 	        private readonly IDownloadImportModeResolver _downloadImportModeResolver;
 	        private readonly IEventAggregator _eventAggregator;
 	        private readonly Logger _logger;
+        private readonly ICommandResultReporter _commandResultReporter;
 
         public ManualImportService(IDiskProvider diskProvider,
                                    IParsingService parsingService,
@@ -102,7 +103,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 	                                   IProvideImportItemService provideImportItemService,
 	                                   IDownloadImportModeResolver downloadImportModeResolver,
 	                                   IEventAggregator eventAggregator,
-	                                   Logger logger)
+	                                   Logger logger,
+	                                   ICommandResultReporter commandResultReporter = null)
 	        {
 	            _diskProvider = diskProvider;
 	            _parsingService = parsingService;
@@ -127,6 +129,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 	            _downloadImportModeResolver = downloadImportModeResolver;
 	            _eventAggregator = eventAggregator;
 	            _logger = logger;
+	            _commandResultReporter = commandResultReporter;
 	        }
 
 	        public List<ManualImportItem> GetMediaFiles(string path, string downloadId, Author author, FilterFilesType filter, bool replaceExistingFiles, CancellationToken cancellationToken = default, IReadOnlyCollection<string> exactPaths = null)
@@ -468,6 +471,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             return result;
         }
 
+        private static string Truncate(string value, int max)
+        {
+            return value == null || value.Length <= max ? value : value.Substring(0, max) + "...";
+        }
+
         private ManualImportItem MapItem(ImportDecision<LocalBook> decision, string downloadId, bool replaceExistingFiles, bool disableReleaseSwitching)
         {
             var item = new ManualImportItem();
@@ -511,7 +519,22 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             item.Quality = decision.Item.Quality;
             item.IndexerFlags = (int)decision.Item.IndexerFlags;
             item.Size = fileInfo.Exists ? fileInfo.Length : 0;
-            item.Rejections = decision.Rejections;
+
+            var rejections = decision.Rejections?.ToList() ?? new List<Rejection>();
+
+            // chaptarr #184: the preview never checked for an existing-file conflict at the computed
+            // destination in either Combine or Replace mode, so a book that's already imported (under a
+            // different download) showed a clean "Ready now (local)" status with no warning - see
+            // ImportApprovedBooks.CheckExistingDestinationConflict for why this needs the same check the
+            // real import runs, not a re-derived one. Warning-severity (CanBypass) - informational only,
+            // doesn't block either mode, matches how other *arr apps surface this in Manual Import.
+            var conflictReason = _importApprovedBooks?.CheckExistingDestinationConflict(decision.Item, decision.Item.Book, decision.Item.Author);
+            if (conflictReason.IsNotNullOrWhiteSpace())
+            {
+                rejections.Add(new Rejection(conflictReason, RejectionType.Temporary));
+            }
+
+            item.Rejections = rejections;
             item.Tags = decision.Item.RawTags?.AllTags ?? new Dictionary<string, List<string>>();
             item.AdditionalFile = decision.Item.AdditionalFile;
             item.ReplaceExistingFiles = replaceExistingFiles;
@@ -770,8 +793,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 }
 
                 var isExplicitRemoteEditionSelection =
-                    first.Request.SelectionSource == ManualImportSelectionSource.UserMetadataSuggestion &&
-                    !string.IsNullOrWhiteSpace(first.Request.ForeignEditionId);
+                    first.Request.SelectionSource == ManualImportSelectionSource.UserMetadataSuggestion;
                 UserSelectedEditionMaterialization explicitMaterialization = null;
                 if (groupRejection == null && isExplicitRemoteEditionSelection)
                 {
@@ -785,6 +807,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                                     AuthorProviderId = first.Request.ForeignAuthorId,
                                     WorkProviderId = first.Request.ForeignBookId,
                                     EditionProviderId = first.Request.ForeignEditionId,
+                                    EditionTitle = first.Request.ForeignEditionTitle,
                                     MediaType = first.MediaType
                                 },
                                 config)
@@ -797,7 +820,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                             ex,
                             "Manual import could not materialize explicitly selected provider edition '{0}'",
                             first.Request.ForeignEditionId);
-                        groupRejection = ex.Message;
+                        if (!string.IsNullOrWhiteSpace(first.Request.ForeignEditionId))
+                        {
+                            groupRejection = ex.Message;
+                        }
                     }
                 }
 
@@ -1244,7 +1270,33 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 
             var importedCount = imported.Count(i => i.Result == ImportResultType.Imported);
             var failedCount = imported.Count - importedCount;
-            _logger.ProgressTrace("Manually imported {0} files{1}", importedCount, failedCount > 0 ? $" ({failedCount} failed/skipped)" : string.Empty);
+
+            // The reasons live on the decision's rejections and the result's errors. They used to be dropped, so
+            // a manual import that imported nothing looked like a success ("0 files (1 failed/skipped)") with no
+            // way to tell why.
+            string firstFailureReason = null;
+            foreach (var notImported in imported.Where(i => i.Result != ImportResultType.Imported))
+            {
+                var reasons = notImported.ImportDecision.Rejections.Select(r => r.Reason)
+                    .Concat(notImported.Errors)
+                    .Where(r => r.IsNotNullOrWhiteSpace())
+                    .Distinct()
+                    .ToList();
+                var reasonText = reasons.Any() ? string.Join("; ", reasons) : "no reason reported";
+
+                _logger.Warn("[MANUAL-IMPORT] Not imported ({0}) '{1}': {2}", notImported.Result, notImported.ImportDecision.Item?.Path, reasonText);
+                firstFailureReason ??= reasonText;
+            }
+
+            _logger.ProgressTrace(
+                "Manually imported {0} files{1}",
+                importedCount,
+                failedCount > 0 ? $" ({failedCount} failed/skipped: {Truncate(firstFailureReason, 160)})" : string.Empty);
+
+            if (importedCount == 0 && failedCount > 0)
+            {
+                _commandResultReporter?.Report(CommandResult.Unsuccessful);
+            }
 
             foreach (var groupedTrackedDownload in importedTrackedDownload.GroupBy(i => i.TrackedDownload.DownloadItem.DownloadId).ToList())
             {

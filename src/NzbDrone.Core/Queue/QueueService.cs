@@ -31,7 +31,8 @@ namespace NzbDrone.Core.Queue
                                 IHandle<TrackedDownloadUpdatedEvent>
     {
         private readonly IEventAggregator _eventAggregator;
-        private static List<Queue> _queue = new();
+        private volatile List<Queue> _queue = new();
+        private readonly object _queueUpdateLock = new();
         private readonly IHistoryService _historyService;
         private readonly IConversionTrackingService _conversionTrackingService;
         private readonly IConversionJobService _conversionJobService;
@@ -69,9 +70,10 @@ namespace NzbDrone.Core.Queue
 
         public void Remove(int id)
         {
-            _queue = _queue
-                .Where(q => q.Id != id)
-                .ToList();
+            lock (_queueUpdateLock)
+            {
+                _queue = _queue.Where(q => q.Id != id).ToList();
+            }
         }
 
         private IEnumerable<Queue> MapQueue(TrackedDownload trackedDownload, IReadOnlyDictionary<string, List<EntityHistory>> grabbedHistoryByDownloadId)
@@ -526,9 +528,13 @@ namespace NzbDrone.Core.Queue
                 return;
             }
 
+            var durableJobsByDownloadId = BuildNonCompletedConversionJobs();
+
             foreach (var item in queue)
             {
-                var durableJob = _conversionJobService?.Get(item.DownloadId);
+                var durableJob = item.DownloadId != null
+                    ? durableJobsByDownloadId.GetValueOrDefault(item.DownloadId)
+                    : null;
                 if (durableJob != null && durableJob.Status != ConversionJobStatus.Completed)
                 {
                     item.ConversionStatus = GetConversionJobStatus(durableJob.Status);
@@ -562,6 +568,28 @@ namespace NzbDrone.Core.Queue
                 item.ConversionMessage = conversion.Message;
                 item.CanCancelConversion = IsCancellableConversion(conversion);
             }
+        }
+
+        private Dictionary<string, ConversionJob> BuildNonCompletedConversionJobs()
+        {
+            // One query per queue build instead of one per queue item: the per-item lookup was only
+            // ever used when the job was not Completed, which is exactly what NonCompleted returns.
+            var result = new Dictionary<string, ConversionJob>(StringComparer.Ordinal);
+
+            if (_conversionJobService == null)
+            {
+                return result;
+            }
+
+            foreach (var job in _conversionJobService.GetNonCompleted() ?? new List<ConversionJob>())
+            {
+                if (job != null && !string.IsNullOrWhiteSpace(job.DownloadId))
+                {
+                    result.TryAdd(job.DownloadId, job);
+                }
+            }
+
+            return result;
         }
 
         private static string GetConversionJobStatus(ConversionJobStatus status)
@@ -655,6 +683,16 @@ namespace NzbDrone.Core.Queue
 
         public void Handle(TrackedDownloadRefreshedEvent message)
         {
+            // Serialize writers from mapping through publication so a slow refresh cannot
+            // replace a more recent incremental update with its older snapshot.
+            lock (_queueUpdateLock)
+            {
+                RefreshQueue(message);
+            }
+        }
+
+        private void RefreshQueue(TrackedDownloadRefreshedEvent message)
+        {
             var trackedCount = message.TrackedDownloads?.Count ?? 0;
             if (Logger.IsDebugEnabled)
             {
@@ -683,6 +721,16 @@ namespace NzbDrone.Core.Queue
         }
 
         public void Handle(TrackedDownloadUpdatedEvent message)
+        {
+            // Serialize writers from mapping through publication so a slow refresh cannot
+            // replace a more recent incremental update with its older snapshot.
+            lock (_queueUpdateLock)
+            {
+                UpdateQueue(message);
+            }
+        }
+
+        private void UpdateQueue(TrackedDownloadUpdatedEvent message)
         {
             var trackedDownload = message.TrackedDownload;
             var downloadId = trackedDownload?.DownloadItem?.DownloadId;

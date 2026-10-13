@@ -27,8 +27,7 @@ import monitorOptions from 'Utilities/Author/monitorOptions';
 import translate from 'Utilities/String/translate';
 import styles from './EditRootFolderModalContent.css';
 
-// Temporary toggle: hide Calibre controls in the GUI until Calibre support is restored.
-const SHOW_CALIBRE_UI = false;
+const SHOW_CALIBRE_UI = true;
 
 class EditRootFolderModalContent extends Component {
   constructor(props, context) {
@@ -77,6 +76,16 @@ class EditRootFolderModalContent extends Component {
     }
 
     this.setState(newState);
+  };
+
+  getImportMixedContentHelpText = (isFolderTypeLocked, isMixed) => {
+    if (isFolderTypeLocked) {
+      return translate('ImportMixedContentLockedHelpText');
+    }
+
+    return isMixed ?
+      translate('ImportMixedContentEnabledHelpText') :
+      translate('ImportMixedContentDisabledHelpText');
   };
 
   onAcceptsMixedContentChange = ({ value }) => {
@@ -177,9 +186,12 @@ class EditRootFolderModalContent extends Component {
       name,
       path,
       folderType,
+      hasAssignedAuthors,
       placeEbooksWithAudiobooks,
       defaultSyncMonitoredAcrossFormats,
       isCalibreLibrary,
+      reapCalibreDuplicates,
+      autoPushCalibreMetadata,
       host,
       port,
       urlBase,
@@ -209,6 +221,8 @@ class EditRootFolderModalContent extends Component {
 
     const rootFolderId = item?.id?.value;
     const isFolderTypeFixed = this.isFolderTypeFixed();
+    const hasAssignedAuthorsValue = hasAssignedAuthors?.value ?? false;
+    const isFolderTypeLocked = !!rootFolderId && hasAssignedAuthorsValue;
     const folderTypeValue = folderType?.value;
     const allowBothMediaTabs = !rootFolderId || folderTypeValue === FolderType.Mixed;
     const hasAudiobookTab = allowBothMediaTabs || folderTypeValue === FolderType.Audiobook;
@@ -283,11 +297,8 @@ class EditRootFolderModalContent extends Component {
                           type={inputTypes.CHECK}
                           name="folderType"
                           value={folderType?.value === FolderType.Mixed}
-                          helpText={
-                            folderType?.value === FolderType.Mixed ?
-                              translate('ImportMixedContentEnabledHelpText') :
-                              translate('ImportMixedContentDisabledHelpText')
-                          }
+                          isDisabled={isFolderTypeLocked}
+                          helpText={this.getImportMixedContentHelpText(isFolderTypeLocked, folderType?.value === FolderType.Mixed)}
                           onChange={this.onAcceptsMixedContentChange}
                         />
                       </FormGroup>
@@ -710,6 +721,35 @@ class EditRootFolderModalContent extends Component {
                       {
                         isCalibreLibrary?.value &&
                           <div>
+
+                            <FormGroup>
+                              <FormLabel>
+                                {translate('AutoPushCalibreMetadata')}
+                              </FormLabel>
+
+                              <FormInputGroup
+                                type={inputTypes.CHECK}
+                                name="autoPushCalibreMetadata"
+                                helpText={translate('AutoPushCalibreMetadataHelpText')}
+                                {...autoPushCalibreMetadata}
+                                onChange={onInputChange}
+                              />
+                            </FormGroup>
+
+                            <FormGroup>
+                              <FormLabel>
+                                {translate('ReapCalibreDuplicates')}
+                              </FormLabel>
+
+                              <FormInputGroup
+                                type={inputTypes.CHECK}
+                                name="reapCalibreDuplicates"
+                                helpText={translate('ReapCalibreDuplicatesHelpText')}
+                                {...reapCalibreDuplicates}
+                                onChange={onInputChange}
+                              />
+                            </FormGroup>
+
                             <FormGroup>
                               <FormLabel>
                                 {translate('CalibreHost')}

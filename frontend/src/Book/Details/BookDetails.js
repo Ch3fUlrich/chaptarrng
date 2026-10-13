@@ -5,6 +5,7 @@ import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
 import DeleteBookModal from 'Book/Delete/DeleteBookModal';
 import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
+import CalibrePushModal from 'Calibre/CalibrePushModal';
 import IconButton from 'Components/Link/IconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
@@ -14,6 +15,8 @@ import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SwipeHeaderConnector from 'Components/Swipe/SwipeHeaderConnector';
+import ConvertPreviewModalConnector from 'Convert/ConvertPreviewModalConnector';
+import GrimmoryPushModal from 'Grimmory/GrimmoryPushModal';
 import { icons } from 'Helpers/Props';
 import InteractiveSearchFilterMenuConnector from 'InteractiveSearch/InteractiveSearchFilterMenuConnector';
 import InteractiveSearchTable from 'InteractiveSearch/InteractiveSearchTable';
@@ -34,8 +37,11 @@ class BookDetails extends Component {
     super(props, context);
 
     this.state = {
+      isCalibrePushModalOpen: false,
       isOrganizeModalOpen: false,
       isRetagModalOpen: false,
+      isConvertModalOpen: false,
+      isGrimmoryPushModalOpen: false,
       isEditBookModalOpen: false,
       isDeleteBookModalOpen: false,
       selectedTabIndex: 0
@@ -72,6 +78,40 @@ class BookDetails extends Component {
 
   onRetagModalClose = () => {
     this.setState({ isRetagModalOpen: false });
+  };
+
+  onConvertPress = () => {
+    this.setState({ isConvertModalOpen: true });
+  };
+
+  onConvertModalClose = () => {
+    this.setState({ isConvertModalOpen: false });
+  };
+
+  onCalibrePushPress = () => {
+    this.setState({ isCalibrePushModalOpen: true });
+  };
+
+  onCalibrePushModalClose = () => {
+    this.setState({ isCalibrePushModalOpen: false });
+  };
+
+  onCalibrePushConfirmed = (fields) => {
+    this.setState({ isCalibrePushModalOpen: false });
+    this.props.onPushToCalibrePress(fields);
+  };
+
+  onGrimmoryPushPress = () => {
+    this.setState({ isGrimmoryPushModalOpen: true });
+  };
+
+  onGrimmoryPushModalClose = () => {
+    this.setState({ isGrimmoryPushModalOpen: false });
+  };
+
+  onGrimmoryPushConfirmed = (fields) => {
+    this.setState({ isGrimmoryPushModalOpen: false });
+    this.props.onPushToGrimmoryPress(fields);
   };
 
   onEditBookPress = () => {
@@ -117,7 +157,15 @@ class BookDetails extends Component {
       nextBook,
       hasBookNavigation,
       isSearching,
+      isRePushing,
+      showRePush,
+      isPushingToCalibre,
+      showPushToCalibre,
+      showPushToGrimmory,
+      isPushingToGrimmory,
+      grimmoryPreview,
       onRefreshPress,
+      onRePushPress,
       onSearchPress,
       statistics = {}
     } = this.props;
@@ -126,9 +174,21 @@ class BookDetails extends Component {
       bookFileCount = 0
     } = statistics;
 
+    if (!id || !author) {
+      return (
+        <PageContent title={title}>
+          <PageContentBody>
+            <LoadingIndicator />
+          </PageContentBody>
+        </PageContent>
+      );
+    }
+
     const {
       isOrganizeModalOpen,
       isRetagModalOpen,
+      isConvertModalOpen,
+      isGrimmoryPushModalOpen,
       isEditBookModalOpen,
       isDeleteBookModalOpen,
       selectedTabIndex
@@ -170,8 +230,52 @@ class BookDetails extends Component {
               onPress={this.onRetagPress}
             />
 
+            <PageToolbarButton
+              label={translate('ConvertFiles')}
+              iconName={icons.CONVERT}
+              isDisabled={!hasBookFiles}
+              onPress={this.onConvertPress}
+            />
+
             <PageToolbarSeparator />
 
+            {
+              showRePush &&
+                <PageToolbarButton
+                  label={translate('ResendToCalibre')}
+                  title={translate('ResendToCalibreContentServerConnections')}
+                  iconName={icons.EXPORT}
+                  isDisabled={!hasBookFiles}
+                  isSpinning={isRePushing}
+                  onPress={onRePushPress}
+                />
+            }
+
+            {
+              showPushToCalibre &&
+                <PageToolbarButton
+                  label={translate('CalibrePush')}
+                  title={translate('PushMetadataToCalibre')}
+                  iconName={icons.TAGS}
+                  isDisabled={!hasBookFiles}
+                  isSpinning={isPushingToCalibre}
+                  onPress={this.onCalibrePushPress}
+                />
+            }
+
+            {
+              showPushToGrimmory &&
+                <PageToolbarButton
+                  label={translate('GrimmoryPush')}
+                  title={translate('PushChaptarrMetadataToGrimmory')}
+                  iconName={icons.EXPORT}
+                  isDisabled={!hasBookFiles}
+                  isSpinning={isPushingToGrimmory}
+                  onPress={this.onGrimmoryPushPress}
+                />
+            }
+
+            {(showRePush || showPushToCalibre || showPushToGrimmory) && <PageToolbarSeparator />}
             <PageToolbarButton
               label={translate('Edit')}
               iconName={icons.EDIT}
@@ -361,6 +465,13 @@ class BookDetails extends Component {
             onModalClose={this.onRetagModalClose}
           />
 
+          <ConvertPreviewModalConnector
+            isOpen={isConvertModalOpen}
+            authorId={author.id}
+            bookId={id}
+            onModalClose={this.onConvertModalClose}
+          />
+
           <EditBookModalConnector
             isOpen={isEditBookModalOpen}
             bookId={id}
@@ -369,11 +480,27 @@ class BookDetails extends Component {
             onDeleteAuthorPress={this.onDeleteBookPress}
           />
 
+          <CalibrePushModal
+            isOpen={this.state.isCalibrePushModalOpen}
+            bookCount={1}
+            previewValues={this.props.calibrePreview}
+            onPushPress={this.onCalibrePushConfirmed}
+            onModalClose={this.onCalibrePushModalClose}
+          />
+
           <DeleteBookModal
             isOpen={isDeleteBookModalOpen}
             bookId={id}
             authorId={author.id}
             onModalClose={this.onDeleteBookModalClose}
+          />
+
+          <GrimmoryPushModal
+            isOpen={isGrimmoryPushModalOpen}
+            bookCount={1}
+            previewValues={grimmoryPreview}
+            onPushPress={this.onGrimmoryPushConfirmed}
+            onModalClose={this.onGrimmoryPushModalClose}
           />
 
         </PageContentBody>
@@ -386,7 +513,7 @@ BookDetails.propTypes = {
   id: PropTypes.number.isRequired,
   titleSlug: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
-  seriesTitle: PropTypes.string.isRequired,
+  seriesTitle: PropTypes.string,
   pageCount: PropTypes.number,
   overview: PropTypes.string,
   releaseDate: PropTypes.string.isRequired,
@@ -400,6 +527,12 @@ BookDetails.propTypes = {
   isSaving: PropTypes.bool.isRequired,
   isRefreshing: PropTypes.bool,
   isSearching: PropTypes.bool,
+  isRePushing: PropTypes.bool,
+  showRePush: PropTypes.bool,
+  calibrePreview: PropTypes.object,
+  isPushingToCalibre: PropTypes.bool,
+  showPushToCalibre: PropTypes.bool,
+  onPushToCalibrePress: PropTypes.func,
   isFetching: PropTypes.bool,
   isPopulated: PropTypes.bool,
   bookFilesError: PropTypes.object,
@@ -411,8 +544,13 @@ BookDetails.propTypes = {
   nextBook: PropTypes.object,
   hasBookNavigation: PropTypes.bool,
   isSmallScreen: PropTypes.bool.isRequired,
+  showPushToGrimmory: PropTypes.bool,
+  isPushingToGrimmory: PropTypes.bool,
+  grimmoryPreview: PropTypes.object,
+  onPushToGrimmoryPress: PropTypes.func,
   onMonitorTogglePress: PropTypes.func.isRequired,
   onRefreshPress: PropTypes.func,
+  onRePushPress: PropTypes.func,
   onSearchPress: PropTypes.func.isRequired
 };
 

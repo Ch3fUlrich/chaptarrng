@@ -45,6 +45,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IImportListBookIdentityCacheRepository _bookIdentityCacheRepository;
         private readonly IRootFolderService _rootFolderService;
         private readonly IRootFolderSettingsResolver _rootFolderSettingsResolver;
+        private readonly IImportListStatusService _importListStatusService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
@@ -66,7 +67,8 @@ namespace NzbDrone.Core.ImportLists
                                      IEventAggregator eventAggregator,
                                      IManageCommandQueue commandQueueManager,
                                      Logger logger,
-                                     IImportListBookIdentityCacheRepository bookIdentityCacheRepository)
+                                     IImportListBookIdentityCacheRepository bookIdentityCacheRepository,
+                                     IImportListStatusService importListStatusService = null)
         {
             _importListFactory = importListFactory;
             _importListExclusionService = importListExclusionService;
@@ -81,6 +83,7 @@ namespace NzbDrone.Core.ImportLists
             _authorLibraryService = authorLibraryService;
             _pendingAuthorImportService = pendingAuthorImportService;
             _bookIdentityCacheRepository = bookIdentityCacheRepository;
+            _importListStatusService = importListStatusService;
             _rootFolderService = rootFolderService;
             _rootFolderSettingsResolver = rootFolderSettingsResolver;
             _eventAggregator = eventAggregator;
@@ -729,18 +732,64 @@ namespace NzbDrone.Core.ImportLists
             }
         }
 
-        private ImportListLocalLookup BuildImportListLocalLookup()
+        private ImportListLocalLookup BuildImportListLocalLookup(IEnumerable<ImportListItemInfo> items = null)
         {
             var lookup = new ImportListLocalLookup();
 
-            foreach (var author in _authorService.GetAllAuthors() ?? new List<Author>())
+            if (items == null)
             {
-                lookup.AddAuthor(author);
+                return lookup;
             }
 
-            foreach (var book in _bookService.GetAllBooks() ?? new List<Book>())
+            var authorProviderIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var bookProviderIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in items)
             {
-                lookup.AddBook(book);
+                if (item == null)
+                {
+                    continue;
+                }
+
+                var authorId = GetAuthorProviderId(item);
+                if (authorId.IsNotNullOrWhiteSpace())
+                {
+                    authorProviderIds.Add(authorId.Trim());
+                }
+
+                var bookId = GetBookProviderId(item);
+                if (bookId.IsNotNullOrWhiteSpace())
+                {
+                    bookProviderIds.Add(bookId.Trim());
+                }
+            }
+
+            foreach (var authorId in authorProviderIds)
+            {
+                var (prefix, rawId) = SplitProviderId(authorId);
+                prefix ??= "gr";
+
+                var author = _authorService.FindByProviderId(prefix, authorId)
+                    ?? (rawId.IsNotNullOrWhiteSpace() ? _authorService.FindByProviderId(prefix, rawId) : null);
+
+                if (author != null)
+                {
+                    lookup.AddAuthor(author);
+                }
+            }
+
+            foreach (var bookId in bookProviderIds)
+            {
+                var (prefix, rawId) = SplitProviderId(bookId);
+                prefix ??= "gr";
+
+                var book = _bookService.FindByProviderId(prefix, bookId)
+                    ?? (rawId.IsNotNullOrWhiteSpace() ? _bookService.FindByProviderId(prefix, rawId) : null);
+
+                if (book != null)
+                {
+                    lookup.AddBook(book);
+                }
             }
 
             return lookup;
@@ -1401,31 +1450,43 @@ namespace NzbDrone.Core.ImportLists
 
         private List<Book> SyncAll()
         {
-            var enabledImportLists = _importListFactory.AutomaticAddEnabled()
-                .Where(l => !l.Definition.Implementation.EqualsIgnoreCase(nameof(HardcoverLibraryImportList)))
-                .ToList();
-
-            if (enabledImportLists.Empty())
-            {
-                _logger.Debug("No import lists with automatic add enabled");
-
-                return new List<Book>();
-            }
-
             _logger.ProgressInfo("Starting Import List Sync");
 
-            var listItems = _listFetcherAndParser.Fetch().ToList();
+            var fetch = _listFetcherAndParser.FetchWithState();
+            var processed = ProcessListItems(fetch.Items);
+            CommitFetchedListState(fetch.FetchedLists);
 
-            return ProcessListItems(listItems);
+            return processed;
         }
 
         private List<Book> SyncList(ImportListDefinition definition)
         {
             _logger.ProgressInfo($"Starting Import List Refresh for List {definition.Name}");
 
-            var listItems = _listFetcherAndParser.FetchSingleList(definition).ToList();
+            var fetch = _listFetcherAndParser.FetchSingleListWithState(definition);
+            var processed = ProcessListItems(fetch.Items);
+            CommitFetchedListState(fetch.FetchedLists);
 
-            return ProcessListItems(listItems);
+            return processed;
+        }
+
+        private void CommitFetchedListState(IEnumerable<IImportList> importLists)
+        {
+            foreach (var importList in importLists ?? Enumerable.Empty<IImportList>())
+            {
+                try
+                {
+                    importList?.CommitState();
+                    if (importList != null)
+                    {
+                        _importListStatusService?.UpdateListSyncStatus(importList.Definition.Id);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e, "Error committing state for Import List {0} ({1})", importList?.Name, importList?.Definition?.Name);
+                }
+            }
         }
 
         private List<Book> ProcessListItems(List<ImportListItemInfo> items)
@@ -1453,7 +1514,7 @@ namespace NzbDrone.Core.ImportLists
             var liveBookLookupHitCache = new Dictionary<string, Book>(StringComparer.OrdinalIgnoreCase);
 
             _logger.ProgressInfo("Import list sync: fetched {0} list items; indexing local library", items.Count);
-            var localLookup = BuildImportListLocalLookup();
+            var localLookup = BuildImportListLocalLookup(items);
             _logger.ProgressInfo("Import list sync: local match index ready ({0} authors, {1} books)",
                 localLookup.AuthorCount, localLookup.BookCount);
 
@@ -1660,7 +1721,7 @@ namespace NzbDrone.Core.ImportLists
             if (pendingAuthorsQueuedEarly.Any())
             {
                 _logger.ProgressInfo("Import list sync: refreshing local match index after queueing {0} authors", pendingAuthorsQueuedEarly.Count);
-                localLookup = BuildImportListLocalLookup();
+                localLookup = BuildImportListLocalLookup(items);
                 _logger.ProgressInfo("Import list sync: refreshed local match index ({0} authors, {1} books)",
                     localLookup.AuthorCount, localLookup.BookCount);
             }
@@ -2826,7 +2887,6 @@ namespace NzbDrone.Core.ImportLists
         {
             var hardcoverImportLists = _importListFactory.AutomaticAddEnabled(filterBlockedImportLists)
                 .Where(l => l.Definition.Implementation.EqualsIgnoreCase(nameof(HardcoverLibraryImportList)))
-                .Select(l => (ImportListDefinition)l.Definition)
                 .ToList();
 
             if (hardcoverImportLists.Empty())
@@ -2838,12 +2898,33 @@ namespace NzbDrone.Core.ImportLists
             _logger.ProgressInfo("Starting Hardcover Library Sync");
 
             var listItems = new List<ImportListItemInfo>();
-            foreach (var definition in hardcoverImportLists)
+            foreach (var importList in hardcoverImportLists)
             {
-                listItems.AddRange(_listFetcherAndParser.FetchSingleList(definition));
+                try
+                {
+                    listItems.AddRange(importList.Fetch());
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Failed to fetch list items for {0}", importList.Definition.Name);
+                }
             }
 
-            return ProcessListItems(listItems);
+            var processed = ProcessListItems(listItems);
+
+            foreach (var importList in hardcoverImportLists)
+            {
+                try
+                {
+                    importList.CommitState();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Failed to commit state for {0}", importList.Definition.Name);
+                }
+            }
+
+            return processed;
         }
     }
 }

@@ -410,6 +410,8 @@ namespace NzbDrone.Core.Organizer
             return segmentCount > 0;
         }
 
+        private const string AudibleAsinToken = "{Edition AudibleAsin}";
+
         private void AddBookTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Edition edition)
         {
             tokenHandlers["{Book Title}"] = m => edition.Title;
@@ -427,24 +429,21 @@ namespace NzbDrone.Core.Organizer
             tokenHandlers["{Book CleanSubtitle}"] = m => CleanTitle(subtitle);
             tokenHandlers["{Book SubtitleThe}"] = m => TitleThe(subtitle);
 
-            // Series tokens - automatically handle "if applicable" logic
-            var seriesName = edition.Book?.SeriesName;
-            var seriesPosition = edition.Book?.SeriesPosition;
+            // Series tokens - automatically handle "if applicable" logic.
+            // The links are the authoritative membership, so name and position are taken from the
+            // display link as a pair: the stored pair may be stale until the next refresh rewrites it,
+            // and filling one half from each source can put one series' number on another's title.
+            var book = edition.Book;
+            var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
+            var (seriesName, seriesPosition) = BookSeriesLabel.Resolve(book?.SeriesLinks, preferredSeries);
 
-            // Fall back to SeriesLinks if present (not always loaded during renaming).
-            var seriesLinks = edition.Book?.SeriesLinks;
-            var primarySeries = seriesLinks?.OrderBy(x => x.SeriesPosition).FirstOrDefault();
-
+            // Fall back to the stored pair when no link resolves (not always loaded during renaming).
             if (seriesName.IsNullOrWhiteSpace())
             {
-                seriesName = primarySeries?.Series?.Value?.Title;
+                seriesName = book?.SeriesName;
+                seriesPosition = book?.SeriesPosition;
             }
 
-            if (seriesPosition.IsNullOrWhiteSpace())
-            {
-                seriesPosition = primarySeries?.Position;
-            }
-            
             // Series name only (returns empty if no series)
             tokenHandlers["{Book Series}"] = m => 
                 seriesName ?? m.DefaultValue("");
@@ -496,6 +495,10 @@ namespace NzbDrone.Core.Organizer
 
                 return bookTitle;
             };
+
+            // Audible ASIN of the selected edition only (never an ISBN or a non-Audible ASIN; Edition.Asin may hold ISBN-10).
+            // Empty when missing so conditional brackets such as {[Edition AudibleAsin]} collapse.
+            tokenHandlers[AudibleAsinToken] = m => (edition.AudibleASIN ?? string.Empty).Trim().ToUpperInvariant();
 
             if (edition.Disambiguation != null)
             {
@@ -817,7 +820,11 @@ namespace NzbDrone.Core.Organizer
 
             var replacementText = tokenHandler(tokenMatch).Trim();
 
-            if (tokenMatch.Token.All(t => !char.IsLetter(t) || char.IsLower(t)))
+            if (FileNameBuilderTokenEqualityComparer.Instance.Equals(tokenMatch.Token, AudibleAsinToken))
+            {
+                // ASINs must stay uppercase ([A-Z0-9]{10}); do not mirror the token spelling's case.
+            }
+            else if (tokenMatch.Token.All(t => !char.IsLetter(t) || char.IsLower(t)))
             {
                 replacementText = replacementText.ToLower();
             }

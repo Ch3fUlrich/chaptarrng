@@ -53,6 +53,8 @@ namespace Chaptarr.Api.V1.Books
 	        IHandle<TrackImportedEvent>,
 	        IHandle<BookFileDeletedEvent>
 	    {
+        private const int MaxBookshelfAuthorIds = 100;
+
         protected readonly IAuthorService _authorService;
         protected readonly IEditionService _editionService;
 	        protected readonly IAddBookService _addBookService;
@@ -62,6 +64,7 @@ namespace Chaptarr.Api.V1.Books
 	        protected readonly IQualityProfileService _qualityProfileService;
 	        protected readonly IRootFolderService _rootFolderService;
 	        private readonly IMediaFileService _mediaFileService;
+	        private readonly IMediaCoverProxy _mediaCoverProxy;
 	        private readonly IEventAggregator _eventAggregator;
             private readonly IProviderAliasService _providerAliasService;
 	        private readonly Logger _logger;
@@ -80,6 +83,7 @@ namespace Chaptarr.Api.V1.Books
 	                          IAuthorStatisticsService authorStatisticsService,
                           IMediaFileService mediaFileService,
                           IMapCoversToLocal coverMapper,
+                          IMediaCoverProxy mediaCoverProxy,
                           IUpgradableSpecification upgradableSpecification,
 	                          IBroadcastSignalRMessage signalRBroadcaster,
 	                          IManageCommandQueue commandQueueManager,
@@ -103,6 +107,7 @@ namespace Chaptarr.Api.V1.Books
             _qualityProfileService = qualityProfileService;
             _rootFolderService = rootFolderService;
             _mediaFileService = mediaFileService;
+            _mediaCoverProxy = mediaCoverProxy;
             _eventAggregator = eventAggregator;
             _logger = logger;
             _providerAliasService = providerAliasService;
@@ -179,7 +184,6 @@ namespace Chaptarr.Api.V1.Books
             PostValidator.RuleFor(s => s.Author.RootFolderPath).IsValidPath()
                              .When(s => s.Author != null && s.Author.Path.IsNullOrWhiteSpace() && !s.Author.RootFolderPath.IsNullOrWhiteSpace());
 	        }
-
 
         private ActionResult GetProviderAmbiguityResult(ProviderAmbiguityResource ambiguity)
         {
@@ -1190,6 +1194,58 @@ namespace Chaptarr.Api.V1.Books
             return Ok(pagedResource);
         }
 
+        [HttpGet("shelf/authors")]
+        public ActionResult<List<BookshelfAuthorCountResource>> GetBookshelfAuthors([FromQuery] string mediaType)
+        {
+            var parsedMediaType = MediaTypeParameterParser.ParseRequired(mediaType);
+            var counts = _bookService.GetBookshelfAuthorCounts(parsedMediaType);
+
+            return counts.Select(count => new BookshelfAuthorCountResource
+            {
+                AuthorId = count.AuthorId,
+                BookCount = count.BookCount
+            }).ToList();
+        }
+
+        [HttpGet("shelf")]
+        public ActionResult<List<BookResource>> GetBookshelfBooks([FromQuery] List<int> authorIds, [FromQuery] string mediaType)
+        {
+            var parsedMediaType = MediaTypeParameterParser.ParseRequired(mediaType);
+            var distinctAuthorIds = (authorIds ?? new List<int>()).Distinct().ToList();
+
+            if (distinctAuthorIds.Count == 0 || distinctAuthorIds.Count > MaxBookshelfAuthorIds)
+            {
+                return BadRequest($"authorIds must contain between 1 and {MaxBookshelfAuthorIds} author IDs");
+            }
+
+            var books = _bookService.GetBooksForBookshelf(distinctAuthorIds, parsedMediaType);
+            if (books.Count == 0)
+            {
+                return new List<BookResource>();
+            }
+
+            // The resource mapper reads each book's author; load them once instead of lazily per book.
+            var authorsById = _authorService.GetAuthors(distinctAuthorIds).ToDictionary(author => author.Id);
+            foreach (var book in books)
+            {
+                if (authorsById.TryGetValue(book.AuthorId, out var author))
+                {
+                    book.Author = author;
+                }
+            }
+
+            // Statistics for just these authors, so a page of shelf rows doesn't compute them for the whole library.
+            var apiMediaType = MediaTypeParameterParser.ToApiValue(parsedMediaType);
+            var authorStatistics = _authorStatisticsService.AuthorStatistics(distinctAuthorIds, apiMediaType);
+            var statsByBookId = BuildBookStatisticsById(authorStatistics);
+
+            return MapToResource(books,
+                includeAuthor: false,
+                statsByBookId,
+                includeOverview: false,
+                includeLinks: false);
+        }
+
         [HttpGet("{id:int}/overview")]
         public object Overview(int id)
         {
@@ -1850,6 +1906,45 @@ namespace Chaptarr.Api.V1.Books
             return UpdateBookInternal(bookResource, pinExplicitEditionChange: true);
         }
 
+        private void RestoreProxiedCoverUrls(List<Edition> submitted, List<Edition> stored)
+        {
+            if (submitted == null)
+            {
+                return;
+            }
+
+            foreach (var edition in submitted.Where(e => e?.Images != null))
+            {
+                var storedImages = stored?.FirstOrDefault(e => e != null && e.Id == edition.Id)?.Images;
+                var unresolved = new List<NzbDrone.Core.MediaCover.MediaCover>();
+
+                foreach (var image in edition.Images.Where(i => i != null && _mediaCoverProxy.IsProxyUrl(i.Url)))
+                {
+                    if (_mediaCoverProxy.TryResolveProxyUrl(image.Url, out var restored))
+                    {
+                        image.Url = restored;
+                        continue;
+                    }
+
+                    var storedUrl = storedImages?.FirstOrDefault(i => i != null && i.CoverType == image.CoverType)?.Url;
+
+                    if (storedUrl.IsNotNullOrWhiteSpace())
+                    {
+                        image.Url = storedUrl;
+                        continue;
+                    }
+
+                    unresolved.Add(image);
+                }
+
+                if (unresolved.Count > 0)
+                {
+                    _logger.Debug("Dropping {0} cover(s) on edition {1} whose proxy urls could no longer be resolved", unresolved.Count, edition.Id);
+                    edition.Images = edition.Images.Except(unresolved).ToList();
+                }
+            }
+        }
+
         private ActionResult<BookResource> UpdateBookInternal(BookResource bookResource, bool pinExplicitEditionChange)
         {
             var facadeContext = HttpContext.GetReadarrFacadeContext();
@@ -1865,6 +1960,7 @@ namespace Chaptarr.Api.V1.Books
             var beforeMonitoredEditionId = book?.Editions?.SingleOrDefault(e => e != null && e.Monitored)?.Id;
 
             var model = bookResource.ToModel(book, facadeContext);
+            RestoreProxiedCoverUrls(model?.Editions, book?.Editions);
             var shouldPinExplicitEditionSelection = ShouldPinExplicitEditionSelection(pinExplicitEditionChange, beforeMonitoredEditionId, model?.Editions);
             var shouldSkipEditionRepair = ShouldSkipEditionRepairForPartialFacadeCompat(pinExplicitEditionChange, facadeContext, beforeMonitoredEditionId, book?.Editions, model?.Editions);
 
@@ -2014,7 +2110,7 @@ namespace Chaptarr.Api.V1.Books
 
 	            try
 	            {
-	                var wantedBook = _bookService.AddWantedEdition(id, request.EditionId);
+	                var wantedBook = _bookService.AddWantedEdition(id, request.EditionId, request.AsNewVariant);
 	                EnsureBookCover(wantedBook.Id, "wantedEdition");
 
 	                if (request.SearchForNewBook)

@@ -1,10 +1,9 @@
-import _ from 'lodash';
+import map from 'lodash/map';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { createSelector } from 'reselect';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
 import sortByName from 'Utilities/Array/sortByName';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import translate from 'Utilities/String/translate';
 import SelectInput from './SelectInput';
 
@@ -31,7 +30,7 @@ class QualityProfileSelectInputConnector extends Component {
     if (prevProps.profileType !== this.props.profileType) {
       this.fetchProfiles();
     }
-    
+
     // Re-check if value changed or profiles list changed
     if (prevProps.value !== this.props.value) {
       this.checkAndSetDefaultValue();
@@ -40,40 +39,39 @@ class QualityProfileSelectInputConnector extends Component {
 
   fetchProfiles = () => {
     const { profileType } = this.props;
-    
+
     this.setState({ isFetching: true });
-    
+
     let url = '/qualityprofile';
     if (profileType) {
       url += `?mediaType=${encodeURIComponent(profileType)}`;
     }
-    
+
     const { request } = createAjaxRequest({
       url,
       traditional: true
     });
 
-    request.done((profiles) => {
+    request.then((profiles) => {
       this.setState({
         profiles: profiles.sort(sortByName),
-        isFetching: false 
+        isFetching: false
       }, this.checkAndSetDefaultValue);
     });
 
-    request.fail((xhr) => {
+    request.catch((xhr) => {
       console.error('Failed to fetch quality profiles:', xhr);
       this.setState({ isFetching: false });
     });
   };
-  
+
   checkAndSetDefaultValue = () => {
     const {
       name,
       value,
       includeNone
     } = this.props;
-    
-    const { profiles } = this.state;
+
     const values = this.getSelectValues();
 
     // Don't auto-select if includeNone is true and value is explicitly set
@@ -84,7 +82,7 @@ class QualityProfileSelectInputConnector extends Component {
     // Check if value exists in the values array (handle both string and number comparisons)
     const valueStr = value?.toString();
     const valueExists = values.some((option) => {
-      return option.key === valueStr || option.key === value || 
+      return option.key === valueStr || option.key === value ||
              (typeof value === 'number' && parseInt(option.key) === value);
     });
 
@@ -107,8 +105,8 @@ class QualityProfileSelectInputConnector extends Component {
     } = this.props;
 
     const { profiles } = this.state;
-    
-    const values = _.map(profiles, (qualityProfile) => {
+
+    const values = map(profiles, (qualityProfile) => {
       return {
         key: qualityProfile.id.toString(),
         value: qualityProfile.name

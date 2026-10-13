@@ -6,6 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.Messaging.Events;
 
 namespace Chaptarr.Core.Test.Books
@@ -77,7 +78,7 @@ namespace Chaptarr.Core.Test.Books
             public List<Book> GetAuthorBooksWithFiles(Author author) => throw new NotImplementedException();
             public List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null) => throw new NotImplementedException();
             public List<Book> GetBooksByBaseId(string baseBookId) => throw new NotImplementedException();
-            public Book AddWantedEdition(int bookId, int editionId) => throw new NotImplementedException();
+            public Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false) => throw new NotImplementedException();
             public bool ShouldSearchForMediaType(Book book, string mediaType) => throw new NotImplementedException();
             public List<Book> GetMonitoredBooksForAuthor(int authorId, string mediaType) => throw new NotImplementedException();
             public BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null) => throw new NotImplementedException();
@@ -93,6 +94,20 @@ namespace Chaptarr.Core.Test.Books
             {
                 PublishedEvents.Add(@event);
             }
+        }
+
+        private sealed class StubImportListExclusionService : IImportListExclusionService
+        {
+            public List<ImportListExclusion> All() => new();
+
+            public ImportListExclusion Add(ImportListExclusion importListExclusion) => throw new NotImplementedException();
+            public void Delete(int id) => throw new NotImplementedException();
+            public void Delete(List<int> ids) => throw new NotImplementedException();
+            public void Delete(string foreignId) => throw new NotImplementedException();
+            public ImportListExclusion Get(int id) => throw new NotImplementedException();
+            public ImportListExclusion FindByForeignId(string foreignId) => throw new NotImplementedException();
+            public List<ImportListExclusion> FindByForeignId(List<string> foreignIds) => throw new NotImplementedException();
+            public ImportListExclusion Update(ImportListExclusion importListExclusion) => throw new NotImplementedException();
         }
 
         private sealed class TestableRefreshAuthorService : RefreshAuthorService
@@ -113,7 +128,7 @@ namespace Chaptarr.Core.Test.Books
                     checkIfAuthorShouldBeRefreshed: null,
                     monitorNewBookService: new MonitorNewBookService(logger),
                     configService: null,
-                    importListExclusionService: null,
+                    importListExclusionService: new StubImportListExclusionService(),
                     syncMetadataService: null,
                     syncQueueService: null,
                     rootFolderSettingsResolver: null,
@@ -121,9 +136,9 @@ namespace Chaptarr.Core.Test.Books
             {
             }
 
-            public void PublishRefreshComplete(Author author)
+            public void PublishRefreshComplete(Author author, bool anyChanges = true)
             {
-                base.PublishRefreshCompleteEvent(author);
+                base.PublishRefreshCompleteEvent(author, anyChanges);
             }
 
             public void ProcessAddedBooks(Author author, SortedChildren children)
@@ -131,10 +146,71 @@ namespace Chaptarr.Core.Test.Books
                 base.ProcessChildren(author, children);
             }
 
+            public List<Book> OrderForMatching(List<Book> remoteChildren)
+            {
+                return base.OrderRemoteChildrenForMatching(remoteChildren);
+            }
+
             public bool AreUpToDatePublic(Book local, Book remote)
             {
                 return base.AreChildrenUpToDate(local, remote);
             }
+        }
+
+        [Test]
+        public void order_remote_children_for_matching_should_not_lose_or_duplicate_books()
+        {
+            var books = new List<Book>
+            {
+                new Book { Title = "Dune", HardcoverBookId = "hc:1", MediaType = BookMediaType.Ebook },
+                new Book { Title = "Dune Messiah", GoodreadsWorkId = "gr:2", MediaType = BookMediaType.Audiobook },
+                new Book { Title = "Untitled" } // no provider tokens at all - must still survive the sort
+            };
+
+            var service = new TestableRefreshAuthorService(
+                new StubBookService(new List<Book>()),
+                new StubEventAggregator(),
+                LogManager.GetCurrentClassLogger());
+
+            var ordered = service.OrderForMatching(books);
+
+            Assert.That(ordered.Count, Is.EqualTo(books.Count));
+            Assert.That(ordered, Is.EquivalentTo(books));
+        }
+
+        [Test]
+        public void order_remote_children_for_matching_should_be_stable_regardless_of_input_order()
+        {
+            // Three same-titled "Dune" pockets, distinguished only by provider id - exactly the
+            // shape that let claim order (and therefore which local row wins a match) depend on
+            // whatever order the metadata source happened to return them in.
+            Book Pocket(string hcId, string editionId) => new Book
+            {
+                Title = "Dune",
+                HardcoverBookId = hcId,
+                ForeignEditionId = editionId,
+                MediaType = BookMediaType.Ebook
+            };
+
+            var a = Pocket("hc:1", "ed:1");
+            var b = Pocket("hc:2", "ed:2");
+            var c = Pocket("hc:3", "ed:3");
+
+            var service = new TestableRefreshAuthorService(
+                new StubBookService(new List<Book>()),
+                new StubEventAggregator(),
+                LogManager.GetCurrentClassLogger());
+
+            var orderedForward = service.OrderForMatching(new List<Book> { a, b, c });
+            var orderedReversed = service.OrderForMatching(new List<Book> { c, b, a });
+            var orderedShuffled = service.OrderForMatching(new List<Book> { b, c, a });
+
+            Assert.That(orderedForward.Select(x => x.HardcoverBookId),
+                Is.EqualTo(orderedReversed.Select(x => x.HardcoverBookId)),
+                "Same set in reverse input order must produce the same match-claim order");
+            Assert.That(orderedForward.Select(x => x.HardcoverBookId),
+                Is.EqualTo(orderedShuffled.Select(x => x.HardcoverBookId)),
+                "Same set in shuffled input order must produce the same match-claim order");
         }
 
         [Test]

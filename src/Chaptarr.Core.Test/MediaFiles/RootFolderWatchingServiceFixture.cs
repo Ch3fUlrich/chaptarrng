@@ -7,6 +7,7 @@ using System.Threading;
 using NLog;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Commands;
@@ -248,6 +249,7 @@ namespace Chaptarr.Core.Test.MediaFiles
 
             return new RootFolderWatchingService(
                 DispatchProxy.Create<IRootFolderService, ThrowingProxy<IRootFolderService>>(),
+                DispatchProxy.Create<IAuthorService, ThrowingProxy<IAuthorService>>(),
                 commandQueueManager,
                 config,
                 diskProvider,

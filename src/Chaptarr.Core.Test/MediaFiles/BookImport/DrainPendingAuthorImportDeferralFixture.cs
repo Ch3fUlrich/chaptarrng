@@ -660,6 +660,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
             SetField(sut, "_bookImport", import);
             SetField(sut, "_bookService", bookService);
             SetField(sut, "_editionService", editionService);
+            SetField(sut, "_mediaFileRepository", DispatchProxy.Create<IMediaFileRepository, RecordingMediaFileRepositoryProxy>());
             SetField(sut, "_unitDestination", new RecordingBookUnitDestinationService());
             SetField(sut, "_diskProvider", new StubDiskProvider(scannedPath));
             SetField(sut, "_logger", LogManager.GetCurrentClassLogger());
@@ -722,6 +723,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
             SetField(sut, "_bookImport", import);
             SetField(sut, "_bookService", bookService);
             SetField(sut, "_editionService", editionService);
+            SetField(sut, "_mediaFileRepository", DispatchProxy.Create<IMediaFileRepository, RecordingMediaFileRepositoryProxy>());
             SetField(sut, "_unitDestination", new RecordingBookUnitDestinationService());
             SetField(sut, "_diskProvider", new StubDiskProvider(scannedPath));
             SetField(sut, "_logger", LogManager.GetCurrentClassLogger());

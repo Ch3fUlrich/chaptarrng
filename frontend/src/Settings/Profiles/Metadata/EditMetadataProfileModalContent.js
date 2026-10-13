@@ -54,7 +54,10 @@ function EditMetadataProfileModalContent(props) {
     skipMissingIdentifierOmnibus,
     skipOmnibus,
     allowedLanguages,
+    preferredEditionTerms,
+    preferredSeries,
     ignored,
+    ignoredGenres,
     minPages
   } = item;
   const nameField = fieldWithDefault(name, '');
@@ -68,7 +71,10 @@ function EditMetadataProfileModalContent(props) {
   const skipMissingIdentifierOmnibusField = fieldWithDefault(skipMissingIdentifierOmnibus, false);
   const skipOmnibusField = fieldWithDefault(skipOmnibus, false);
   const allowedLanguagesField = fieldWithDefault(allowedLanguages, '');
+  const preferredEditionTermsField = fieldWithDefault(preferredEditionTerms, '');
+  const preferredSeriesField = fieldWithDefault(preferredSeries, '');
   const ignoredField = fieldWithDefault(ignored, []);
+  const ignoredGenresField = fieldWithDefault(ignoredGenres, []);
 
   // profileType: 0=General, 1=Audiobook, 2=Ebook
   const profileTypeValue = profileType?.value ?? requestedProfileType;
@@ -262,6 +268,34 @@ function EditMetadataProfileModalContent(props) {
 
               <FormGroup>
                 <FormLabel>
+                  {translate('PreferredEditionTerms')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.TEXT_AREA}
+                  name="preferredEditionTerms"
+                  {...preferredEditionTermsField}
+                  helpText={translate('PreferredEditionTermsHelpText')}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('PreferredSeries')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.TEXT_AREA}
+                  name="preferredSeries"
+                  {...preferredSeriesField}
+                  helpText={translate('PreferredSeriesHelpText')}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
                   {translate('MustNotContain')}
                 </FormLabel>
 
@@ -273,6 +307,23 @@ function EditMetadataProfileModalContent(props) {
                   placeholder={translate('IgnoredPlaceHolder')}
                   delimiters={['Tab', 'Enter', ',']}
                   {...ignoredField}
+                  onChange={onInputChange}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('IgnoredGenres')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.GENRE_TAG}
+                  name="ignoredGenres"
+                  helpText={translate('IgnoredGenresHelpText')}
+                  kind={kinds.DANGER}
+                  placeholder={translate('IgnoredGenresPlaceHolder')}
+                  delimiters={['Tab', 'Enter', ',']}
+                  {...ignoredGenresField}
                   onChange={onInputChange}
                 />
               </FormGroup>

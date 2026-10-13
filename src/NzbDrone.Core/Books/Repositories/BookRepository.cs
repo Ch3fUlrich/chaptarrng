@@ -18,6 +18,12 @@ namespace NzbDrone.Core.Books
         public int AuthorId { get; set; }
     }
 
+    public sealed class AuthorBookCount
+    {
+        public int AuthorId { get; set; }
+        public int BookCount { get; set; }
+    }
+
 		    public interface IBookRepository : IBasicRepository<Book>
 		    {
 		        List<Book> GetBooks(int authorId);
@@ -26,6 +32,20 @@ namespace NzbDrone.Core.Books
 		        List<Book> GetLastBooks(IEnumerable<int> authorIds);
 		        List<Book> GetNextBooks(IEnumerable<int> authorIds);
 		        List<Book> GetBooksByAuthorId(int authorId);
+		        // Default keeps repository stubs working; BookRepository overrides it with a projection query.
+		        List<BookTitleSlug> GetTitleSlugsByAuthorId(int authorId) => GetBooksByAuthorId(authorId)
+		            .Select(book => new BookTitleSlug { Id = book.Id, TitleSlug = book.TitleSlug })
+		            .ToList();
+		        // Candidate variant: only slugs that could collide with the given base slugs. Default keeps stubs working.
+		        List<BookTitleSlug> GetTitleSlugsByAuthorId(int authorId, IReadOnlyCollection<string> candidateBaseSlugs) => GetTitleSlugsByAuthorId(authorId);
+		        // The default exists only for lightweight test doubles. Every production implementation must override it.
+		        Dictionary<int, int> CountBooksByAuthorIds(IEnumerable<int> authorIds)
+		        {
+		            throw new NotSupportedException();
+		        }
+		        List<Book> GetBooksByMediaType(BookMediaType mediaType) => throw new NotImplementedException();
+		        List<Book> GetBooksByAuthorIds(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
+		        List<AuthorBookCount> GetBookCountsByAuthor(BookMediaType mediaType) => throw new NotImplementedException();
 		        List<Book> GetBooksForRefresh(int authorId, IEnumerable<string> providerIds);
 		        List<Book> GetBooksByFileIds(IEnumerable<int> fileIds);
 		        Book FindByTitle(int authorId, string title);
@@ -54,6 +74,7 @@ namespace NzbDrone.Core.Books
 	        PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
 	        PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBooksPaged(offset, pageSize, sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
 	        List<int> GetBookIds(bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null, bool? monitored = null, bool? missing = null, bool? wanted = null) => throw new NotImplementedException();
+	        List<string> GetAllGenres() => throw new NotImplementedException();
 	    }
 
     public class BookRepository : BasicRepository<Book>, IBookRepository
@@ -193,9 +214,133 @@ namespace NzbDrone.Core.Books
 	            }
 	        }
 
+        private const int MaxCandidateBaseSlugs = 200;
+
+        public List<BookTitleSlug> GetTitleSlugsByAuthorId(int authorId, IReadOnlyCollection<string> candidateBaseSlugs)
+        {
+            // A slug can only collide with a base slug when it equals it or is "<base>_<n>" (that is how the
+            // suffix is generated), so only those rows need to leave the database. The collision set is compared
+            // case-insensitively, and lower() is only reliable for ASCII in both databases, so anything else
+            // (non-ASCII slugs, no candidates, very large batches) uses the full projection.
+            var bases = candidateBaseSlugs?
+                .Where(slug => !string.IsNullOrEmpty(slug))
+                .Select(slug => slug.ToLowerInvariant())
+                .Distinct()
+                .ToList();
+
+            if (bases == null || bases.Count == 0 || bases.Count > MaxCandidateBaseSlugs || bases.Any(slug => slug.Any(c => c > 127)))
+            {
+                return GetTitleSlugsByAuthorId(authorId);
+            }
+
+            var parameters = new DynamicParameters();
+            parameters.Add("authorId", authorId);
+            var clauses = new List<string>(bases.Count);
+
+            for (var i = 0; i < bases.Count; i++)
+            {
+                parameters.Add($"exact{i}", bases[i]);
+                parameters.Add($"like{i}", bases[i].Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "\\_%");
+                clauses.Add($@"(lower(""TitleSlug"") = @exact{i} OR lower(""TitleSlug"") LIKE @like{i} ESCAPE '\')");
+            }
+
+            var sql = $@"SELECT ""Id"", ""TitleSlug"" FROM ""Books"" WHERE ""AuthorId"" = @authorId AND ""TitleSlug"" IS NOT NULL AND ""TitleSlug"" <> '' AND ({string.Join(" OR ", clauses)})";
+
+            using (var connection = _database.OpenConnection())
+            {
+                return connection.Query<BookTitleSlug>(sql, parameters).ToList();
+            }
+        }
+
+        public List<BookTitleSlug> GetTitleSlugsByAuthorId(int authorId)
+        {
+            // Slug uniqueness only needs id + slug. Loading whole Book rows here made every single-book update
+            // read the author's entire catalogue (about 12,000 rows per call for a large author).
+            using (var connection = _database.OpenConnection())
+            {
+                return connection.Query<BookTitleSlug>(
+                    @"SELECT ""Id"", ""TitleSlug"" FROM ""Books"" WHERE ""AuthorId"" = @authorId AND ""TitleSlug"" IS NOT NULL AND ""TitleSlug"" <> ''",
+                    new { authorId }).ToList();
+            }
+        }
+
         public List<Book> GetBooksByAuthorId(int authorId)
         {
             return Query(s => s.AuthorId == authorId);
+        }
+
+        // A COUNT(*) ... GROUP BY, not one GetBooksByAuthorId(id) per author - that would issue N
+        // full-row-materializing queries just to size-check a bulk delete before it can even decide
+        // whether to run it inline or queue it, adding real synchronous DB load on the same request
+        // path this is meant to keep fast.
+        public Dictionary<int, int> CountBooksByAuthorIds(IEnumerable<int> authorIds)
+        {
+            var idList = (authorIds ?? Enumerable.Empty<int>()).Distinct().ToList();
+
+            if (!idList.Any())
+            {
+                return new Dictionary<int, int>();
+            }
+
+            using (var conn = _database.OpenConnection())
+            {
+                var result = new Dictionary<int, int>();
+
+                // Dapper's automatic "IN @Ids" list expansion doesn't fire against this connection
+                // (confirmed live: Postgres received a literal single "$1" placeholder for the whole
+                // array and rejected it) - build the parameter list by hand instead of relying on it.
+                // SQLite also has a default ~999 bind-variable limit, so batch there regardless.
+                var chunkSize = _database.DatabaseType == DatabaseType.SQLite
+                    ? SqliteVariableLimit.MaxParameters
+                    : idList.Count;
+
+                foreach (var batch in idList.Chunk(Math.Max(chunkSize, 1)))
+                {
+                    var parameters = new DynamicParameters();
+                    var placeholders = new List<string>(batch.Length);
+
+                    for (var i = 0; i < batch.Length; i++)
+                    {
+                        var name = $"Id{i}";
+                        placeholders.Add("@" + name);
+                        parameters.Add(name, batch[i]);
+                    }
+
+                    var sql = $"SELECT \"AuthorId\" AS \"Key\", CAST(COUNT(*) AS INTEGER) AS \"Value\" FROM \"Books\" WHERE \"AuthorId\" IN ({string.Join(",", placeholders)}) GROUP BY \"AuthorId\"";
+
+                    foreach (var row in conn.Query<KeyValuePair<int, int>>(sql, parameters))
+                    {
+                        result[row.Key] = row.Value;
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        public List<Book> GetBooksByMediaType(BookMediaType mediaType)
+        {
+            return Query(s => s.MediaType == mediaType);
+        }
+
+        public List<Book> GetBooksByAuthorIds(IEnumerable<int> authorIds, BookMediaType mediaType)
+        {
+            var idsArray = authorIds?.Distinct().ToArray() ?? Array.Empty<int>();
+            if (idsArray.Length == 0)
+            {
+                return new List<Book>();
+            }
+
+            return Query(Builder().Where<Book>(x => Enumerable.Contains(idsArray, x.AuthorId) && x.MediaType == mediaType));
+        }
+
+        public List<AuthorBookCount> GetBookCountsByAuthor(BookMediaType mediaType)
+        {
+            var sql = $"SELECT \"AuthorId\", COUNT(*) AS \"BookCount\" FROM \"{_table}\" WHERE \"MediaType\" = @mediaType GROUP BY \"AuthorId\"";
+            using (var conn = _database.OpenConnection())
+            {
+                return conn.Query<AuthorBookCount>(sql, new { mediaType = (int)mediaType }).ToList();
+            }
         }
 
 			        public List<Book> GetBooksForRefresh(int authorId, IEnumerable<string> providerIds)
@@ -394,12 +539,19 @@ namespace NzbDrone.Core.Books
             .Where<Book>(a => a.ReleaseDate <= currentTime);
 #pragma warning restore CS0472
 
+        // A semi-join answers "does this book have a monitored edition without files" without
+        // materialising and sorting one row per edition just to count distinct books.
+        private SqlBuilder BooksWithoutFilesCountBuilder(DateTime currentTime) => Builder()
+            .Join<Book, Author>((l, r) => l.AuthorId == r.Id)
+            .Where("EXISTS (SELECT 1 FROM \"Editions\" \"CountEditions\" WHERE \"CountEditions\".\"BookId\" = \"Books\".\"Id\" AND \"CountEditions\".\"Monitored\" = true AND NOT EXISTS (SELECT 1 FROM \"BookFiles\" \"CountFiles\" WHERE \"CountFiles\".\"EditionId\" = \"CountEditions\".\"Id\"))")
+            .Where<Book>(a => a.ReleaseDate <= currentTime);
+
         public PagingSpec<Book> BooksWithoutFiles(PagingSpec<Book> pagingSpec)
         {
             var currentTime = DateTime.UtcNow;
 
             pagingSpec.Records = GetPagedRecords(BooksWithoutFilesBuilder(currentTime), pagingSpec, QueryBooksWithAuthor);
-            pagingSpec.TotalRecords = GetPagedRecordCount(BooksWithoutFilesBuilder(currentTime).SelectCountDistinct<Book>(x => x.Id), pagingSpec);
+            pagingSpec.TotalRecords = GetPagedRecordCount(BooksWithoutFilesCountBuilder(currentTime).SelectCount(), pagingSpec);
 
             return pagingSpec;
         }
@@ -657,6 +809,50 @@ namespace NzbDrone.Core.Books
                          .Join<Book, SeriesBookLink>((b, sbl) => b.Id == sbl.BookId)
                          .Where<SeriesBookLink>(sbl => sbl.SeriesId == seriesId))
                          .OrderBy(b => b.SeriesLinks?.FirstOrDefault()?.SeriesPosition ?? 0).ToList();
+        }
+
+        // Genres is stored as a JSON-serialized string column (same convention as Ignored/IgnoredGenres on
+        // MetadataProfile), so it's pulled raw and deserialized here rather than via a jsonb-specific query -
+        // this needs to work identically on SQLite and PostgreSQL.
+        public List<string> GetAllGenres()
+        {
+            using (var conn = _database.OpenConnection())
+            {
+                // Ordered so which casing wins a case-insensitive dedupe below is deterministic
+                // across runs/installs, instead of depending on unordered SELECT row order.
+                var rawGenreLists = conn.Query<string>(
+                    "SELECT \"Genres\" FROM \"Books\" WHERE \"Genres\" IS NOT NULL AND \"Genres\" <> '' AND \"Genres\" <> '[]' ORDER BY \"Id\"");
+
+                var genres = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var raw in rawGenreLists)
+                {
+                    List<string> parsed;
+                    try
+                    {
+                        parsed = System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw);
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        continue;
+                    }
+
+                    if (parsed == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var genre in parsed)
+                    {
+                        if (!string.IsNullOrWhiteSpace(genre))
+                        {
+                            genres.Add(genre.Trim());
+                        }
+                    }
+                }
+
+                return genres.OrderBy(g => g, StringComparer.OrdinalIgnoreCase).ToList();
+            }
         }
 
         public void UpdateMonitoringByAuthorAndMediaType(int authorId, BookMediaType mediaType, bool monitored, IEnumerable<int> exceptBookIds = null)
@@ -965,7 +1161,7 @@ namespace NzbDrone.Core.Books
             if (!effectiveMonitored.HasValue && !includeUnmonitored)
             {
                 var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
-                builder.Where($"(\"AudiobookMonitored\" = {trueIndicator} OR \"EbookMonitored\" = {trueIndicator})");
+                builder.Where($"(\"{tableName}\".\"AudiobookMonitored\" = {trueIndicator} OR \"{tableName}\".\"EbookMonitored\" = {trueIndicator})");
             }
 
             if (!string.IsNullOrWhiteSpace(normalizedMediaType))
@@ -974,7 +1170,7 @@ namespace NzbDrone.Core.Books
                 {
                     normalizedMediaTypeForFiles = normalizedMediaType;
                     var mediaTypeValue = normalizedMediaType == "audiobook" ? 0 : 1;
-                    builder.Where("\"MediaType\" = @mediaType", new { mediaType = mediaTypeValue });
+                    builder.Where($"\"{tableName}\".\"MediaType\" = @mediaType", new { mediaType = mediaTypeValue });
                 }
             }
 
@@ -984,15 +1180,15 @@ namespace NzbDrone.Core.Books
 
                 if (normalizedMediaTypeForFiles == "audiobook")
                 {
-                    builder.Where("\"AudiobookMonitored\" = @monitored", new { monitored = monitoredValue });
+                    builder.Where($"\"{tableName}\".\"AudiobookMonitored\" = @monitored", new { monitored = monitoredValue });
                 }
                 else if (normalizedMediaTypeForFiles == "ebook")
                 {
-                    builder.Where("\"EbookMonitored\" = @monitored", new { monitored = monitoredValue });
+                    builder.Where($"\"{tableName}\".\"EbookMonitored\" = @monitored", new { monitored = monitoredValue });
                 }
                 else
                 {
-                    builder.Where("((\"MediaType\" = @audiobookMediaType AND \"AudiobookMonitored\" = @monitored) OR (\"MediaType\" = @ebookMediaType AND \"EbookMonitored\" = @monitored))",
+                    builder.Where($"((\"{tableName}\".\"MediaType\" = @audiobookMediaType AND \"{tableName}\".\"AudiobookMonitored\" = @monitored) OR (\"{tableName}\".\"MediaType\" = @ebookMediaType AND \"{tableName}\".\"EbookMonitored\" = @monitored))",
                         new
                         {
                             audiobookMediaType = (int)BookMediaType.Audiobook,
@@ -1061,7 +1257,7 @@ namespace NzbDrone.Core.Books
             offset = Math.Max(0, offset);
             pageSize = Math.Clamp(pageSize, 1, 500);
 
-            var allowedSortKeys = new HashSet<string> { "cleantitle", "title", "authortitle", "releasedate", "added", "id", "sizeondisk" };
+            var allowedSortKeys = new HashSet<string> { "cleantitle", "title", "authortitle", "authorname", "narrator", "duration", "releasedate", "qualityprofileid", "added", "id", "bookfilecount", "path", "sizeondisk" };
             if (string.IsNullOrWhiteSpace(sortKey) || !allowedSortKeys.Contains(sortKey.ToLowerInvariant()))
             {
                 sortKey = "title";
@@ -1070,6 +1266,7 @@ namespace NzbDrone.Core.Books
             sortDirection = sortDirection?.ToUpperInvariant() == "DESC" ? "DESC" : "ASC";
 
             var tableName = TableMapping.Mapper.TableNameMapping(typeof(Book));
+            var trueIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "true" : "1";
             var columnMap = new Dictionary<string, string>
             {
                 ["cleantitle"] = $"LOWER(COALESCE(\"{tableName}\".\"CleanTitle\", \"{tableName}\".\"Title\", ''))",
@@ -1078,33 +1275,59 @@ namespace NzbDrone.Core.Books
                 ["releasedate"] = $"\"{tableName}\".\"ReleaseDate\"",
                 ["added"] = $"\"{tableName}\".\"Added\"",
                 ["id"] = $"\"{tableName}\".\"Id\"",
-                ["sizeondisk"] = "COALESCE(\"FileStatistics\".\"SizeOnDisk\", 0)"
+                ["sizeondisk"] = "COALESCE(\"FileStatistics\".\"SizeOnDisk\", 0)",
+                ["authorname"] = "LOWER(COALESCE(\"Authors\".\"SortName\", \"Authors\".\"Name\", ''))",
+
+                // The list shows the narrator of the monitored edition; books without one sort last when ascending.
+                ["narrator"] = $"COALESCE(NULLIF(LOWER((SELECT \"Editions\".\"Narrator\" FROM \"Editions\" WHERE \"Editions\".\"BookId\" = \"{tableName}\".\"Id\" AND \"Editions\".\"Monitored\" = {trueIndicator} ORDER BY \"Editions\".\"Id\" LIMIT 1)), ''), 'zzz')",
+                ["duration"] = $"COALESCE(\"{tableName}\".\"DurationMinutes\", 0)",
+                ["bookfilecount"] = "COALESCE(\"FileStatistics\".\"BookFileCount\", 0)",
+                ["qualityprofileid"] = $"COALESCE(CASE WHEN \"{tableName}\".\"MediaType\" = 1 THEN \"Authors\".\"EbookQualityProfileId\" ELSE \"Authors\".\"AudiobookQualityProfileId\" END, 0)",
+                ["path"] = $"LOWER(COALESCE(CASE WHEN \"{tableName}\".\"MediaType\" = 1 THEN \"Authors\".\"EbookPath\" ELSE \"Authors\".\"AudiobookPath\" END, ''))"
             };
+
+            var sortKeysJoiningAuthors = new HashSet<string> { "authortitle", "authorname", "qualityprofileid", "path" };
+            var sortKeysJoiningFileStatistics = new HashSet<string> { "sizeondisk", "bookfilecount" };
 
             var normalizedSortKey = sortKey.ToLowerInvariant();
             var sortColumn = columnMap[normalizedSortKey];
             var countBuilder = CreatePagedBooksBuilder(includeUnmonitored, mediaType, downloaded, monitored, missing, wanted);
             var countTemplate = countBuilder.AddTemplate($"SELECT COUNT(*) FROM \"{tableName}\" /**where**/");
 
+            int totalCount;
+            List<int> pageIds;
+
             using (var conn = _database.OpenConnection())
             {
-                var totalCount = conn.QuerySingle<int>(countTemplate.RawSql, countTemplate.Parameters);
+                totalCount = conn.QuerySingle<int>(countTemplate.RawSql, countTemplate.Parameters);
                 var builder = CreatePagedBooksBuilder(includeUnmonitored, mediaType, downloaded, monitored, missing, wanted);
-                builder.Select(typeof(Book));
 
-                if (normalizedSortKey == "sizeondisk")
+                // Sort and page only the IDs. Sorting whole rows means carrying every column of the
+                // library through the sort, which spills to disk on large libraries.
+                builder.Select($"\"{tableName}\".\"Id\"");
+
+                if (sortKeysJoiningFileStatistics.Contains(normalizedSortKey))
                 {
                     builder.LeftJoin($@"({BookFileStatisticsSql.GroupedByBook}) AS ""FileStatistics"" ON ""FileStatistics"".""BookId"" = ""{tableName}"".""Id""");
                 }
 
-                if (normalizedSortKey == "authortitle")
+                if (sortKeysJoiningAuthors.Contains(normalizedSortKey))
                 {
                     builder.InnerJoin($"\"Authors\" ON \"Authors\".\"Id\" = \"{tableName}\".\"AuthorId\"");
+                }
+
+                if (normalizedSortKey == "authortitle")
+                {
                     builder.OrderBy($"{sortColumn} {sortDirection}, LOWER(COALESCE(\"{tableName}\".\"CleanTitle\", \"{tableName}\".\"Title\", '')) {sortDirection}, \"{tableName}\".\"Id\" {sortDirection}");
                 }
                 else if (normalizedSortKey == "id")
                 {
                     builder.OrderBy($"{sortColumn} {sortDirection}");
+                }
+                else if (normalizedSortKey == "path")
+                {
+                    // Books whose author has no folder for this side stay at the end in both directions.
+                    builder.OrderBy($"CASE WHEN {sortColumn} = '' THEN 1 ELSE 0 END, {sortColumn} {sortDirection}, \"{tableName}\".\"Id\" {sortDirection}");
                 }
                 else
                 {
@@ -1115,21 +1338,51 @@ namespace NzbDrone.Core.Books
                     $"SELECT /**select**/ FROM \"{tableName}\" /**join**/ /**innerjoin**/ /**leftjoin**/ /**where**/ /**groupby**/ /**having**/ /**orderby**/ LIMIT {pageSize} OFFSET {offset}"
                 );
 
-                var books = conn.Query<Book>(template.RawSql, template.Parameters).ToList();
-
-                return new PagedBookResource
-                {
-                    Records = books,
-                    TotalCount = totalCount,
-                    Offset = offset,
-                    PageSize = pageSize
-                };
+                pageIds = conn.Query<int>(template.RawSql, template.Parameters).ToList();
             }
+
+            return new PagedBookResource
+            {
+                Records = GetBooksInIdOrder(pageIds),
+                TotalCount = totalCount,
+                Offset = offset,
+                PageSize = pageSize
+            };
+        }
+
+        // Tolerates books deleted between the ID query and this one; they're simply left out.
+        private List<Book> GetBooksInIdOrder(List<int> ids)
+        {
+            if (ids.Count == 0)
+            {
+                return new List<Book>();
+            }
+
+            var idsArray = ids.ToArray();
+            var booksById = Query(Builder().Where<Book>(x => Enumerable.Contains(idsArray, x.Id)))
+                .ToDictionary(book => book.Id);
+
+            var books = new List<Book>(ids.Count);
+            foreach (var id in ids)
+            {
+                if (booksById.TryGetValue(id, out var book))
+                {
+                    books.Add(book);
+                }
+            }
+
+            return books;
         }
 
         public PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null)
         {
             return GetBooksPaged(offset, pageSize, sortKey, sortDirection, includeUnmonitored, mediaType, downloaded, null, null, null);
         }
+    }
+
+    public class BookTitleSlug
+    {
+        public int Id { get; set; }
+        public string TitleSlug { get; set; }
     }
 }

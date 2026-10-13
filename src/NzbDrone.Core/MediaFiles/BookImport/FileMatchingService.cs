@@ -28,6 +28,7 @@ using NzbDrone.Core.MediaFiles.TagExtraction;
 using NzbDrone.Core.Parser;
 using System.Text.RegularExpressions;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Profiles.Metadata;
 
 namespace NzbDrone.Core.MediaFiles.BookImport
 {
@@ -44,6 +45,86 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         private readonly IPendingAuthorImportService _pendingAuthorImportService;
         private readonly IManageCommandQueue _commandQueue;
         private readonly IAuthorFolderMatchingService _authorFolderMatchingService;
+        // Negative-result cache: folders whose files just exhausted the full
+        // matching pipeline with no result. Sibling fragment files share this
+        // verdict instead of re-running ~10s of staged FTS each. Entries are
+        // scope-keyed and expire quickly, so rescans after author adds and
+        // identifier-bearing files are unaffected.
+        // Instance-scoped (the service is a singleton in production) so test fixtures
+        // that build their own service instances cannot see each other's entries.
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> _negativeUnitCache = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
+        private static readonly TimeSpan _negativeUnitCacheTtl = TimeSpan.FromMinutes(10);
+        private readonly System.Threading.AsyncLocal<bool> _negativeUnitCacheSuppressed = new System.Threading.AsyncLocal<bool>();
+        private long _lastNegativeUnitCacheSweepTicks;
+
+        private static string BuildNegativeUnitCacheKey(
+            DiscoveredFileWithMetadata file,
+            BookMediaType mediaType,
+            int? restrictToAuthorId,
+            bool unscoped,
+            bool disablePathFallback,
+            bool inferAuthorFromPathDuringPathFallback,
+            IReadOnlySet<int> hardAllowedBookIds)
+        {
+            string Tag(string name)
+            {
+                if (file.AllTags != null && file.AllTags.TryGetValue(name, out var v) && v is { Count: > 0 })
+                {
+                    return v[0] ?? string.Empty;
+                }
+
+                return string.Empty;
+            }
+
+            var album = Tag("album").Trim();
+            var artist = Tag("artist").Trim();
+
+            // Without book and author evidence, files in one folder may have different
+            // identities that only their individual filenames can establish.
+            if (string.IsNullOrWhiteSpace(album) || string.IsNullOrWhiteSpace(artist))
+            {
+                return null;
+            }
+
+            var folder = Path.GetDirectoryName(file.Path) ?? string.Empty;
+            return string.Join("|",
+                folder.ToLowerInvariant(),
+                (int)mediaType,
+                restrictToAuthorId?.ToString() ?? "-",
+                unscoped,
+                disablePathFallback,
+                inferAuthorFromPathDuringPathFallback,
+                hardAllowedBookIds == null ? string.Empty : string.Join(",", hardAllowedBookIds.OrderBy(id => id)),
+                album.ToLowerInvariant(),
+                artist.ToLowerInvariant());
+        }
+
+        private void SweepExpiredNegativeUnitCache(DateTime now)
+        {
+            if (_negativeUnitCache.Count <= 1024)
+            {
+                return;
+            }
+
+            var nowTicks = now.Ticks;
+            var lastSweepTicks = System.Threading.Interlocked.Read(ref _lastNegativeUnitCacheSweepTicks);
+            if (nowTicks - lastSweepTicks < TimeSpan.FromMinutes(1).Ticks ||
+                System.Threading.Interlocked.CompareExchange(ref _lastNegativeUnitCacheSweepTicks, nowTicks, lastSweepTicks) != lastSweepTicks)
+            {
+                return;
+            }
+
+            var expiredBefore = now - _negativeUnitCacheTtl;
+            var entries = (System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<string, DateTime>>)_negativeUnitCache;
+            foreach (var entry in _negativeUnitCache)
+            {
+                if (entry.Value < expiredBefore)
+                {
+                    // Remove only the value we inspected so a concurrent refresh survives the sweep.
+                    entries.Remove(entry);
+                }
+            }
+        }
         private readonly IRootFolderService _rootFolderService;
         private readonly IConfigService _configService;
         private readonly IAuthorService _authorService;
@@ -57,6 +138,70 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
         private readonly AsyncLocal<RejectionCaptureContext> _rejectionCapture = new AsyncLocal<RejectionCaptureContext>();
         private readonly AsyncLocal<IMatchingTraceSink> _matchingTraceSink = new AsyncLocal<IMatchingTraceSink>();
+
+        // Per-file matching (manual import preview) runs the whole staged match once per file. Files of one
+        // audiobook usually produce identical recall/rank queries, so within ONE MatchFilesToLibraryAsync call the
+        // recall and rank results are memoized by their exact inputs. Values are stored serialized and returned as
+        // fresh copies, so callers can never observe or mutate shared instances. Not used when matching trace is on.
+        private readonly AsyncLocal<PerFileFtsMemo> _perFileFtsMemo = new AsyncLocal<PerFileFtsMemo>();
+
+        internal sealed class PerFileFtsMemo
+        {
+            private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _entries = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+
+            // The memo must never change behaviour: anything that cannot be keyed, serialized or deserialized
+            // (for example a NaN/Infinity score, which System.Text.Json refuses) falls back to computing directly.
+            public T GetOrCompute<T>(string kind, Func<string> keyFactory, Func<T> compute)
+            {
+                string fullKey;
+                try
+                {
+                    fullKey = kind + "\u001e" + keyFactory();
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
+                {
+                    return compute();
+                }
+
+                if (_entries.TryGetValue(fullKey, out var json))
+                {
+                    try
+                    {
+                        return System.Text.Json.JsonSerializer.Deserialize<T>(json);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
+                    {
+                        // fall through and recompute
+                    }
+                }
+
+                var value = compute();
+                try
+                {
+                    _entries[fullKey] = System.Text.Json.JsonSerializer.Serialize(value);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
+                {
+                    // not cacheable; return the freshly computed value
+                }
+
+                return value;
+            }
+        }
+
+        internal T WithPerFileFtsMemo<T>(bool enabled, Func<T> body)
+        {
+            var previous = _perFileFtsMemo.Value;
+            _perFileFtsMemo.Value = enabled ? new PerFileFtsMemo() : null;
+            try
+            {
+                return body();
+            }
+            finally
+            {
+                _perFileFtsMemo.Value = previous;
+            }
+        }
 
         private sealed class RejectionCaptureContext
         {
@@ -136,7 +281,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             public MatchIdentityProof Evidence { get; set; }
             public string LogicalWorkKey { get; set; }
         }
-
 
         private sealed class HolyGrailAttemptResult
         {
@@ -588,11 +732,17 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
         public Task<FileMatchResult> MatchFilesToLibraryAsync(DiscoveredFileWithMetadata[] filesWithMetadata, int? restrictToAuthorId, MatchingContext context)
         {
+            return WithPerFileFtsMemo(context?.PerFileMatching == true, () => MatchFilesToLibraryCoreAsync(filesWithMetadata, restrictToAuthorId, context));
+        }
+
+        private Task<FileMatchResult> MatchFilesToLibraryCoreAsync(DiscoveredFileWithMetadata[] filesWithMetadata, int? restrictToAuthorId, MatchingContext context)
+        {
             var totalStopwatch = Stopwatch.StartNew();
             context ??= new MatchingContext();
             var cancellationToken = context.CancellationToken;
             cancellationToken.ThrowIfCancellationRequested();
             _matchingTraceSink.Value = context.TraceSink;
+            _negativeUnitCacheSuppressed.Value = context.SuppressNegativeUnitCache;
 
             var allowV5Identification = context.AllowV5Identification;
             var allowAuthorImport = context.AllowAuthorImport;
@@ -3878,7 +4028,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             return Regex.Replace(sb.ToString(), "\\s+", " ").Trim();
         }
 
-
         private HolyGrailAttemptResult TryMatchWithHolyGrail(
             DiscoveredFileWithMetadata file,
             BookMediaType mediaType,
@@ -4194,7 +4343,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             return clone;
         }
 
-
         private string NormalizeForPathTokens(string text)
         {
             return Services.BookImportUnitGroupingService.NormalizeForPathTokens(text);
@@ -4387,6 +4535,35 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 };
             }
 
+            var negativeUnitKey = BuildNegativeUnitCacheKey(
+                file,
+                mediaType,
+                restrictToAuthorId,
+                unscoped,
+                disablePathFallback,
+                inferAuthorFromPathDuringPathFallback,
+                hardAllowedBookIds);
+            var cacheNow = DateTime.UtcNow;
+            SweepExpiredNegativeUnitCache(cacheNow);
+            if (negativeUnitKey != null && !_negativeUnitCacheSuppressed.Value && _negativeUnitCache.TryGetValue(negativeUnitKey, out var negativeSeenAt))
+            {
+                if (cacheNow - negativeSeenAt < _negativeUnitCacheTtl)
+                {
+                    _logger.Debug("[HOLY-GRAIL] Sibling file in '{0}' already exhausted all fallbacks moments ago - skipping duplicate pipeline for '{1}'",
+                        Path.GetDirectoryName(file.Path),
+                        Path.GetFileName(file.Path));
+                    return new HolyGrailEvaluation
+                    {
+                        Match = null,
+                        WinningTags = embeddedTags,
+                        PathFallbackUsed = false,
+                        PathFallbackSuppressedReason = pathFallbackSuppressedReason
+                    };
+                }
+
+                _negativeUnitCache.TryRemove(negativeUnitKey, out _);
+            }
+
             _logger.Debug("[HOLY-GRAIL] === Starting match{0} for '{1}' ===",
                 unscoped ? " (unscoped)" : "",
                 Path.GetFileName(file.Path));
@@ -4554,14 +4731,18 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 Path.GetFileName(file.Path),
                 unscoped ? " (unscoped)" : "",
                 stopwatch.ElapsedMilliseconds);
-                return new HolyGrailEvaluation
-                {
-                    Match = null,
-                    WinningTags = embeddedTags,
-                    PathFallbackUsed = false,
-                    PathFallbackSuppressedReason = usePathAsTagsFallback ? null : pathFallbackSuppressedReason
-                };
+            if (negativeUnitKey != null && !_negativeUnitCacheSuppressed.Value)
+            {
+                _negativeUnitCache[negativeUnitKey] = cacheNow;
             }
+            return new HolyGrailEvaluation
+            {
+                Match = null,
+                WinningTags = embeddedTags,
+                PathFallbackUsed = false,
+                PathFallbackSuppressedReason = usePathAsTagsFallback ? null : pathFallbackSuppressedReason
+            };
+        }
 
         /// <summary>
         /// Checks if a candidate passes the leftover token gate.
@@ -5630,6 +5811,121 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             /// <summary>
             /// Run FTS search and smoke test each result. Returns first match that passes smoke test.
             /// </summary>
+            private static readonly HashSet<string> SurplusVolumeMarkerTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "set", "sets", "collection", "collections", "boxset", "boxed", "bundle", "omnibus", "trilogy", "duology", "sampler", "esampler", "books"
+            };
+
+            private static readonly char[] TitleTokenTrimChars = { '.', '-', ':', ';', ',', '!', '?', '(', ')', '[', ']', '"' };
+
+            private static readonly HashSet<string> TitleComparisonStopTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "the", "a", "an", "of", "and", "or", "in", "on", "at", "to", "for", "with", "by", "from", "is",
+                "retail", "unabridged", "abridged", "edition", "ebook", "book", "novel", "complete", "illustrated",
+                "epub", "mobi", "azw3", "azw", "pdf", "kepub"
+            };
+
+            private bool WinnerTitleSubstitutesFileTitle(EditionFtsMatch winner, List<string> queryTokens, out string candidateWord, out string queryWord)
+            {
+                candidateWord = null;
+                queryWord = null;
+
+                var title = winner?.BookTitle;
+                if (string.IsNullOrWhiteSpace(title) || queryTokens == null || queryTokens.Count == 0)
+                {
+                    return false;
+                }
+
+                bool Meaningful(string token) =>
+                    token.Length > 1 &&
+                    !token.All(char.IsDigit) &&
+                    !TitleComparisonStopTokens.Contains(token) &&
+                    !SeriesPositionTokenHelper.LooksLikeRomanNumeralToken(token);
+
+                var querySet = new HashSet<string>(queryTokens.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim(TitleTokenTrimChars)), StringComparer.OrdinalIgnoreCase);
+                var candidateTokens = SplitTokens(title).Select(t => t.Trim(TitleTokenTrimChars)).Where(t => t.Length > 0).ToList();
+                var candidateSet = new HashSet<string>(candidateTokens, StringComparer.OrdinalIgnoreCase);
+                var authorSet = new HashSet<string>(SplitTokens(winner.AuthorName ?? string.Empty).Select(t => t.Trim(TitleTokenTrimChars)), StringComparer.OrdinalIgnoreCase);
+
+                candidateWord = candidateTokens.FirstOrDefault(t => Meaningful(t) && !querySet.Contains(t));
+                if (candidateWord == null)
+                {
+                    return false;
+                }
+
+                queryWord = querySet.FirstOrDefault(t => Meaningful(t) && !candidateSet.Contains(t) && !authorSet.Contains(t));
+
+                if (queryWord != null &&
+                    (IsAdjacentConcatenation(candidateWord, queryTokens) || IsAdjacentConcatenation(queryWord, candidateTokens)))
+                {
+                    candidateWord = null;
+                    queryWord = null;
+                    return false;
+                }
+
+                return queryWord != null;
+            }
+
+            private static bool IsAdjacentConcatenation(string word, List<string> tokens)
+            {
+                if (word == null || tokens == null)
+                {
+                    return false;
+                }
+
+                for (var i = 0; i < tokens.Count - 1; i++)
+                {
+                    var pair = tokens[i] + tokens[i + 1];
+                    if (pair.Equals(word, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
+                    if (i < tokens.Count - 2 && (pair + tokens[i + 2]).Equals(word, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            private bool WinnerTitleHasSurplusVolumeToken(EditionFtsMatch winner, List<string> queryTokens, out string surplusToken)
+            {
+                surplusToken = null;
+
+                var title = winner?.BookTitle;
+                if (string.IsNullOrWhiteSpace(title) || queryTokens == null || queryTokens.Count == 0)
+                {
+                    return false;
+                }
+
+                var queryTokenSet = new HashSet<string>(queryTokens.Where(t => !string.IsNullOrWhiteSpace(t)), StringComparer.OrdinalIgnoreCase);
+                if (queryTokenSet.Count == 0)
+                {
+                    return false;
+                }
+
+                foreach (var token in SplitTokens(title))
+                {
+                    var trimmed = token.Trim(TitleTokenTrimChars);
+                    if (trimmed.Length == 0 || queryTokenSet.Contains(token) || queryTokenSet.Contains(trimmed))
+                    {
+                        continue;
+                    }
+
+                    if (trimmed.All(char.IsDigit) ||
+                        SeriesPositionTokenHelper.LooksLikeRomanNumeralToken(trimmed) ||
+                        SurplusVolumeMarkerTokens.Contains(trimmed))
+                    {
+                        surplusToken = trimmed;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             private FtsSmokeTestResult RunFtsWithSmokeTest(
             int? authorId,
             List<string> tokens,
@@ -5759,7 +6055,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         Step = "staged_matching",
                         Terms = tokens.ToList()
                     });
-                    var recalledBooks = stagedRepository.RecallBooks(authorId, tokens, mediaType, trace, limit: 20);
+                    var perFileMemo = trace == null ? _perFileFtsMemo.Value : null;
+                    var recalledBooks = perFileMemo != null
+                        ? perFileMemo.GetOrCompute(
+                            "recall",
+                            () => string.Join("\u001f", new[] { authorId?.ToString() ?? "-", ((int)mediaType).ToString() }.Concat(tokens ?? new List<string>())),
+                            () => stagedRepository.RecallBooks(authorId, tokens, mediaType, trace, limit: 20))
+                        : stagedRepository.RecallBooks(authorId, tokens, mediaType, trace, limit: 20);
                     var authorGateCache = new Dictionary<
                         string,
                         (bool Proven, bool TrustedScope, string ProvenName, IReadOnlyList<string> IdentityNames)>(
@@ -5929,7 +6231,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     stagedGroupFields = BuildCandidateRelativeGroupFields(
                         groupMemberTags,
                         authorNamesToConsume);
-                    ftsResults = stagedRepository.RankEditions(gatedBooks, stagedFieldQueries, mediaType, trace);
+                    ftsResults = perFileMemo != null
+                        ? perFileMemo.GetOrCompute(
+                            "rank",
+                            () => ((int)mediaType) + "\u001f" + System.Text.Json.JsonSerializer.Serialize(gatedBooks) + "\u001f" + System.Text.Json.JsonSerializer.Serialize(stagedFieldQueries),
+                            () => stagedRepository.RankEditions(gatedBooks, stagedFieldQueries, mediaType, trace))
+                        : stagedRepository.RankEditions(gatedBooks, stagedFieldQueries, mediaType, trace);
                     stagedStopwatch.Stop();
                     trace?.Invoke(new EditionFtsTraceEvent
                     {
@@ -6612,7 +6919,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return acceptedEvidence;
                 }
 
-
                 var fileYear = TryExtractYearFromTags(allTags);
                 if (stagedFtsUsed)
                 {
@@ -6701,6 +7007,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     var seriesPositionEvidence = GetSeriesPositionEvidence(result, allTags, booksById);
                     var invalidatedTitleEvidenceFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     var titleEvidenceCounted = false;
+                    var hasBookTitleEvidenceProof = false;
+                    var hasAttestedSubtitleBaseTitleProof = false;
 
                     bool IsTitleEvidenceFieldEligible(EditionTitleEvidence item)
                     {
@@ -6758,6 +7066,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         evidence = ApplyStrictSeriesPositionFieldPolicy(GetCandidateTitleEvidence(
                             result.BookTitle,
                             includeDurationGatedNearExact));
+                        hasBookTitleEvidenceProof = evidence?.Count > 0;
                     }
                     if (evidence == null || evidence.Count == 0)
                     {
@@ -6806,9 +7115,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 if (baseTitleEvidence.Count > 0)
                                 {
                                     evidence = baseTitleEvidence;
+                                    hasAttestedSubtitleBaseTitleProof = true;
                                 }
                             }
-
 
                         }
                         catch
@@ -7001,7 +7310,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         return null;
                     }
 
-
                     var scoredCandidate = ScoreCandidate(
                         result,
                         evidence,
@@ -7020,6 +7328,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         audiobookUndistinguishedEditionFallback);
                     scoredCandidate.HasDurationProof = audiobookDurationMatches;
                     scoredCandidate.HasDirectEditionTitleProof = HasStrongDirectEditionTitleEvidence(directEditionEvidence);
+                    scoredCandidate.HasBookTitleEvidenceProof = hasBookTitleEvidenceProof ||
+                        (string.Equals(result.BookTitle?.Trim(), result.EditionTitle?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                         evidence.Any(item => item?.IsNearExact == true));
+                    scoredCandidate.HasAttestedSubtitleBaseTitleProof = hasAttestedSubtitleBaseTitleProof;
                     scoredCandidate.TitleOccurrenceExplanations = BuildTitleOccurrenceExplanations(
                         result,
                         evidence,
@@ -7096,8 +7408,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     try
                     {
                         var editionRankingPriority = mediaType == BookMediaType.Ebook
-                            ? "titleEvidenceTier,exactYear,closestYear,publisherMatches,author,seriesName,seriesPosition,readingFormat,fewerLeftovers,ftsScore"
-                            : "titleEvidenceTier,audiobookProofTier,durationProof,directEditionTitleProof,representativeRank,narratorTier,narratorMatches,author,seriesName,seriesPosition,readingFormat,closestDuration,exactYear,closestYear,fewerLeftovers,ftsScore,providerIdentityTie";
+                            ? "titleEvidenceTier,exactYear,closestYear,publisherMatches,author,seriesName,seriesPosition,readingFormat,fewerLeftovers,preferredEditionTerms,ftsScore"
+                            : "titleEvidenceTier,audiobookProofTier,durationProof,directEditionTitleProof,representativeRank,narratorTier,narratorMatches,author,seriesName,seriesPosition,readingFormat,closestDuration,exactYear,closestYear,fewerLeftovers,preferredEditionTerms,ftsScore,providerIdentityTie";
                         var rankingPriority = string.Equals(selectionScope, "global-stage2-selected-provider-book", StringComparison.OrdinalIgnoreCase)
                             ? "stage2ProviderBookScore," + editionRankingPriority
                             : selectionScope?.StartsWith("global-", StringComparison.OrdinalIgnoreCase) == true
@@ -7148,7 +7460,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 Title = candidate.EditionTitle ?? candidate.BookTitle,
                                 Rank = i + 1,
                                 Reason = i == 0 ? "production-winner-at-this-scope" : "eligible-runner-up",
-                                Detail = $"titleProof={titleProof} in {scored.TitleEvidenceCount} field(s) [{evidenceFields}]; audiobookProof={audiobookProof}; durationProof={scored.HasDurationProof}; directEditionTitleProof={scored.HasDirectEditionTitleProof}; narrator={narratorProof}; author={scored.AuthorMatch}; series={scored.SeriesNameMatch}; position={scored.SeriesPositionMatch}; nativeFormat={scored.ReadingFormatMatch}; durationDiff={durationDiff}; yearDiff={yearDiff}; publisherMatches={scored.PublisherMatchCount}; leftovers={scored.LeftoverCount}; fts={scored.Bm25Score.ToString("R", CultureInfo.InvariantCulture)}",
+                                Detail = $"titleProof={titleProof} in {scored.TitleEvidenceCount} field(s) [{evidenceFields}]; audiobookProof={audiobookProof}; durationProof={scored.HasDurationProof}; directEditionTitleProof={scored.HasDirectEditionTitleProof}; narrator={narratorProof}; author={scored.AuthorMatch}; series={scored.SeriesNameMatch}; position={scored.SeriesPositionMatch}; nativeFormat={scored.ReadingFormatMatch}; durationDiff={durationDiff}; yearDiff={yearDiff}; publisherMatches={scored.PublisherMatchCount}; leftovers={scored.LeftoverCount}; preferredEditionScore={scored.PreferredEditionScore.ToString("R", CultureInfo.InvariantCulture)}; fts={scored.Bm25Score.ToString("R", CultureInfo.InvariantCulture)}",
                                 Data = new Dictionary<string, string>
                                 {
                                     ["selectionScope"] = selectionScope ?? string.Empty,
@@ -7175,6 +7487,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                     ["publisherMatchCount"] = scored.PublisherMatchCount.ToString(CultureInfo.InvariantCulture),
                                     ["leftoverCount"] = scored.LeftoverCount.ToString(CultureInfo.InvariantCulture),
                                     ["leftovers"] = leftovers,
+                                    ["preferredEditionScore"] = scored.PreferredEditionScore.ToString("R", CultureInfo.InvariantCulture),
                                     ["bm25Score"] = scored.Bm25Score.ToString("R", CultureInfo.InvariantCulture),
                                     ["undistinguishedAudiobookEditionFallback"] = scored.UndistinguishedAudiobookEditionFallback.ToString(CultureInfo.InvariantCulture)
                                 }
@@ -7348,6 +7661,37 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
+                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                    WinnerTitleSubstitutesFileTitle(winner, tokens, out var substitutedCandidateWord, out var substitutedQueryWord))
+                {
+                    RecordCandidateRejection(winner, "CANDIDATE_TITLE_WORD_SUBSTITUTION",
+                        $"book title has '{substitutedCandidateWord}' while the file evidence has '{substitutedQueryWord}' instead", "contradictory");
+                    _logger.Debug("[HOLY-GRAIL][{0}] Rejecting selected candidate '{1}' (EditionId={2}): book title has '{3}' where the file evidence has '{4}'",
+                        phase,
+                        winner.BookTitle,
+                        winner.EditionId,
+                        substitutedCandidateWord,
+                        substitutedQueryWord);
+                    return null;
+                }
+
+                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                    WinnerTitleHasSurplusVolumeToken(winner, tokens, out var surplusVolumeToken))
+                {
+                    RecordCandidateRejection(winner, "CANDIDATE_TITLE_SURPLUS_VOLUME_TOKEN",
+                        $"book title carries '{surplusVolumeToken}' with no counterpart in the file's title evidence", "contradictory");
+                    _logger.Debug("[HOLY-GRAIL][{0}] Rejecting selected candidate '{1}' (EditionId={2}): book title carries volume marker '{3}' absent from the file's title evidence",
+                        phase,
+                        winner.BookTitle,
+                        winner.EditionId,
+                        surplusVolumeToken);
+                    return null;
+                }
+
                 _logger.Debug("[HOLY-GRAIL][{0}] MATCH ACCEPTED ({1}): EditionId={2}, Title='{3}'",
                     phase,
                     selectionReason,
@@ -7396,12 +7740,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 public bool AuthorMatch { get; set; }
                 public int PublisherMatchCount { get; set; }
                 public bool SeriesNameMatch { get; set; }
+                public double PreferredEditionScore { get; set; }
                 public bool HasMatchingPositionSignal { get; set; }
                 public bool SeriesPositionMatch { get; set; }
                 public bool ReadingFormatMatch { get; set; }
                 public int AudiobookProofTier { get; set; }
                 public bool HasDurationProof { get; set; }
                 public bool HasDirectEditionTitleProof { get; set; }
+                public bool HasBookTitleEvidenceProof { get; set; }
+                public bool HasAttestedSubtitleBaseTitleProof { get; set; }
                 public int RepresentativeRank { get; set; }
                 public bool UndistinguishedAudiobookEditionFallback { get; set; }
                 public string MatchedVia { get; set; }
@@ -7548,9 +7895,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     scored.PublisherMatchCount = PublisherTokenMatchCount(candidate.Publisher, tagTokens);
                 }
 
-
                     // Series name match — majority of tokens must appear (Python parity)
                     var book = TryGetBookCached(candidate.BookId, booksById);
+                    var metadataProfile = book?.Author?.GetMetadataProfileFor(mediaType);
+                    scored.PreferredEditionScore = PreferredEditionTermMatcher.Score(
+                        metadataProfile?.PreferredEditionTerms,
+                        candidate.EditionTitle,
+                        candidate.EditionFormat,
+                        candidate.Publisher);
                     var seriesName = book?.SeriesName;
                     if (!string.IsNullOrWhiteSpace(seriesName) && tagTokens.Count > 0)
                     {
@@ -8476,7 +8828,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     }
                 }
 
-
                 if (candidate.ReadingFormatId.HasValue)
                 {
                     var formatSignal = new MatchSignal
@@ -9069,8 +9420,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = a.NarratorMatchCount.CompareTo(b.NarratorMatchCount);
                 if (cmp != 0) return cmp;
 
-
-
                 cmp = a.AuthorMatch.CompareTo(b.AuthorMatch);
                 if (cmp != 0) return cmp;
 
@@ -9102,6 +9451,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
 
                 cmp = b.LeftoverCount.CompareTo(a.LeftoverCount);
+                if (cmp != 0) return cmp;
+
+                cmp = a.PreferredEditionScore.CompareTo(b.PreferredEditionScore);
                 if (cmp != 0) return cmp;
 
                 cmp = a.Bm25Score.CompareTo(b.Bm25Score);
@@ -9138,7 +9490,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 cmp = a.TitleEvidenceTier.CompareTo(b.TitleEvidenceTier);
                 if (cmp != 0) return cmp;
 
-
                 cmp = (a.YearDiff == 0).CompareTo(b.YearDiff == 0);
                 if (cmp != 0) return cmp;
 
@@ -9150,7 +9501,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 cmp = a.PublisherMatchCount.CompareTo(b.PublisherMatchCount);
                 if (cmp != 0) return cmp;
-
 
                 cmp = a.AuthorMatch.CompareTo(b.AuthorMatch);
                 if (cmp != 0) return cmp;
@@ -9165,6 +9515,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 if (cmp != 0) return cmp;
 
                 cmp = b.LeftoverCount.CompareTo(a.LeftoverCount);
+                if (cmp != 0) return cmp;
+
+                cmp = a.PreferredEditionScore.CompareTo(b.PreferredEditionScore);
                 if (cmp != 0) return cmp;
 
                 return a.Bm25Score.CompareTo(b.Bm25Score);
@@ -9205,7 +9558,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 return true;
             }
-
 
                 private int PublisherTokenMatchCount(string publisher, HashSet<string> tagTokens)
                 {
@@ -10678,7 +11030,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             return Array.Empty<EditionTitleEvidence>();
         }
-
 
         private bool SeriesNameMatches(string desiredSeriesName, string candidateSeriesName)
         {

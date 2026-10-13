@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using NLog;
+using NzbDrone.Common.Cache;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
@@ -31,11 +32,17 @@ namespace NzbDrone.Core.MediaCover
         Task<EnsureImageResult> EnsureAuthorImage(Author author, MediaCover cover);
     }
 
+    public interface IBookCoverSidecarReader
+    {
+        int? GetStoredCoverEditionId(int bookId);
+    }
+
 	    public class MediaCoverService :
 	        IHandleAsync<AuthorRefreshCompleteEvent>,
 	        IHandleAsync<AuthorDeletedEvent>,
 	        IHandleAsync<BookDeletedEvent>,
-	        IMapCoversToLocal
+	        IMapCoversToLocal,
+	        IBookCoverSidecarReader
 	    {
 
 	        private readonly IMediaCoverProxy _mediaCoverProxy;
@@ -55,6 +62,15 @@ namespace NzbDrone.Core.MediaCover
 
         private const int MaxImageRedirects = 5;
         private static readonly TimeSpan ImageRequestTimeout = TimeSpan.FromSeconds(30);
+
+        // A CDN that has just rejected a cover URL (403) is not going to start
+        // accepting it again moments later. Without this, every rename/refresh/
+        // import that touches the same book or author re-attempts the same
+        // known-bad URL from scratch with no backoff, which can flood the CDN
+        // and exhaust the shared HTTP connection pool (max 12 connections per
+        // host - see ManagedHttpDispatcher) when many books share a blocked URL.
+        private static readonly TimeSpan BlockedImageUrlBackoff = TimeSpan.FromHours(6);
+        private readonly BoundedCache<DateTime> _blockedImageUrlsUntilUtc = new(4096, StringComparer.Ordinal);
 
         // ImageSharp is slow on ARM (no hardware acceleration on mono yet)
         // So limit the number of concurrent resizing tasks
@@ -346,6 +362,17 @@ namespace NzbDrone.Core.MediaCover
 
             for (var i = 0; i <= MaxImageRedirects; i++)
             {
+                if (_blockedImageUrlsUntilUtc.TryGetValue(currentUrl, out var blockedUntilUtc))
+                {
+                    if (DateTime.UtcNow < blockedUntilUtc)
+                    {
+                        _logger.Debug("Skipping recently-blocked (403) image URL until {0}: {1}", blockedUntilUtc, currentUrl);
+                        var skippedRequest = new HttpRequest(currentUrl);
+                        throw new HttpException(skippedRequest, new HttpResponse(skippedRequest, new HttpHeader(), Array.Empty<byte>(), HttpStatusCode.Forbidden));
+                    }
+
+                }
+
                 var request = new HttpRequest(currentUrl)
                 {
                     AllowAutoRedirect = false,
@@ -354,7 +381,16 @@ namespace NzbDrone.Core.MediaCover
 
                 ExternalImageRequestHeaders.ApplyExternalImageRequestHeaders(request, currentUrl, userAgent, rangeRequest);
 
-                var response = _httpClient.Get(request);
+                HttpResponse response;
+                try
+                {
+                    response = _httpClient.Get(request);
+                }
+                catch (HttpException e) when (e.Response?.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    _blockedImageUrlsUntilUtc.Set(currentUrl, DateTime.UtcNow.Add(BlockedImageUrlBackoff), BlockedImageUrlBackoff);
+                    throw;
+                }
 
                 if (!response.HasHttpRedirect)
                 {
@@ -1000,6 +1036,11 @@ namespace NzbDrone.Core.MediaCover
 
                 foreach (var candidate in candidates)
                 {
+                    if (_mediaCoverProxy.TryResolveProxyUrl(candidate.Cover.Url, out var restoredUrl))
+                    {
+                        candidate.Cover.Url = restoredUrl;
+                    }
+
                     if (!TryGetSafeImageUrl(candidate.Cover.Url, out _, out var unsafeReason))
                     {
                         _logger.Debug("Skipping unsafe monitored-edition cover URL for book {0}: {1} ({2})", book.Title, candidate.Cover.Url, unsafeReason);
@@ -1042,6 +1083,23 @@ namespace NzbDrone.Core.MediaCover
             }
         }
 
+        // Mappings at this file describe the previous edition once it is overwritten.
+        private void ForgetCachedCoverPath(string fileName)
+        {
+            if (fileName.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            foreach (var stale in _bookCoverUrlToPath
+                         .Where(pair => pair.Value.PathEquals(fileName))
+                         .Select(pair => pair.Key)
+                         .ToList())
+            {
+                _bookCoverUrlToPath.TryRemove(stale, out _);
+            }
+        }
+
         private bool EnsureMonitoredBookCover(Book book, BookCoverSelection selection)
         {
             var cover = selection.Cover;
@@ -1062,9 +1120,12 @@ namespace NzbDrone.Core.MediaCover
             var downloadedOrReused = false;
             if (!selectedUrlAlreadyStored || !hasOriginal)
             {
+                ForgetCachedCoverPath(fileName);
+
                 var urlHash = ComputeHash(cover.Url);
                 if (!string.IsNullOrWhiteSpace(urlHash) &&
                     _bookCoverUrlToPath.TryGetValue(urlHash, out var cachedPath) &&
+                    !cachedPath.PathEquals(fileName) &&
                     MediaCoverRendition.IsUsable(cachedPath, _diskProvider))
                 {
                     ReplaceFileWithCopy(cachedPath, fileName);
@@ -1103,6 +1164,7 @@ namespace NzbDrone.Core.MediaCover
 
 	        private sealed class BookCoverMetadataSelectedEdition
 	        {
+	            public int? LocalEditionId { get; set; }
 	            public string EditionProviderId { get; set; }
 	            public string CoverUrl { get; set; }
 	            public DateTime? DownloadedAt { get; set; }
@@ -1117,10 +1179,25 @@ namespace NzbDrone.Core.MediaCover
 
 	            try
 	            {
-	                var metadataPath = Path.Combine(GetBookCoverPath(bookId), "cover-metadata.json");
+	                var coverFolder = GetBookCoverPath(bookId);
+
+                // Entries are only ever added here (TryAdd): a cover download that stores its metadata between this read's disk
+                // check and its cache write must not be replaced by the stale negative result. Writers and invalidation use the indexer / TryRemove.
+
+	                // Most books have no cover folder, and IDiskProvider.FileExists falls back to a
+	                // case-insensitive path resolution for a missing file that enumerates the whole
+	                // MediaCover/Books directory (one entry per book) for every such book. That made
+	                // GET /book?authorId=N quadratic in the catalogue size. FolderExists is a plain stat.
+	                if (!_diskProvider.FolderExists(coverFolder))
+	                {
+	                    _bookCoverMetadataByBookId.TryAdd(bookId, new BookCoverMetadata());
+	                    return null;
+	                }
+
+	                var metadataPath = Path.Combine(coverFolder, "cover-metadata.json");
 	                if (!_diskProvider.FileExists(metadataPath))
 	                {
-	                    _bookCoverMetadataByBookId[bookId] = new BookCoverMetadata();
+	                    _bookCoverMetadataByBookId.TryAdd(bookId, new BookCoverMetadata());
 	                    return null;
 	                }
 
@@ -1128,15 +1205,20 @@ namespace NzbDrone.Core.MediaCover
 	                var metadata = string.IsNullOrWhiteSpace(json)
 	                    ? null
 	                    : Json.Deserialize<BookCoverMetadata>(json);
-	                _bookCoverMetadataByBookId[bookId] = metadata ?? new BookCoverMetadata();
+	                _bookCoverMetadataByBookId.TryAdd(bookId, metadata ?? new BookCoverMetadata());
 	                return metadata;
 	            }
 	            catch
 	            {
-	                _bookCoverMetadataByBookId[bookId] = new BookCoverMetadata();
+	                _bookCoverMetadataByBookId.TryAdd(bookId, new BookCoverMetadata());
 	                return null;
 	            }
 	        }
+
+        public int? GetStoredCoverEditionId(int bookId)
+        {
+            return TryReadBookCoverMetadata(bookId)?.SelectedEdition?.LocalEditionId;
+        }
 
         private void RemoveBookCoverArtifactsForProvenEditionChange(Book book)
         {
@@ -1525,11 +1607,24 @@ namespace NzbDrone.Core.MediaCover
 	        {
 	            EnsureAuthorCovers(message.Author);
 
-                // Restore Readarr's eager child-cover lifecycle, while Chaptarr's
-                // selector restricts persistence to each book's monitored edition.
-                foreach (var book in _bookService.GetBooksByAuthor(message.Author.Id))
+                // PERF (chaptarr #178): a refresh that found no changes at all (the common case for
+                // a huge already-synced catalogue being re-scanned) has no reason to touch book covers -
+                // nothing about any book's title/editions/images could have moved. Skipping this avoids a
+                // second full GetBooksByAuthor+editions fetch plus a per-book cover-reconciliation pass
+                // (disk-cache checks, and on any miss a network image fetch) that used to run unconditionally
+                // on every single refresh, even genuinely no-op ones, for authors with thousands of books.
+                // Callers that don't track this (AnyChanges defaults to true) keep the old always-reconcile
+                // behavior - Readarr's eager child-cover lifecycle, restricted to each book's monitored edition.
+                if (message.AnyChanges)
                 {
-                    EnsureBookCovers(book);
+                    foreach (var book in _bookService.GetBooksByAuthor(message.Author.Id))
+                    {
+                        EnsureBookCovers(book);
+                    }
+                }
+                else
+                {
+                    _logger.Debug("Skipping per-book cover reconciliation for author {0}: refresh found no changes", message.Author.Name);
                 }
 
 	            _eventAggregator.PublishEvent(new MediaCoversUpdatedEvent(message.Author));
@@ -1607,6 +1702,7 @@ namespace NzbDrone.Core.MediaCover
                 {
                     SelectedEdition = new BookCoverMetadataSelectedEdition
                     {
+                        LocalEditionId = coverChoice.Edition.Id,
                         EditionProviderId = BookEditionIdentity.GetTrustedForeignEditionId(coverChoice.Edition),
                         CoverUrl = coverChoice.Cover.Url,
                         DownloadedAt = downloadedAt

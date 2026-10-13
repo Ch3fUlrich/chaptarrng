@@ -67,7 +67,7 @@ namespace Chaptarr.Core.Test.Api
             public List<Book> GetAuthorBooksWithFiles(Author author) => throw new NotImplementedException();
             public List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null) => throw new NotImplementedException();
             public List<Book> GetBooksByBaseId(string baseBookId) => throw new NotImplementedException();
-            public Book AddWantedEdition(int bookId, int editionId) => throw new NotImplementedException();
+            public Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false) => throw new NotImplementedException();
             public bool ShouldSearchForMediaType(Book book, string mediaType) => throw new NotImplementedException();
             public List<Book> GetMonitoredBooksForAuthor(int authorId, string mediaType) => throw new NotImplementedException();
             public BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null) => throw new NotImplementedException();
@@ -87,6 +87,7 @@ namespace Chaptarr.Core.Test.Api
             public AuthorStatistics AuthorStatistics(int authorId) => _getStats?.Invoke(authorId) ?? new AuthorStatistics();
             public List<AuthorStatistics> AuthorStatistics(string mediaType) => throw new NotImplementedException();
             public AuthorStatistics AuthorStatistics(int authorId, string mediaType) => throw new NotImplementedException();
+            public List<AuthorStatistics> AuthorStatistics(IEnumerable<int> authorIds, string mediaType) => throw new NotImplementedException();
             public void InvalidateAuthorCache(int authorId) => throw new NotImplementedException();
         }
 
@@ -140,6 +141,7 @@ namespace Chaptarr.Core.Test.Api
                     authorStatisticsService: authorStatisticsService,
                     mediaFileService: mediaFileService ?? new StubMediaFileService(),
                     coverMapper: null,
+                    mediaCoverProxy: null,
                     upgradableSpecification: null,
                     signalRBroadcaster: null,
                     commandQueueManager: null,

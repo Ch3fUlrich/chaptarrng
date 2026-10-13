@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NzbDrone.Core.Parser;
 
 namespace NzbDrone.Core.IndexerSearch.Definitions
 {
     public class BookSearchCriteria : SearchCriteriaBase
     {
+        private static readonly Regex BookNumberSuffixRegex = new Regex(@"\s*,?\s*book\s+\d+(\.\d+)?\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex BoxSetSuffix = new Regex(@"\s+(?:series\s+)?\d+[\s-]+books?\s+(?:box(?:ed)?\s+)?set\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         public string BookTitle { get; set; }
         public int BookYear { get; set; }
         public string BookIsbn { get; set; }
@@ -17,6 +21,29 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         // that expect a clean title (e.g., Newznab's t=book&author=...&title=...).
         public string BookQuery => GetQueryTitle(GetMainSearchTitle(BookTitle, Author?.Name));
 
+        // Audible-style titles end in a series position ("..., Book 4") that release names almost never
+        // carry. Null when the title has no such suffix, so callers can skip the extra search tier.
+        public string BookQueryWithoutBookNumber
+        {
+            get
+            {
+                var mainTitle = GetMainSearchTitle(BookTitle, Author?.Name)?.Trim();
+                if (string.IsNullOrWhiteSpace(mainTitle))
+                {
+                    return null;
+                }
+
+                var withoutBookNumber = BookNumberSuffixRegex.Replace(mainTitle, string.Empty).Trim();
+                if (withoutBookNumber.Length == 0 ||
+                    string.Equals(withoutBookNumber, mainTitle, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                return GetQueryTitle(withoutBookNumber);
+            }
+        }
+
         internal static string GetMainSearchTitle(string title, string author)
         {
             var titleWithoutAuthor = RemoveLeadingAuthorPrefix(title, author);
@@ -26,7 +53,11 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
             }
 
             var mainTitle = titleWithoutAuthor.SplitBookTitle(author).Item1;
-            return string.IsNullOrWhiteSpace(mainTitle) ? titleWithoutAuthor : mainTitle;
+            var searchTitle = string.IsNullOrWhiteSpace(mainTitle) ? titleWithoutAuthor : mainTitle;
+
+            // Retail packaging terms rarely appear in indexer titles. Broaden only the
+            // query; identity and pack checks still use the original selected title.
+            return BoxSetSuffix.Replace(searchTitle, string.Empty);
         }
 
         internal static string RemoveLeadingAuthorPrefix(string title, string author)

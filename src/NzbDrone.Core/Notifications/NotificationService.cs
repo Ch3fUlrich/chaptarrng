@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
@@ -24,8 +27,9 @@ namespace NzbDrone.Core.Notifications
           IHandle<AuthorAddedEvent>,
           IHandle<BookAddedEvent>,
           IHandle<AuthorDeletedEvent>,
-          IHandle<BookDeletedEvent>,
+          IHandleAsync<BookDeletedEvent>,
           IHandle<BookFileDeletedEvent>,
+          IHandle<BookFileAddedEvent>,
           IHandle<HealthCheckFailedEvent>,
           IHandle<DownloadFailedEvent>,
           IHandle<BookImportIncompleteEvent>,
@@ -38,6 +42,14 @@ namespace NzbDrone.Core.Notifications
         private readonly INotificationStatusService _notificationStatusService;
         private readonly IEditionService _editionService;
         private readonly Logger _logger;
+
+        // A bulk author/book delete can publish one BookDeletedEvent per book. Draining them through a
+        // single background worker (rather than one Task.StartNew per event) keeps a slow or rate-limited
+        // notification target (e.g. Discord 429s) from spawning hundreds of concurrently-blocked ThreadPool
+        // threads - that would just relocate the delete-path stall onto shared pool capacity instead of
+        // removing it. See PR #259.
+        private readonly Channel<BookDeleteMessage> _bookDeleteNotificationQueue = Channel.CreateUnbounded<BookDeleteMessage>();
+        private int _bookDeleteWorkerRunning;
 
         public NotificationService(INotificationFactory notificationFactory, INotificationStatusService notificationStatusService, IEditionService editionService, Logger logger)
         {
@@ -194,7 +206,9 @@ namespace NzbDrone.Core.Notifications
 
         public void Handle(BookImportedEvent message)
         {
-            if (!message.NewDownload)
+            var isLibraryImport = !message.NewDownload;
+
+            if (isLibraryImport && _notificationFactory.OnReleaseImportEnabled().All(n => !n.NotifyOnLibraryImports))
             {
                 _logger.Info("Skipping OnReleaseImport for '{0}' (BookId={1}): import was not from a tracked download",
                     message.Book?.Title ?? "<unknown>",
@@ -228,6 +242,11 @@ namespace NzbDrone.Core.Notifications
             {
                 try
                 {
+                    if (isLibraryImport && !notification.NotifyOnLibraryImports)
+                    {
+                        continue;
+                    }
+
                     if (ShouldHandleAuthor(notification.Definition, author))
                     {
                         if (downloadMessage.OldFiles.Empty() || ((NotificationDefinition)notification.Definition).OnUpgrade)
@@ -338,10 +357,58 @@ namespace NzbDrone.Core.Notifications
             }
         }
 
-        public void Handle(BookDeletedEvent message)
+        public void HandleAsync(BookDeletedEvent message)
         {
+            // A book delete published as part of a larger author delete already gets a single
+            // OnAuthorDelete notification for the whole author - sending OnBookDelete on top of that
+            // for every one of its books is the "one notification per episode when a whole series is
+            // deleted" noise Sonarr/Radarr deliberately don't send.
+            if (message.PartOfAuthorDelete)
+            {
+                return;
+            }
+
             var deleteMessage = new BookDeleteMessage(message.Book, message.DeleteFiles);
 
+            _bookDeleteNotificationQueue.Writer.TryWrite(deleteMessage);
+
+            if (Interlocked.CompareExchange(ref _bookDeleteWorkerRunning, 1, 0) == 0)
+            {
+                Task.Run(DrainBookDeleteNotificationQueue);
+            }
+        }
+
+        private void DrainBookDeleteNotificationQueue()
+        {
+            while (true)
+            {
+                while (_bookDeleteNotificationQueue.Reader.TryRead(out var deleteMessage))
+                {
+                    try
+                    {
+                        SendBookDeleteNotifications(deleteMessage);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException && ex is not OutOfMemoryException)
+                    {
+                        _logger.Error(ex, "Unable to dispatch book deletion notifications");
+                    }
+                }
+
+                Interlocked.Exchange(ref _bookDeleteWorkerRunning, 0);
+
+                // Close the race where a writer landed a message after our last TryRead saw an empty
+                // queue but before we reset the running flag - if that happened, pick it back up
+                // ourselves instead of leaving it stranded with no worker watching the queue.
+                if (!_bookDeleteNotificationQueue.Reader.TryPeek(out _) ||
+                    Interlocked.CompareExchange(ref _bookDeleteWorkerRunning, 1, 0) != 0)
+                {
+                    return;
+                }
+            }
+        }
+
+        private void SendBookDeleteNotifications(BookDeleteMessage deleteMessage)
+        {
             foreach (var notification in _notificationFactory.OnBookDeleteEnabled())
             {
                 try
@@ -356,6 +423,49 @@ namespace NzbDrone.Core.Notifications
                 {
                     _notificationStatusService.RecordFailure(notification.Definition.Id);
                     _logger.Warn(ex, "Unable to send OnBookDelete notification to: " + notification.Definition.Name);
+                }
+            }
+        }
+
+        public void Handle(BookFileAddedEvent message)
+        {
+            var bookFile = message.BookFile;
+
+            if (bookFile?.Path == null || bookFile.EditionId <= 0)
+            {
+                return;
+            }
+
+            var book = bookFile.Edition?.Book ?? _editionService.GetEdition(bookFile.EditionId)?.Book;
+
+            if (book == null)
+            {
+                return;
+            }
+
+            var author = book.Author ?? bookFile.Author;
+
+            foreach (var notification in _notificationFactory.OnReleaseImportEnabled())
+            {
+                if (!notification.NotifyOnLibraryImports)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (author != null && !ShouldHandleAuthor(notification.Definition, author))
+                    {
+                        continue;
+                    }
+
+                    notification.OnLibraryFileAdded(bookFile, book);
+                    _notificationStatusService.RecordSuccess(notification.Definition.Id);
+                }
+                catch (Exception ex)
+                {
+                    _notificationStatusService.RecordFailure(notification.Definition.Id);
+                    _logger.Warn(ex, "Unable to send library-file notification to: " + notification.Definition.Name);
                 }
             }
         }

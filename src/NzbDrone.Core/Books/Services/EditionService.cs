@@ -25,7 +25,7 @@ namespace NzbDrone.Core.Books
         Edition GetEditionByGoogleBooksEditionId(string googleBooksEditionId);
         Edition GetEditionByProviderAndId(string providerPrefix, string providerId);
         List<Edition> GetEditionsByProviderAndId(string providerPrefix, string providerId);
-        List<Edition> GetAllMonitoredEditions();
+        List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType);
         void InsertMany(List<Edition> editions);
         void InsertMany(List<Edition> editions, IDbConnection connection, IDbTransaction transaction);
         void UpdateMany(List<Edition> editions);
@@ -221,9 +221,9 @@ namespace NzbDrone.Core.Books
                 .ToList();
         }
 
-        public List<Edition> GetAllMonitoredEditions()
+        public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType)
         {
-            return _editionRepository.GetAllMonitoredEditions();
+            return _editionRepository.GetMonitoredEditionsForBookList(mediaType);
         }
 
 	        public void InsertMany(List<Edition> editions)

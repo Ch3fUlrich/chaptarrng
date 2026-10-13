@@ -1,10 +1,10 @@
-import moment from 'moment';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRow from 'Components/Table/TableRow';
 import { icons } from 'Helpers/Props';
+import dayjs from 'Utilities/Date/dayjsSetup';
 import formatDate from 'Utilities/Date/formatDate';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatTimeSpan from 'Utilities/Date/formatTimeSpan';
@@ -24,8 +24,8 @@ function getFormattedDates(props) {
 
   if (showRelativeDates) {
     return {
-      lastExecutionTime: moment(lastExecution).fromNow(),
-      nextExecutionTime: isDisabled ? '-' : moment(nextExecution).fromNow()
+      lastExecutionTime: dayjs(lastExecution).fromNow(),
+      nextExecutionTime: isDisabled ? '-' : dayjs(nextExecution).fromNow()
     };
   }
 
@@ -109,10 +109,10 @@ class ScheduledTaskRow extends Component {
     } = this.state;
 
     const isDisabled = interval === 0;
-    const executeNow = !isDisabled && moment().isAfter(nextExecution);
+    const executeNow = !isDisabled && dayjs().isAfter(nextExecution);
     const hasNextExecutionTime = !isDisabled && !executeNow;
-    const duration = moment.duration(interval, 'minutes').humanize().replace(/an?(?=\s)/, '1');
-    const hasLastStartTime = moment(lastStartTime).isAfter('2010-01-01');
+    const duration = dayjs.duration(interval, 'minutes').humanize().replace(/an?(?=\s)/, '1');
+    const hasLastStartTime = dayjs(lastStartTime).isAfter('2010-01-01');
 
     return (
       <TableRow>

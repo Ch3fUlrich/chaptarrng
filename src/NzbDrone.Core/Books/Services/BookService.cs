@@ -6,6 +6,7 @@ using System.Linq;
 using FluentValidation;
 using FluentValidation.Results;
 using NLog;
+using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
@@ -31,6 +32,8 @@ namespace NzbDrone.Core.Books
         List<Book> GetLastBooksByAuthorId(IEnumerable<int> authorIds);
         List<Book> GetBooksByAuthorId(int authorId);
         List<Book> GetBooksForRefresh(int authorId, List<string> foreignIds);
+
+        int ResyncDenormalizedSeriesFields(int authorId) => 0;
         List<Book> GetBooksByFileIds(IEnumerable<int> fileIds);
         Book AddBook(Book newBook, bool doRefresh = true);
         Book FindBySlug(string titleSlug);
@@ -46,6 +49,7 @@ namespace NzbDrone.Core.Books
         List<Book> GetCandidates(int authorId, string title);
         void DeleteBook(int bookId, bool deleteFiles, bool addImportListExclusion = false, bool applyToBothFormats = false);
         List<Book> GetAllBooks();
+        List<string> GetAllGenres() => throw new NotImplementedException();
         Book UpdateBook(Book book);
         void UpdateManyWithLifecycle(List<Book> books)
         {
@@ -71,17 +75,28 @@ namespace NzbDrone.Core.Books
         void ReassignAuthor(List<Book> books, int authorId) { throw new NotImplementedException(); }
         void RefreshProviderAliases(Book book) { }
         void DeleteMany(List<Book> books);
+        // The default exists only for lightweight test doubles. Kept as an overload (not an added
+        // parameter on the line above) so the many hand-written IBookService test stubs that only
+        // implement the 1-arg form keep compiling unchanged. Throws rather than silently forwarding
+        // to the 1-arg overload (which would drop deleteFiles) - every production implementation
+        // must override this directly, same as AllAuthorMediaPaths() elsewhere in this change.
+        void DeleteMany(List<Book> books, bool deleteFiles)
+        {
+            throw new NotSupportedException();
+        }
         void SetAddOptions(IEnumerable<Book> books);
         List<Book> GetAuthorBooksWithFiles(Author author);
             List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null);
             List<Book> GetBooksByBaseId(string baseBookId);
-            Book AddWantedEdition(int bookId, int editionId);
+            Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false);
             bool ShouldSearchForMediaType(Book book, string mediaType);
             BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
             BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBookBuckets(sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
             PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
             PagedBookResource GetBooksPaged(int offset, int pageSize, string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBooksPaged(offset, pageSize, sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
             List<int> GetBookIds(bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null, bool? monitored = null, bool? missing = null, bool? wanted = null) => throw new NotImplementedException();
+            List<AuthorBookCount> GetBookshelfAuthorCounts(BookMediaType mediaType) => throw new NotImplementedException();
+            List<Book> GetBooksForBookshelf(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
         }
 
     public class BookService : IBookService,
@@ -89,6 +104,7 @@ namespace NzbDrone.Core.Books
                                 IExecute<BulkSyncFormatMonitoringCommand>
     {
         private readonly IBookRepository _bookRepository;
+        private readonly ICached<List<string>> _genresCache;
         private readonly IEditionService _editionService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IAuthorService _authorService;
@@ -122,9 +138,11 @@ namespace NzbDrone.Core.Books
                            IMultiCopySeriesService multiCopySeriesService,
                            Logger logger,
                            IEditionSelector editionSelector = null,
-                           IProviderAliasService providerAliasService = null)
+                           IProviderAliasService providerAliasService = null,
+                           ICacheManager cacheManager = null)
         {
             _bookRepository = bookRepository;
+            _genresCache = cacheManager?.GetCache<List<string>>(GetType(), "genres");
             _editionService = editionService;
             _eventAggregator = eventAggregator;
             _authorService = authorService;
@@ -374,9 +392,38 @@ namespace NzbDrone.Core.Books
 
             RefreshBookProviderAliases(newBook);
 
+            ApplyFormatSyncForNewBook(newBook);
+
             _eventAggregator.PublishEvent(new BookAddedEvent(newBook, doRefresh));
 
             return newBook;
+        }
+
+        // "Sync Monitored Across Formats" otherwise only reconciles when an EXISTING book's monitored
+        // flag changes (SetBookMonitored, SetMonitored, UpdateBook, UpdateMany). A book that arrives
+        // already monitored - every book request does, since it is created with monitored: true in
+        // the same call - never goes through any of those, so its sibling format is left behind even
+        // though the author is configured to sync. Treat the insert itself as "became monitored" by
+        // diffing against an unmonitored baseline, and run it through the same reconciliation.
+        private void ApplyFormatSyncForNewBook(Book newBook)
+        {
+            if (!newBook.IsMonitored())
+            {
+                return;
+            }
+
+            var priorState = CloneStoredBook(newBook);
+            priorState.AudiobookMonitored = false;
+            priorState.EbookMonitored = false;
+
+            var syncUpdates = GetSyncUpdatesForMutations(new List<Book> { newBook }, new Dictionary<int, Book> { { newBook.Id, priorState } });
+            if (!syncUpdates.Any())
+            {
+                return;
+            }
+
+            _bookRepository.UpdateMany(syncUpdates.Select(update => update.Book).ToList());
+            PublishBookEditedEvents(syncUpdates);
         }
 
         public void DeleteBook(int bookId, bool deleteFiles, bool addImportListExclusion = false, bool applyToBothFormats = false)
@@ -916,6 +963,18 @@ namespace NzbDrone.Core.Books
             return books;
         }
 
+        public List<string> GetAllGenres()
+        {
+            // Full-table scan + per-row JSON parse in the repository; cache the result rather than
+            // paying that cost on every metadata-profile-editor open in a session.
+            if (_genresCache == null)
+            {
+                return _bookRepository.GetAllGenres();
+            }
+
+            return _genresCache.Get("all", () => _bookRepository.GetAllGenres(), TimeSpan.FromMinutes(10));
+        }
+
         public Book GetBook(int bookId)
         {
             var book = _bookRepository.Get(bookId);
@@ -1088,6 +1147,44 @@ namespace NzbDrone.Core.Books
             return _bookRepository.GetBooksForRefresh(authorId, foreignIds);
         }
 
+        public int ResyncDenormalizedSeriesFields(int authorId)
+        {
+            var books = GetBooksByAuthorId(authorId);
+            var repaired = new List<Book>();
+
+            foreach (var book in books.Where(b => b != null && b.Id > 0))
+            {
+                var (seriesName, seriesPosition) = BookSeriesLabel.Resolve(book.SeriesLinks);
+                if (seriesName == null)
+                {
+                    // No links can mean "not in a series" or "series not linked yet". Leave the stored
+                    // pair alone either way: the API reads the links, and blanking it here would throw
+                    // away the only series context file naming has for unlinked books.
+                    continue;
+                }
+
+                if (book.SeriesName == seriesName && book.SeriesPosition == seriesPosition)
+                {
+                    continue;
+                }
+
+                _logger.Debug("[SERIES] Repairing denormalized series for book {0} '{1}': '{2} #{3}' -> '{4} #{5}'",
+                    book.Id, book.Title, book.SeriesName, book.SeriesPosition, seriesName, seriesPosition);
+
+                book.SeriesName = seriesName;
+                book.SeriesPosition = seriesPosition;
+                repaired.Add(book);
+            }
+
+            if (repaired.Any())
+            {
+                _bookRepository.SetFields(repaired, b => b.SeriesName, b => b.SeriesPosition);
+                _logger.Debug("[SERIES] Repaired denormalized series fields on {0} book(s) for authorId {1}", repaired.Count, authorId);
+            }
+
+            return repaired.Count;
+        }
+
         public List<Book> GetBooksByFileIds(IEnumerable<int> fileIds)
         {
             return _bookRepository.GetBooksByFileIds(fileIds);
@@ -1142,8 +1239,21 @@ namespace NzbDrone.Core.Books
 
             foreach (var authorBooks in booksByAuthor)
             {
-                // Get existing books for this author
-                var existingBooks = _bookRepository.GetBooksByAuthorId(authorBooks.Key);
+                // Ensure every book has a slug before the lookup so the candidate base slugs are known
+                // (consistent with AddBook).
+                foreach (var book in authorBooks)
+                {
+                    if (string.IsNullOrEmpty(book.TitleSlug))
+                    {
+                        book.TitleSlug = book.Title?.ToLowerInvariant().Replace(" ", "-") ?? $"book-{book.Id}";
+                        _logger.Debug("Generated TitleSlug for book '{0}': {1}", book.Title, book.TitleSlug);
+                    }
+                }
+
+                // Only slugs that could collide with these bases are needed ("<base>" or "<base>_<n>"), so do not
+                // read the author's whole catalogue on every single-book update.
+                var existingBooks = _bookRepository.GetTitleSlugsByAuthorId(authorBooks.Key, authorBooks.Select(b => b.TitleSlug).ToList())
+                    ?? new List<BookTitleSlug>();
 
                 // Build a dictionary of existing slugs, excluding the books being updated
                 var bookIdsBeingUpdated = authorBooks.Where(b => b.Id > 0).Select(b => b.Id).ToHashSet();
@@ -1206,6 +1316,64 @@ namespace NzbDrone.Core.Books
                    book.EbookMonitored != snapshot.EbookMonitored;
         }
 
+        // Book.Editions is lazy-loaded, and both BuildWorkGroups (BookIdentity.GetProviderIdentityTokens ->
+        // BookEditionIdentity.GetOrderedEditions) and CloneStoredBook (GetAsin) read it. Handing a whole author's
+        // books to them therefore cost one Editions query per book, on every save that reaches the format-sync
+        // pass (for an author with thousands of books, most of a refresh's wall-clock time). Fill the books that
+        // have not loaded their editions from a single per-author query instead; already-loaded books are left
+        // alone, and the rows are the same ones the lazy loader would have returned (Editions by BookId).
+        private void PreloadEditions(int authorId, IEnumerable<Book> books)
+        {
+            if (_editionService == null || books == null)
+            {
+                return;
+            }
+
+            var unloaded = books
+                .Where(book => book != null && book.Id > 0 && (book.LazyEditions == null || !book.LazyEditions.IsLoaded))
+                .ToList();
+
+            if (unloaded.Count == 0)
+            {
+                return;
+            }
+
+            var editionsByBookId = (_editionService.GetEditionsByAuthor(authorId) ?? new List<Edition>())
+                .ToLookup(edition => edition.BookId);
+
+            foreach (var book in unloaded)
+            {
+                book.Editions = editionsByBookId[book.Id].ToList();
+            }
+        }
+
+        // Same idea as PreloadEditions, for a caller that holds a specific set of books rather than a whole
+        // author's: one Editions-by-BookId query for the ones that have not loaded them.
+        private void PreloadEditionsByBook(IEnumerable<Book> books)
+        {
+            if (_editionService == null || books == null)
+            {
+                return;
+            }
+
+            var unloaded = books
+                .Where(book => book != null && book.Id > 0 && (book.LazyEditions == null || !book.LazyEditions.IsLoaded))
+                .ToList();
+
+            if (unloaded.Count == 0)
+            {
+                return;
+            }
+
+            var editionsByBookId = (_editionService.GetEditionsByBook(unloaded.Select(book => book.Id).Distinct().ToList()) ?? new List<Edition>())
+                .ToLookup(edition => edition.BookId);
+
+            foreach (var book in unloaded)
+            {
+                book.Editions = editionsByBookId[book.Id].ToList();
+            }
+        }
+
         private static Book CloneStoredBook(Book book)
         {
             if (book == null)
@@ -1220,7 +1388,13 @@ namespace NzbDrone.Core.Books
                 CleanTitle = book.CleanTitle,
                 TitleSlug = book.TitleSlug,
                 MediaType = book.MediaType,
-                Author = book.Author,
+                // PERF (chaptarr #163): Book.Author is a lazy-loaded property - reading it here on a
+                // freshly-queried row fires a per-book "Authors JOIN Books WHERE Books.Id = $1" query,
+                // on EVERY book save (SaveEntity/UpdateMany run unconditionally, not just when a book
+                // actually changed). Every place that later actually needs Author on a cloned/stored book
+                // (PublishBookEditedEvents) re-fetches it explicitly and cheaply via GetAuthor(authorId)
+                // before use, so this copy was dead weight - never keep it loaded here.
+                AuthorId = book.AuthorId,
                 Narrator = book.Narrator,
                 Monitored = book.Monitored,
                 AudiobookMonitored = book.AudiobookMonitored,
@@ -1230,8 +1404,11 @@ namespace NzbDrone.Core.Books
                 GoodreadsWorkId = book.GoodreadsWorkId,
                 HardcoverBookId = book.HardcoverBookId,
                 OpenLibraryWorkId = book.OpenLibraryWorkId,
-                ASIN = BookEditionIdentity.GetAsin(book),
-                AudibleASIN = BookEditionIdentity.GetAudibleAsin(book)
+                // PERF (chaptarr #163): GetAsin/GetAudibleAsin read book.Editions (also lazy-loaded,
+                // "SELECT Editions WHERE BookId = $1" per book) to prefer an edition-level ASIN over the
+                // book-level field - another per-book query on every save. Neither ASIN nor AudibleASIN
+                // on this cloned snapshot is read anywhere (HasMonitoringChanged only compares the
+                // monitored flags), so this was pure overhead; dropped entirely.
             };
         }
 
@@ -1285,7 +1462,113 @@ namespace NzbDrone.Core.Books
             return GetSyncParticipants(workGroup, mediaType).Any();
         }
 
-        private static List<List<Book>> BuildWorkGroups(List<Book> books)
+        // PERF (chaptarr #163/#173): the old algorithm (kept below, unused in production, as
+        // BuildWorkGroupsReference) compared every remaining book against every other remaining book -
+        // O(N^2) WorkIdMatcher.CrossFormatSafeMatches calls. For a 7,000+ book author (e.g. a
+        // publisher-as-author entity with many near-duplicate reprints) that's tens of millions of calls,
+        // in a single call (this isn't the repeated-per-book-saved bug fixed elsewhere in this cluster -
+        // BuildWorkGroups here is only called once per insert batch - it's the algorithm itself that's
+        // slow for a large N).
+        //
+        // CrossFormatSafeMatches can only return true when two books share some identity token (work-level
+        // or edition-level, depending on same/cross media type) - it can never match on titles or anything
+        // else. So two books that share NO token from BookIdentity.GetProviderIdentityTokens (the union of
+        // every token category CrossFormatSafeMatches's paths draw from) can never match, and don't need to
+        // be compared. Bucket books by token first (O(N)), then only run the real CrossFormatSafeMatches
+        // (the exact, unmodified matching rule - this does not reimplement it) within each bucket, unioning
+        // matches with a union-find. For realistic data almost every token bucket is small (a handful of
+        // format/duplicate siblings), so the expensive comparison only ever runs on small candidate sets
+        // instead of the whole catalogue.
+        //
+        // Correctness of this narrowing was verified by a differential test (BuildWorkGroupsFixture) that
+        // runs both this and the original O(N^2) algorithm against every book in five real, large libraries
+        // (10,000+ books total, including every author identified as slow during live testing) and asserts
+        // byte-for-byte identical groupings.
+        internal static List<List<Book>> BuildWorkGroups(List<Book> books)
+        {
+            var list = books ?? new List<Book>();
+            var n = list.Count;
+            var parent = new int[n];
+            for (var i = 0; i < n; i++)
+            {
+                parent[i] = i;
+            }
+
+            int Find(int x)
+            {
+                while (parent[x] != x)
+                {
+                    parent[x] = parent[parent[x]];
+                    x = parent[x];
+                }
+
+                return x;
+            }
+
+            void Union(int a, int b)
+            {
+                a = Find(a);
+                b = Find(b);
+                if (a != b)
+                {
+                    parent[a] = b;
+                }
+            }
+
+            var byToken = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < n; i++)
+            {
+                foreach (var token in BookIdentity.GetProviderIdentityTokens(list[i]))
+                {
+                    if (!byToken.TryGetValue(token, out var idxs))
+                    {
+                        idxs = new List<int>();
+                        byToken[token] = idxs;
+                    }
+
+                    idxs.Add(i);
+                }
+            }
+
+            foreach (var idxs in byToken.Values)
+            {
+                if (idxs.Count < 2)
+                {
+                    continue;
+                }
+
+                for (var a = 0; a < idxs.Count; a++)
+                {
+                    for (var b = a + 1; b < idxs.Count; b++)
+                    {
+                        if (Find(idxs[a]) != Find(idxs[b]) &&
+                            WorkIdMatcher.CrossFormatSafeMatches(list[idxs[a]], list[idxs[b]]))
+                        {
+                            Union(idxs[a], idxs[b]);
+                        }
+                    }
+                }
+            }
+
+            var groupsByRoot = new Dictionary<int, List<Book>>();
+            for (var i = 0; i < n; i++)
+            {
+                var root = Find(i);
+                if (!groupsByRoot.TryGetValue(root, out var group))
+                {
+                    group = new List<Book>();
+                    groupsByRoot[root] = group;
+                }
+
+                group.Add(list[i]);
+            }
+
+            return groupsByRoot.Values.ToList();
+        }
+
+        // Reference implementation kept ONLY for the differential test (BuildWorkGroupsFixture) that
+        // proves the fast version above produces identical results on real data. Not used in production.
+        internal static List<List<Book>> BuildWorkGroupsReference(List<Book> books)
         {
             var remaining = new List<Book>(books ?? new List<Book>());
             var groups = new List<List<Book>>();
@@ -1322,7 +1605,7 @@ namespace NzbDrone.Core.Books
             return groups;
         }
 
-        private bool HasCompatibleRootFolderForMediaType(Author author, BookMediaType mediaType)
+        private bool HasCompatibleRootFolderForMediaType(Author author, BookMediaType mediaType, List<RootFolder> rootFolders = null)
         {
             if (author == null)
             {
@@ -1343,7 +1626,9 @@ namespace NzbDrone.Core.Books
                 return true;
             }
 
-            var rootFolder = _rootFolderService.All()?.FirstOrDefault(r => r.Path.PathEquals(rootFolderPath));
+            // PERF (chaptarr #163): callers that already fetched RootFolders once for a whole batch
+            // (see GetSyncUpdatesForMutations) pass it through here instead of this re-querying per book.
+            var rootFolder = (rootFolders ?? _rootFolderService.All())?.FirstOrDefault(r => r.Path.PathEquals(rootFolderPath));
             if (rootFolder == null)
             {
                 return false;
@@ -1354,7 +1639,7 @@ namespace NzbDrone.Core.Books
                    (mediaType == BookMediaType.Ebook && rootFolder.FolderType == FolderType.Ebook);
         }
 
-        private bool CanEnableMonitoringForMediaType(Author author, BookMediaType mediaType)
+        private bool CanEnableMonitoringForMediaType(Author author, BookMediaType mediaType, List<RootFolder> rootFolders = null)
         {
             if (author == null)
             {
@@ -1364,14 +1649,14 @@ namespace NzbDrone.Core.Books
             // Book-row state is independent from the author-side gate. The gate is
             // evaluated by eligibility queries, so an explicit row selection remains
             // valid while its author side is paused.
-            return HasCompatibleRootFolderForMediaType(author, mediaType);
+            return HasCompatibleRootFolderForMediaType(author, mediaType, rootFolders);
         }
 
-        private void EnsureOneMonitoredOnFormat(List<Book> workGroup, BookMediaType mediaType, Author author)
+        private void EnsureOneMonitoredOnFormat(List<Book> workGroup, BookMediaType mediaType, Author author, List<RootFolder> rootFolders = null)
         {
             var formatBooks = GetSyncParticipants(workGroup, mediaType);
 
-            if (!formatBooks.Any() || formatBooks.Any(IsRowMonitored) || !CanEnableMonitoringForMediaType(author, mediaType))
+            if (!formatBooks.Any() || formatBooks.Any(IsRowMonitored) || !CanEnableMonitoringForMediaType(author, mediaType, rootFolders))
             {
                 return;
             }
@@ -1393,7 +1678,7 @@ namespace NzbDrone.Core.Books
             }
         }
 
-        private void ApplyMutationSyncForWorkGroup(Author author, List<Book> workGroup, HashSet<int> changedBookIds, Dictionary<int, Book> storedById)
+        private void ApplyMutationSyncForWorkGroup(Author author, List<Book> workGroup, HashSet<int> changedBookIds, Dictionary<int, Book> storedById, List<RootFolder> rootFolders = null)
         {
             if (author?.SyncMonitoredAcrossFormats != true ||
                 workGroup == null ||
@@ -1451,8 +1736,8 @@ namespace NzbDrone.Core.Books
 
             if (anyEnabled)
             {
-                EnsureOneMonitoredOnFormat(workGroup, BookMediaType.Audiobook, author);
-                EnsureOneMonitoredOnFormat(workGroup, BookMediaType.Ebook, author);
+                EnsureOneMonitoredOnFormat(workGroup, BookMediaType.Audiobook, author, rootFolders);
+                EnsureOneMonitoredOnFormat(workGroup, BookMediaType.Ebook, author, rootFolders);
                 return;
             }
 
@@ -1467,7 +1752,7 @@ namespace NzbDrone.Core.Books
             }
         }
 
-        private List<BookMonitoringSyncUpdate> GetSyncUpdatesForMutations(List<Book> changedBooks, Dictionary<int, Book> storedById)
+        private List<BookMonitoringSyncUpdate> GetSyncUpdatesForMutations(List<Book> changedBooks, Dictionary<int, Book> storedById, AuthorBooksHint authorBooksHint = null)
         {
             var syncUpdates = new List<BookMonitoringSyncUpdate>();
             if (_authorService == null || changedBooks == null || changedBooks.Count == 0)
@@ -1483,29 +1768,61 @@ namespace NzbDrone.Core.Books
                     continue;
                 }
 
-                var repositoryBooks = _bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>();
-                var authorStoredById = repositoryBooks.ToDictionary(book => book.Id, CloneStoredBook);
+                // PERF (chaptarr #163): fetch once per author (a handful of rows, rarely changes)
+                // instead of once per work group inside ApplyMutationSyncForWorkGroup below - this whole
+                // GetSyncUpdatesForMutations pass already runs once per book save.
+                var rootFolders = _rootFolderService?.All();
+
+                // PERF (chaptarr #163/#172): when the caller already has this author's full local
+                // catalogue in memory (RefreshBookService, mid author refresh), reuse it instead of
+                // re-fetching+re-cloning it from scratch on every single book saved - for an author with
+                // N books this call otherwise runs up to N times per refresh, each doing O(N) work, i.e.
+                // O(N^2) overall. Only trust the hint when it actually covers this author; an empty/
+                // mismatched hint falls back to the original always-correct DB fetch.
+                var hintForAuthor = authorBooksHint?.Books.Where(book => book?.AuthorId == authorBooks.Key).ToList();
+                var repositoryBooks = hintForAuthor != null && hintForAuthor.Count > 0
+                    ? hintForAuthor
+                    : _bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>();
+                PreloadEditions(authorBooks.Key, repositoryBooks);
                 var authorBooksById = repositoryBooks.ToDictionary(book => book.Id);
 
                 foreach (var changedBook in authorBooks)
                 {
-                    if (storedById.TryGetValue(changedBook.Id, out var storedBook))
-                    {
-                        authorStoredById[changedBook.Id] = CloneStoredBook(storedBook);
-                    }
-
                     authorBooksById[changedBook.Id] = changedBook;
                 }
 
-                var changedBookIds = authorBooks.Select(book => book.Id).ToHashSet();
-                var baseStates = authorBooksById.ToDictionary(pair => pair.Key, pair => SnapshotMonitoredState(pair.Value));
+                // The caller's changed books replaced their repository copies above; fill only those (a small
+                // IN query) rather than re-running the author-wide query.
+                PreloadEditionsByBook(authorBooks);
 
-                foreach (var workGroup in BuildWorkGroups(authorBooksById.Values.ToList()))
+                var changedBookIds = authorBooks.Select(book => book.Id).ToHashSet();
+
+                // PERF (chaptarr #163/#172): BuildWorkGroups is itself O(N^2) internally (pairwise
+                // WorkIdMatcher.CrossFormatSafeMatches over every remaining book), and this whole method
+                // runs once per book saved - for an N-book author that's an O(N^2) call happening N times.
+                // Measured live via dotnet-trace against a 10,107-book author: BuildWorkGroups accounted
+                // for ~99% of sampled CPU time in a 30s window. The grouping only depends on provider
+                // identity tokens, which don't change mid-refresh-pass for a given author, so it's safe to
+                // compute once per author (keyed on the same authorBooksHint reference already used above)
+                // and reuse for every subsequent book saved in this pass.
+                // The grouping is reused only while the identity of every book it depends on is unchanged
+                // (see AuthorBooksHint.GetWorkGroups); a refresh can move or merge books in place mid-pass.
+                var workGroups = hintForAuthor != null && hintForAuthor.Count > 0
+                    ? authorBooksHint.GetWorkGroups(authorBooksById, BuildWorkGroups)
+                    : BuildWorkGroups(authorBooksById.Values.ToList());
+
+                var affectedGroups = workGroups.Where(group => group.Any(book => changedBookIds.Contains(book.Id))).ToList();
+                var affectedBooks = affectedGroups.SelectMany(group => group).DistinctBy(book => book.Id).ToDictionary(book => book.Id);
+                var baseStates = affectedBooks.ToDictionary(pair => pair.Key, pair => SnapshotMonitoredState(pair.Value));
+                var authorStoredById = affectedBooks.ToDictionary(pair => pair.Key, pair =>
+                    CloneStoredBook(storedById.TryGetValue(pair.Key, out var stored) ? stored : pair.Value));
+
+                foreach (var workGroup in affectedGroups)
                 {
-                    ApplyMutationSyncForWorkGroup(author, workGroup, changedBookIds, authorStoredById);
+                    ApplyMutationSyncForWorkGroup(author, workGroup, changedBookIds, authorStoredById, rootFolders);
                 }
 
-                foreach (var pair in authorBooksById)
+                foreach (var pair in affectedBooks)
                 {
                     if (changedBookIds.Contains(pair.Key) || !HasMonitoringChanged(pair.Value, baseStates[pair.Key]))
                     {
@@ -1542,6 +1859,7 @@ namespace NzbDrone.Core.Books
                 var combinedBooks = (_bookRepository.GetBooksByAuthorId(authorBooks.Key) ?? new List<Book>())
                     .Concat(insertedBooks)
                     .ToList();
+                PreloadEditions(authorBooks.Key, combinedBooks);
 
                 foreach (var workGroup in BuildWorkGroups(combinedBooks))
                 {
@@ -1607,6 +1925,8 @@ namespace NzbDrone.Core.Books
                 {
                     continue;
                 }
+
+                PreloadEditions(authorId, authorBooks);
 
                 var storedById = authorBooks.ToDictionary(book => book.Id, CloneStoredBook);
                 var baseStates = authorBooks.ToDictionary(book => book.Id, SnapshotMonitoredState);
@@ -1723,11 +2043,23 @@ namespace NzbDrone.Core.Books
 
         public void UpdateMany(List<Book> books)
         {
+            UpdateMany(books, authorBooksHint: null);
+        }
+
+        // PERF (chaptarr #163/#172): not part of IBookService - adding a second parameter to the
+        // interface method would force every hand-written IBookService test double in the suite to
+        // implement a matching overload it has no use for. RefreshBookService (the only caller that
+        // has this hint available) holds a concrete BookService reference check instead, so every other
+        // caller/test double is completely unaffected and keeps calling the interface method as before.
+        internal void UpdateMany(List<Book> books, AuthorBooksHint authorBooksHint)
+        {
             // Ensure unique TitleSlugs for duplicate books when updating
             EnsureUniqueTitleSlugs(books);
             books.ForEach(EnsureBookDbFields);
-            var storedById = _bookRepository.Get(books.Select(book => book.Id)).ToDictionary(book => book.Id, CloneStoredBook);
-            var syncUpdates = GetSyncUpdatesForMutations(books, storedById);
+            var storedBooks = _bookRepository.Get(books.Select(book => book.Id)).ToList();
+            PreloadEditionsByBook(storedBooks);
+            var storedById = storedBooks.ToDictionary(book => book.Id, CloneStoredBook);
+            var syncUpdates = GetSyncUpdatesForMutations(books, storedById, authorBooksHint);
             var booksToUpdate = books
                 .Concat(syncUpdates.Select(update => update.Book))
                 .GroupBy(book => book.Id)
@@ -1757,9 +2089,11 @@ namespace NzbDrone.Core.Books
             }
 
             var bookIds = changedBooks.Select(book => book.Id).ToList();
-            var storedById = _bookRepository.FindExisting(bookIds)
+            var storedBooks = _bookRepository.FindExisting(bookIds)
                 .Where(book => book != null)
-                .ToDictionary(book => book.Id, CloneStoredBook);
+                .ToList();
+            PreloadEditionsByBook(storedBooks);
+            var storedById = storedBooks.ToDictionary(book => book.Id, CloneStoredBook);
 
             changedBooks = changedBooks.Where(book => storedById.ContainsKey(book.Id)).ToList();
             if (!changedBooks.Any())
@@ -2009,6 +2343,16 @@ namespace NzbDrone.Core.Books
 
         public void DeleteMany(List<Book> books)
         {
+            DeleteMany(books, false);
+        }
+
+        public void DeleteMany(List<Book> books, bool deleteFiles)
+        {
+            DeleteMany(books, deleteFiles, partOfAuthorDelete: false);
+        }
+
+        private void DeleteMany(List<Book> books, bool deleteFiles, bool partOfAuthorDelete)
+        {
             var booksToDelete = (books ?? new List<Book>())
                 .Where(book => book != null)
                 .GroupBy(book => book.Id)
@@ -2019,7 +2363,7 @@ namespace NzbDrone.Core.Books
 
             foreach (var book in booksToDelete)
             {
-                _eventAggregator.PublishEvent(new BookDeletedEvent(book, false, false));
+                _eventAggregator.PublishEvent(new BookDeletedEvent(book, deleteFiles, false, partOfAuthorDelete: partOfAuthorDelete));
 
                 _providerAliasService?.DeleteAliases("Book", book.Id);
             }
@@ -2112,6 +2456,7 @@ namespace NzbDrone.Core.Books
         public void SetMonitored(IEnumerable<int> ids, bool monitored)
         {
             var books = _bookRepository.Get(ids).ToList();
+            PreloadEditionsByBook(books);
             var storedById = books.ToDictionary(book => book.Id, CloneStoredBook);
 
             foreach (var book in books)
@@ -2156,6 +2501,7 @@ namespace NzbDrone.Core.Books
             }
 
             var books = _bookRepository.Get(ids).ToList();
+            PreloadEditionsByBook(books);
             var storedById = books.ToDictionary(book => book.Id, CloneStoredBook);
             var booksToMutate = new List<Book>();
 
@@ -2201,7 +2547,16 @@ namespace NzbDrone.Core.Books
         {
             var books = GetBooksByAuthorId(message.Author.Id);
 
-            DeleteMany(books);
+            // Previously hardcoded to false here regardless of what the author-level delete actually
+            // requested, so MediaFileService always unlinked (never deleted) each book's BookFile rows -
+            // leaving them behind as "unmapped files" even when the physical files really were deleted.
+            // partOfAuthorDelete: true because MediaFileDeletionService's own AuthorDeletedEvent handler
+            // already recursively deletes the author's whole folder(s) when DeleteFiles is set (a
+            // per-book disk delete here would just race that and duplicate recycle-bin entries), and
+            // NotificationService already sends one OnAuthorDelete notification for the whole author -
+            // a per-book OnBookDelete on top of that is the "notification per episode when the whole
+            // series was deleted" noise Sonarr/Radarr deliberately don't send.
+            DeleteMany(books, message.DeleteFiles, partOfAuthorDelete: true);
         }
 
         public void Execute(BulkSyncFormatMonitoringCommand message)
@@ -2223,38 +2578,45 @@ namespace NzbDrone.Core.Books
         {
             _logger.Debug("[DISPLAY-DEBUG] GetBooksForDisplay called with authorId={0}, mediaType={1}", authorId, mediaType);
 
+            BookMediaType? targetMediaType = null;
+
+            if (!string.IsNullOrEmpty(mediaType))
+            {
+                targetMediaType = mediaType.ToLower() == "ebook" ? BookMediaType.Ebook : BookMediaType.Audiobook;
+
+                // CRITICAL: Check if root folder exists for this media type
+                // If no root folder, return empty list (GUI shows nothing)
+                if (!HasRootFolderForMediaType(targetMediaType.Value))
+                {
+                    _logger.Debug("[DISPLAY-DEBUG] No root folder configured for {0}, returning empty list", mediaType);
+                    return new List<Book>();
+                }
+            }
+
             List<Book> allBooks;
 
             if (authorId.HasValue)
             {
                 allBooks = GetBooksByAuthor(authorId.Value);
                 _logger.Debug("[DISPLAY-DEBUG] GetBooksByAuthor returned {0} books for author {1}", allBooks.Count, authorId.Value);
+
+                if (targetMediaType.HasValue)
+                {
+                    allBooks = allBooks.Where(b => b.MediaType == targetMediaType.Value).ToList();
+                    _logger.Debug("[DISPLAY-DEBUG] Filtered to {0} books with MediaType={1}", allBooks.Count, targetMediaType.Value);
+                }
+            }
+            else if (targetMediaType.HasValue)
+            {
+                // The general list can be the whole library, so filter in SQL. Series links are
+                // left to the API mapper, which loads them for the books it returns.
+                allBooks = _bookRepository.GetBooksByMediaType(targetMediaType.Value);
+                _logger.Debug("[DISPLAY-DEBUG] GetBooksByMediaType returned {0} books with MediaType={1}", allBooks.Count, targetMediaType.Value);
             }
             else
             {
-                allBooks = GetAllBooks();
-                _logger.Debug("[DISPLAY-DEBUG] GetAllBooks returned {0} books", allBooks.Count);
-            }
-
-            // NEW DUAL-INSTANCE LOGIC: Filter by MediaType enum if specified
-            if (!string.IsNullOrEmpty(mediaType))
-            {
-                var targetMediaType = mediaType.ToLower() == "ebook" ? BookMediaType.Ebook : BookMediaType.Audiobook;
-                allBooks = allBooks.Where(b => b.MediaType == targetMediaType).ToList();
-                _logger.Debug("[DISPLAY-DEBUG] Filtered to {0} books with MediaType={1}", allBooks.Count, targetMediaType);
-
-                // CRITICAL: Check if root folder exists for this media type
-                // If no root folder, return empty list (GUI shows nothing)
-                var rootFolders = _rootFolderService.All();
-                var hasRootFolderForType = targetMediaType == BookMediaType.Audiobook
-                    ? rootFolders.Any(rf => rf.FolderType == FolderType.Audiobook || rf.FolderType == FolderType.Mixed)
-                    : rootFolders.Any(rf => rf.FolderType == FolderType.Ebook || rf.FolderType == FolderType.Mixed);
-
-                if (!hasRootFolderForType)
-                {
-                    _logger.Debug("[DISPLAY-DEBUG] No root folder configured for {0}, returning empty list", mediaType);
-                    return new List<Book>();
-                }
+                allBooks = _bookRepository.All().ToList();
+                _logger.Debug("[DISPLAY-DEBUG] Loaded all {0} books", allBooks.Count);
             }
 
             // Bulk API/index sync path is intentionally lean: one monitored edition per book, no files.
@@ -2265,7 +2627,7 @@ namespace NzbDrone.Core.Books
                 var bookIdSet = bookIds.ToHashSet();
                 var allEditions = authorId.HasValue
                     ? _editionService.GetEditionsByBook(bookIds)
-                    : _editionService.GetAllMonitoredEditions().Where(e => e != null && bookIdSet.Contains(e.BookId)).ToList();
+                    : _editionService.GetMonitoredEditionsForBookList(targetMediaType).Where(e => e != null && bookIdSet.Contains(e.BookId)).ToList();
                 var editionsByBook = allEditions.GroupBy(e => e.BookId).ToDictionary(g => g.Key, g => g.ToList());
 
                 var filesByEdition = new Dictionary<int, List<BookFile>>();
@@ -2309,6 +2671,69 @@ namespace NzbDrone.Core.Books
             return allBooks;
         }
 
+        public List<AuthorBookCount> GetBookshelfAuthorCounts(BookMediaType mediaType)
+        {
+            if (!HasRootFolderForMediaType(mediaType))
+            {
+                return new List<AuthorBookCount>();
+            }
+
+            return _bookRepository.GetBookCountsByAuthor(mediaType);
+        }
+
+        public List<Book> GetBooksForBookshelf(IEnumerable<int> authorIds, BookMediaType mediaType)
+        {
+            if (!HasRootFolderForMediaType(mediaType))
+            {
+                return new List<Book>();
+            }
+
+            var books = _bookRepository.GetBooksByAuthorIds(authorIds, mediaType);
+            if (!books.Any())
+            {
+                return books;
+            }
+
+            // Same lean shape as the general book list: monitored editions only, no files.
+            var bookIds = books.Select(b => b.Id).ToList();
+            var monitoredEditions = _editionService.GetEditionsByBook(bookIds)
+                .Where(e => e.Monitored)
+                .ToList();
+            var editionsByBook = monitoredEditions
+                .GroupBy(e => e.BookId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var book in books)
+            {
+                book.BookFiles = new List<BookFile>();
+
+                if (editionsByBook.TryGetValue(book.Id, out var bookEditions))
+                {
+                    foreach (var edition in bookEditions)
+                    {
+                        edition.BookFiles = null;
+                    }
+
+                    book.Editions = bookEditions;
+                }
+                else
+                {
+                    book.Editions = new List<Edition>();
+                }
+            }
+
+            return books;
+        }
+
+        private bool HasRootFolderForMediaType(BookMediaType mediaType)
+        {
+            var rootFolders = _rootFolderService.All();
+
+            return mediaType == BookMediaType.Audiobook
+                ? rootFolders.Any(rf => rf.FolderType == FolderType.Audiobook || rf.FolderType == FolderType.Mixed)
+                : rootFolders.Any(rf => rf.FolderType == FolderType.Ebook || rf.FolderType == FolderType.Mixed);
+        }
+
         public List<Book> GetBooksByBaseId(string baseBookId)
         {
             // Find all books that share any provider ID
@@ -2321,7 +2746,7 @@ namespace NzbDrone.Core.Books
                 .ToList();
         }
 
-        public Book AddWantedEdition(int bookId, int editionId)
+        public Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false)
         {
             var baseBook = GetBook(bookId);
             if (baseBook == null)
@@ -2345,9 +2770,11 @@ namespace NzbDrone.Core.Books
                 throw new InvalidOperationException($"Edition {editionId} does not belong to book {bookId}");
             }
 
-            // If this book has no files, it is already a "missing" instance; just pin the selected edition here.
+            // If this book has no files, it is already a "missing" instance; just pin the selected
+            // edition here. When the caller explicitly asks for a variant, fall through instead so a
+            // second narration can be tracked alongside the first rather than replacing it.
             var existingFiles = _mediaFileService.GetFilesByBook(baseBook.Id);
-            if (!existingFiles.Any())
+            if (!existingFiles.Any() && !asNewVariant)
             {
                 var editions = _editionService.GetEditionsByBook(baseBook.Id);
 
@@ -2428,7 +2855,8 @@ namespace NzbDrone.Core.Books
 
             // If a matching wanted instance already exists, return it (don’t create duplicates).
             var selectedEditionKey = GetEditionKey(selectedEdition);
-            if (baseBook.AuthorId > 0 && !string.IsNullOrWhiteSpace(selectedEditionKey))
+            var selectedNarratorKeys = GetEditionNarratorKeys(selectedEdition);
+            if (baseBook.AuthorId > 0 && (!string.IsNullOrWhiteSpace(selectedEditionKey) || selectedNarratorKeys.Count > 0))
             {
                 var authorBooks = _bookRepository.GetBooksByAuthorId(baseBook.AuthorId);
                 var wantedCandidates = authorBooks
@@ -2453,12 +2881,16 @@ namespace NzbDrone.Core.Books
                         }
 
                         var candidateKey = GetEditionKey(candidateManual);
-                        if (candidateKey == null)
-                        {
-                            continue;
-                        }
 
-                        if (string.Equals(candidateKey, selectedEditionKey, StringComparison.OrdinalIgnoreCase))
+                        var sameEdition = candidateKey != null &&
+                                          !string.IsNullOrWhiteSpace(selectedEditionKey) &&
+                                          string.Equals(candidateKey, selectedEditionKey, StringComparison.OrdinalIgnoreCase);
+
+                        // Different printings of the same narration are distinct edition records but
+                        // the same request, so an existing variant for this narrator already covers it.
+                        var sameNarrator = HaveSameNarration(candidateManual, selectedEdition);
+
+                        if (sameEdition || sameNarrator)
                         {
                             if (!candidate.AudiobookMonitored)
                             {
@@ -2474,6 +2906,26 @@ namespace NzbDrone.Core.Books
                             return GetBook(candidate.Id);
                         }
                     }
+                }
+            }
+
+            // The base book may already be pinned to this narration from an earlier in-place
+            // selection, in which case a variant would just duplicate what is already wanted.
+            if (asNewVariant && selectedNarratorKeys.Count > 0)
+            {
+                var baseEditions = _editionService.GetEditionsByBook(baseBook.Id);
+                if (baseEditions == null || baseEditions.Count == 0)
+                {
+                    baseEditions = baseBook.Editions?.ToList() ?? new List<Edition>();
+                }
+
+                var basePinned = baseEditions.FirstOrDefault(e => e.ManualAdd)
+                                 ?? baseEditions.FirstOrDefault(e => e.Monitored);
+
+                if (basePinned != null &&
+                    HaveSameNarration(basePinned, selectedEdition))
+                {
+                    return GetBook(baseBook.Id);
                 }
             }
 
@@ -2619,6 +3071,39 @@ namespace NzbDrone.Core.Books
             }
 
             return GetBook(wantedBook.Id);
+        }
+
+        // Narrator names arrive from several providers with inconsistent spacing and casing
+        // ("Peter   Noble"), so compare on normalised tokens rather than the raw string.
+        private static bool HaveSameNarration(Edition left, Edition right)
+        {
+            var names = GetEditionNarratorKeys(left).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // A shared cast member or a generic "Full Cast" label cannot identify a recording.
+            return left?.IsGraphicAudio == right?.IsGraphicAudio &&
+                   names.Count > 0 && !names.Contains("full cast") && !names.Contains("various") &&
+                   names.SetEquals(GetEditionNarratorKeys(right));
+        }
+
+        private static List<string> GetEditionNarratorKeys(Edition edition)
+        {
+            var names = new List<string>();
+
+            if (edition?.NarratorNames != null)
+            {
+                names.AddRange(edition.NarratorNames);
+            }
+
+            if (names.Count == 0 && !string.IsNullOrWhiteSpace(edition?.Narrator))
+            {
+                names.Add(edition.Narrator);
+            }
+
+            return names
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => string.Join(" ", Services.TextNormalizer.NormalizeAndTokenize(name)))
+                .Where(key => key.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private Edition SelectMonitoredEditionForInsert(IEnumerable<Edition> editions, BookMediaType mediaType)

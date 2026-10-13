@@ -20,11 +20,10 @@
   },
   "include": [
       "./src/**/*",
-      "./.eslintrc.js",
-      "./build/webpack.config.js",
-      "./typings/*.ts"
+      "./typings/*.d.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "./src/sw.js"
   ]
 }
