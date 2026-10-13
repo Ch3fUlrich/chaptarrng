@@ -232,6 +232,15 @@ data, security, and packaging checks.
 | Data and API compatibility | Existing ChaptarrNG databases, configuration, local IDs, and SeerrNG links | BookshelfNG databases/configuration and their provider identities, local IDs, settings, histories, and files | Keep each source recoverable; perform explicit staged conversion; preserve or reconcile identities and references; prove rollback, upgrade, and restart behavior for populated fixtures. |
 | Complete fork history and active changes | Every ChaptarrNG commit after the shared fork base, including the 306-commit active backlog branch at `c26dd7f`, consolidation PR #73, localization PR #72, and validation/maintainer-workflow PRs #69 and #71 | Every BookshelfNG commit/path in the pinned consolidation inventory | Generate and review exact source-to-upstream inventories for `main`, each active branch, and every open feature PR at retirement time. Retain, port, or prove equivalence for every behavior; a proposed removal remains blocked until an explicit maintainer decision. |
 
+The data row has known structural blockers: BookshelfNG separates `Authors`
+and `AuthorMetadata`, and one source book may split into multiple
+media-specific Chaptarr books; source download history has no `BookId` although
+the target requires one; source blocklists use local IDs while Chaptarr requires
+provider-qualified IDs; and source extra-file rows may have no `BookFileId`
+although the target schema requires one. Conversion must define durable,
+lossless mappings for each case and test them with populated fixtures before
+the data-compatibility blocker can close.
+
 All gates are open until tested against a supported upstream release. The
 current upstream comparison is pinned above; it does not prove equivalence for
 later upstream commits. BookshelfNG's current inventory and migration evidence
