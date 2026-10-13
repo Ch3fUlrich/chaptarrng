@@ -549,7 +549,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(diskProxy.DeletedFolders, Does.Not.Contain(NormalizePath(rootFolder)));
         }
 
-        private static readonly string HobbFolder = Path.Combine(Path.GetTempPath(), "RenameBookFileServiceFixture", "audiobooks", "Robin Hobb");
+        private static readonly string HobbFolder = Path.Combine(Path.DirectorySeparatorChar.ToString(), "audiobooks", "Robin Hobb");
         private static readonly string OldBookFolder = Path.Combine(HobbFolder, "L'Assassin Royal", "L'apprenti assassin");
         private static readonly string NewBookFolder = Path.Combine(HobbFolder, "L'Assassin royal", "01 - L'apprenti assassin");
 
