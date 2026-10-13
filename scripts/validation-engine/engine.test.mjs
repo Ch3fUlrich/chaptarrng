@@ -1,11 +1,12 @@
 // Copyright (C) ChaptarrNG contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readlinkSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { createPlan, createShortTemporaryPathAlias, currentRepoFiles, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, sha256GitText } from './engine.mjs';
+import { validation } from './config.mjs';
 
 function withEnvironmentVariable(name, value, action) {
   const previous = process.env[name];
@@ -192,11 +193,10 @@ test('Linux browser temp aliases fall back when the primary path cannot be creat
 test('only the NUnit browser task receives its explicit Playwright cache path', (t) => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-browser-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const env = isolatedChildEnvironment({
-    id: 'dotnet-core-tests',
-    kind: 'test',
-    passEnv: ['PLAYWRIGHT_BROWSERS_PATH'],
-  }, root, {
+  const task = validation.tasks.find((candidate) => candidate.id === 'dotnet-core-tests');
+  assert.ok(task);
+  assert.deepEqual(task.passEnv, ['PLAYWRIGHT_BROWSERS_PATH']);
+  const env = isolatedChildEnvironment(task, root, {
     PATH: '/toolchain/bin',
     HOME: '/operator/home',
     PLAYWRIGHT_BROWSERS_PATH: '/runner/temp/playwright-browsers',
@@ -204,6 +204,7 @@ test('only the NUnit browser task receives its explicit Playwright cache path', 
     NODE_OPTIONS: '--require=/operator/injected.cjs',
   });
   assert.equal(env.PLAYWRIGHT_BROWSERS_PATH, '/runner/temp/playwright-browsers');
+  assert.equal(env.DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT, process.platform === 'linux' ? 'true' : 'false');
   assert.equal(env.HOME, path.join(root, 'dotnet-core-tests-environment', 'home'));
   assert.equal(env.GITHUB_TOKEN, undefined);
   assert.equal(env.NODE_OPTIONS, undefined);
@@ -212,6 +213,14 @@ test('only the NUnit browser task receives its explicit Playwright cache path', 
     passEnv: ['PLAYWRIGHT_BROWSERS_PATH'],
   }, root, { PLAYWRIGHT_BROWSERS_PATH: '/runner/temp/playwright-browsers' }),
   /unapproved inherited environment variable/);
+});
+
+test('Chromium installation and tests share the private-runner cache path', () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/build.yml', import.meta.url), 'utf8');
+  const cacheSetting = 'PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers';
+  assert.doesNotMatch(workflow, /^(<<<<<<<|=======|>>>>>>>)( .*)?$/m);
+  assert.equal(workflow.split('\n').filter((line) => line.trim() === cacheSetting).length, 2);
+  assert.match(workflow, /PLAYWRIGHT_BROWSERS_PATH=\$PLAYWRIGHT_BROWSERS_PATH.*\$GITHUB_ENV/);
 });
 
 test('test-only planning distinguishes local and hosted tasks regardless of ambient workflow environment', () => {

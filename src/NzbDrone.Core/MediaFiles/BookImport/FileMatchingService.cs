@@ -4602,7 +4602,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     fileDurationSeconds: fileDurationSeconds,
                     onContradictoryEvidence: () => embeddedContradiction = true,
                     groupMemberTags: file.GroupMemberTags,
-                    hardAllowedBookIds: hardAllowedBookIds);
+                    hardAllowedBookIds: hardAllowedBookIds,
+                    seriesPositionTags: embeddedTags);
                 var match = matchResult?.Match;
                 if (match != null)
                 {
@@ -4688,7 +4689,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     var matchResult = RunFtsWithSmokeTest(authorId, pathTokens, mediaType, "path-tags", pathTags, file.Path,
                         fileDurationSeconds: fileDurationSeconds,
                         allowNarratorEvidence: false,
-                        hardAllowedBookIds: hardAllowedBookIds);
+                        hardAllowedBookIds: hardAllowedBookIds,
+                        seriesPositionTags: embeddedTags);
                     var match = matchResult?.Match;
                     if (match != null)
                     {
@@ -6035,6 +6037,17 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
 
                 string detectedSurplusToken = null;
+                bool IsCorroboratedSeriesPosition(string token)
+                {
+                    var normalizedPosition = NormalizeSeriesPosition(token);
+                    var positionEvidence = selectedCandidate.PositionEvidence;
+                    return normalizedPosition != null &&
+                           positionEvidence?.CandidatePositionValues.Contains(normalizedPosition) == true &&
+                           positionEvidence.Fields.Any(field =>
+                               field?.Disposition == SeriesPositionDisposition.Match &&
+                               field.DetectedPositions.Contains(normalizedPosition));
+                }
+
                 bool HasSurplusMarker(string token)
                 {
                     var trimmed = NormalizeTitleComparisonToken(token.Trim(TitleTokenTrimChars));
@@ -6043,9 +6056,18 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         return false;
                     }
 
-                    if (trimmed.All(char.IsDigit) ||
-                        SeriesPositionTokenHelper.LooksLikeRomanNumeralToken(trimmed) ||
-                        SurplusVolumeMarkerTokens.Contains(trimmed))
+                    if (trimmed.All(char.IsDigit) || SeriesPositionTokenHelper.LooksLikeRomanNumeralToken(trimmed))
+                    {
+                        if (IsCorroboratedSeriesPosition(trimmed))
+                        {
+                            return false;
+                        }
+
+                        detectedSurplusToken = trimmed;
+                        return true;
+                    }
+
+                    if (SurplusVolumeMarkerTokens.Contains(trimmed))
                     {
                         detectedSurplusToken = trimmed;
                         return true;
@@ -6095,7 +6117,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             bool allowNarratorEvidence = true,
             Action onContradictoryEvidence = null,
             IReadOnlyList<Dictionary<string, List<string>>> groupMemberTags = null,
-            IReadOnlySet<int> hardAllowedBookIds = null)
+            IReadOnlySet<int> hardAllowedBookIds = null,
+            Dictionary<string, List<string>> seriesPositionTags = null)
         {
             string Truncate(string value, int maxLen)
             {
@@ -7160,7 +7183,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     var includeDurationGatedNearExact = mediaType == BookMediaType.Audiobook && fileDurationSeconds.HasValue;
                     var unfilteredDirectEditionEvidence = GetCandidateTitleEvidence(result.EditionTitle, includeDurationGatedNearExact);
                     var directEditionEvidence = unfilteredDirectEditionEvidence;
-                    var seriesPositionEvidence = GetSeriesPositionEvidence(result, allTags, booksById);
+                    var seriesPositionEvidence = GetSeriesPositionEvidence(
+                        result,
+                        allTags,
+                        booksById,
+                        seriesPositionTags);
                     var invalidatedTitleEvidenceFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     var titleEvidenceCounted = false;
 
@@ -9825,7 +9852,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             private SeriesPositionEvidence GetSeriesPositionEvidence(
                 EditionFtsMatch candidate,
                 IDictionary<string, List<string>> allTags,
-                IDictionary<int, Book> booksById)
+                IDictionary<int, Book> booksById,
+                IDictionary<string, List<string>> seriesPositionTags = null)
             {
                 var noSignal = new SeriesPositionEvidence();
 
@@ -9846,7 +9874,32 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return noSignal;
                 }
 
-                var fieldEvidence = ExtractSeriesPositionsFromTags(allTags, candidateSeriesContexts);
+                var tagsForPositionEvidence = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+                foreach (var tag in allTags)
+                {
+                    tagsForPositionEvidence[tag.Key] = tag.Value;
+                }
+
+                if (seriesPositionTags != null)
+                {
+                    foreach (var tag in seriesPositionTags.Where(tag => IsExplicitSeriesTagKey(tag.Key)))
+                    {
+                        if (tagsForPositionEvidence.TryGetValue(tag.Key, out var existingValues))
+                        {
+                            tagsForPositionEvidence[tag.Key] = (existingValues ?? new List<string>())
+                                .Concat(tag.Value ?? new List<string>())
+                                .Where(value => !string.IsNullOrWhiteSpace(value))
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .ToList();
+                        }
+                        else
+                        {
+                            tagsForPositionEvidence[tag.Key] = tag.Value;
+                        }
+                    }
+                }
+
+                var fieldEvidence = ExtractSeriesPositionsFromTags(tagsForPositionEvidence, candidateSeriesContexts);
                 if (fieldEvidence.Count == 0)
                 {
                     return noSignal;
@@ -10173,6 +10226,20 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
             }
 
+            private static bool IsExplicitSeriesTagKey(string key)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    return false;
+                }
+
+                var separator = key.LastIndexOf(':');
+                var leaf = separator >= 0 && separator < key.Length - 1
+                    ? key.Substring(separator + 1)
+                    : key;
+                return string.Equals(leaf, "series", StringComparison.OrdinalIgnoreCase);
+            }
+
             private List<SeriesPositionFieldEvidence> ExtractSeriesPositionsFromTags(
                 IDictionary<string, List<string>> allTags,
                 IReadOnlyList<CandidateSeriesContext> candidateSeriesContexts)
@@ -10190,7 +10257,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         continue;
                     }
 
-                    if (IsExcludedFromMatching(kv.Key))
+                    // A series field remains excluded from title-token matching, but its exact
+                    // series name plus a DB-confirmed position can corroborate a title suffix.
+                    if (IsExcludedFromMatching(kv.Key) && !IsExplicitSeriesTagKey(kv.Key))
                     {
                         continue;
                     }
