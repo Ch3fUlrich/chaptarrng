@@ -302,6 +302,52 @@ namespace Chaptarr.Core.Test.Books
             public int GetNextVariantNumber(string baseSeriesId, BookMediaType? mediaType = null) => throw new NotImplementedException();
         }
 
+        [TestCase("de")]
+        [TestCase("ger")]
+        [TestCase("deu")]
+        public void AddWantedEdition_Language_RowLanguageMatchesProfileFilter(string requested)
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var englishEdition = new Edition { Id = 101, BookId = 20, Title = "English", ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var germanEdition = new Edition { Id = 102, BookId = 20, Title = "German", ForeignEditionId = "ger-1", ReadingFormatId = 3, Monitored = false, Language = "deu" };
+
+            var baseBook = new Book
+            {
+                Id = 20,
+                AuthorId = author.Id,
+                Title = "Test Book",
+                TitleSlug = "test-book",
+                MediaType = BookMediaType.Ebook,
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
+                Editions = new List<Edition> { englishEdition, germanEdition }
+            };
+
+            var editions = new InMemoryEditionService();
+            editions.Seed(baseBook.Id, englishEdition, germanEdition);
+
+            var repo = new InMemoryBookRepository(baseBook);
+            var mediaFiles = new StubMediaFileService();
+
+            var sut = new BookService(
+                repo,
+                editions,
+                new StubEventAggregator(),
+                new StubAuthorService(author),
+                mediaFiles,
+                rootFolderService: null,
+                seriesBookLinkRepository: null,
+                multiCopySeriesService: new StubMultiCopySeriesService(),
+                logger: LogManager.GetCurrentClassLogger());
+
+            var result = sut.AddWantedEdition(baseBook.Id, new WantedEditionSelection { Language = requested, MediaType = BookMediaType.Ebook });
+
+            NzbDrone.Core.Books.Services.EditionMetadataProfileFilter.ParseAllowedLanguages("deu", out var allowedLanguages, out _, out _, out _);
+
+            Assert.That(result.Book.LanguageCode, Is.EqualTo("deu"));
+            Assert.That(allowedLanguages, Does.Contain(result.Book.LanguageCode));
+        }
+
         [Test]
         public void AddWantedEdition_Language_CreatesEbookVariantRow()
         {
