@@ -15,6 +15,7 @@ using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Http;
+using NzbDrone.Core.Parser;
 
 namespace NzbDrone.Core.MetadataSource.RanobeDb
 {

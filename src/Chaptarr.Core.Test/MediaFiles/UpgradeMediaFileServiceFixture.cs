@@ -140,7 +140,8 @@ namespace Chaptarr.Core.Test.MediaFiles
                 DispatchProxy.Create<IDiskProvider, DiskProviderProxy>(),
                 DispatchProxy.Create<IRootFolderService, NullRootFolderServiceProxy>(),
                 DispatchProxy.Create<ICalibreProxy, ThrowingProxy<ICalibreProxy>>(),
-                LogManager.GetCurrentClassLogger());
+                LogManager.GetCurrentClassLogger(),
+                null);
 
             Assert.Throws<RootFolderNotFoundException>(() => subject.UpgradeBookFile(replacement, localBook));
         }

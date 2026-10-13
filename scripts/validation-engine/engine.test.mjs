@@ -89,7 +89,10 @@ test('task environments use an allowlist and run-owned user and temporary direct
   const env = isolatedChildEnvironment({
     id: 'fixture',
     kind: 'test',
-    env: { FIXTURE_SETTING: 'expected' },
+    env: {
+      FIXTURE_SETTING: 'expected',
+      PLAYWRIGHT_BROWSERS_PATH: '/operator/playwright',
+    },
   }, root, {
     PATH: '/toolchain/bin',
     DOTNET_ROOT: '/toolchain/dotnet',
@@ -111,6 +114,7 @@ test('task environments use an allowlist and run-owned user and temporary direct
   assert.equal(env.NODE_ENV, 'test');
   assert.equal(env.CI, 'true');
   assert.equal(env.FIXTURE_SETTING, 'expected');
+  assert.equal(env.PLAYWRIGHT_BROWSERS_PATH, '/operator/playwright');
   for (const key of ['NODE_OPTIONS', 'GITHUB_TOKEN', 'RANDOM_PRIVATE_VALUE']) assert.equal(env[key], undefined);
   if (process.platform !== 'win32') {
     assert.equal(statSync(env.HOME).mode & 0o777, 0o700);

@@ -98,7 +98,7 @@ namespace Chaptarr.Core.Test.Notifications
 
             var author = new Author { Id = 1, Name = "Novel Author" };
             var book = new Book { Id = 2, Title = "Imported Novel", Author = author };
-            var importedFile = new BookFile { Id = 3, BookId = book.Id, Path = "/books/imported-novel.epub" };
+            var importedFile = new BookFile { Id = 3, Path = "/books/imported-novel.epub" };
             var imported = new BookImportedEvent(
                 author,
                 book,

@@ -38,8 +38,8 @@ namespace Chaptarr.Api.V1.ImportLists
         public int Id { get; set; }
         public int ImportListId { get; set; }
         public string ImportListName { get; set; }
-        public System.DateTime StartedAt { get; set; }
-        public System.DateTime? EndedAt { get; set; }
+        public global::System.DateTime StartedAt { get; set; }
+        public global::System.DateTime? EndedAt { get; set; }
         public long DurationMilliseconds { get; set; }
         public string Result { get; set; }
         public string FailureStage { get; set; }

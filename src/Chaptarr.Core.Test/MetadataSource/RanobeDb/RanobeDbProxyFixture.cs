@@ -36,7 +36,7 @@ namespace Chaptarr.Core.Test.MetadataSource.RanobeDb
         {
             var proxy = CreateProxy(request =>
             {
-                if (request.Url.AbsolutePath == "/api/v0/book/2787")
+                if (new Uri(request.Url.ToString()).AbsolutePath == "/api/v0/book/2787")
                 {
                     return Json(request, """
                     {
@@ -84,7 +84,7 @@ namespace Chaptarr.Core.Test.MetadataSource.RanobeDb
         {
             var proxy = CreateProxy(request =>
             {
-                if (request.Url.AbsolutePath == "/api/v0/release/901")
+                if (new Uri(request.Url.ToString()).AbsolutePath == "/api/v0/release/901")
                 {
                     return Json(request, """
                     {
@@ -98,7 +98,7 @@ namespace Chaptarr.Core.Test.MetadataSource.RanobeDb
                     """);
                 }
 
-                if (request.Url.AbsolutePath == "/api/v0/book/2787")
+                if (new Uri(request.Url.ToString()).AbsolutePath == "/api/v0/book/2787")
                 {
                     return Json(request, """
                     {
@@ -178,7 +178,7 @@ namespace Chaptarr.Core.Test.MetadataSource.RanobeDb
         {
             var proxy = CreateProxy(request =>
             {
-                if (request.Url.AbsolutePath == "/api/v0/release/901")
+                if (new Uri(request.Url.ToString()).AbsolutePath == "/api/v0/release/901")
                 {
                     return Json(request, """
                     {
@@ -190,7 +190,7 @@ namespace Chaptarr.Core.Test.MetadataSource.RanobeDb
                     """);
                 }
 
-                if (request.Url.AbsolutePath == "/api/v0/book/2787")
+                if (new Uri(request.Url.ToString()).AbsolutePath == "/api/v0/book/2787")
                 {
                     return Json(request, """
                     {

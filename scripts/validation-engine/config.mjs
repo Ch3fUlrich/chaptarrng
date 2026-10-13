@@ -77,7 +77,10 @@ export const validation = {
         '--configuration', 'Release', '--no-restore', '--no-build', '--verbosity', 'normal',
         '--logger:nunit;LogFilePath={RESULTS}',
       ],
-      env: { DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT: process.platform === 'linux' ? 'true' : 'false' },
+      env: {
+        DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT: process.platform === 'linux' ? 'true' : 'false',
+        PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH,
+      },
       inventory: ['core-dotnet-test-sources'],
       nodeIds: ['chaptarr-linux-X64', 'chaptarr-win-X64', 'chaptarr-osx-ARM64'],
       artifacts: ['_tests/net10.0/Chaptarr.Core.Test.dll'],

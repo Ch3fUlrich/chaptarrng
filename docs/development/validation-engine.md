@@ -36,6 +36,10 @@ dotnet restore src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj
 dotnet build src/Chaptarr.NoTests.sln --configuration Release --no-restore
 dotnet build src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj --configuration Release --no-restore -p:UseSharedCompilation=false
 unset SIXLABORS_LICENSE_KEY
+if [ "$(uname -s)" = Linux ]; then
+  export PLAYWRIGHT_BROWSERS_PATH="$(mktemp -d "${TMPDIR:-/tmp}/chaptarr-playwright.XXXXXX")"
+  pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
+fi
 node scripts/validation-engine/engine.mjs --plan --tests-only --json
 node scripts/validation-engine/engine.mjs --tests-only
 ```

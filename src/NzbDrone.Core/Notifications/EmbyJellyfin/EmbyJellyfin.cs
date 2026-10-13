@@ -18,7 +18,8 @@ namespace NzbDrone.Core.Notifications.EmbyJellyfin
 
         public override ValidationResult Test()
         {
-            return _proxy.Test(Settings);
+            var failure = _proxy.Test(Settings);
+            return failure == null ? new ValidationResult() : new ValidationResult(new[] { failure });
         }
 
         public override void OnReleaseImport(BookDownloadMessage message)

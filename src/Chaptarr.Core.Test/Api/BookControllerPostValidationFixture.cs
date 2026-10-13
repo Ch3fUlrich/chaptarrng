@@ -67,6 +67,7 @@ namespace Chaptarr.Core.Test.Api
                     seriesBookLinkService: null,
                     authorStatisticsService: null,
                     mediaFileService: null,
+                    mediaCoverProxy: null,
                     coverMapper: null,
                     upgradableSpecification: null,
                     signalRBroadcaster: null,

@@ -85,8 +85,11 @@ namespace Chaptarr.Core.Test.Notifications.MqttGateway
                 Health = "ok"
             };
 
-            Assert.That(snapshot with { GeneratedAt = snapshot.GeneratedAt.AddMinutes(5) }.StateFingerprint(), Is.EqualTo(snapshot.StateFingerprint()));
-            Assert.That(snapshot with { BooksTotal = 13 }.StateFingerprint(), Is.Not.EqualTo(snapshot.StateFingerprint()));
+            var laterSnapshot = snapshot with { GeneratedAt = snapshot.GeneratedAt.AddMinutes(5) };
+            var changedSnapshot = snapshot with { BooksTotal = 13 };
+
+            Assert.That(laterSnapshot.StateFingerprint(), Is.EqualTo(snapshot.StateFingerprint()));
+            Assert.That(changedSnapshot.StateFingerprint(), Is.Not.EqualTo(snapshot.StateFingerprint()));
         }
     }
 }

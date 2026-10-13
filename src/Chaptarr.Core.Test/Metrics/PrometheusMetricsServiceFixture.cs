@@ -19,7 +19,7 @@ namespace Chaptarr.Core.Test.Metrics
     {
         private class QueueServiceProxy : DispatchProxy
         {
-            public List<Queue> Items { get; set; } = new();
+            public List<NzbDrone.Core.Queue.Queue> Items { get; set; } = new();
 
             protected override object Invoke(MethodInfo targetMethod, object[] args)
             {
@@ -35,7 +35,7 @@ namespace Chaptarr.Core.Test.Metrics
 
         private class HealthCheckServiceProxy : DispatchProxy
         {
-            public List<HealthCheck> Items { get; set; } = new();
+            public List<NzbDrone.Core.HealthCheck.HealthCheck> Items { get; set; } = new();
 
             protected override object Invoke(MethodInfo targetMethod, object[] args)
             {
@@ -91,12 +91,12 @@ namespace Chaptarr.Core.Test.Metrics
         public void should_limit_labels_to_fixed_values_and_match_queue_and_health_snapshots()
         {
             var subject = CreateSubject(out var queueProxy, out var healthProxy);
-            queueProxy.Items = new List<Queue>
+            queueProxy.Items = new List<NzbDrone.Core.Queue.Queue>
             {
                 new() { Status = "Warning" },
                 new() { Status = "PRIVATE QUEUE STATUS" }
             };
-            healthProxy.Items = new List<HealthCheck>
+            healthProxy.Items = new List<NzbDrone.Core.HealthCheck.HealthCheck>
             {
                 new(typeof(PrometheusMetricsService), HealthCheckResult.Warning, "PRIVATE HEALTH MESSAGE")
             };
