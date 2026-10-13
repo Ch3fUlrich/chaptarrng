@@ -4484,7 +4484,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
 
                 [TestCase(false, false, false)]
                 [TestCase(true, false, true)]
-                [TestCase(true, true, false)]
+                [TestCase(true, true, true)]
                 public void should_only_block_generic_series_title_when_no_clean_title_field_remains(
                     bool includeCleanTitleField,
                     bool isCollectionTitle,
@@ -4495,7 +4495,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
 
                     var fts = new StubEditionFtsRepository(new List<EditionFtsMatch>
                     {
-                        // A clean title can prove a generic series book, but must not turn a boxed set into a single book.
+                        // The exact title must select the specific book even when FTS puts a boxed set first.
                         new EditionFtsMatch
                         {
                             EditionId = 1,
