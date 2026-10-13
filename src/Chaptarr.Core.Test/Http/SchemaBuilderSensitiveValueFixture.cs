@@ -29,6 +29,8 @@ namespace Chaptarr.Core.Test.Http
                 return new Dictionary<string, string>();
             }
 
+            public string GetCurrentLocale() => "en";
+
             public string GetLocalizedString(string phrase)
             {
                 return phrase;
