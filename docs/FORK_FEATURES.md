@@ -247,12 +247,18 @@ later upstream commits. BookshelfNG's current inventory and migration evidence
 are recorded in its
 [consolidation report](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
 and [feature matrix](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
-The unpublished consolidation worktree passes 3,966 of 3,969 Chaptarr Core
-tests (3 skipped), including 36 focused preference and matching tests. That
-validates code paths, not full feature parity. The published `v0.9.969` release
-has no populated BookshelfNG converter or channel bridge. Until conversion,
-parity, consumer probes, and the applicable channel upgrades pass, neither
-BookshelfNG nor ChaptarrNG can be described as seamlessly replaceable.
+At candidate `d763525`, the unpublished consolidation worktree passed 3,966 of
+3,969 Chaptarr Core tests (3 skipped), including 36 focused preference and
+matching tests. Current PR #73 head `a4d8ad9` adds a migration-controller
+regression; its focused database-lineage fixture passes 8/8 locally and proves
+a Bookshelf-shaped SQLite database is rejected before numbered migrations
+without changing source bytes. The full Core suite has not been rerun on this
+head, and hosted checks are queued. These results validate code paths and
+fail-closed behavior, not feature parity or conversion. The published
+`v0.9.969` release has no populated BookshelfNG converter or channel bridge.
+Until conversion, parity, consumer probes, and the applicable channel upgrades
+pass, neither BookshelfNG nor ChaptarrNG can be described as seamlessly
+replaceable.
 
 ## What would allow replacement
 
