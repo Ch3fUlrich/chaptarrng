@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "Livres audio + livres numériques",
+    "AbsLibraryModeAudioOnly": "Audio uniquement",
     "AbsMappingsAbsLibraryHeader": "Dossier de la bibliothèque ABS",
     "AbsMappingsAudioSlotLabel": "Audio",
     "AbsMappingsChaptarrRootHeader": "Dossier racine Chaptarr",

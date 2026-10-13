@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "Audiolibros + libros electrónicos",
+    "AbsLibraryModeAudioOnly": "Solo audio",
     "AbsMappingsAbsLibraryHeader": "Carpeta de la biblioteca de ABS",
     "AbsMappingsAudioSlotLabel": "Audio",
     "AbsMappingsChaptarrRootHeader": "Carpeta raíz de Chaptarr",

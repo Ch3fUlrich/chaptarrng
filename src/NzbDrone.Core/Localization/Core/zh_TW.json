@@ -1,6 +1,6 @@
 {
-    "AbsLibraryModeAudioAndEbooks": "音訊 + 電子書",
-    "AbsLibraryModeAudioOnly": "僅音訊",
+    "AbsLibraryModeAudioAndEbooks": "有聲書 + 電子書",
+    "AbsLibraryModeAudioOnly": "僅有聲書",
     "AbsMappingsAbsLibraryHeader": "ABS 資料庫資料夾",
     "AbsMappingsAudioSlotLabel": "音訊",
     "AbsMappingsChaptarrRootHeader": "Chaptarr 根目錄資料夾",

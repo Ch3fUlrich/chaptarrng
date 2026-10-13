@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "有声书 + 电子书",
+    "AbsLibraryModeAudioOnly": "仅有声书",
     "AbsMappingsAbsLibraryHeader": "ABS 媒体库文件夹",
     "AbsMappingsAudioSlotLabel": "音频",
     "AbsMappingsChaptarrRootHeader": "Chaptarr 根文件夹",

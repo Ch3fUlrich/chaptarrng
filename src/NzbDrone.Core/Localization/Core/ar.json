@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "كتب صوتية وكتب إلكترونية",
+    "AbsLibraryModeAudioOnly": "كتب صوتية فقط",
     "AbsMappingsAbsLibraryHeader": "مجلد مكتبة ABS",
     "AbsMappingsAudioSlotLabel": "الصوت",
     "AbsMappingsChaptarrRootHeader": "مجلد Chaptarr الجذري",

@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "オーディオブック + 電子書籍",
+    "AbsLibraryModeAudioOnly": "オーディオブックのみ",
     "AbsMappingsAbsLibraryHeader": "ABSライブラリフォルダー",
     "AbsMappingsAudioSlotLabel": "音声",
     "AbsMappingsChaptarrRootHeader": "Chaptarrルートフォルダー",

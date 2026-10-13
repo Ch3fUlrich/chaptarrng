@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "ऑडियोबुक + ई-पुस्तकें",
+    "AbsLibraryModeAudioOnly": "केवल ऑडियो",
     "AbsMappingsAbsLibraryHeader": "ABS लाइब्रेरी फ़ोल्डर",
     "AbsMappingsAudioSlotLabel": "ऑडियो",
     "AbsMappingsChaptarrRootHeader": "Chaptarr रूट फ़ोल्डर",

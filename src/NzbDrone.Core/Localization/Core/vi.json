@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "Sách nói + sách điện tử",
+    "AbsLibraryModeAudioOnly": "Chỉ sách nói",
     "AbsMappingsAbsLibraryHeader": "Thư mục thư viện ABS",
     "AbsMappingsAudioSlotLabel": "Âm thanh",
     "AbsMappingsChaptarrRootHeader": "Thư mục gốc Chaptarr",

@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "Hörbücher + eBooks",
+    "AbsLibraryModeAudioOnly": "Nur Audio",
     "AbsMappingsAbsLibraryHeader": "ABS-Bibliotheksordner",
     "AbsMappingsAudioSlotLabel": "Audio",
     "AbsMappingsChaptarrRootHeader": "Chaptarr-Stammordner",

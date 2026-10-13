@@ -1,6 +1,6 @@
 {
-    "AbsLibraryModeAudioAndEbooks": "Audio + eBook",
-    "AbsLibraryModeAudioOnly": "Audio saja",
+    "AbsLibraryModeAudioAndEbooks": "Buku audio + e-book",
+    "AbsLibraryModeAudioOnly": "Hanya buku audio",
     "AbsMappingsAbsLibraryHeader": "Folder pustaka ABS",
     "AbsMappingsAudioSlotLabel": "Audio",
     "AbsMappingsChaptarrRootHeader": "Folder root Chaptarr",

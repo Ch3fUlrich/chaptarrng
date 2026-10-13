@@ -40,3 +40,7 @@ Translate interface labels, help, empty states, validation, notifications, and e
 ## Implemented in this PR
 
 System > UI Language now offers Indonesian and Traditional Chinese through the existing locale service, alongside the prior first-wave choices. Their AudioBookShelf root-mapping labels, guidance, loading states, and errors are translated, and untranslated messages continue to fall back to English. Arabic and Hebrew continue to use right-to-left document direction; full-page RTL layout review remains separate.
+
+## Added in this continuation
+
+The audio-only and audio-plus-eBooks library choices now use translated labels across all twelve selectable locales. The shared mapping form no longer falls back to English for those two choices; full application catalog completion and page-level RTL review remain separate work.

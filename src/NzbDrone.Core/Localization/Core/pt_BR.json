@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "Audiolivros + e-books",
+    "AbsLibraryModeAudioOnly": "Somente áudio",
     "AbsMappingsAbsLibraryHeader": "Pasta da biblioteca ABS",
     "AbsMappingsAudioSlotLabel": "Áudio",
     "AbsMappingsChaptarrRootHeader": "Pasta raiz do Chaptarr",

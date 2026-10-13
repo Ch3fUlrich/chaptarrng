@@ -1,4 +1,6 @@
 {
+    "AbsLibraryModeAudioAndEbooks": "오디오북 + 전자책",
+    "AbsLibraryModeAudioOnly": "오디오북만",
     "AbsMappingsAbsLibraryHeader": "ABS 라이브러리 폴더",
     "AbsMappingsAudioSlotLabel": "오디오",
     "AbsMappingsChaptarrRootHeader": "Chaptarr 루트 폴더",
