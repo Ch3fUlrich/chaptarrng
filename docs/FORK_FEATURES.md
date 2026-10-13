@@ -304,7 +304,7 @@ already being developed locally.
 | --- | --- | --- |
 | BookshelfNG capabilities carried into ChaptarrNG | Every capability and material enhancement in the BookshelfNG parity roadmap, including its settings, persisted data, identities, clients, and integrations | Demonstrate equivalent behavior on the supported upstream release, including converted data and existing client configurations; pass each row's acceptance checks. |
 | ChaptarrNG released features | Every capability ChaptarrNG introduced, materially extended, or maintains in this guide and the released changelog, including the SeerrNG contract, Direct Download, full-backup encryption, security behavior, and fork-specific operations | Show the behavior in a supported upstream release and validate the relevant APIs, security boundaries, operator workflows, and clients. |
-| ChaptarrNG active and unreleased features | The full active-branch and open-PR scope, even before merge or publication. The pinned branch snapshot at `22a9db6` is 308 commits ahead and 13 behind `origin/main`, across 695 changed paths; its feature families include RanobeDB and Audible metadata, audiobook processing and matching, import safety, external-library connections, MQTT, Prometheus, import-list history, and large-library/UI work. Open PR #72 adds Indonesian and Traditional Chinese; PR #73 adds metadata preferences. | Keep an itemized current snapshot, then prove each capability in upstream. Refresh the snapshot when branches, PRs, or maintained local work change. |
+| ChaptarrNG active and unreleased features | The pushed `codex/upstream-backlog-20261012` snapshot at `46fa890` is 313 commits ahead and 0 behind `origin/main` at `a6be38d`, across 703 changed paths. Open work also includes PR #72 (Indonesian and Traditional Chinese), draft PR #73 (BookshelfNG metadata preferences), and PR #74 (proposed YunoHost distribution removal). The itemized capability set follows below. | Preserve or replace each row in a supported upstream release and pass its acceptance checks. Re-pin whenever the branch, PRs, or local work changes. |
 | Remaining fork-only source changes | Every post-fork source change not already accounted for by the capability rows, including fixes, migrations, APIs, security, build, and platform behavior | Disposition every changed path as retained, ported, or replaced by a verified equivalent. A path count is not feature parity. |
 | Release and installation channels | Each ChaptarrNG release, image, package, updater, and supported upgrade path, plus any channel carrying a migrated BookshelfNG installation | Test the exact published upgrade, configuration/data migration, rollback, and client/update continuity for each channel. |
 
@@ -313,6 +313,42 @@ name appears in upstream documentation. The acceptance evidence must target
 the exact supported upstream release and cover behavior, data, configuration,
 security, and affected clients. Any new feature enters the cumulative set as
 soon as ChaptarrNG takes it into active development.
+
+### Itemized active and unreleased ChaptarrNG blockers
+
+The rows below are individual blockers inside the cumulative gate above.
+Every row is **open** until a supported upstream release preserves the behavior
+or an equivalent is tested against the same cases. The complete source-change
+inventory remains an additional blocker, so this feature list does not waive
+review of fixes, migrations, build changes, or deletions.
+
+| Active capability or change | Current ChaptarrNG scope | Evidence required before upstream retirement |
+| --- | --- | --- |
+| RanobeDB light-novel search and metadata | Read-only catalog search, stored work/release IDs, request pacing, and source-content limits | Preserve catalog behavior, identity, rate limits, licensing boundaries, and failure handling. |
+| Audible marketplace selection | Operator-selected marketplace for search and metadata | Preserve marketplace configuration, defaults, and result identity. |
+| Metadata profile filters and edition ranking | Genre exclusions/autocomplete, weighted edition terms, preferred series, and audiobook evidence; profile work is in draft PR #73 | Preserve profile migration/serialization, ranking order, missing-evidence behavior, series consumers, and manual-review boundaries. |
+| Catalog and edition search recovery | Retry alternate edition-title searches and retain the strongest credible match | Test title, identifier, ambiguity, and no-false-match cases on the supported release. |
+| Configurable Goodreads refresh | Operator-configured bookshelf refresh interval with a safe minimum | Preserve the setting, default, minimum, and retry/rate-limit behavior. |
+| Manual import provenance | Persist the route, mode, and evidence behind an explicit manual match | Keep provenance auditable and ensure it is not reused as an automatic scoring signal. |
+| Safe existing-file adoption and import destinations | Adopt compatible existing files; avoid replacing untracked destinations; skip unnecessary hashing when the safety setting permits | Preserve no-overwrite, ownership, cancellation, and destination-race guarantees. |
+| Archive extraction and audiobook conversion | Extract supported archives; merge eligible multipart audio, retain chapter offsets, report progress, and support cancellation/fallback | Validate formats, metadata, ordering, chapter preservation, source retention, disk failures, and recovery. |
+| Existing torrent adoption and seeding | Reuse tracked download data without breaking the seed | Prove correct category, wrong category, completed-download, and seeding-state behavior. |
+| Import-list preview and durable sync history | Dry-run preview, per-list outcome history, and provider cursor commits only after successful processing | Preserve read-only preview semantics, counters, cursor safety, retention, and restart behavior. |
+| External library connections | AudioBookShelf, Grimmory, Calibre roots/Content Server, and Emby/Jellyfin refresh/synchronization | Preserve each provider's direction, field ownership, loop suppression, ignored-item rules, identifiers, and failure recovery. |
+| MQTT Gateway and canonical lifecycle events | Versioned library snapshots, lifecycle requests, and optional Home Assistant discovery | Preserve topic/payload contracts, opt-in behavior, retained-state cleanup, and existing webhook compatibility. |
+| Prometheus metrics | Separate optional listener with low-cardinality queue, health, task, and import metrics | Preserve disabled-by-default exposure, metric names/types, and bounded labels. |
+| Large-library and background-operation behavior | Paged/virtualized views, bounded query work, batched reconciliation, fair download processing, and cancellable background commands | Run scale fixtures and verify query bounds, concurrency, progress, cancellation, and consistent state. |
+| Frontend performance and usability | React Query, route code splitting, mobile search/toolbar adjustments, and upstream bundle optimizations | Preserve loading/error behavior, keyboard/mobile access, route boundaries, and browser tests. |
+| Localization | Open PR #72 adds Indonesian and Traditional Chinese UI translations | Preserve translation keys, fallback behavior, and translated build checks. |
+| Release and distribution behavior | Fork-owned releases/images, Unraid packaging, platform build support, and the YunoHost removal proposed in PR #74 | Disposition every supported channel change; a removal is not a bridge for existing installations and needs an explicit compatibility plan. |
+| Security, migrations, and compatibility fixes | API, import, authentication, database, dependency, container, and platform changes in the active source tree | Review every security boundary and migration; run the required platform and rollback checks. |
+| CI, validation, and maintainer workflow changes | Hosted-runner and validation contracts, plus open infrastructure PRs #69 and #71 | Retain source-bound validation, clean hosted evidence, and reproducible maintainer workflows. |
+| Remaining post-fork changes | All other active-branch changes not already represented above | Disposition every changed path as retained, ported, or replaced by verified behavior; a path count alone is not parity. |
+
+PR #73's current head is `6fa426c`: the Linux Core suite passed 3,972 tests
+with no failures after normalizing path separators at three fake-filesystem
+test boundaries. Its fresh hosted Windows and other checks are still running;
+the PR remains a draft until those checks and review finish.
 
 ## Release history
 
