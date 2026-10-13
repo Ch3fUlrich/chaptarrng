@@ -5,16 +5,21 @@ ChaptarrNG is Snapetech's maintained fork of
 Readarr. The fork was created on August 31, 2026 from the parent repository's
 `develop` branch at the
 [shared fork-base commit](https://github.com/Chaptarr/chaptarr/commit/423b1bba1d47657d24ddfbf9c5418892972a1229).
-This page summarizes the main user and operator changes carried in ChaptarrNG
-through the published
-[`v0.9.969` release](https://github.com/snapetech/chaptarrng/releases/tag/v0.9.969),
-and compares them with Chaptarr's `develop` branch as reviewed on 2026-10-12
-at [`e67374f`](https://github.com/Chaptarr/chaptarr/commit/e67374f). That
-parent commit is in ChaptarrNG `main`'s history. The guide groups related
-changes rather than listing every fix or dependency update; the
-[changelog](../CHANGELOG.md) records releases and the
-[repository history](https://github.com/snapetech/chaptarrng/commits/main/)
-records each commit.
+This guide covers the published feature set through
+[`v0.9.969`](https://github.com/snapetech/chaptarrng/releases/tag/v0.9.969)
+and the additional feature and maintenance work present in the current fork
+checkout. Some additions described here may not yet be in a published image;
+the [changelog](../CHANGELOG.md) is the record of released changes. The parent
+comparison is Chaptarr's `develop` branch as reviewed on 2026-10-12 at
+[`e67374f`](https://github.com/Chaptarr/chaptarr/commit/e67374f), which is in
+ChaptarrNG `main`'s history.
+
+This guide groups behavior rather than listing every fix, dependency update,
+or upstream report. The
+[upstream issue and PR ledger](./maintainers/upstream-backlog.json) provides
+the item-by-item audit snapshot and its evidence. Some items remain
+unreviewed, need reproduction, or depend on an external service; the ledger
+and this overview do not claim that the full upstream backlog is resolved.
 
 The application keeps reporting its name as `Chaptarr` through its
 Readarr-compatible API so existing clients can identify it. **ChaptarrNG**
@@ -36,6 +41,10 @@ SeerrNG: the built-in Direct Download indexer/client, authenticated encryption
 for full backup archives, fork-owned release images, and the fork's Unraid
 package. Chaptarr has its own encrypted quick-start settings backup; the
 full-backup capability is the distinction recorded here.
+
+The sections below also cover the maintained import, metadata, external-library,
+and developer-validation additions. They are separate from the SeerrNG contract
+and can be used without SeerrNG.
 
 The upstream-backlog work also adds an optional MQTT Gateway for library
 snapshots, lifecycle events, and Home Assistant discovery, plus opt-in
@@ -95,7 +104,30 @@ to a canonical author folder is opt-in. The [API identity and lifecycle
 contract](./API_IDENTITY_AND_LIFECYCLE.md) documents identity, match evidence,
 pending imports, and organize-preview fields.
 
-## Direct ebook downloads maintained in ChaptarrNG
+## Import-list preview and sync history
+
+The **Preview Next Sync** action fetches one configured list and classifies its
+entries against the current library without adding authors or books, queuing
+searches, committing the provider cursor, or updating the list's normal sync
+status. The preview uses read-only provider-cache and status scopes, and the
+preview itself is saved with `dryRun=true` and `providerStateCommitted=false`.
+
+Preview counts distinguish processed, new, existing, changed, excluded,
+unresolved, and search-eligible entries. A snapshot can differ from a later
+sync if the list or library changes in between. Per-list history also records
+scheduled and manual runs, duration, outcome, failure stage, the same counts,
+and whether the provider's state was committed. ChaptarrNG keeps at most 100
+records per list and 5,000 overall.
+
+Hardcover provider state is committed only after fetched list entries have
+processed successfully, and the cursor is committed on the list instance that
+was actually fetched. Goodreads bookshelf refresh defaults to 12 hours and is
+configurable down to a 15-minute minimum.
+
+See the [import-list preview and history guide](./IMPORT_LIST_SYNC.md) for the
+UI action, API routes, retention, and refresh behavior.
+
+## Direct ebook downloads
 
 The optional Direct Download indexer searches configured ebook sources by ISBN
 when available and falls back to the monitored edition title. URL order is
@@ -129,6 +161,99 @@ cloud metadata destinations. Requests have bounded time and response sizes,
 and TLS verification remains enabled.
 
 See [Direct Download source setup](../README.md#direct-download-sources) for the settings and staging-folder requirements.
+
+## Imports, matching, and conversion
+
+Import and conversion changes focus on preventing a bad match or occupied
+destination from damaging an existing library. Automatic and manual imports
+check the final destination before writing. Manual Import shows an existing
+destination conflict in its preview; forced imports can bypass quality or
+duplicate rules, but still cannot overwrite an untracked file or a file
+belonging to another edition. Multi-file imports are handled as a batch so a
+new part cannot accidentally replace another part from the same download.
+
+When an archive contains no recognized media file at its top level,
+ChaptarrNG can extract supported `.zip`, `.tgz`, and `.tar.gz` downloads and
+continue through the normal import path. The importer still validates the
+resulting files and destination. Manual-import matches can persist provenance
+such as the match route, mode, and evidence values; this explains the historic
+decision and is not reused as a future search or scoring signal.
+
+Eligible multi-part audiobook downloads can be merged into a single M4B when
+the quality profile enables merging. ChaptarrNG checks the merged destination
+before conversion and preserves chapter offsets. An optional merge failure can
+fall back to importing the parts separately. Conversion also works on books
+already in the library, stays in the existing book folder, reports progress,
+and can be cancelled. Cancellation stops the next item in a bulk operation
+from starting.
+
+Matching and quality handling also preserve distinct audiobook narrations and
+dramatized editions when their casts overlap, use strong same-work identity
+when retargeting duplicates, and keep ebook/audiobook monitoring and
+availability scoped to the selected format. These rules avoid merging
+different audio products or expanding a single-book request into an author's
+whole catalogue.
+
+## Metadata and profile additions
+
+RanobeDB adds light-novel ebook search and metadata lookup using its read-only
+API. ChaptarrNG stores RanobeDB work and release IDs, limits request frequency,
+uses digital releases, and does not ingest separately licensed descriptions
+or cover images. The [README metadata section](../README.md#metadata) links to
+the API and licensing terms.
+
+Metadata profiles can exclude configured genres, for example comics or
+graphic novels. The profile editor offers genre autocomplete from the local
+library. Audible search and metadata can use a configured marketplace rather
+than assuming the US catalog. Goodreads bookshelf refresh intervals are
+operator-configurable with a safe minimum, as described in the import-list
+guide.
+
+## External library connections
+
+The current checkout adds or extends connections for AudioBookShelf, Grimmory,
+Calibre Content Server, and Emby/Jellyfin. Their scope differs: AudioBookShelf
+can receive covers and compatible forwarded metadata; Grimmory can refresh,
+publish, and forward sidecar edits; Calibre-backed roots route ebook imports
+through Calibre while the separate Content Server connection can mirror
+ChaptarrNG changes; and Emby/Jellyfin can refresh after a grabbed release is
+imported.
+
+Ignore-tag settings are evaluated against tags on the external item and are
+case-insensitive. Automatic pushes skip ignored items, while the documented
+manual push action can override that choice. Sync-loop suppression and field
+ownership checks prevent routine pushes from overwriting locked fields or
+being forwarded back to their source.
+
+See the [external library integration guide](./EXTERNAL_LIBRARY_INTEGRATIONS.md)
+for connection setup, data direction, and per-provider limits.
+
+## Operations, observability, and validation
+
+MQTT can publish a versioned library snapshot, availability state, and
+canonical lifecycle events. Home Assistant discovery is optional; existing
+Webhook connections can separately opt into the same canonical event envelope
+without changing their legacy notification payloads. See the
+[MQTT guide](./MQTT_GATEWAY.md) for topic names, payload fields, delivery
+behavior, and discovery cleanup.
+
+Prometheus metrics use a separate, disabled-by-default HTTP listener. The
+exported gauges, counters, and histogram cover health, queue state, scheduled
+tasks, import-list syncs, and download/import outcomes. Labels use fixed
+application enums and exclude user-controlled values. See the
+[metrics guide](./PROMETHEUS_METRICS.md) before exposing the unauthenticated
+listener on a network.
+
+Large library screens use server-paged book results and load bookshelf books
+as rows become visible. Backend work batches queries and avoids repeated
+whole-author refreshes. Author deletions of more than 200 books are queued in
+the background; smaller deletions remain synchronous. Conversion and other
+long-running commands expose progress and cancellation.
+
+The [validation engine guide](./development/validation-engine.md) documents
+source-bound local and CI test runs, platform receipts, and live task progress.
+It complements the normal release changelog and does not imply that every
+backlog report has passed final validation.
 
 ## Backups and service security
 

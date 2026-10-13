@@ -35,11 +35,19 @@ runtime, while source builds require the .NET 10 SDK.
 - **Pending-import integration:** Chaptarr's current development branch also has pending author imports. ChaptarrNG exposes that asynchronous work through the SeerrNG capability contract and keeps retry/cancel behavior safe when multiple requests share an import.
 - **Restricted service access:** ChaptarrNG `0.9.941` and later can use a SeerrNG-only API key for supported book requests, searches, library status, and pending imports without granting global administration or destructive access.
 - **Standalone additions maintained here:** An optional built-in indexer and download client can search configured ebook sources, use API-key downloads, and optionally fall back to browser-assisted links. Full backup archives can use passphrase-based authenticated encryption; the direct Chaptarr project separately offers encryption for quick-start settings backups.
+- **Safer list and file workflows:** Preview an import list's next sync, inspect durable per-list sync history, and review import matching evidence. Imports check occupied destinations before writing; supported archives can be extracted, and multipart audiobooks can be merged or converted with progress and cancellation.
+- **More metadata and library connections:** RanobeDB adds light-novel ebook metadata. Optional AudioBookShelf, Calibre, and Grimmory connections synchronize library data, while Emby/Jellyfin can refresh after an import.
+- **Operations and automation:** An optional MQTT gateway publishes library snapshots and lifecycle events, including Home Assistant discovery. A separate Prometheus listener exposes low-cardinality metrics. Large library views use paged reads, and long author deletions run in the background.
 - **Fork-owned distribution:** ChaptarrNG publishes its own images and maintains an Unraid package. Its [fork feature guide](docs/FORK_FEATURES.md) compares these additions with the parent project.
 
-The [fork feature guide](docs/FORK_FEATURES.md) maps these changes to setup,
-API, security, and distribution documentation. The [changelog](CHANGELOG.md)
-has the release-by-release record.
+The [fork feature guide](docs/FORK_FEATURES.md) covers the additions and their
+limits. Dedicated guides explain [import-list preview and history](docs/IMPORT_LIST_SYNC.md),
+[external library connections](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md),
+[MQTT and canonical events](docs/MQTT_GATEWAY.md), and
+[Prometheus metrics](docs/PROMETHEUS_METRICS.md). The
+[changelog](CHANGELOG.md) records changes by released version.
+The feature guide describes the current source checkout; some newer work may
+not be included in the latest published image yet.
 
 See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
 
@@ -52,17 +60,23 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/b
   each request to its matching format
 * **Publisher Aware** - Special handling for dramatized audiobooks and multi-part releases
 * **Audio Formats** - Handles M4B, MP3 chapters, and multi-file audiobooks
-* **MP3 → M4B Conversion** - Optionally convert MP3 audiobooks into a single chaptered M4B, with chapter preservation or insertion if missing (powered by [m4b-tool](https://github.com/sandreas/m4b-tool))
+* **MP3 → M4B Conversion** - Convert new downloads or books already in the library into a single chaptered M4B, with chapter preservation or insertion if missing. Conversion shows progress and can be cancelled (powered by [m4b-tool](https://github.com/sandreas/m4b-tool))
+* **Multipart Audiobooks** - Optionally merge eligible multi-part audiobook downloads into one M4B after checking the final destination
 
 ### Organization
 * **Dual Media Libraries** - You can have separate root folders for audiobooks and eBooks or choose to have your eBooks placed alongside your audiobooks
 * **Matching** - Match audiobook and eBook files using tags, folders, and release metadata
 * **Series Management** - Automatically organize books by series
 * **Metadata Profiles** - Control which languages are allowed in your library, so foreign and non-English content works the way you want
+* **Genre Filtering** - Exclude configured genres, such as comics or graphic novels, through metadata profiles
 * **Flexible Renaming** - Customizable file naming with audiobook-specific tokens
 
 ### Integration & Automation
 * **Standard *arr Integrations** - Works with the usual *arr-family download clients and indexer protocols
+* **External Libraries** - Connect AudioBookShelf, Calibre Content Server, and Grimmory for supported refresh, import, metadata, cover, and edit-forwarding workflows; see the [integration guide](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md) for the direction and limits of each connection
+* **Emby and Jellyfin** - Refresh the media-server library after a grabbed release is imported
+* **MQTT and Webhooks** - Publish snapshots and canonical lifecycle events to MQTT, with optional Home Assistant discovery and opt-in canonical events for existing webhooks
+* **Import Lists** - Preview the next sync and review durable per-list history before relying on automatic-add behavior
 
 ### Quality & Upgrades
 * **Automatic Upgrades** - Replace lower quality versions automatically
@@ -292,7 +306,12 @@ Note: the inherited assembly is named `Chaptarr.dll` on Linux/macOS and `Chaptar
 - Default ChaptarrNG web UI: http://localhost:8789
 - Default username/password: Set on first launch
 - [Fork changes and capabilities](docs/FORK_FEATURES.md): feature overview and links to detailed setup and API references
+- [Import-list preview and history](docs/IMPORT_LIST_SYNC.md): dry-run behavior, saved sync outcomes, retention, and refresh settings
+- [External library integrations](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md): setup and synchronization boundaries for AudioBookShelf, Calibre, Grimmory, and Emby/Jellyfin
+- [MQTT Gateway](docs/MQTT_GATEWAY.md): broker settings, Home Assistant discovery, snapshots, events, and canonical webhook requests
+- [Prometheus metrics](docs/PROMETHEUS_METRICS.md): listener configuration, scrape setup, metric names, and network exposure
 - [ImageSharp build-license guide](docs/development/imagesharp-license.md): why source builds need a Six Labors license, how to obtain one, and where to configure it
+- [Validation engine guide](docs/development/validation-engine.md): local and CI validation tasks, progress reporting, and receipt checks
 - [Changelog](CHANGELOG.md): release-by-release changes shipped by the fork
 - [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md): setup and request lifecycle
 - [SeerrNG integration contract](docs/SEERRNG_INTEGRATION.md): capabilities, service-key setup, and integration smoke test
