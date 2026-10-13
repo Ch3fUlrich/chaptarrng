@@ -89,6 +89,7 @@ namespace NzbDrone.Core.Books
             List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null);
             List<Book> GetBooksByBaseId(string baseBookId);
             Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false);
+            WantedEditionResult AddWantedEdition(int bookId, WantedEditionSelection selection) { throw new NotImplementedException(); }
             bool ShouldSearchForMediaType(Book book, string mediaType);
             BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
             BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBookBuckets(sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
@@ -2783,6 +2784,12 @@ namespace NzbDrone.Core.Books
                                                                                ProviderIdHelper.StripPrefix(id).Equals(baseBookId, StringComparison.OrdinalIgnoreCase)) ||
                            b.Id.ToString() == baseBookId)
                 .ToList();
+        }
+
+        public WantedEditionResult AddWantedEdition(int bookId, WantedEditionSelection selection)
+        {
+            var book = AddWantedEdition(bookId, selection?.EditionId ?? 0);
+            return new WantedEditionResult { Book = book, Created = true };
         }
 
         public Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false)
