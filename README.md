@@ -33,7 +33,8 @@ of those ported capabilities and every feature ChaptarrNG maintains or is
 actively adding, including work not yet in a published release, must be
 preserved upstream. That union blocks retirement as a whole. The
 [combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
-tracks both gates and the individual blockers.
+tracks both gates and the individual blockers, including active development
+that is not in a release yet.
 
 The published `0.9.969` release does not include a populated BookshelfNG
 database converter or a BookshelfNG package/channel bridge. Do not point
