@@ -119,7 +119,6 @@ namespace Chaptarr.Core.Test.Api
                 {
                     [nameof(IAuthorStatisticsService.AuthorStatistics)] = (_, _) => new List<AuthorStatistics>()
                 }),
-                mediaCoverProxy: null,
                 mediaFileService: null,
                 coverMapper: Proxy<IMapCoversToLocal>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
@@ -237,7 +236,6 @@ namespace Chaptarr.Core.Test.Api
                             ? new AuthorStatistics()
                             : new List<AuthorStatistics>()
                 }),
-                mediaCoverProxy: null,
                 mediaFileService: null,
                 coverMapper: Proxy<IMapCoversToLocal>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
