@@ -516,8 +516,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         [Test]
         public void should_remove_only_empty_directories_bounded_by_the_actual_source_author_folder()
         {
-            var pathRoot = Path.GetPathRoot(Environment.CurrentDirectory) ?? Path.DirectorySeparatorChar.ToString();
-            var rootFolder = Path.Combine(pathRoot, "books");
+            var rootFolder = Path.Combine(FixtureRoot, "books");
             var sourceAuthorFolder = Path.Combine(rootFolder, "George R. R. Martin");
             var sourceBookFolder = Path.Combine(sourceAuthorFolder, "Wild Cards");
             var canonicalAuthorFolder = Path.Combine(rootFolder, "George R.R. Martin");
@@ -553,10 +552,8 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(diskProxy.DeletedFolders, Does.Not.Contain(NormalizePath(rootFolder)));
         }
 
-        private static readonly string HobbFolder = Path.Combine(
-            Path.GetPathRoot(Environment.CurrentDirectory) ?? Path.DirectorySeparatorChar.ToString(),
-            "audiobooks",
-            "Robin Hobb");
+        private static readonly string FixtureRoot = Path.Combine(Path.GetTempPath(), "chaptarrng-rename-book-file-service");
+        private static readonly string HobbFolder = Path.Combine(FixtureRoot, "audiobooks", "Robin Hobb");
         private static readonly string OldBookFolder = Path.Combine(HobbFolder, "L'Assassin Royal", "L'apprenti assassin");
         private static readonly string NewBookFolder = Path.Combine(HobbFolder, "L'Assassin du Roi", "01 - L'apprenti assassin");
 
