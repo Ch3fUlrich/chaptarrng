@@ -22,8 +22,8 @@ reviewed. The BookshelfNG consolidation adds another required feature set; it
 does not replace or reduce ChaptarrNG's existing maintained features.
 
 At this review, the shared upstream comparison commit `e67374f` to ChaptarrNG
-`dc53d0a` spans 427 commits and 960 net-changed paths. The active consolidation
-worktree has 15 tracked changes: five product files, eight Core test fixtures,
+`4582c13` spans 436 commits and 964 net-changed paths. The consolidation task
+commit contains 16 changed files: six product files, eight Core test fixtures,
 and two documentation files. These counts describe source history, not feature
 parity, and must be regenerated against the exact upstream and candidate
 revisions at any later retirement review. **Confidence:** high for these
