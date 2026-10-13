@@ -12,6 +12,8 @@ using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Queue;
+using HealthCheckModel = NzbDrone.Core.HealthCheck.HealthCheck;
+using QueueModel = NzbDrone.Core.Queue.Queue;
 
 namespace NzbDrone.Core.Metrics
 {
@@ -180,10 +182,10 @@ namespace NzbDrone.Core.Metrics
             return 3;
         }
 
-        private static void WriteQueueGauges(StringBuilder builder, List<Queue> queueItems)
+        private static void WriteQueueGauges(StringBuilder builder, List<QueueModel> queueItems)
         {
             var counts = new long[QueueStatusLabels.Length];
-            var queue = queueItems ?? new List<Queue>();
+            var queue = queueItems ?? new List<QueueModel>();
 
             foreach (var item in queue)
             {
@@ -207,11 +209,11 @@ namespace NzbDrone.Core.Metrics
                 counts);
         }
 
-        private static void WriteHealthGauge(StringBuilder builder, List<HealthCheck> healthChecks)
+        private static void WriteHealthGauge(StringBuilder builder, List<HealthCheckModel> healthChecks)
         {
             var status = HealthCheckResult.Ok;
             var counts = new long[HealthStatusLabels.Length];
-            var checks = healthChecks ?? new List<HealthCheck>();
+            var checks = healthChecks ?? new List<HealthCheckModel>();
 
             if (checks.Any())
             {
