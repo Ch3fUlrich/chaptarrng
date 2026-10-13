@@ -33,6 +33,7 @@ namespace Chaptarr.Core.Test.Books
 
             Assert.That(variant.LanguageCode, Is.EqualTo("deu"));
             Assert.That(variant.LanguageName, Is.EqualTo("German"));
+            Assert.That(variant.TitleSlug, Is.EqualTo("test-book_wanted_audiobook_deu_77"));
         }
 
         [Test]

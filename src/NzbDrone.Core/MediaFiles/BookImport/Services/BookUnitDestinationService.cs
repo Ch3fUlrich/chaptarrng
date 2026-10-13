@@ -562,6 +562,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
                     continue;
                 }
 
+                if (!IsSameRowLanguage(candidate, canonicalBook, canonicalEdition))
+                {
+                    continue;
+                }
+
                 var matchingEditionId = TryResolveExactEditionIdForDestination(candidate, canonicalEdition);
                 if (!matchingEditionId.HasValue)
                 {
@@ -577,6 +582,17 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
             }
 
             return null;
+        }
+
+        private static bool IsSameRowLanguage(Book candidate, Book canonicalBook, Edition canonicalEdition)
+        {
+            var unitLanguage = NzbDrone.Core.Books.Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(canonicalEdition?.Language) ??
+                               NzbDrone.Core.Books.Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(canonicalBook?.LanguageCode);
+            var rowLanguage = NzbDrone.Core.Books.Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(candidate?.LanguageCode);
+
+            // An empty language-variant row only takes a unit of its own language; rows without a language stay adoptable.
+            return unitLanguage == null || rowLanguage == null ||
+                   unitLanguage.Equals(rowLanguage, StringComparison.OrdinalIgnoreCase);
         }
 
         private List<Book> GetIdentityGroupBooks(Book canonicalBook)
