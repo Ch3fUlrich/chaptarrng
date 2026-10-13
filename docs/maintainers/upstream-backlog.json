@@ -2635,7 +2635,7 @@
         252
       ],
       "implementationEvidence": [
-        "Migration 116 deduplicates cached HTTP responses and enforces unique URLs; CachedHttpResponseRepository.UpsertByUrl uses one atomic INSERT ... ON CONFLICT ... RETURNING statement."
+        "Migration 118 deduplicates cached HTTP responses and enforces unique URLs; CachedHttpResponseRepository.UpsertByUrl uses one atomic INSERT ... ON CONFLICT ... RETURNING statement."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-10-03T19:44:41Z",
@@ -8597,7 +8597,7 @@
         223
       ],
       "implementationEvidence": [
-        "The fork already enforces unique HTTP-cache URLs and atomically upserts through migration 116 and CachedHttpResponseRepository.UpsertByUrl, which is stronger than the PR’s duplicate-row exception recovery."
+        "The fork already enforces unique HTTP-cache URLs and atomically upserts through migration 118 and CachedHttpResponseRepository.UpsertByUrl, which is stronger than the PR’s duplicate-row exception recovery."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-26T20:43:40Z",
@@ -9374,7 +9374,7 @@
         223
       ],
       "implementationEvidence": [
-        "The fork already enforces unique HTTP-cache URLs and atomically upserts through migration 116 and CachedHttpResponseRepository.UpsertByUrl; migration 109 is already assigned to query-performance indexes."
+        "The fork already enforces unique HTTP-cache URLs and atomically upserts through migration 118 and CachedHttpResponseRepository.UpsertByUrl; migration 109 is already assigned to query-performance indexes."
       ],
       "validationEvidence": [],
       "sourceUpdatedAt": "2026-09-27T02:46:33Z",

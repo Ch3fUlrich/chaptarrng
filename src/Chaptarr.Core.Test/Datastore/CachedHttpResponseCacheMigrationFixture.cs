@@ -64,7 +64,7 @@ namespace Chaptarr.Core.Test.Datastore
                 var migrationController = new MigrationController(LogManager.GetLogger(nameof(CachedHttpResponseCacheMigrationFixture)), null);
                 migrationController.Migrate(
                     connectionString,
-                    new MigrationContext(MigrationType.Cache, 116),
+                    new MigrationContext(MigrationType.Cache, 118),
                     DatabaseType.SQLite);
 
                 using (var connection = new SqliteConnection(connectionString))

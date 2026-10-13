@@ -3,7 +3,7 @@ using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace NzbDrone.Core.Datastore.Migration
 {
-    [Migration(114)]
+    [Migration(116)]
     public class add_ranobedb_provider_ids : NzbDroneMigrationBase
     {
         protected override void MainDbUpgrade()

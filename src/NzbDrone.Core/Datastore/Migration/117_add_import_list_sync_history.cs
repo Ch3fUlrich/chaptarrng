@@ -3,7 +3,7 @@ using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace NzbDrone.Core.Datastore.Migration
 {
-    [Migration(115)]
+    [Migration(117)]
     public class add_import_list_sync_history : NzbDroneMigrationBase
     {
         protected override void MainDbUpgrade()
