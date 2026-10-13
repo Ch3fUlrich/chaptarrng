@@ -161,12 +161,35 @@ namespace NzbDrone.Host
             var enableSsl = config.GetValue<bool?>($"Chaptarr:Server:{nameof(ServerOptions.EnableSsl)}") ?? config.GetValue(nameof(ConfigFileProvider.EnableSsl), false);
             var sslCertPath = config.GetValue<string>($"Chaptarr:Server:{nameof(ServerOptions.SslCertPath)}") ?? config.GetValue<string>(nameof(ConfigFileProvider.SslCertPath));
             var sslCertPassword = config.GetValue<string>($"Chaptarr:Server:{nameof(ServerOptions.SslCertPassword)}") ?? config.GetValue<string>(nameof(ConfigFileProvider.SslCertPassword));
+            var metricsEnabled = config.GetValue<bool?>("Chaptarr:Metrics:Enabled") ?? config.GetValue<bool?>("MetricsEnabled") ?? false;
+            var metricsPort = config.GetValue<int?>("Chaptarr:Metrics:Port") ?? config.GetValue<int?>("MetricsPort") ?? 9797;
+            var metricsBindAddress = config.GetValue<string>("Chaptarr:Metrics:BindAddress") ?? config.GetValue<string>("MetricsBindAddress") ?? "127.0.0.1";
 
             var urls = new List<string> { BuildUrl("http", bindAddress, port) };
 
             if (enableSsl && sslCertPath.IsNotNullOrWhiteSpace())
             {
                 urls.Add(BuildUrl("https", bindAddress, sslPort));
+            }
+
+            if (metricsEnabled)
+            {
+                if (metricsPort < 1 || metricsPort > 65535)
+                {
+                    throw new ChaptarrStartupException("Metrics port must be between 1 and 65535");
+                }
+
+                if (metricsPort == port || (enableSsl && sslCertPath.IsNotNullOrWhiteSpace() && metricsPort == sslPort))
+                {
+                    throw new ChaptarrStartupException("Metrics port must be different from the Chaptarr HTTP and HTTPS ports");
+                }
+
+                if (metricsBindAddress.IsNullOrWhiteSpace())
+                {
+                    throw new ChaptarrStartupException("Metrics bind address cannot be empty");
+                }
+
+                urls.Add(BuildUrl("http", metricsBindAddress, metricsPort));
             }
 
             return new HostBuilder()
@@ -293,6 +316,11 @@ namespace NzbDrone.Host
 
         private static string BuildUrl(string scheme, string bindAddress, int port)
         {
+            if (bindAddress.Contains(":") && !bindAddress.StartsWith("[", StringComparison.Ordinal))
+            {
+                bindAddress = $"[{bindAddress}]";
+            }
+
             return $"{scheme}://{bindAddress}:{port}";
         }
 

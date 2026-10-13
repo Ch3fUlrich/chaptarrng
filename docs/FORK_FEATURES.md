@@ -42,6 +42,11 @@ snapshots, lifecycle events, and Home Assistant discovery, plus opt-in
 canonical lifecycle requests for existing Webhook connections. See the
 [MQTT Gateway guide](./MQTT_GATEWAY.md) for topic and payload details.
 
+Operators can also enable a separate, low-cardinality Prometheus metrics
+listener for queue and health state, scheduled tasks, import-list syncs, and
+download/import outcomes. See the [Prometheus metrics guide](./PROMETHEUS_METRICS.md)
+for configuration, metric names, and network exposure guidance.
+
 ## Format-aware books and SeerrNG requests
 
 Chaptarr supports ebook and audiobook formats in one standalone instance.
