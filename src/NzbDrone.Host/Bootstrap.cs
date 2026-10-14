@@ -257,6 +257,23 @@ namespace NzbDrone.Host
                 return ApplicationModes.Help;
             }
 
+            var migrateBookshelf = startupContext.MigrateBookshelf || startupContext.PreviewBookshelfMigration;
+            var restoreBookshelf = startupContext.RestoreBookshelf || startupContext.PreviewBookshelfRestore;
+            if (migrateBookshelf && restoreBookshelf)
+            {
+                throw new InvalidOperationException("Choose either BookshelfNG migration or BookshelfNG rollback, not both.");
+            }
+
+            if (restoreBookshelf)
+            {
+                return ApplicationModes.RestoreBookshelf;
+            }
+
+            if (migrateBookshelf)
+            {
+                return ApplicationModes.MigrateBookshelf;
+            }
+
             if (OsInfo.IsWindows && startupContext.RegisterUrl)
             {
                 return ApplicationModes.RegisterUrl;

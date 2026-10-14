@@ -10,6 +10,11 @@ namespace NzbDrone.Common.EnvironmentInfo
         bool InstallService { get; }
         bool UninstallService { get; }
         bool RegisterUrl { get; }
+        bool MigrateBookshelf { get; }
+        bool PreviewBookshelfMigration { get; }
+        bool RestoreBookshelf { get; }
+        bool PreviewBookshelfRestore { get; }
+        bool ConfirmBookshelfServiceStopped { get; }
 
         string PreservedArguments { get; }
     }
@@ -26,6 +31,11 @@ namespace NzbDrone.Common.EnvironmentInfo
         public const string REGISTER_URL = "registerurl";
         public const string NO_SINGLE_INSTANCE_CHECK = "nosingleinstancecheck";
         public const string EXIT_IMMEDIATELY = "exitimmediately";
+        public const string MIGRATE_BOOKSHELF = "migrate-bookshelf";
+        public const string PREVIEW_BOOKSHELF_MIGRATION = "preview-bookshelf-migration";
+        public const string RESTORE_BOOKSHELF = "restore-bookshelf";
+        public const string PREVIEW_BOOKSHELF_RESTORE = "preview-bookshelf-restore";
+        public const string CONFIRM_BOOKSHELF_SERVICE_STOPPED = "confirm-bookshelf-service-stopped";
 
         public StartupContext(params string[] args)
         {
@@ -56,6 +66,11 @@ namespace NzbDrone.Common.EnvironmentInfo
         public bool InstallService => Flags.Contains(INSTALL_SERVICE);
         public bool UninstallService => Flags.Contains(UNINSTALL_SERVICE);
         public bool RegisterUrl => Flags.Contains(REGISTER_URL);
+        public bool MigrateBookshelf => Flags.Contains(MIGRATE_BOOKSHELF);
+        public bool PreviewBookshelfMigration => Flags.Contains(PREVIEW_BOOKSHELF_MIGRATION);
+        public bool RestoreBookshelf => Flags.Contains(RESTORE_BOOKSHELF);
+        public bool PreviewBookshelfRestore => Flags.Contains(PREVIEW_BOOKSHELF_RESTORE);
+        public bool ConfirmBookshelfServiceStopped => Flags.Contains(CONFIRM_BOOKSHELF_SERVICE_STOPPED);
         public bool ExitImmediately => Flags.Contains(EXIT_IMMEDIATELY);
 
         public string PreservedArguments

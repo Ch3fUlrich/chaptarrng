@@ -128,9 +128,10 @@ Each task requires a nonzero native case count. NUnit XML provides total,
 passed, failed, skipped, and inconclusive counts; the Node test contracts use
 the standard TAP summary with the same zero-case and accounting checks. The
 migration smoke emits one case only after the app starts against the workflow's ephemeral PostgreSQL service and `/ping` responds.
-NUnit receipts also include at most 100 failed test-case names, without test
-stdout or assertion messages, so platform failures can be identified from the
-short-lived CI artifact.
+NUnit receipts also include at most 100 failed test-case names and exception
+types. They omit test stdout, assertion messages, and test values, so platform
+failures can be narrowed down from the short-lived CI artifact without exposing
+failure payloads.
 
 The source fingerprint binds the commit, tree, working diff, configured build
 inputs, and test-source inventory. Text inputs and inventory files use Git's
@@ -139,8 +140,12 @@ Linux and macOS. Each platform receipt separately hashes its compiled test
 assembly byte-for-byte; platform binaries are allowed to differ. Before and
 after each concurrent task batch the engine checks that the source fingerprint
 has not moved and blocks successful receipts if it changes. Logs stay private
-under the system temporary directory; the exported receipt carries counts and
-bounded failing test names only. Overlapping runs in one checkout are rejected.
+under the system temporary directory; the exported receipt carries counts,
+bounded failing test names, exception types, and allowlisted method names. For
+SQLite failures it also records only the numeric primary error code. Exception
+messages, paths, source values, and assertion contents stay out of receipts.
+Overlapping runs in one
+checkout are rejected.
 Runtime probes and task child processes
 receive an explicit environment allowlist and each task's declared settings.
 Every task gets run-owned home, temporary, XDG, and .NET CLI directories. NuGet

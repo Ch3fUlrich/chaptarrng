@@ -42,6 +42,15 @@ namespace Chaptarr.Core.Test.Datastore
                         )
                         INSERT INTO ""VersionInfo"" (""Version"", ""AppliedOn"", ""Description"")
                         SELECT version, CURRENT_TIMESTAMP, 'test baseline' FROM versions;
+                        CREATE TABLE ""Authors"" (
+                            ""Id"" INTEGER PRIMARY KEY,
+                            ""AudiobookRootFolderPath"" TEXT NULL,
+                            ""EbookRootFolderPath"" TEXT NULL
+                        );
+                        CREATE TABLE ""RootFolders"" (
+                            ""Id"" INTEGER PRIMARY KEY,
+                            ""Path"" TEXT NOT NULL
+                        );
                         CREATE TABLE ""MetadataProfiles"" (
                             ""Id"" INTEGER PRIMARY KEY,
                             ""Name"" TEXT NOT NULL
@@ -54,7 +63,7 @@ namespace Chaptarr.Core.Test.Datastore
                     null);
                 migrationController.Migrate(
                     connectionString,
-                    new MigrationContext(MigrationType.Main, 115),
+                    new MigrationContext(MigrationType.Main, 118),
                     DatabaseType.SQLite);
 
                 using var resultConnection = new SqliteConnection(connectionString);

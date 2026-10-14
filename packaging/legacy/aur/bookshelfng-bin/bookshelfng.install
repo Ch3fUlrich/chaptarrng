@@ -1,0 +1,34 @@
+_service=bookshelfng.service
+_active_marker=/run/bookshelfng-package-was-active
+
+pre_upgrade() {
+  rm -f -- "$_active_marker"
+  if systemctl is-active --quiet "$_service"; then
+    install -Dm600 /dev/null "$_active_marker"
+    systemctl stop "$_service"
+  fi
+}
+
+post_install() {
+  systemd-sysusers
+  systemd-tmpfiles --create /usr/lib/tmpfiles.d/bookshelfng.conf
+  systemctl daemon-reload >/dev/null 2>&1 || true
+}
+
+post_upgrade() {
+  systemd-sysusers
+  systemd-tmpfiles --create /usr/lib/tmpfiles.d/bookshelfng.conf
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  if [[ -e "$_active_marker" ]]; then
+    rm -f -- "$_active_marker"
+    systemctl start "$_service"
+  fi
+}
+
+pre_remove() {
+  systemctl stop "$_service" >/dev/null 2>&1 || true
+}
+
+post_remove() {
+  systemctl daemon-reload >/dev/null 2>&1 || true
+}

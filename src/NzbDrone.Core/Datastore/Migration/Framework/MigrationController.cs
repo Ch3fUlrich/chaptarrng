@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using FluentMigrator.Runner;
 using FluentMigrator.Runner.Generators;
@@ -7,6 +8,7 @@ using FluentMigrator.Runner.Initialization;
 using FluentMigrator.Runner.Processors;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Data.Sqlite;
 using NLog;
 using NLog.Extensions.Logging;
 
@@ -15,6 +17,11 @@ namespace NzbDrone.Core.Datastore.Migration.Framework
     public interface IMigrationController
     {
         void Migrate(string connectionString, MigrationContext migrationContext, DatabaseType databaseType);
+        BookshelfDatabaseConversionResult MigrateBookshelf(
+            string connectionString,
+            MigrationContext migrationContext,
+            DatabaseType databaseType,
+            bool previewOnly);
     }
 
     public class MigrationController : IMigrationController
@@ -30,6 +37,50 @@ namespace NzbDrone.Core.Datastore.Migration.Framework
         }
 
         public void Migrate(string connectionString, MigrationContext migrationContext, DatabaseType databaseType)
+        {
+            if (migrationContext.MigrationType == MigrationType.Main &&
+                databaseType == DatabaseType.SQLite &&
+                DatabaseLineageGuard.Detect(connectionString, databaseType) == DatabaseLineage.BookshelfNG)
+            {
+                if (migrationContext.DesiredVersion.HasValue)
+                {
+                    throw new InvalidDataException("A BookshelfNG database can only be converted during a full Chaptarr startup migration. The source database was not changed.");
+                }
+
+                var result = MigrateBookshelf(connectionString, migrationContext, databaseType, previewOnly: false);
+                _logger.Info("BookshelfNG database conversion completed. Original database backup retained at {0}", result.BackupPath);
+                return;
+            }
+
+            MigrateNative(connectionString, migrationContext, databaseType);
+        }
+
+        public BookshelfDatabaseConversionResult MigrateBookshelf(
+            string connectionString,
+            MigrationContext migrationContext,
+            DatabaseType databaseType,
+            bool previewOnly)
+        {
+            if (databaseType != DatabaseType.SQLite ||
+                DatabaseLineageGuard.Detect(connectionString, databaseType) != DatabaseLineage.BookshelfNG)
+            {
+                throw new InvalidDataException("BookshelfNG migration requires a supported BookshelfNG SQLite database. No database was changed.");
+            }
+
+            if (migrationContext?.DesiredVersion.HasValue == true)
+            {
+                throw new InvalidDataException("BookshelfNG conversion requires a full Chaptarr database migration. No database was changed.");
+            }
+
+            var sourceDatabasePath = Path.GetFullPath(new SqliteConnectionStringBuilder(connectionString).DataSource);
+            return new BookshelfDatabaseConverter().Convert(
+                connectionString,
+                targetConnectionString => MigrateNative(targetConnectionString, migrationContext ?? new MigrationContext(MigrationType.Main), DatabaseType.SQLite),
+                (source, target, transaction) => BookshelfDatabaseImporter.Import(source, target, transaction, sourceDatabasePath),
+                previewOnly);
+        }
+
+        private void MigrateNative(string connectionString, MigrationContext migrationContext, DatabaseType databaseType)
         {
             if (migrationContext.MigrationType == MigrationType.Main)
             {

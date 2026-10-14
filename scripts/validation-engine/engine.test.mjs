@@ -275,6 +275,8 @@ test('NUnit summary keeps native pass, failure, skip and inconclusive totals', (
     result: 'Failed',
     failedTestNames: [],
     failedTestNamesTruncated: false,
+    failedTestDetails: [],
+    failedTestDetailsTruncated: false,
   });
 });
 
@@ -289,6 +291,53 @@ test('NUnit receipt records bounded failed test names without including failure 
   assert.equal(summary.failedTestNames.length, 100);
   assert.deepEqual(summary.failedTestNames.slice(0, 2), ['Fixture.case_0', 'Fixture.case_1']);
   assert.equal(summary.failedTestNamesTruncated, true);
+  assert.equal(summary.failedTestDetails.length, 100);
+  assert.equal(summary.failedTestDetailsTruncated, true);
+});
+
+test('NUnit receipt adds bounded failure types without exporting assertion messages or values', () => {
+  const summary = parseNUnitSummary(`<test-run total="2" passed="0" failed="2" skipped="0" inconclusive="0" result="Failed">
+    <test-case name="Fixture.io_failure" result="Failed"><failure><message><![CDATA[secret path]]></message><stack-trace><![CDATA[System.IO.IOException: secret path\n   at Fixture.io_failure()]]></stack-trace></failure></test-case>
+    <test-case name="Fixture.assertion" result="Failed"><failure><message><![CDATA[Expected: secret expected value\nBut was: secret actual value]]></message><stack-trace><![CDATA[   at Fixture.assertion()]]></stack-trace></failure></test-case>
+  </test-run>`);
+
+  assert.deepEqual(summary.failedTestDetails, [
+    { name: 'Fixture.io_failure', exceptionType: 'System.IO.IOException', stackFrame: 'Fixture.io_failure' },
+    { name: 'Fixture.assertion', exceptionType: 'NUnit.Framework.AssertionException', stackFrame: 'Fixture.assertion' },
+  ]);
+  assert.doesNotMatch(JSON.stringify(summary), /secret path|secret expected value|secret actual value/);
+});
+
+test('NUnit receipt extracts a safe exception type and method from the failure body', () => {
+  const summary = parseNUnitSummary(`<test-run total="1" passed="0" failed="1" skipped="0" inconclusive="0" result="Failed">
+    <test-case name="Fixture.sqlite_failure" result="Failed"><failure><message><![CDATA[Microsoft.Data.Sqlite.SqliteException: secret database path]]></message><stack-trace><![CDATA[   at Chaptarr.Core.Datastore.BookshelfDatabaseConverter.Convert(String source) in C:\\private\\work\\Converter.cs:line 42]]></stack-trace></failure></test-case>
+  </test-run>`);
+
+  assert.deepEqual(summary.failedTestDetails, [
+    {
+      name: 'Fixture.sqlite_failure',
+      exceptionType: 'Microsoft.Data.Sqlite.SqliteException',
+      stackFrame: 'Chaptarr.Core.Datastore.BookshelfDatabaseConverter.Convert',
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(summary), /secret database path|C:\\\\private|Converter.cs|line 42/);
+});
+
+test('NUnit SQLite receipt prefers an application frame and exports only the numeric SQLite code', () => {
+  const summary = parseNUnitSummary(`<test-run total="1" passed="0" failed="1" skipped="0" inconclusive="0" result="Failed">
+    <test-case name="Fixture.sqlite_open_failure" result="Failed"><failure><message><![CDATA[Microsoft.Data.Sqlite.SqliteException: SQLite Error 14: 'unable to open secret path']]></message><stack-trace><![CDATA[   at Microsoft.Data.Sqlite.SqliteConnectionInternal..ctor(String connectionString)
+   at NzbDrone.Core.Datastore.BookshelfDatabaseConverter.Convert(String source) in C:\\private\\work\\Converter.cs:line 42]]></stack-trace></failure></test-case>
+  </test-run>`);
+
+  assert.deepEqual(summary.failedTestDetails, [
+    {
+      name: 'Fixture.sqlite_open_failure',
+      exceptionType: 'Microsoft.Data.Sqlite.SqliteException',
+      stackFrame: 'NzbDrone.Core.Datastore.BookshelfDatabaseConverter.Convert',
+      sqliteErrorCode: 14,
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(summary), /unable to open secret path|C:\\\\private|Converter.cs|line 42/);
 });
 
 test('Node TAP summary accounts for pass, fail, skip, todo, and cancelled cases', () => {

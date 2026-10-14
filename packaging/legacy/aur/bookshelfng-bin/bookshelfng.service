@@ -1,0 +1,24 @@
+[Unit]
+Description=ChaptarrNG (BookshelfNG package identity)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bookshelfng
+Group=bookshelfng
+WorkingDirectory=/var/lib/bookshelfng
+EnvironmentFile=-/etc/bookshelfng/bookshelfng.env
+ExecStart=/usr/lib/chaptarrng/bin/Chaptarr /nobrowser -data=/var/lib/bookshelfng
+Restart=on-failure
+RestartSec=5s
+KillSignal=SIGINT
+TimeoutStopSec=90s
+UMask=0027
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

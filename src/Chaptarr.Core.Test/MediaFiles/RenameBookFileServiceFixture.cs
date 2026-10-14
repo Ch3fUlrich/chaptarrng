@@ -524,7 +524,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         [Test]
         public void should_remove_only_empty_directories_bounded_by_the_actual_source_author_folder()
         {
-            var rootFolder = Path.Combine(FixtureRoot, "books");
+            var rootFolder = @"C:\books".AsOsAgnostic();
             var sourceAuthorFolder = Path.Combine(rootFolder, "George R. R. Martin");
             var sourceBookFolder = Path.Combine(sourceAuthorFolder, "Wild Cards");
             var canonicalAuthorFolder = Path.Combine(rootFolder, "George R.R. Martin");
@@ -560,10 +560,9 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(diskProxy.DeletedFolders, Does.Not.Contain(NormalizePath(rootFolder)));
         }
 
-        private static readonly string FixtureRoot = Path.Combine(Path.GetTempPath(), "chaptarrng-rename-book-file-service");
-        private static readonly string HobbFolder = Path.Combine(FixtureRoot, "audiobooks", "Robin Hobb");
+        private static readonly string HobbFolder = @"C:\audiobooks\Robin Hobb".AsOsAgnostic();
         private static readonly string OldBookFolder = Path.Combine(HobbFolder, "L'Assassin Royal", "L'apprenti assassin");
-        private static readonly string NewBookFolder = Path.Combine(HobbFolder, "L'Assassin du Roi", "01 - L'apprenti assassin");
+        private static readonly string NewBookFolder = Path.Combine(HobbFolder, "L'Assassin royal", "01 - L'apprenti assassin");
 
         private static (RenameBookFileService Service, DiskProviderProxy Disk, RecordingMoveBookFiles Mover, RecordingEventAggregator Events, StubMediaFileService Files)
             CreateAudiobookFolderScenario(List<BookFile> files, Func<BookFile, string> destinationFactory)
@@ -612,11 +611,16 @@ namespace Chaptarr.Core.Test.MediaFiles
 
             scenario.Service.Execute(new RenameFilesCommand(1, new List<int> { 1, 2 }));
 
-            Assert.That(scenario.Disk.Operations, Is.EqualTo(new[]
+            var expectedOperations = new List<string>();
+            if (!PathEqualityComparer.Instance.Equals(
+                Path.Combine(HobbFolder, "L'Assassin royal"),
+                Path.GetDirectoryName(OldBookFolder)))
             {
-                $"CreateFolder {NormalizePath(Path.Combine(HobbFolder, "L'Assassin du Roi"))}",
-                $"MoveFolder {NormalizePath(OldBookFolder)} -> {NormalizePath(NewBookFolder)}"
-            }));
+                expectedOperations.Add($"CreateFolder {NormalizePath(Path.Combine(HobbFolder, "L'Assassin royal"))}");
+            }
+
+            expectedOperations.Add($"MoveFolder {NormalizePath(OldBookFolder)} -> {NormalizePath(NewBookFolder)}");
+            Assert.That(scenario.Disk.Operations, Is.EqualTo(expectedOperations));
             Assert.That(scenario.Mover.MovedFileIds, Is.Empty);
             Assert.That(files.Select(f => NormalizePath(f.Path)), Is.EqualTo(new[]
             {
@@ -628,10 +632,10 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(scenario.Files.Updated.Select(f => f.Id), Is.EqualTo(new[] { 1, 2 }));
 
             var renamed = scenario.Events.Events.OfType<AuthorRenamedEvent>().Single().RenamedFiles;
-            Assert.That(renamed.Select(r => r.PreviousPath), Is.EqualTo(new[]
+            Assert.That(renamed.Select(r => NormalizePath(r.PreviousPath)), Is.EqualTo(new[]
             {
-                Path.Combine(OldBookFolder, "01 Prologue.mp3"),
-                Path.Combine(OldBookFolder, "02 Le nouveau.mp3")
+                NormalizePath(Path.Combine(OldBookFolder, "01 Prologue.mp3")),
+                NormalizePath(Path.Combine(OldBookFolder, "02 Le nouveau.mp3"))
             }));
             Assert.That(scenario.Events.Events.OfType<BookFileRenamedEvent>().Count(), Is.EqualTo(2));
         }
@@ -648,8 +652,8 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(scenario.Mover.MovedFileIds, Is.EqualTo(new[] { 1 }));
             Assert.That(NormalizePath(files[0].Path), Is.EqualTo(NormalizePath(Path.Combine(NewBookFolder, "01 - Prologue.mp3"))));
             Assert.That(NormalizePath(files[1].Path), Is.EqualTo(NormalizePath(Path.Combine(NewBookFolder, "02 Le nouveau.mp3"))));
-            Assert.That(scenario.Events.Events.OfType<AuthorRenamedEvent>().Single().RenamedFiles.Single(r => r.BookFile.Id == 1).PreviousPath,
-                Is.EqualTo(Path.Combine(OldBookFolder, "01 Prologue.mp3")));
+            Assert.That(NormalizePath(scenario.Events.Events.OfType<AuthorRenamedEvent>().Single().RenamedFiles.Single(r => r.BookFile.Id == 1).PreviousPath),
+                Is.EqualTo(NormalizePath(Path.Combine(OldBookFolder, "01 Prologue.mp3"))));
         }
 
         [Test]

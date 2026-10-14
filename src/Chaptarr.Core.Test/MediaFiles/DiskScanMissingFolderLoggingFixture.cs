@@ -92,6 +92,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             var authorService = DispatchProxy.Create<IAuthorService, AuthorServiceProxy>();
             var eventAggregator = DispatchProxy.Create<IEventAggregator, EventAggregatorProxy>();
             var commandQueue = DispatchProxy.Create<IManageCommandQueue, CommandQueueProxy>();
+            var cleanupService = DispatchProxy.Create<IMediaFileTableCleanupService, MediaFileTableCleanupServiceProxy>();
 
             return new DiskScanService(
                 configService: null,

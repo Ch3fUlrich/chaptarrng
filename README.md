@@ -37,10 +37,19 @@ preserved upstream. That union blocks retirement as a whole. The
 tracks both gates and the individual blockers, including active development
 that is not in a release yet.
 
-The published `0.9.969` release does not include a populated BookshelfNG
-database converter or a BookshelfNG package/channel bridge. Do not point
-ChaptarrNG at a BookshelfNG `/config` directory or treat the projects as
-drop-in replacements yet. See the current
+The published `0.9.969` release does not include a BookshelfNG database
+converter or a BookshelfNG package/channel bridge. An unpublished candidate
+using the ordinary ChaptarrNG Linux/amd64 image passed preview, explicit apply,
+and normal startup against separate copies of one real populated migration-158
+SQLite database. Its backup matched all 39 source table definitions and every
+source row. Eighty-one books still need operator-selected media mappings; test
+choices were not reviewed as correct classifications. Synthetic rollback
+preview and restoration after a post-migration write now pass focused tests;
+real populated-deployment rollback remains open. Older schemas, PostgreSQL,
+complete settings/client behavior, feature parity, and channel bridges remain
+open. Do not point ChaptarrNG at a
+BookshelfNG `/config` directory or treat the projects as drop-in replacements
+yet. See the current
 [BookshelfNG consolidation report](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
 for migration and release evidence.
 
@@ -101,6 +110,7 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerr
 ### Integration & Automation
 * **Standard *arr Integrations** - Works with the usual *arr-family download clients and indexer protocols
 * **External Libraries** - Connect AudioBookShelf, Calibre Content Server, and Grimmory for supported refresh, import, metadata, cover, and edit-forwarding workflows; see the [integration guide](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md) for the direction and limits of each connection
+* **BookLore BookDrop** - Optionally upload imported files to BookLore's BookDrop intake; BookLore is an external app and is not required to run ChaptarrNG. See the [BookLore integration guide](docs/BOOKLORE_INTEGRATION.md) for setup, supported file handling, and the unverified BookOrbit transition.
 * **Emby and Jellyfin** - Refresh the media-server library after a grabbed release is imported
 * **MQTT and Webhooks** - Publish snapshots and canonical lifecycle events to MQTT, with optional Home Assistant discovery and opt-in canonical events for existing webhooks
 * **Import Lists** - Preview the next sync and review durable per-list history before relying on automatic-add behavior

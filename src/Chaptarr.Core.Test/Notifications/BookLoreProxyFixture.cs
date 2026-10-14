@@ -56,7 +56,7 @@ namespace Chaptarr.Core.Test.Notifications
                     var multipart = await request.Content.ReadAsStringAsync();
                     Assert.That(multipart, Does.Contain("test-book-content"));
                     Assert.That(multipart, Does.Contain(Path.GetFileName(path)));
-                    return new HttpResponse(request, new HttpHeader(), "{}", HttpStatusCode.Created);
+                    return new HttpResponse(request, new HttpHeader(), string.Empty, HttpStatusCode.OK);
                 });
 
                 Create(transport).UploadFiles(Settings, new[] { path, path });
@@ -76,6 +76,58 @@ namespace Chaptarr.Core.Test.Notifications
             var transport = new DirectDownloadTestHttp();
             Create(transport).UploadFiles(Settings, Array.Empty<string>());
             Assert.That(transport.RequestedUrls, Is.Empty);
+        }
+
+        [Test]
+        public void should_retry_booklore_login_after_token_conflict()
+        {
+            var path = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            File.WriteAllText(path, "test-book-content");
+            try
+            {
+                var transport = new DirectDownloadTestHttp();
+                var loginAttempts = 0;
+                transport.AddRoute(url => url.EndsWith("/auth/login"), request =>
+                {
+                    loginAttempts++;
+                    if (loginAttempts == 1)
+                    {
+                        throw new HttpException(request, new HttpResponse(request, new HttpHeader(),
+                            "{\"status\":400,\"message\":\"A data conflict occurred. The operation could not be completed.\"}",
+                            HttpStatusCode.BadRequest));
+                    }
+
+                    return Task.FromResult(new HttpResponse(request, new HttpHeader(), "{\"accessToken\":\"test-token\"}"));
+                });
+                transport.AddRoute(url => url.EndsWith("/files/upload/bookdrop"), request =>
+                    Task.FromResult(new HttpResponse(request, new HttpHeader(), string.Empty, HttpStatusCode.OK)));
+
+                Create(transport).UploadFiles(Settings, new[] { path });
+
+                Assert.That(loginAttempts, Is.EqualTo(2));
+                Assert.That(transport.RequestedUrls.Count, Is.EqualTo(3));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void should_report_booklore_bad_credentials_without_retrying()
+        {
+            var transport = new DirectDownloadTestHttp();
+            transport.AddRoute(_ => true, request =>
+                throw new HttpException(request, new HttpResponse(request, new HttpHeader(),
+                    "{\"status\":400,\"message\":\"Invalid credentials\"}", HttpStatusCode.BadRequest)));
+
+            var failure = Create(transport).Test(Settings);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(failure.PropertyName, Is.EqualTo(nameof(BookLoreSettings.Password)));
+                Assert.That(transport.RequestedUrls.Count, Is.EqualTo(1));
+            });
         }
 
         [TestCase("{}")]

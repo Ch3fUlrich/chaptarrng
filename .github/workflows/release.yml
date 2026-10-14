@@ -185,6 +185,14 @@ jobs:
           REMOTE_SHA="$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}' || true)"
         fi
 
+        if gh release view "$TAG" --json isDraft --jq .isDraft >/dev/null 2>&1; then
+          IS_PUBLISHED="$(gh release view "$TAG" --json isDraft --jq '.isDraft | not')"
+          if [[ "$IS_PUBLISHED" == "true" ]]; then
+            echo "Release $TAG is already published. Bump the version before creating another release."
+            exit 1
+          fi
+        fi
+
         if [[ -n "$REMOTE_SHA" && "$REMOTE_SHA" != "$RELEASE_SHA" ]]; then
           IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo false)"
           if [[ "$IS_DRAFT" != "true" ]]; then
@@ -236,6 +244,8 @@ jobs:
     uses: ./.github/workflows/docker-publish.yml
     secrets:
       SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     permissions:
       contents: read
       packages: write
@@ -244,9 +254,145 @@ jobs:
     with:
       sha: ${{ needs.release.outputs.sha }}
       branch: ${{ github.ref_name }}
+      legacy_bridge_enabled: ${{ vars.CHAPTARRNG_MIGRATION_BRIDGE_ENABLED == 'true' }}
+
+  dispatch-legacy-ghcr:
+    name: Dispatch personal-account BookshelfNG GHCR bridge
+    needs: [release, docker, publish-release]
+    if: ${{ vars.CHAPTARRNG_MIGRATION_BRIDGE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Create scoped bridge-repository token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ vars.CHAPTARRNG_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.CHAPTARRNG_AUTOMATION_APP_PRIVATE_KEY }}
+          owner: snapetech
+          repositories: bookshelfng-ghcr-release-bridge
+          permission-contents: write
+      - name: Dispatch verified standard image digest
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+          SOURCE_SHA: ${{ needs.release.outputs.sha }}
+          IMAGE_DIGEST: ${{ needs.docker.outputs.image_digest }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+        run: bash packaging/scripts/dispatch-ghcr-release-bridge.sh
+
+  standalone-assets:
+    name: Build ${{ matrix.rid }} standalone release asset
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [linux-x64, linux-arm64, win-x64]
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.release.outputs.sha }}
+        persist-credentials: false
+
+    - name: Setup Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 26.10.0
+        package-manager-cache: false
+
+    - name: Build frontend
+      run: |
+        npm install --global yarn@1.22.22
+        yarn install --frozen-lockfile
+        yarn build
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+      with:
+        dotnet-version: 10.0.401
+
+    - name: Require ImageSharp build license
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+      run: test -n "$SIXLABORS_LICENSE_KEY"
+
+    - name: Build standalone application archive
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+        VERSION: ${{ needs.release.outputs.version }}
+        RID: ${{ matrix.rid }}
+      run: bash packaging/scripts/build-standalone.sh "$VERSION" "$RID" "$RUNNER_TEMP/release-assets"
+
+    - name: Verify archive and checksum sidecar
+      env:
+        VERSION: ${{ needs.release.outputs.version }}
+        RID: ${{ matrix.rid }}
+      run: |
+        set -euo pipefail
+        if [[ "$RID" == win-* ]]; then
+          asset="ChaptarrNG-${VERSION}-${RID}.zip"
+          unzip -t "$RUNNER_TEMP/release-assets/$asset" >/dev/null
+        else
+          asset="ChaptarrNG-${VERSION}-${RID}.tar.gz"
+          tar -tzf "$RUNNER_TEMP/release-assets/$asset" >/dev/null
+        fi
+        (cd "$RUNNER_TEMP/release-assets" && sha256sum --check "$asset.sha256")
+
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: chaptarrng-standalone-${{ matrix.rid }}
+        path: ${{ runner.temp }}/release-assets/*
+        retention-days: 1
+        if-no-files-found: error
+
+  rpm-source:
+    name: Build verified new and legacy COPR source RPMs
+    needs: [release, standalone-assets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.release.outputs.sha }}
+        persist-credentials: false
+
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: chaptarrng-standalone-linux-x64
+        path: ${{ runner.temp }}/linux-x64
+
+    - name: Install RPM tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes --no-install-recommends rpm
+
+    - name: Build both package identities from the same ChaptarrNG release asset
+      env:
+        VERSION: ${{ needs.release.outputs.version }}
+      run: |
+        set -euo pipefail
+        asset="ChaptarrNG-${VERSION}-linux-x64.tar.gz"
+        VERSION="$VERSION" \
+          ARCHIVE_PATH="$RUNNER_TEMP/linux-x64/$asset" \
+          OUTPUT_DIR="$RUNNER_TEMP/rpm-source-output" \
+          bash packaging/scripts/build-rpm-sources.sh
+
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: chaptarrng-rpm-source
+        path: |
+          ${{ runner.temp }}/rpm-source-output/*.src.rpm
+          ${{ runner.temp }}/rpm-source-output/*.src.rpm.sha256
+        retention-days: 1
+        if-no-files-found: error
 
   publish-release:
-    needs: [release, docker]
+    needs: [release, docker, standalone-assets, rpm-source]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -255,6 +401,47 @@ jobs:
       with:
         ref: ${{ needs.release.outputs.sha }}
         persist-credentials: false
+
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        pattern: chaptarrng-standalone-*
+        merge-multiple: true
+        path: ${{ runner.temp }}/release-assets
+
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: chaptarrng-rpm-source
+        path: ${{ runner.temp }}/release-assets
+
+    - name: Verify and attach release assets
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.release.outputs.tag }}
+        VERSION: ${{ needs.release.outputs.version }}
+      run: |
+        set -euo pipefail
+        release_state="$(gh release view "$TAG" --json isDraft --jq '.isDraft')"
+        if [[ "$release_state" != "true" ]]; then
+          echo "Refusing to mutate the published release $TAG."
+          exit 1
+        fi
+        for rid in linux-x64 linux-arm64; do
+          asset="ChaptarrNG-${VERSION}-${rid}.tar.gz"
+          test -s "$RUNNER_TEMP/release-assets/$asset"
+          (cd "$RUNNER_TEMP/release-assets" && sha256sum --check "$asset.sha256")
+        done
+        asset="ChaptarrNG-${VERSION}-win-x64.zip"
+        test -s "$RUNNER_TEMP/release-assets/$asset"
+        (cd "$RUNNER_TEMP/release-assets" && sha256sum --check "$asset.sha256")
+        srpm="chaptarrng-${VERSION}-1.src.rpm"
+        test -s "$RUNNER_TEMP/release-assets/$srpm"
+        (cd "$RUNNER_TEMP/release-assets" && sha256sum --check "$srpm.sha256")
+        legacy_srpm="bookshelfng-${VERSION}-1.src.rpm"
+        test -s "$RUNNER_TEMP/release-assets/$legacy_srpm"
+        (cd "$RUNNER_TEMP/release-assets" && sha256sum --check "$legacy_srpm.sha256")
+        mapfile -d '' release_files < <(find "$RUNNER_TEMP/release-assets" -mindepth 1 -maxdepth 1 -type f -print0)
+        ((${#release_files[@]} > 0))
+        gh release upload "$TAG" "${release_files[@]}" --clobber
 
     - name: Publish verified draft
       env:
@@ -276,6 +463,21 @@ jobs:
           --draft=false \
           --prerelease=false \
           --latest
+
+  publish-packages:
+    needs: [release, publish-release]
+    uses: ./.github/workflows/release-distribution.yml
+    permissions:
+      contents: read
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      version: ${{ needs.release.outputs.version }}
+      legacy_bridge_enabled: ${{ vars.CHAPTARRNG_MIGRATION_BRIDGE_ENABLED == 'true' }}
+    secrets:
+      AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+      COPR_WEBHOOK_URL: ${{ secrets.COPR_WEBHOOK_URL }}
+      BOOKSHELFNG_COPR_WEBHOOK_URL: ${{ secrets.BOOKSHELFNG_COPR_WEBHOOK_URL }}
+      CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
 
   announce-discord:
     name: Announce release to Discord

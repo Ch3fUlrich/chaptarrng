@@ -413,16 +413,81 @@ export function parseNodeTestSummary(output) {
   return { ...summary, inconclusive: summary.todo };
 }
 
+function decodeNUnitXmlText(value) {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, decimal) => String.fromCodePoint(Number.parseInt(decimal, 10)))
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+function nunitFailureType(body) {
+  const failure = body.match(/<failure\b([^>]*)>([\s\S]*?)<\/failure>/i);
+  if (!failure) return null;
+  const exceptionAttribute = failure[1].match(/\bexception-type="([^"]+)"/i)?.[1];
+  if (exceptionAttribute) return decodeNUnitXmlText(exceptionAttribute);
+
+  const message = failure[2].match(/<message\b[^>]*>([\s\S]*?)<\/message>/i)?.[1];
+  const decodedMessage = message ? decodeNUnitXmlText(message) : null;
+  const messageExceptionType = decodedMessage?.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
+    ?.match(/^([A-Za-z_][\w.+`]*(?:Exception|Error))\b/)?.[1];
+  if (messageExceptionType) return messageExceptionType;
+
+  const stackTrace = failure[2].match(/<stack-trace\b[^>]*>([\s\S]*?)<\/stack-trace>/i)?.[1];
+  const firstStackLine = stackTrace ? decodeNUnitXmlText(stackTrace).split(/\r?\n/).map((line) => line.trim()).find(Boolean) : null;
+  const stackExceptionType = firstStackLine?.match(/^([A-Za-z_][\w.+`]*(?:Exception|Error))\b/)?.[1];
+  if (stackExceptionType) return stackExceptionType;
+
+  if (decodedMessage && /^\s*Expected:/m.test(decodedMessage)) return 'NUnit.Framework.AssertionException';
+  return null;
+}
+
+function nunitFailureFrame(body) {
+  const failure = body.match(/<failure\b[^>]*>([\s\S]*?)<\/failure>/i);
+  if (!failure) return null;
+  const stackTrace = failure[1].match(/<stack-trace\b[^>]*>([\s\S]*?)<\/stack-trace>/i)?.[1];
+  if (!stackTrace) return null;
+  const methods = decodeNUnitXmlText(stackTrace).split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^at\s+/.test(line))
+    .map((line) => line.match(/^at\s+([^ (]+)\s*\(/)?.[1])
+    .filter(Boolean);
+  const method = methods.find((candidate) => candidate.startsWith('NzbDrone.')) ?? methods[0];
+  return method && /^[A-Za-z0-9_.$+`<>-]+$/.test(method) ? method : null;
+}
+
+function nunitFailureSqliteErrorCode(body) {
+  const failure = body.match(/<failure\b[^>]*>([\s\S]*?)<\/failure>/i);
+  if (!failure) return null;
+  const message = failure[1].match(/<message\b[^>]*>([\s\S]*?)<\/message>/i)?.[1];
+  if (!message) return null;
+  const code = decodeNUnitXmlText(message).match(/\bSQLite Error\s+(\d+):/i)?.[1];
+  return code === undefined ? null : Number(code);
+}
+
 export function parseNUnitSummary(xml) {
   const root = xml.match(/<test-run\b[^>]*>/)?.[0];
   if (!root) throw new Error('NUnit XML is missing its test-run summary');
   const attrs = Object.fromEntries([...root.matchAll(/([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/g)].map((match) => [match[1], match[2]]));
   const failedTestNames = [];
+  const failedTestDetails = [];
   for (const match of xml.matchAll(/<test-case\b[^>]*>/g)) {
     const tag = match[0];
     const result = tag.match(/\bresult="([^"]+)"/)?.[1];
     const name = tag.match(/\bname="([^"]+)"/)?.[1];
-    if (result === 'Failed' && name) failedTestNames.push(name);
+    if (result !== 'Failed' || !name) continue;
+    failedTestNames.push(name);
+    const bodyStart = match.index + tag.length;
+    const bodyEnd = xml.indexOf('</test-case>', bodyStart);
+    const body = tag.endsWith('/>') || bodyEnd < 0 ? '' : xml.slice(bodyStart, bodyEnd);
+    const detail = { name, exceptionType: nunitFailureType(body), stackFrame: nunitFailureFrame(body) };
+    const sqliteErrorCode = nunitFailureSqliteErrorCode(body);
+    if (sqliteErrorCode !== null) detail.sqliteErrorCode = sqliteErrorCode;
+    failedTestDetails.push(detail);
   }
   const summary = {
     total: Number(attrs.total ?? attrs.testcasecount),
@@ -439,6 +504,8 @@ export function parseNUnitSummary(xml) {
     ...summary,
     failedTestNames: failedTestNames.slice(0, 100),
     failedTestNamesTruncated: failedTestNames.length > 100,
+    failedTestDetails: failedTestDetails.slice(0, 100),
+    failedTestDetailsTruncated: failedTestDetails.length > 100,
   };
 }
 
@@ -694,6 +761,8 @@ export async function runTask(task, runRoot, testSpec = null) {
   let inconclusiveCases = null;
   let failedTestNames = [];
   let failedTestNamesTruncated = false;
+  let failedTestDetails = [];
+  let failedTestDetailsTruncated = false;
   let summaryError = null;
   if (task.id === 'dotnet-core-tests') {
     try {
@@ -705,6 +774,8 @@ export async function runTask(task, runRoot, testSpec = null) {
       inconclusiveCases = summary.inconclusive;
       failedTestNames = summary.failedTestNames;
       failedTestNamesTruncated = summary.failedTestNamesTruncated;
+      failedTestDetails = summary.failedTestDetails;
+      failedTestDetailsTruncated = summary.failedTestDetailsTruncated;
       if (summary.result && summary.result !== 'Passed') summaryError = `NUnit reported ${summary.result}`;
     } catch (error) { summaryError = error.message; }
   } else if (spec.resultFormat === 'node-test') {
@@ -746,6 +817,8 @@ export async function runTask(task, runRoot, testSpec = null) {
     inconclusiveCases,
     failedTestNames,
     failedTestNamesTruncated,
+    failedTestDetails,
+    failedTestDetailsTruncated,
     inventory: task.inventory,
     artifactInputs: artifactsBefore,
   };

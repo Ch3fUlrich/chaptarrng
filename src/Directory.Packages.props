@@ -65,6 +65,5 @@
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageVersion Include="System.ServiceProcess.ServiceController" Version="10.0.13" />
     <PackageVersion Include="System.ValueTuple" Version="4.6.2" />
-    <PackageVersion Include="TagLibSharp-Lidarr" Version="2.2.0.19" />
   </ItemGroup>
 </Project>

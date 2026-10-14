@@ -1,0 +1,502 @@
+name: Publish package-manager channels
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      legacy_bridge_enabled:
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      AUR_SSH_KEY:
+        required: false
+      COPR_WEBHOOK_URL:
+        required: false
+      BOOKSHELFNG_COPR_WEBHOOK_URL:
+        required: false
+      CHOCOLATEY_API_KEY:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag to retry
+        required: true
+        type: string
+      version:
+        description: Matching MAJOR.MINOR.PATCH version
+        required: true
+        type: string
+      legacy_bridge_enabled:
+        description: Also publish BookshelfNG package identities after all migration gates pass; requires the repository bridge variable.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release-target:
+    name: Validate published release target
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.target.outputs.tag }}
+      version: ${{ steps.target.outputs.version }}
+      legacy_bridge_enabled: ${{ steps.target.outputs.legacy_bridge_enabled }}
+    steps:
+    - id: target
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ inputs.tag }}
+        VERSION: ${{ inputs.version }}
+        EVENT_NAME: ${{ github.event_name }}
+        REF: ${{ github.ref }}
+        REQUESTED_LEGACY_BRIDGE: ${{ inputs.legacy_bridge_enabled }}
+        MIGRATION_BRIDGE_GATE: ${{ vars.CHAPTARRNG_MIGRATION_BRIDGE_ENABLED || 'false' }}
+      run: |
+        set -euo pipefail
+        [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]
+        [[ "$TAG" == "v${VERSION}" ]]
+        [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+        legacy_bridge_enabled=false
+        if [[ "${REQUESTED_LEGACY_BRIDGE,,}" == true && "${MIGRATION_BRIDGE_GATE,,}" == true ]]; then
+          legacy_bridge_enabled=true
+        elif [[ "${REQUESTED_LEGACY_BRIDGE,,}" == true ]]; then
+          echo 'Legacy BookshelfNG package publishing was requested, but CHAPTARRNG_MIGRATION_BRIDGE_ENABLED is not true; legacy publishing remains disabled.' >> "$GITHUB_STEP_SUMMARY"
+        fi
+        if [[ "$EVENT_NAME" == workflow_dispatch && "$REF" != refs/heads/main ]]; then
+          echo 'Package retries must run from main.' >&2
+          exit 1
+        fi
+        state="$(gh release view "$TAG" --json isDraft,isPrerelease)"
+        echo "$state" | jq -e '.isDraft == false and .isPrerelease == false' >/dev/null
+        {
+          echo "tag=$TAG"
+          echo "version=$VERSION"
+          echo "legacy_bridge_enabled=$legacy_bridge_enabled"
+        } >> "$GITHUB_OUTPUT"
+
+  credentials:
+    name: Check optional publisher credentials
+    runs-on: ubuntu-latest
+    outputs:
+      aur: ${{ steps.check.outputs.aur }}
+      copr: ${{ steps.check.outputs.copr }}
+      bookshelfng_copr: ${{ steps.check.outputs.bookshelfng_copr }}
+      chocolatey: ${{ steps.check.outputs.chocolatey }}
+    steps:
+    - id: check
+      env:
+        AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        COPR_WEBHOOK_URL: ${{ secrets.COPR_WEBHOOK_URL }}
+        BOOKSHELFNG_COPR_WEBHOOK_URL: ${{ secrets.BOOKSHELFNG_COPR_WEBHOOK_URL }}
+        CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+      run: |
+        if [[ -n "$AUR_SSH_KEY" ]]; then
+          echo 'aur=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'aur=false' >> "$GITHUB_OUTPUT"
+        fi
+        [[ -n "$COPR_WEBHOOK_URL" ]] && echo 'copr=true' >> "$GITHUB_OUTPUT" || echo 'copr=false' >> "$GITHUB_OUTPUT"
+        [[ -n "$BOOKSHELFNG_COPR_WEBHOOK_URL" ]] && echo 'bookshelfng_copr=true' >> "$GITHUB_OUTPUT" || echo 'bookshelfng_copr=false' >> "$GITHUB_OUTPUT"
+        [[ -n "$CHOCOLATEY_API_KEY" ]] && echo 'chocolatey=true' >> "$GITHUB_OUTPUT" || echo 'chocolatey=false' >> "$GITHUB_OUTPUT"
+
+  build-aur:
+    name: Validate new and legacy AUR recipes
+    needs: [release-target]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ inputs.tag }}
+        persist-credentials: false
+
+    - name: Download and verify the release archive
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ inputs.tag }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        asset="ChaptarrNG-${VERSION}-linux-x64.tar.gz"
+        gh release download "$TAG" --pattern "$asset" --pattern "$asset.sha256" --dir "$RUNNER_TEMP"
+        (cd "$RUNNER_TEMP" && sha256sum --check "$asset.sha256")
+
+    - name: Build both AUR package identities from the same release asset
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        asset="ChaptarrNG-${VERSION}-linux-x64.tar.gz"
+        sha="$(awk 'NR == 1 { print $1 }' "$RUNNER_TEMP/$asset.sha256")"
+        ARCHIVE_SHA256="$sha" VERSION="$VERSION" \
+          SOURCE_ARCHIVE_PATH="$RUNNER_TEMP/$asset" \
+          OUTPUT_DIR="$RUNNER_TEMP/aur-output" \
+          bash packaging/scripts/build-aur-recipes.sh
+
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: chaptarrng-aur-recipes
+        path: ${{ runner.temp }}/aur-output/
+        retention-days: 1
+        if-no-files-found: error
+
+  publish-aur:
+    name: Publish ChaptarrNG and BookshelfNG AUR identities
+    needs: [credentials, release-target, build-aur]
+    if: needs.credentials.outputs.aur == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: chaptarrng-aur-recipes
+        path: ${{ runner.temp }}/aur-packages
+
+    - name: Push the tested package recipes
+      env:
+        AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        LEGACY_BRIDGE_ENABLED: ${{ needs.release-target.outputs.legacy_bridge_enabled }}
+      run: |
+        set -euo pipefail
+        work="$RUNNER_TEMP/aur-packages"
+        key="$RUNNER_TEMP/aur-key"
+        printf '%s\n' "$AUR_SSH_KEY" > "$key"
+        chmod 0600 "$key"
+        install -d -m 0700 ~/.ssh
+        install -m 0600 "$key" ~/.ssh/aur
+        cat > ~/.ssh/known_hosts <<'EOF'
+        aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN
+        EOF
+        expected='SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4'
+        actual="$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk '{print $2}')"
+        [[ "$actual" == "$expected" ]]
+        cat > ~/.ssh/config <<'EOF'
+        Host aur.archlinux.org
+          User aur
+          IdentityFile ~/.ssh/aur
+          IdentitiesOnly yes
+          StrictHostKeyChecking yes
+          UserKnownHostsFile ~/.ssh/known_hosts
+          GlobalKnownHostsFile /dev/null
+          BatchMode yes
+        EOF
+        chmod 0600 ~/.ssh/config ~/.ssh/known_hosts
+        pkg_bases=(chaptarrng-bin)
+        if [[ "${LEGACY_BRIDGE_ENABLED,,}" == true ]]; then
+          pkg_bases+=(bookshelfng-bin)
+        else
+          echo 'BookshelfNG AUR identity publishing is disabled until the migration bridge gate is enabled.' >> "$GITHUB_STEP_SUMMARY"
+        fi
+        for pkgbase in "${pkg_bases[@]}"; do
+          package_dir="$work/$pkgbase"
+          repo="$RUNNER_TEMP/aur-repo-$pkgbase"
+          if git ls-remote "https://aur.archlinux.org/${pkgbase}.git" HEAD >/dev/null 2>&1; then
+            git clone "https://aur.archlinux.org/${pkgbase}.git" "$repo"
+            git -C "$repo" remote set-url --push origin "ssh://aur@aur.archlinux.org/${pkgbase}.git"
+          else
+            mkdir "$repo"
+            git -C "$repo" init --initial-branch=master
+            git -C "$repo" remote add origin "ssh://aur@aur.archlinux.org/${pkgbase}.git"
+          fi
+          cp -R "$package_dir/." "$repo/"
+          git -C "$repo" config user.name 'ChaptarrNG Release Automation'
+          git -C "$repo" config user.email 'noreply@github.com'
+          git -C "$repo" add -A
+          if ! git -C "$repo" diff --cached --quiet; then
+            git -C "$repo" commit -m "Update ${pkgbase} package"
+            git -C "$repo" push origin HEAD:master
+          fi
+        done
+
+    - name: Remove AUR SSH credentials
+      if: always()
+      run: rm -f -- ~/.ssh/aur ~/.ssh/config ~/.ssh/known_hosts
+
+  build-chocolatey:
+    name: Build and validate the Chocolatey package
+    needs: [release-target]
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ inputs.tag }}
+        persist-credentials: false
+
+    - name: Download and verify the release archive
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ inputs.tag }}
+        VERSION: ${{ inputs.version }}
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $archive = "ChaptarrNG-$env:VERSION-win-x64.zip"
+        gh release download $env:TAG --pattern $archive --pattern "$archive.sha256" --dir $env:RUNNER_TEMP
+        $sidecar = Get-Content (Join-Path $env:RUNNER_TEMP "$archive.sha256") -Raw
+        $expected = ($sidecar -split '\s+')[0]
+        $actual = (Get-FileHash (Join-Path $env:RUNNER_TEMP $archive) -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actual -ne $expected) { throw 'The Windows archive checksum does not match its release sidecar.' }
+
+    - name: Render and pack Chocolatey package
+      env:
+        VERSION: ${{ inputs.version }}
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $packageDir = Join-Path $env:RUNNER_TEMP 'chaptarrng-chocolatey'
+        $toolsDir = Join-Path $packageDir 'tools'
+        New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+        Copy-Item packaging/chocolatey/chaptarrng.nuspec.in (Join-Path $packageDir 'chaptarrng.nuspec')
+        Copy-Item packaging/chocolatey/tools/chocolateyinstall.ps1.in (Join-Path $toolsDir 'chocolateyinstall.ps1')
+        Copy-Item packaging/chocolatey/tools/chocolateyuninstall.ps1 (Join-Path $toolsDir 'chocolateyuninstall.ps1')
+        $archive = "ChaptarrNG-$env:VERSION-win-x64.zip"
+        $checksum = (Get-FileHash (Join-Path $env:RUNNER_TEMP $archive) -Algorithm SHA256).Hash.ToLowerInvariant()
+        $nuspec = Join-Path $packageDir 'chaptarrng.nuspec'
+        $nuspecText = (Get-Content $nuspec -Raw).Replace('__VERSION__', $env:VERSION)
+        [System.IO.File]::WriteAllText($nuspec, $nuspecText, [System.Text.UTF8Encoding]::new($false))
+        $installScript = Join-Path $toolsDir 'chocolateyinstall.ps1'
+        $scriptText = (Get-Content $installScript -Raw).Replace('__VERSION__', $env:VERSION).Replace('__ARCHIVE_SHA256__', $checksum)
+        if ($scriptText -match '__[A-Z_]+__') { throw 'The install script has an unresolved release placeholder.' }
+        $tokens = $null; $parseErrors = $null
+        [System.Management.Automation.Language.Parser]::ParseInput($scriptText, [ref]$tokens, [ref]$parseErrors) | Out-Null
+        if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }
+        [System.IO.File]::WriteAllText($installScript, $scriptText, [System.Text.UTF8Encoding]::new($false))
+        [xml]$parsedNuspec = Get-Content $nuspec -Raw
+        $namespace = [System.Xml.XmlNamespaceManager]::new($parsedNuspec.NameTable)
+        $namespace.AddNamespace('n', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
+        $packageId = $parsedNuspec.SelectSingleNode('/n:package/n:metadata/n:id', $namespace).InnerText
+        $packageVersion = $parsedNuspec.SelectSingleNode('/n:package/n:metadata/n:version', $namespace).InnerText
+        if ($packageId -ne 'chaptarrng' -or $packageVersion -ne $env:VERSION) {
+          throw 'Rendered Chocolatey package identity or version is incorrect.'
+        }
+        choco pack $nuspec --outputdirectory $packageDir
+        $nupkg = Get-ChildItem $packageDir -Filter 'chaptarrng.*.nupkg' | Select-Object -First 1
+        if (-not $nupkg) { throw 'Chocolatey did not produce the ChaptarrNG package.' }
+
+        $legacyPackageDir = Join-Path $env:RUNNER_TEMP 'bookshelfng-chocolatey'
+        $legacyToolsDir = Join-Path $legacyPackageDir 'tools'
+        New-Item -ItemType Directory -Force -Path $legacyToolsDir | Out-Null
+        Copy-Item packaging/legacy/chocolatey/bookshelfng.nuspec.in (Join-Path $legacyPackageDir 'bookshelfng.nuspec')
+        Copy-Item packaging/legacy/chocolatey/tools/chocolateyinstall.ps1.in (Join-Path $legacyToolsDir 'chocolateyinstall.ps1')
+        Copy-Item packaging/legacy/chocolatey/tools/chocolateyuninstall.ps1 (Join-Path $legacyToolsDir 'chocolateyuninstall.ps1')
+        $legacyNuspec = Join-Path $legacyPackageDir 'bookshelfng.nuspec'
+        $legacyNuspecText = (Get-Content $legacyNuspec -Raw).Replace('__VERSION__', $env:VERSION)
+        [System.IO.File]::WriteAllText($legacyNuspec, $legacyNuspecText, [System.Text.UTF8Encoding]::new($false))
+        $legacyInstallScript = Join-Path $legacyToolsDir 'chocolateyinstall.ps1'
+        $legacyScriptText = (Get-Content $legacyInstallScript -Raw).Replace('__VERSION__', $env:VERSION).Replace('__ARCHIVE_SHA256__', $checksum)
+        if ($legacyScriptText -match '__[A-Z_]+__') { throw 'The legacy Chocolatey install script has an unresolved release placeholder.' }
+        $tokens = $null; $parseErrors = $null
+        [System.Management.Automation.Language.Parser]::ParseInput($legacyScriptText, [ref]$tokens, [ref]$parseErrors) | Out-Null
+        if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }
+        [System.IO.File]::WriteAllText($legacyInstallScript, $legacyScriptText, [System.Text.UTF8Encoding]::new($false))
+        [xml]$legacyParsedNuspec = Get-Content $legacyNuspec -Raw
+        $legacyNamespace = [System.Xml.XmlNamespaceManager]::new($legacyParsedNuspec.NameTable)
+        $legacyNamespace.AddNamespace('n', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
+        $legacyPackageId = $legacyParsedNuspec.SelectSingleNode('/n:package/n:metadata/n:id', $legacyNamespace).InnerText
+        $legacyPackageVersion = $legacyParsedNuspec.SelectSingleNode('/n:package/n:metadata/n:version', $legacyNamespace).InnerText
+        if ($legacyPackageId -ne 'bookshelfng' -or $legacyPackageVersion -ne $env:VERSION) {
+          throw 'Rendered legacy Chocolatey package identity or version is incorrect.'
+        }
+        choco pack $legacyNuspec --outputdirectory $legacyPackageDir
+        $legacyNupkg = Get-ChildItem $legacyPackageDir -Filter 'bookshelfng.*.nupkg' | Select-Object -First 1
+        if (-not $legacyNupkg) { throw 'Chocolatey did not produce the legacy BookshelfNG package bridge.' }
+
+        $source = "$packageDir;https://community.chocolatey.org/api/v2/"
+        choco install chaptarrng --source "$source" --yes --no-progress
+        if ($LASTEXITCODE -ne 0) { throw 'Chocolatey could not install the freshly built package.' }
+        $service = Get-Service -Name 'ChaptarrNG' -ErrorAction Stop
+        $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(90))
+        $ready = $false
+        for ($attempt = 0; $attempt -lt 45; $attempt++) {
+          try {
+            $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8789/ping' -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -eq 200) { $ready = $true; break }
+          } catch { }
+          Start-Sleep -Seconds 2
+        }
+        if (-not $ready) { throw 'The Chocolatey-installed service did not answer /ping.' }
+
+        $dataDir = Join-Path $env:ProgramData 'ChaptarrNG\data'
+        New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+        $marker = Join-Path $dataDir 'chocolatey-uninstall-preserves-data.test'
+        Set-Content -Path $marker -Value 'preserve'
+        choco upgrade chaptarrng --source "$source" --yes --no-progress --force
+        if ($LASTEXITCODE -ne 0) { throw 'Chocolatey could not upgrade its installed smoke-test package.' }
+        $service = Get-Service -Name 'ChaptarrNG' -ErrorAction Stop
+        $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(90))
+        if (-not (Test-Path $marker)) { throw 'Chocolatey upgrade removed persistent application data.' }
+        choco uninstall chaptarrng --yes --no-progress
+        if ($LASTEXITCODE -ne 0) { throw 'Chocolatey could not uninstall its smoke-test package.' }
+        if (-not (Test-Path $marker)) { throw 'Chocolatey uninstall removed persistent application data.' }
+        if (Test-Path (Join-Path $env:ProgramFiles 'ChaptarrNG\app')) {
+          throw 'Chocolatey uninstall left the application payload behind.'
+        }
+
+        # Install the latest approved legacy package. GitHub release tags can
+        # be ahead of Chocolatey's moderation queue, so pinning the app release
+        # here can make this bridge test fail before exercising the upgrade.
+        choco install bookshelfng --source 'https://community.chocolatey.org/api/v2/' --yes --no-progress
+        if ($LASTEXITCODE -ne 0) { throw 'Chocolatey could not install the last published BookshelfNG package for the bridge test.' }
+        $legacyService = Get-Service -Name 'BookshelfNG' -ErrorAction Stop
+        $legacyService.WaitForStatus('Running', [TimeSpan]::FromSeconds(90))
+        $legacyDataDir = Join-Path $env:ProgramData 'BookshelfNG\data'
+        $legacyDb = Join-Path $legacyDataDir 'readarr.db'
+        $legacyReady = $false
+        for ($attempt = 0; $attempt -lt 45; $attempt++) {
+          if ((Test-Path $legacyDb) -and (Get-Item $legacyDb).Length -gt 0) { $legacyReady = $true; break }
+          Start-Sleep -Seconds 2
+        }
+        if (-not $legacyReady) { throw 'The published BookshelfNG package did not create its legacy database.' }
+        $legacyMarker = Join-Path $legacyDataDir 'chaptarrng-bridge-preserves-data.test'
+        Set-Content -Path $legacyMarker -Value 'preserve'
+        $legacySource = "$legacyPackageDir;https://community.chocolatey.org/api/v2/"
+        choco upgrade bookshelfng --source "$legacySource" --yes --no-progress --force
+        if ($LASTEXITCODE -ne 0) { throw 'Chocolatey could not upgrade the published BookshelfNG install through the bridge package.' }
+        $legacyService = Get-Service -Name 'BookshelfNG' -ErrorAction Stop
+        $legacyService.WaitForStatus('Running', [TimeSpan]::FromSeconds(90))
+        if (-not (Test-Path $legacyMarker)) { throw 'The BookshelfNG-to-ChaptarrNG package bridge removed user data.' }
+        $migrationBackup = $null
+        for ($attempt = 0; $attempt -lt 45; $attempt++) {
+          $migrationBackup = Get-ChildItem -LiteralPath $legacyDataDir -Filter 'readarr.db.bookshelfng-backup-*.db' -File |
+            Select-Object -First 1
+          if ($migrationBackup) { break }
+          Start-Sleep -Seconds 2
+        }
+        if (-not $migrationBackup) { throw 'The BookshelfNG-to-ChaptarrNG update did not retain the source database backup.' }
+        $legacyPing = $false
+        for ($attempt = 0; $attempt -lt 45; $attempt++) {
+          try {
+            $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8787/ping' -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -eq 200) { $legacyPing = $true; break }
+          } catch { }
+          Start-Sleep -Seconds 2
+        }
+        if (-not $legacyPing) { throw 'The BookshelfNG service identity did not serve the upgraded ChaptarrNG application.' }
+        choco uninstall bookshelfng --yes --no-progress
+        if ($LASTEXITCODE -ne 0) { throw 'Chocolatey could not uninstall the legacy package after the bridge smoke test.' }
+        if (Get-Service -Name 'BookshelfNG' -ErrorAction SilentlyContinue) {
+          throw 'Chocolatey uninstall left the BookshelfNG service behind.'
+        }
+        if (-not (Test-Path $legacyMarker) -or -not (Test-Path $migrationBackup.FullName)) {
+          throw 'Chocolatey uninstall removed the preserved BookshelfNG migration data or source backup.'
+        }
+
+        $output = Join-Path $env:RUNNER_TEMP 'chaptarrng-chocolatey-output'
+        New-Item -ItemType Directory -Force -Path $output | Out-Null
+        Copy-Item $nupkg.FullName $output
+        Copy-Item $legacyNupkg.FullName $output
+
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: chaptarrng-chocolatey-packages
+        path: ${{ runner.temp }}/chaptarrng-chocolatey-output/*.nupkg
+        retention-days: 1
+        if-no-files-found: error
+
+  publish-chocolatey:
+    name: Publish new and legacy Chocolatey package identities
+    needs: [credentials, release-target, build-chocolatey]
+    if: needs.credentials.outputs.chocolatey == 'true'
+    runs-on: windows-latest
+    steps:
+    - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: chaptarrng-chocolatey-packages
+        path: ${{ runner.temp }}/chaptarrng-chocolatey-output
+
+    - name: Publish new and eligible legacy package identities
+      env:
+        CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        LEGACY_BRIDGE_ENABLED: ${{ needs.release-target.outputs.legacy_bridge_enabled }}
+      shell: pwsh
+      run: ./packaging/scripts/publish-chocolatey-packages.ps1
+
+  trigger-copr:
+    name: Trigger COPR build
+    needs: [credentials, release-target]
+    if: needs.credentials.outputs.copr == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Submit verified release tag to the ChaptarrNG COPR webhook
+      env:
+        COPR_WEBHOOK_URL: ${{ secrets.COPR_WEBHOOK_URL }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        set -euo pipefail
+        url="$COPR_WEBHOOK_URL"
+        if [[ "$url" != https://*chaptarrng/ || "$url" =~ [[:space:]] ]]; then
+          echo 'COPR_WEBHOOK_URL must be the package-scoped HTTPS webhook for chaptarrng.' >&2
+          exit 1
+        fi
+        curl --fail --location --silent --show-error \
+          --output "$RUNNER_TEMP/copr-response.txt" \
+          --header 'Content-Type: text/plain' \
+          --data "$TAG" \
+          "$url"
+        test -s "$RUNNER_TEMP/copr-response.txt"
+        echo "COPR accepted the ${TAG} build trigger."
+
+  trigger-legacy-copr:
+    name: Trigger legacy bookshelfng COPR package
+    needs: [credentials, release-target]
+    if: needs.credentials.outputs.bookshelfng_copr == 'true' && needs.release-target.outputs.legacy_bridge_enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Submit the release tag to the existing bookshelfng COPR package
+      env:
+        BOOKSHELFNG_COPR_WEBHOOK_URL: ${{ secrets.BOOKSHELFNG_COPR_WEBHOOK_URL }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        set -euo pipefail
+        url="$BOOKSHELFNG_COPR_WEBHOOK_URL"
+        if [[ "$url" != https://*bookshelfng/ || "$url" =~ [[:space:]] ]]; then
+          echo 'BOOKSHELFNG_COPR_WEBHOOK_URL must be the package-scoped HTTPS webhook for the existing bookshelfng package.' >&2
+          exit 1
+        fi
+        curl --fail --location --silent --show-error \
+          --output "$RUNNER_TEMP/copr-bookshelfng-response.txt" \
+          --header 'Content-Type: text/plain' \
+          --data "$TAG" \
+          "$url"
+        test -s "$RUNNER_TEMP/copr-bookshelfng-response.txt"
+        echo "COPR accepted the ${TAG} legacy package build trigger."
+
+  distribution-summary:
+    name: Report package channel results
+    if: always()
+    needs: [release-target, credentials, build-aur, publish-aur, build-chocolatey, publish-chocolatey, trigger-copr, trigger-legacy-copr]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Write channel results
+      env:
+        AUR_CONFIGURED: ${{ needs.credentials.outputs.aur }}
+        AUR_BUILD: ${{ needs.build-aur.result }}
+        AUR_PUSH: ${{ needs.publish-aur.result }}
+        COPR_CONFIGURED: ${{ needs.credentials.outputs.copr }}
+        COPR_TRIGGER: ${{ needs.trigger-copr.result }}
+        LEGACY_COPR_CONFIGURED: ${{ needs.credentials.outputs.bookshelfng_copr }}
+        LEGACY_COPR_TRIGGER: ${{ needs.trigger-legacy-copr.result }}
+        CHOCOLATEY_CONFIGURED: ${{ needs.credentials.outputs.chocolatey }}
+        LEGACY_BRIDGE_ENABLED: ${{ needs.release-target.outputs.legacy_bridge_enabled }}
+        CHOCOLATEY_BUILD: ${{ needs.build-chocolatey.result }}
+        CHOCOLATEY_PUSH: ${{ needs.publish-chocolatey.result }}
+      run: |
+        {
+          echo '### ChaptarrNG package channels'
+          echo "- AUR recipe/build: ${AUR_BUILD}; publisher configured: ${AUR_CONFIGURED}; push: ${AUR_PUSH}"
+          echo "- ChaptarrNG COPR publisher configured: ${COPR_CONFIGURED}; trigger: ${COPR_TRIGGER}"
+          echo "- Legacy bookshelfng COPR bridge configured: ${LEGACY_COPR_CONFIGURED}; trigger: ${LEGACY_COPR_TRIGGER}"
+          echo "- Chocolatey package build: ${CHOCOLATEY_BUILD}; publisher configured: ${CHOCOLATEY_CONFIGURED}; push: ${CHOCOLATEY_PUSH}"
+          echo "- BookshelfNG legacy package bridge enabled: ${LEGACY_BRIDGE_ENABLED:-false}"
+          if [[ "${LEGACY_BRIDGE_ENABLED:-false}" == true ]]; then
+            echo 'The legacy package bridge is enabled; eligible old identities use the same standard ChaptarrNG release assets.'
+          else
+            echo 'Only ChaptarrNG package identities are eligible for publication; BookshelfNG package identities remain unchanged.'
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,93 @@
+%global _libdir /usr/lib
+%{!?_unitdir:%global _unitdir /usr/lib/systemd/system}
+%global __requires_exclude ^liblttng-ust[.]so[.]0
+
+Name:           bookshelfng
+Version:        __VERSION__
+Release:        1%{?dist}
+Summary:        BookshelfNG package identity carrying the standard ChaptarrNG application
+License:        GPL-3.0-only
+URL:            https://github.com/snapetech/chaptarrng
+Source0:        https://github.com/snapetech/chaptarrng/releases/download/v%{version}/ChaptarrNG-%{version}-linux-x64.tar.gz
+Source1:        bookshelfng.service
+Source2:        bookshelfng.sysusers
+Source3:        bookshelfng.tmpfiles
+Source4:        bookshelfng.env
+Source5:        chaptarrng.package_info
+BuildArch:      x86_64
+Requires:       glibc
+Requires:       libgcc
+Requires:       libstdc++
+Requires:       libicu
+Requires:       openssl-libs
+Requires:       sqlite-libs
+Requires:       zlib
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+Conflicts:      chaptarrng
+
+%description
+This transition package keeps the installed BookshelfNG RPM identity and data
+directory while installing the ordinary ChaptarrNG release payload. ChaptarrNG
+converts supported BookshelfNG SQLite data during normal startup and retains a
+source database backup.
+
+%prep
+%setup -q -c -T
+tar -xzf %{SOURCE0} --strip-components=1 -C .
+
+%build
+
+%install
+install -d %{buildroot}/usr/lib/chaptarrng/bin
+install -d %{buildroot}%{_bindir} %{buildroot}%{_licensedir}/bookshelfng
+install -d %{buildroot}%{_sysconfdir}/bookshelfng %{buildroot}%{_unitdir}
+install -d %{buildroot}%{_prefix}/lib/sysusers.d %{buildroot}%{_prefix}/lib/tmpfiles.d
+cp -a ./. %{buildroot}/usr/lib/chaptarrng/bin/
+install -m 0644 %{SOURCE1} %{buildroot}%{_unitdir}/bookshelfng.service
+install -m 0644 %{SOURCE2} %{buildroot}%{_prefix}/lib/sysusers.d/bookshelfng.conf
+install -m 0644 %{SOURCE3} %{buildroot}%{_prefix}/lib/tmpfiles.d/bookshelfng.conf
+install -m 0600 %{SOURCE4} %{buildroot}%{_sysconfdir}/bookshelfng/bookshelfng.env
+install -m 0644 %{SOURCE5} %{buildroot}/usr/lib/chaptarrng/package_info
+install -m 0644 LICENSE %{buildroot}%{_licensedir}/bookshelfng/LICENSE
+ln -s ../lib/chaptarrng/bin/Chaptarr %{buildroot}%{_bindir}/bookshelfng
+chmod -R u=rwX,go=rX %{buildroot}/usr/lib/chaptarrng
+
+%pre
+if [ "$1" -gt 1 ]; then
+  if systemctl is-active --quiet bookshelfng.service; then
+    touch /run/bookshelfng-package-was-active
+    systemctl stop bookshelfng.service
+  fi
+fi
+getent group bookshelfng >/dev/null || groupadd --system bookshelfng
+getent passwd bookshelfng >/dev/null || useradd --system --gid bookshelfng --home-dir /var/lib/bookshelfng --shell /sbin/nologin bookshelfng
+
+%post
+systemd-sysusers >/dev/null 2>&1 || :
+systemd-tmpfiles --create /usr/lib/tmpfiles.d/bookshelfng.conf >/dev/null 2>&1 || :
+systemctl daemon-reload >/dev/null 2>&1 || :
+
+%posttrans
+if [ -e /run/bookshelfng-package-was-active ]; then
+  rm -f /run/bookshelfng-package-was-active
+  systemctl start bookshelfng.service
+fi
+
+%preun
+if [ "$1" -eq 0 ]; then
+  systemctl disable --now bookshelfng.service >/dev/null 2>&1 || :
+fi
+
+%postun
+systemctl daemon-reload >/dev/null 2>&1 || :
+
+%files
+%license %{_licensedir}/bookshelfng/LICENSE
+%config(noreplace) %{_sysconfdir}/bookshelfng/bookshelfng.env
+%{_bindir}/bookshelfng
+/usr/lib/chaptarrng/
+%{_unitdir}/bookshelfng.service
+%{_prefix}/lib/sysusers.d/bookshelfng.conf
+%{_prefix}/lib/tmpfiles.d/bookshelfng.conf

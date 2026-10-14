@@ -6105,6 +6105,55 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 return hasSurplusCollectionMarker;
             }
 
+            private bool IsGenericSeriesEditionOfCollection(EditionFtsMatch candidate, IDictionary<int, Book> booksById)
+            {
+                if (candidate == null ||
+                    string.IsNullOrWhiteSpace(candidate.EditionTitle) ||
+                    string.IsNullOrWhiteSpace(candidate.BookTitle))
+                {
+                    return false;
+                }
+
+                var book = TryGetBookCached(candidate.BookId, booksById);
+                if (book == null)
+                {
+                    return false;
+                }
+
+                var editionTokens = TokenizeForLeftoverGateSequence(candidate.EditionTitle);
+                if (editionTokens.Count == 0)
+                {
+                    return false;
+                }
+
+                var seriesNames = new List<string>();
+                if (!string.IsNullOrWhiteSpace(book.SeriesName))
+                {
+                    seriesNames.Add(book.SeriesName);
+                }
+
+                if (book.SeriesLinks?.Any() == true)
+                {
+                    seriesNames.AddRange(book.SeriesLinks
+                        .Select(link => link?.Series?.Value?.Title)
+                        .Where(value => !string.IsNullOrWhiteSpace(value)));
+                }
+
+                var editionTitleIsSeriesName = seriesNames.Any(seriesName =>
+                {
+                    var seriesTokens = TokenizeForLeftoverGateSequence(StripTrailingParentheticals(seriesName));
+                    return seriesTokens.Count > 0 &&
+                           editionTokens.SequenceEqual(seriesTokens, StringComparer.OrdinalIgnoreCase);
+                });
+                if (!editionTitleIsSeriesName)
+                {
+                    return false;
+                }
+
+                return SplitTokens(candidate.BookTitle).Any(token =>
+                    SurplusVolumeMarkerTokens.Contains(NormalizeTitleComparisonToken(token.Trim(TitleTokenTrimChars))));
+            }
+
             private FtsSmokeTestResult RunFtsWithSmokeTest(
             int? authorId,
             List<string> tokens,
@@ -7872,10 +7921,17 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     return null;
                 }
 
-                if (selectedCandidate?.HasDirectEditionTitleProof != true &&
-                    selectedCandidate?.HasBookTitleEvidenceProof != true &&
-                    selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
-                    WinnerTitleHasSurplusVolumeToken(selectedCandidate, tokens, out var surplusVolumeToken))
+                var hasSurplusVolumeToken = WinnerTitleHasSurplusVolumeToken(
+                    selectedCandidate,
+                    tokens,
+                    out var surplusVolumeToken);
+                var isGenericSeriesCollectionCandidate = hasSurplusVolumeToken &&
+                    IsGenericSeriesEditionOfCollection(winner, booksById);
+                if (isGenericSeriesCollectionCandidate ||
+                    (selectedCandidate?.HasDirectEditionTitleProof != true &&
+                     selectedCandidate?.HasBookTitleEvidenceProof != true &&
+                     selectedCandidate?.HasAttestedSubtitleBaseTitleProof != true &&
+                     hasSurplusVolumeToken))
                 {
                     RecordCandidateRejection(winner, "CANDIDATE_TITLE_SURPLUS_VOLUME_TOKEN",
                         $"book title carries '{surplusVolumeToken}' with no counterpart in the file's title evidence", "contradictory");

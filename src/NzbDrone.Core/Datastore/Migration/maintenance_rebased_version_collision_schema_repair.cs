@@ -101,6 +101,22 @@ namespace NzbDrone.Core.Datastore.Migration
                 repairs += EnsureDownloadClientMediaTags();
             }
 
+            if (applied.Contains(114))
+            {
+                // The active backlog branch used 114 for RanobeDB identities;
+                // the consolidation branch used it for root-folder Calibre gates.
+                repairs += EnsureRanobeDbProviderIds();
+                repairs += EnsureRootFolderCalibreGates();
+            }
+
+            if (applied.Contains(115))
+            {
+                // The active backlog branch used 115 for import-list history;
+                // the consolidation branch used it for metadata preferences.
+                repairs += EnsureImportListSyncHistory();
+                repairs += EnsureMetadataProfilePreferences();
+            }
+
             if (repairs > 0)
             {
                 _logger.Info("[MIGRATION-REPAIR] Applied {0} schema repair(s) for rebased migration version collisions", repairs);
@@ -158,6 +174,151 @@ namespace NzbDrone.Core.Datastore.Migration
             return IfDatabase(dbType =>
                 !string.IsNullOrWhiteSpace(dbType) &&
                 dbType.IndexOf("postgres", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private int EnsureRanobeDbProviderIds()
+        {
+            var repairs = 0;
+
+            if (Schema.Table("Books").Exists() && !Schema.Table("Books").Column("RanobeDbBookId").Exists())
+            {
+                Alter.Table("Books").AddColumn("RanobeDbBookId").AsString(128).Nullable();
+                repairs++;
+            }
+
+            if (Schema.Table("Authors").Exists() && !Schema.Table("Authors").Column("RanobeDbAuthorId").Exists())
+            {
+                Alter.Table("Authors").AddColumn("RanobeDbAuthorId").AsString(128).Nullable();
+                repairs++;
+            }
+
+            if (Schema.Table("Books").Exists() &&
+                Schema.Table("Books").Column("RanobeDbBookId").Exists() &&
+                Schema.Table("Books").Column("MediaType").Exists() &&
+                !Schema.Table("Books").Index("UX_Books_RanobeDbBookId_MediaType").Exists())
+            {
+                Create.Index("UX_Books_RanobeDbBookId_MediaType")
+                    .OnTable("Books")
+                    .OnColumn("RanobeDbBookId").Ascending()
+                    .OnColumn("MediaType").Ascending()
+                    .WithOptions().Unique();
+                repairs++;
+            }
+
+            if (Schema.Table("Authors").Exists() &&
+                Schema.Table("Authors").Column("RanobeDbAuthorId").Exists() &&
+                !Schema.Table("Authors").Index("UX_Authors_RanobeDbAuthorId").Exists())
+            {
+                Create.Index("UX_Authors_RanobeDbAuthorId")
+                    .OnTable("Authors")
+                    .OnColumn("RanobeDbAuthorId").Ascending()
+                    .WithOptions().Unique();
+                repairs++;
+            }
+
+            return repairs;
+        }
+
+        private int EnsureRootFolderCalibreGates()
+        {
+            if (!Schema.Table("RootFolders").Exists())
+            {
+                return 0;
+            }
+
+            var repairs = 0;
+            if (!Schema.Table("RootFolders").Column("ReapCalibreDuplicates").Exists())
+            {
+                Alter.Table("RootFolders")
+                    .AddColumn("ReapCalibreDuplicates").AsBoolean().NotNullable().WithDefaultValue(false);
+                repairs++;
+            }
+
+            if (!Schema.Table("RootFolders").Column("AutoPushCalibreMetadata").Exists())
+            {
+                Alter.Table("RootFolders")
+                    .AddColumn("AutoPushCalibreMetadata").AsBoolean().NotNullable().WithDefaultValue(false);
+                repairs++;
+            }
+
+            return repairs;
+        }
+
+        private int EnsureMetadataProfilePreferences()
+        {
+            const string tableName = "MetadataProfiles";
+            if (!Schema.Table(tableName).Exists())
+            {
+                return 0;
+            }
+
+            var repairs = 0;
+            if (!Schema.Table(tableName).Column("PreferredEditionTerms").Exists())
+            {
+                Alter.Table(tableName).AddColumn("PreferredEditionTerms").AsString().Nullable();
+                repairs++;
+            }
+
+            if (!Schema.Table(tableName).Column("PreferredSeries").Exists())
+            {
+                Alter.Table(tableName).AddColumn("PreferredSeries").AsString().Nullable();
+                repairs++;
+            }
+
+            return repairs;
+        }
+
+        private int EnsureImportListSyncHistory()
+        {
+            const string tableName = "ImportListSyncHistory";
+            var repairs = 0;
+
+            if (!Schema.Table(tableName).Exists())
+            {
+                Create.Table(tableName)
+                    .WithColumn("Id").AsInt32().PrimaryKey().Identity()
+                    .WithColumn("ImportListId").AsInt32().NotNullable()
+                    .WithColumn("ImportListName").AsString(512).NotNullable()
+                    .WithColumn("StartedAt").AsDateTime().NotNullable()
+                    .WithColumn("EndedAt").AsDateTime().Nullable()
+                    .WithColumn("DurationMilliseconds").AsInt64().NotNullable().WithDefaultValue(0)
+                    .WithColumn("Result").AsString(32).NotNullable()
+                    .WithColumn("FailureStage").AsString(32).Nullable()
+                    .WithColumn("DryRun").AsBoolean().NotNullable().WithDefaultValue(false)
+                    .WithColumn("ProcessedCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("NewCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("ExistingCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("ChangedCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("ExcludedCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("UnresolvedCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("SearchEligibleCount").AsInt32().NotNullable().WithDefaultValue(0)
+                    .WithColumn("ProviderStateCommitted").AsBoolean().NotNullable().WithDefaultValue(false);
+                repairs++;
+            }
+
+            if (Schema.Table(tableName).Exists() &&
+                Schema.Table(tableName).Column("ImportListId").Exists() &&
+                Schema.Table(tableName).Column("StartedAt").Exists() &&
+                !Schema.Table(tableName).Index("IX_ImportListSyncHistory_ImportListId_StartedAt").Exists())
+            {
+                Create.Index("IX_ImportListSyncHistory_ImportListId_StartedAt")
+                    .OnTable(tableName)
+                    .OnColumn("ImportListId").Ascending()
+                    .OnColumn("StartedAt").Descending();
+                repairs++;
+            }
+
+            if (Schema.Table(tableName).Exists() &&
+                Schema.Table(tableName).Column("StartedAt").Exists() &&
+                !Schema.Table(tableName).Index("IX_ImportListSyncHistory_StartedAt").Exists())
+            {
+                Create.Index("IX_ImportListSyncHistory_StartedAt")
+                    .OnTable(tableName)
+                    .OnColumn("StartedAt").Descending();
+                repairs++;
+            }
+
+            return repairs;
         }
 
         private int EnsureBooksIsOmnibus()

@@ -13,7 +13,11 @@ function normalizeFieldValue(raw) {
       return [];
     }
 
-    return Array.isArray(value) ? value : [value];
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    return [value];
   };
 
   // Already wrapped with value/errors/warnings structure

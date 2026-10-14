@@ -1,0 +1,156 @@
+$ErrorActionPreference = 'Stop'
+
+$installRoot = Join-Path $env:ProgramData 'BookshelfNG'
+$appDir = Join-Path $installRoot 'app'
+$stageDir = Join-Path $installRoot 'app.new'
+$backupDir = Join-Path $installRoot 'app.previous'
+$binDir = Join-Path $appDir 'bin'
+$dataDir = Join-Path $installRoot 'data'
+$exePath = Join-Path $binDir 'Chaptarr.exe'
+$archivePath = Join-Path $installRoot 'ChaptarrNG-__VERSION__-win-x64.zip'
+$archiveUrl = 'https://github.com/snapetech/chaptarrng/releases/download/v__VERSION__/ChaptarrNG-__VERSION__-win-x64.zip'
+
+$nssm = Get-Command nssm.exe -ErrorAction Stop
+New-Item -ItemType Directory -Force -Path $installRoot, $dataDir | Out-Null
+if (Test-Path $backupDir) {
+  throw "A prior BookshelfNG package rollback directory exists at $backupDir. Restore or remove it before retrying."
+}
+if (Test-Path $stageDir) { Remove-Item -Recurse -Force $stageDir }
+New-Item -ItemType Directory -Force -Path (Join-Path $stageDir 'bin') | Out-Null
+
+Get-ChocolateyWebFile -PackageName 'bookshelfng' -FileFullPath $archivePath `
+  -Url $archiveUrl -Checksum '__ARCHIVE_SHA256__' -ChecksumType 'sha256'
+Expand-Archive -LiteralPath $archivePath -DestinationPath (Join-Path $stageDir 'bin') -Force
+if (-not (Test-Path (Join-Path $stageDir 'bin\Chaptarr.exe')) -or
+    -not (Test-Path (Join-Path $stageDir 'bin\UI\index.html'))) {
+  throw 'The verified ChaptarrNG archive is missing its executable or web UI.'
+}
+@(
+  'UpdateMethod=External',
+  'UpdateMethodMessage=Use Chocolatey to update ChaptarrNG.',
+  'Branch=main'
+) | Set-Content -Encoding ascii -Path (Join-Path $stageDir 'package_info')
+
+$service = Get-Service -Name 'BookshelfNG' -ErrorAction SilentlyContinue
+$hadService = $null -ne $service
+$wasRunning = $hadService -and $service.Status -ne 'Stopped'
+$hadApp = Test-Path $appDir
+$createdService = $false
+$oldApplication = $null
+$oldAppDirectory = $null
+$oldAppParameters = $null
+$oldStart = $null
+$backupNamesBefore = @()
+if (Test-Path (Join-Path $dataDir 'readarr.db')) {
+  $backupNamesBefore = @(Get-ChildItem -LiteralPath $dataDir -Filter 'readarr.db.bookshelfng-backup-*.db' -File | ForEach-Object Name)
+}
+
+function Set-BookshelfServiceSetting {
+  param(
+    [Parameter(Mandatory = $true)] [string] $Name,
+    [Parameter(Mandatory = $true)] [string] $Value
+  )
+  & $nssm.Source set BookshelfNG $Name $Value
+  if ($LASTEXITCODE -ne 0) { throw "NSSM could not set BookshelfNG $Name." }
+}
+
+function Get-BookshelfServiceSetting {
+  param([Parameter(Mandatory = $true)] [string] $Name)
+  $value = & $nssm.Source get BookshelfNG $Name
+  if ($LASTEXITCODE -ne 0) { throw "NSSM could not read BookshelfNG $Name." }
+  return (($value | Out-String).Trim())
+}
+
+if ($hadService) {
+  $oldApplication = Get-BookshelfServiceSetting 'Application'
+  $oldAppDirectory = Get-BookshelfServiceSetting 'AppDirectory'
+  $oldAppParameters = Get-BookshelfServiceSetting 'AppParameters'
+  $oldStart = Get-BookshelfServiceSetting 'Start'
+  if ($wasRunning) {
+    Stop-Service -Name 'BookshelfNG' -Force
+    $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+  }
+}
+if ($hadApp) { Move-Item -LiteralPath $appDir -Destination $backupDir }
+
+try {
+  Move-Item -LiteralPath $stageDir -Destination $appDir
+  if (-not $hadService) {
+    & $nssm.Source install BookshelfNG $exePath
+    if ($LASTEXITCODE -ne 0) { throw 'NSSM could not install the ChaptarrNG service under the existing BookshelfNG name.' }
+    $createdService = $true
+    Set-BookshelfServiceSetting 'AppDirectory' $binDir
+    Set-BookshelfServiceSetting 'AppParameters' "/nobrowser -data=$dataDir"
+    Set-BookshelfServiceSetting 'Start' 'SERVICE_AUTO_START'
+  } else {
+    Set-BookshelfServiceSetting 'Application' $exePath
+    Set-BookshelfServiceSetting 'AppDirectory' $binDir
+    Set-BookshelfServiceSetting 'AppParameters' "/nobrowser -data=$dataDir"
+  }
+
+  if (-not $hadService -or $wasRunning) {
+    if ($hadService) { Start-Service -Name 'BookshelfNG' }
+    else {
+      & $nssm.Source start BookshelfNG
+      if ($LASTEXITCODE -ne 0) { throw 'NSSM could not start ChaptarrNG.' }
+    }
+    $service = Get-Service -Name 'BookshelfNG' -ErrorAction Stop
+    $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
+    Start-Sleep -Seconds 8
+    if ((Get-Service -Name 'BookshelfNG').Status -ne 'Running') {
+      throw 'ChaptarrNG did not remain running after the BookshelfNG service was upgraded.'
+    }
+  }
+
+  if (Test-Path $backupDir) {
+    try { Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction Stop }
+    catch { Write-Warning "ChaptarrNG is installed, but the previous app files remain at $backupDir." }
+  }
+} catch {
+  $currentService = Get-Service -Name 'BookshelfNG' -ErrorAction SilentlyContinue
+  if ($currentService -and $currentService.Status -ne 'Stopped') {
+    try {
+      Stop-Service -Name 'BookshelfNG' -Force
+      $currentService.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+    } catch { Write-Warning 'Could not stop the failed BookshelfNG service during rollback.' }
+  }
+
+  $newDatabaseBackup = $null
+  if (Test-Path (Join-Path $dataDir 'readarr.db')) {
+    $newDatabaseBackup = Get-ChildItem -LiteralPath $dataDir -Filter 'readarr.db.bookshelfng-backup-*.db' -File |
+      Where-Object { $_.Name -notin $backupNamesBefore } |
+      Sort-Object LastWriteTimeUtc -Descending |
+      Select-Object -First 1
+  }
+  if ($newDatabaseBackup) {
+    $databasePath = Join-Path $dataDir 'readarr.db'
+    $failedPath = "$databasePath.chaptarr-failed-$([DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ'))"
+    if (Test-Path $databasePath) { Move-Item -LiteralPath $databasePath -Destination $failedPath }
+    foreach ($suffix in @('-wal', '-shm', '-journal')) {
+      $sidecar = "$databasePath$suffix"
+      if (Test-Path $sidecar) { Move-Item -LiteralPath $sidecar -Destination "$failedPath$suffix" }
+    }
+    Copy-Item -LiteralPath $newDatabaseBackup.FullName -Destination $databasePath
+  }
+
+  if ($createdService) {
+    & $nssm.Source remove BookshelfNG confirm | Out-Null
+  }
+  if (Test-Path $appDir) { Remove-Item -Recurse -Force $appDir }
+  if (Test-Path $backupDir) { Move-Item -LiteralPath $backupDir -Destination $appDir }
+  if ($hadService) {
+    try {
+      Set-BookshelfServiceSetting 'Application' $oldApplication
+      Set-BookshelfServiceSetting 'AppDirectory' $oldAppDirectory
+      Set-BookshelfServiceSetting 'AppParameters' $oldAppParameters
+      Set-BookshelfServiceSetting 'Start' $oldStart
+      if ($wasRunning) { Start-Service -Name 'BookshelfNG' }
+    } catch { Write-Warning 'Could not fully restore the previous BookshelfNG service after rollback.' }
+  }
+  throw
+} finally {
+  if (Test-Path $stageDir) { Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path $archivePath) { Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue }
+}
+
+Write-Host 'The bookshelfng package now runs the standard ChaptarrNG release. Its service identity and data directory were preserved.'

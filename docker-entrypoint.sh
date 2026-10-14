@@ -121,7 +121,7 @@ if [ "$EUID" -eq 0 ]; then
         rm -f "$DATA_DIR"/.write_test
         
         # Only fix ownership of key files/directories that Chaptarr creates
-        for item in "$DATA_DIR" "$DATA_DIR"/*.db "$DATA_DIR"/logs "$DATA_DIR"/MediaCover "$DATA_DIR"/Backups; do
+        for item in "$DATA_DIR" "$DATA_DIR"/config.xml "$DATA_DIR"/*.db "$DATA_DIR"/logs "$DATA_DIR"/MediaCover "$DATA_DIR"/Backups; do
             safe_chown "$item" "$PUID" "$PGID"
         done
         

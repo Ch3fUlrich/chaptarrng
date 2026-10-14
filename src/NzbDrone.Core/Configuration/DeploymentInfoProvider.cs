@@ -69,6 +69,13 @@ namespace NzbDrone.Core.Configuration
                 }
             }
 
+            var environmentUpdateMechanism = Environment.GetEnvironmentVariable("CHAPTARR_PACKAGE_UPDATE_MECHANISM");
+            if (Enum.TryParse<UpdateMechanism>(environmentUpdateMechanism, ignoreCase: true, out var configuredUpdateMechanism))
+            {
+                PackageUpdateMechanism = configuredUpdateMechanism;
+                PackageUpdateMechanismMessage = Environment.GetEnvironmentVariable("CHAPTARR_PACKAGE_UPDATE_MECHANISM_MESSAGE");
+            }
+
             DefaultUpdateMechanism = PackageUpdateMechanism;
         }
 

@@ -30,8 +30,8 @@ namespace Chaptarr.Core.Test.Datastore
         [Test]
         public void should_accept_an_empty_database()
         {
-            Create("CREATE TABLE VersionInfo (Version INTEGER);");
             Assert.DoesNotThrow(() => DatabaseLineageGuard.Validate(ConnectionString, DatabaseType.SQLite));
+            Assert.That(DatabaseLineageGuard.Detect(ConnectionString, DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.Empty));
         }
 
         [TestCase("Path TEXT")]
@@ -41,6 +41,17 @@ namespace Chaptarr.Core.Test.Datastore
         {
             Create($"CREATE TABLE Authors (Id INTEGER PRIMARY KEY, {columns}); CREATE TABLE VersionInfo (Version INTEGER); INSERT INTO VersionInfo VALUES (46);");
             var before = File.ReadAllBytes(_path);
+            Assert.Throws<InvalidDataException>(() => DatabaseLineageGuard.Validate(ConnectionString, DatabaseType.SQLite));
+            Assert.That(File.ReadAllBytes(_path), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void should_reject_a_nonempty_database_without_an_authors_table()
+        {
+            Create("CREATE TABLE UnrelatedData (Value TEXT); INSERT INTO UnrelatedData VALUES ('keep');");
+            var before = File.ReadAllBytes(_path);
+
+            Assert.That(DatabaseLineageGuard.Detect(ConnectionString, DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.Unsupported));
             Assert.Throws<InvalidDataException>(() => DatabaseLineageGuard.Validate(ConnectionString, DatabaseType.SQLite));
             Assert.That(File.ReadAllBytes(_path), Is.EqualTo(before));
         }
@@ -57,6 +68,8 @@ namespace Chaptarr.Core.Test.Datastore
 
             var before = File.ReadAllBytes(_path);
             var migrationController = new MigrationController(LogManager.GetLogger(nameof(DatabaseLineageGuardFixture)), null);
+
+            Assert.That(DatabaseLineageGuard.Detect(ConnectionString, DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.BookshelfNG));
 
             Assert.Throws<InvalidDataException>(() => migrationController.Migrate(
                 ConnectionString,

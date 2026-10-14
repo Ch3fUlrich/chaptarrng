@@ -31,6 +31,8 @@ namespace NzbDrone.Common
             Console.WriteLine("                 /{0} Don't open Chaptarr in a browser", StartupContext.NO_BROWSER);
             Console.WriteLine("                 /{0} Start Chaptarr terminating any other instances", StartupContext.TERMINATE);
             Console.WriteLine("                 /{0}=path Path to use as the AppData location (stores database, config, logs, etc)", StartupContext.APPDATA);
+            Console.WriteLine("                 /{0} Preview BookshelfNG conversion without changing its database", StartupContext.PREVIEW_BOOKSHELF_MIGRATION);
+            Console.WriteLine("                 /{0} Convert a BookshelfNG database and retain a source backup", StartupContext.MIGRATE_BOOKSHELF);
             Console.WriteLine("                 <No Arguments>  Run application in console mode.");
         }
 

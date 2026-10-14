@@ -383,26 +383,46 @@ namespace NzbDrone.Common.Extensions
             var appDataPath = GetAppDataPath(appFolderInfo);
             var primaryPath = Path.Combine(appDataPath, DB);
 
-            if (File.Exists(primaryPath))
+            // Keep the resolver file-only. Opening the primary database here runs
+            // before DbFactory's restore/recovery path and can prevent recovery of
+            // a damaged database. The migration lineage guard checks for sibling
+            // legacy databases after restore and before any migration is applied.
+            if (File.Exists(primaryPath) && new FileInfo(primaryPath).Length > 0)
             {
                 return primaryPath;
             }
 
-            // Rebrand compatibility: allow legacy DB filenames for upgrades (Readarr/AudioArr → Chaptarr).
-            // Prefer the newest name when present, otherwise continue using the existing DB file.
-            var legacyNames = new[] { "readarr.db", "audioarr.db" };
-            foreach (var legacyName in legacyNames)
+            // A prior startup may have created a zero-byte chaptarr.db before
+            // discovering an existing BookshelfNG/Readarr database. Keep this
+            // check file-only; schema validation belongs after database recovery.
+            var legacyDatabasePaths = GetLegacyDatabasePaths(appDataPath);
+            if (legacyDatabasePaths.Count > 1)
             {
-                var legacyPath = Path.Combine(appDataPath, legacyName);
-                if (File.Exists(legacyPath))
-                {
-                    return legacyPath;
-                }
+                throw new InvalidOperationException("Multiple legacy database files were found. Choose one before starting Chaptarr.");
+            }
+
+            if (legacyDatabasePaths.Count == 1)
+            {
+                return legacyDatabasePaths[0];
             }
 
             return primaryPath;
         }
 
+        private static List<string> GetLegacyDatabasePaths(string appDataPath)
+        {
+            var paths = new List<string>();
+            foreach (var legacyName in new[] { "readarr.db", "audioarr.db" })
+            {
+                var legacyPath = Path.Combine(appDataPath, legacyName);
+                if (File.Exists(legacyPath) && new FileInfo(legacyPath).Length > 0)
+                {
+                    paths.Add(legacyPath);
+                }
+            }
+
+            return paths;
+        }
         public static string GetDatabaseRestore(this IAppFolderInfo appFolderInfo)
         {
             return Path.Combine(GetAppDataPath(appFolderInfo), DB_RESTORE);

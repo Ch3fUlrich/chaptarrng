@@ -90,6 +90,17 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Test stable GHCR image identity and legacy aliases
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        bash packaging/scripts/test-publish-image-aliases.sh
+        bash packaging/scripts/test-dispatch-ghcr-release-bridge.sh
+
+    - name: Test Chocolatey legacy package publish gate
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: ./packaging/scripts/test-chocolatey-publish-gate.ps1
+
     - name: Test self-hosted runner trust boundary
       if: matrix.os == 'ubuntu-latest'
       run: python3 scripts/test_workflow_runner_policy.py
@@ -290,6 +301,10 @@ jobs:
       env:
         PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
       run: pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
+
+    - name: Verify Unraid package sync stays off feature branches
+      shell: bash
+      run: bash scripts/test-sync-unraid-package.sh
 
     - name: Test
       id: validation

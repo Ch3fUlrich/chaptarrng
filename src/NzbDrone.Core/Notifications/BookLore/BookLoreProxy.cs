@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using FluentValidation.Results;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -37,7 +38,7 @@ namespace NzbDrone.Core.Notifications.BookLore
                 GetAccessToken(settings);
                 return null;
             }
-            catch (HttpException ex) when (ex.Response.StatusCode == HttpStatusCode.Unauthorized || ex.Response.StatusCode == HttpStatusCode.Forbidden)
+            catch (HttpException ex) when (IsCredentialRejection(ex))
             {
                 _logger.Warn(ex, "BookLore rejected the configured credentials at {0}", settings.BaseUrl);
                 return new ValidationFailure(nameof(settings.Password), "BookLore rejected the username or password");
@@ -85,7 +86,23 @@ namespace NzbDrone.Core.Notifications.BookLore
             request.RequestTimeout = TimeSpan.FromSeconds(30);
             request.AllowAutoRedirect = false;
 
-            var response = _httpClient.Execute(request);
+            HttpResponse response;
+
+            try
+            {
+                response = _httpClient.Execute(request);
+            }
+            catch (HttpException ex) when (IsTransientLoginFailure(ex))
+            {
+                // BookLore v2.4.0 can generate the same refresh token for two
+                // logins in one second. Its unique-token constraint rejects the
+                // second login with HTTP 400, so retry once after the token
+                // timestamp has advanced.
+                _logger.Warn("BookLore returned HTTP {0} during login; retrying once", (int)ex.Response.StatusCode);
+                Thread.Sleep(TimeSpan.FromMilliseconds(1100));
+                response = _httpClient.Execute(request);
+            }
+
             var accessToken = JObject.Parse(response.Content)["accessToken"]?.Value<string>();
 
             if (string.IsNullOrWhiteSpace(accessToken))
@@ -94,6 +111,28 @@ namespace NzbDrone.Core.Notifications.BookLore
             }
 
             return accessToken;
+        }
+
+        private static bool IsCredentialRejection(HttpException exception)
+        {
+            if (exception.Response.StatusCode == HttpStatusCode.Unauthorized || exception.Response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                return true;
+            }
+
+            return exception.Response.StatusCode == HttpStatusCode.BadRequest &&
+                   (exception.Response.Content ?? string.Empty).IndexOf("Invalid credentials", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsTransientLoginFailure(HttpException exception)
+        {
+            if ((int)exception.Response.StatusCode >= 500)
+            {
+                return true;
+            }
+
+            return exception.Response.StatusCode == HttpStatusCode.BadRequest &&
+                   (exception.Response.Content ?? string.Empty).IndexOf("A data conflict occurred", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void UploadFile(BookLoreSettings settings, string accessToken, string path)

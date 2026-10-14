@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Datastore/Fixtures/BookshelfNG.Schema.158.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Core\Chaptarr.Core.csproj" />
     <ProjectReference Include="..\Chaptarr.Api.V1\Chaptarr.Api.V1.csproj" />
     <ProjectReference Include="..\NzbDrone.Windows\Chaptarr.Windows.csproj" />
