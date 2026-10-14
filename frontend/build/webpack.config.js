@@ -263,6 +263,9 @@ module.exports = (env) => {
               options: {
                 importLoaders: 1,
                 modules: {
+                  // css-loader 7 defaults to named exports; the app imports `styles` as the default export.
+                  namedExport: false,
+                  exportLocalsConvention: 'as-is',
                   localIdentName: isProduction ? '[name]/[local]/[hash:base64:5]' : '[name]/[local]'
                 }
               }
