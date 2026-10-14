@@ -41,7 +41,7 @@ jobs:
           skip-dirs: .git,_output,_tests,frontend/node_modules
 
       - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
         with:
           sarif_file: trivy-results.sarif
