@@ -2,11 +2,11 @@
 
 ###### node stage ######
 # Use a pinned Node image instead of curl|bash installers.
-FROM node:26.10.0-bookworm-slim@sha256:662933cf47f013bc8e4beb31a6116448427a82057ba7c42c97e4c5ba766504c2 AS node
+FROM node:26.11.1-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS node
 RUN npm install -g yarn@1.22.22 --force
 
 ###### browser stage ######
-FROM node:20.11.1-bookworm-slim AS browser
+FROM node:26.11.1-bookworm-slim AS browser
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx --yes playwright@1.63.0 install --only-shell chromium
 
