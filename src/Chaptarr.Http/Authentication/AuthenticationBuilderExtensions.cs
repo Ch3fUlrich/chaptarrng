@@ -18,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.Net.Http.Headers;
 using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Instrumentation;
 using NzbDrone.Common.Http.Dispatchers;
 using NzbDrone.Common.Http.Proxy;
 using NzbDrone.Core.Authentication;
@@ -504,10 +505,11 @@ namespace Chaptarr.Http.Authentication
             // HandleResponse()/SkipHandler() here and otherwise signs the ticket in regardless. That
             // issued a cookie without the auth_stamp claim, which the cookie validator then rejected,
             // so a policy rejection surfaced as a silent redirect loop back to /login.
-            Logger.Warn("OIDC sign-in rejected by Chaptarr policy: {0}", failure);
+            var errorCode = GetOidcPolicyErrorCode(failure);
+            Logger.WarnSafe("OIDC sign-in rejected by Chaptarr policy: {0}", errorCode);
 
             context.HandleResponse();
-            context.Response.Redirect(BuildSsoFailedLoginUrl(configFileProvider, context.ReturnUri, GetOidcPolicyErrorCode(failure)));
+            context.Response.Redirect(BuildSsoFailedLoginUrl(configFileProvider, context.ReturnUri, errorCode));
             return System.Threading.Tasks.Task.CompletedTask;
         }
 

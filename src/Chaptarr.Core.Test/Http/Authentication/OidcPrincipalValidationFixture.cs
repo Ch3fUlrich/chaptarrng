@@ -6,6 +6,9 @@ using Chaptarr.Http.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 using NUnit.Framework;
 using NzbDrone.Core.Configuration;
 
@@ -116,6 +119,41 @@ namespace Chaptarr.Core.Test.Http.Authentication
             Assert.That(context.Response.Headers.Location.ToString(),
                 Is.EqualTo($"/login?ssoFailed=true&ssoError={expectedError}&returnUrl=%2Fbooks"));
             Assert.That(context.Principal.HasClaim(c => c.Type == "auth_stamp"), Is.False);
+        }
+
+        [Test]
+        public void should_log_a_fixed_policy_code_without_the_rejected_user_email()
+        {
+            var previousConfiguration = LogManager.Configuration;
+            var loggerName = typeof(AuthenticationBuilderExtensions).FullName;
+            var memory = new MemoryTarget("oidc-policy-memory")
+            {
+                Layout = "${level}|${message}"
+            };
+            var configuration = new LoggingConfiguration();
+            configuration.AddRule(LogLevel.Warn, LogLevel.Fatal, memory, loggerName);
+
+            try
+            {
+                LogManager.Configuration = configuration;
+                LogManager.ReconfigExistingLoggers();
+
+                var context = BuildTicketReceivedContext(
+                    BuildPrincipal("private@example.com", "true"),
+                    "/books");
+                ReceiveTicket(
+                    context,
+                    ConfigFileProviderProxy.Create(allowedEmails: "alice@example.com"));
+
+                Assert.That(memory.Logs, Has.Count.EqualTo(1));
+                Assert.That(memory.Logs[0], Does.Contain("oidc_user_not_allowed"));
+                Assert.That(memory.Logs[0], Does.Not.Contain("private@example.com"));
+            }
+            finally
+            {
+                LogManager.Configuration = previousConfiguration;
+                LogManager.ReconfigExistingLoggers();
+            }
         }
 
         [Test]
