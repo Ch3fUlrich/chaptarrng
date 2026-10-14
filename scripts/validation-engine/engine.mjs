@@ -187,9 +187,22 @@ function runnerContext(candidate) {
 }
 
 export function createPlan(options = {}) {
+  const maxConcurrentTasks = validation.maxConcurrentTasks ?? 1;
+  if (!Number.isInteger(maxConcurrentTasks) || maxConcurrentTasks < 1 || maxConcurrentTasks > 8) {
+    throw new Error('Validation maxConcurrentTasks must be an integer from 1 through 8.');
+  }
+  const taskById = new Map();
   for (const task of validation.tasks) {
     if (typeof task.id !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(task.id)) {
       throw new Error('Validation task ID must be a safe lowercase identifier.');
+    }
+    if (taskById.has(task.id)) throw new Error(`Duplicate validation task ID: ${task.id}`);
+    taskById.set(task.id, task);
+    const stage = task.stage ?? 'default';
+    const concurrencyGroup = task.concurrencyGroup ?? task.id;
+    if (typeof stage !== 'string' || !stage.trim() ||
+        typeof concurrencyGroup !== 'string' || !concurrencyGroup.trim()) {
+      throw new Error(`Validation task stage and concurrency group must be nonempty strings: ${task.id}`);
     }
     const passEnv = task.passEnv ?? [];
     if (!Array.isArray(passEnv) || passEnv.some((name) =>
@@ -197,6 +210,38 @@ export function createPlan(options = {}) {
       throw new Error('Task requests an unapproved inherited environment variable: ' + task.id);
     }
   }
+  const stageOrder = new Map();
+  let previousStageIndex = -1;
+  for (const task of validation.tasks) {
+    const stage = task.stage ?? 'default';
+    if (!stageOrder.has(stage)) stageOrder.set(stage, stageOrder.size);
+    const index = stageOrder.get(stage);
+    if (index < previousStageIndex) throw new Error(`Validation tasks must be ordered by stage: ${task.id}`);
+    previousStageIndex = index;
+    if (!Array.isArray(task.dependsOn ?? []) || (task.dependsOn ?? []).some(
+      (dependency) => typeof dependency !== 'string' || !taskById.has(dependency),
+    )) {
+      throw new Error(`Validation task has an invalid dependency list: ${task.id}`);
+    }
+  }
+  const visiting = new Set();
+  const visited = new Set();
+  const visitTask = (taskId) => {
+    if (visiting.has(taskId)) throw new Error(`Validation task dependency cycle includes ${taskId}`);
+    if (visited.has(taskId)) return;
+    visiting.add(taskId);
+    const task = taskById.get(taskId);
+    for (const dependency of task.dependsOn ?? []) {
+      if (stageOrder.get(taskById.get(dependency).stage ?? 'default') > stageOrder.get(task.stage ?? 'default')) {
+        throw new Error(`Validation task depends on a later stage: ${taskId} -> ${dependency}`);
+      }
+      visitTask(dependency);
+    }
+    visiting.delete(taskId);
+    visited.add(taskId);
+  };
+  for (const task of validation.tasks) visitTask(task.id);
+
   const inventory = discoverInventory();
   const candidate = captureCandidate(inventory);
   const github = process.env.GITHUB_ACTIONS === 'true';
@@ -231,6 +276,8 @@ export function createPlan(options = {}) {
     id: task.id,
     name: task.name,
     kind: task.kind,
+    stage: task.stage ?? 'default',
+    concurrencyGroup: task.concurrencyGroup ?? task.id,
     selected: selected.has(task.id),
     reason: selected.has(task.id) ? null : task.githubOnly && !github
       ? 'requires the ephemeral GitHub PostgreSQL service'
@@ -252,6 +299,7 @@ export function createPlan(options = {}) {
     inventorySha256: inventory.sha256,
     runtimes: runtimeResults,
     missingArtifacts,
+    maxConcurrentTasks,
     executionContext,
     tasks,
   };
@@ -406,23 +454,145 @@ export function formatValidationProgress(repository, tasks, results, currentTask
   const blocked = receipts.filter((receipt) => ['blocked', 'not-run'].includes(receipt.status)).length;
   const completed = passed + failed;
   const pending = Math.max(0, tasks.length - completed - blocked);
-  const active = currentTask
-    ? `; running ${currentTask.name ?? currentTask.id} (${formatElapsed(elapsedMs)})`
-    : '';
+  const activeTasks = currentTask instanceof Map
+    ? [...currentTask].map(([taskId, startedAt]) => {
+      const task = tasks.find((item) => item.id === taskId);
+      return `${task?.name ?? taskId} (${formatElapsed(Date.now() - startedAt)})`;
+    })
+    : currentTask ? [`${currentTask.name ?? currentTask.id} (${formatElapsed(elapsedMs)})`] : [];
+  const active = activeTasks.length ? `; running ${activeTasks.join(', ')}` : '';
   return `[validation] ${repository}: ${completed}/${tasks.length} selected tasks complete (${passed} passed, ${failed} failed, ${blocked} blocked, ${pending} pending)${active}`;
 }
 
-function writeValidationProgress(tasks, results, currentTask = null, startedAt = 0, state = null) {
+function writeValidationProgress(tasks, results, runningTasks = new Map(), state = null) {
   const summary = formatValidationProgress(
     validation.repository,
     tasks,
     results,
-    currentTask,
-    currentTask ? Date.now() - startedAt : 0,
+    runningTasks,
   );
   if (state?.last === summary) return;
   if (state) state.last = summary;
   process.stderr.write(`${summary}\n`);
+}
+
+export async function runTaskPool(tasks, {
+  maxConcurrentTasks = 1,
+  results = new Map(),
+  runTask: executeTask,
+  checkSource = () => true,
+  onTaskStart = () => {},
+  onTaskFinish = () => {},
+  onProgress = () => {},
+} = {}) {
+  if (!Number.isInteger(maxConcurrentTasks) || maxConcurrentTasks < 1 || maxConcurrentTasks > 8) {
+    throw new Error('maxConcurrentTasks must be an integer from 1 through 8.');
+  }
+  if (typeof executeTask !== 'function' || typeof checkSource !== 'function') {
+    throw new Error('runTask and checkSource must be functions.');
+  }
+
+  const pending = [...tasks];
+  const selectedIds = new Set(pending.map((task) => task.id));
+  const metadata = (task) => ({
+    stage: task.stage ?? 'default',
+    concurrencyGroup: task.concurrencyGroup ?? task.id,
+    dependsOn: task.dependsOn ?? [],
+  });
+  const block = (task, reason) => results.set(task.id, {
+    taskId: task.id,
+    ...metadata(task),
+    status: 'blocked',
+    reason,
+    required: task.required !== false,
+  });
+  let sourceChanged = false;
+
+  while (pending.length) {
+    if (!checkSource()) {
+      sourceChanged = true;
+      for (const [taskId, receipt] of results) {
+        if (receipt.status === 'passed') results.set(taskId, {
+          ...receipt,
+          status: 'blocked',
+          reason: 'candidate source or compiled test artifact changed during task execution',
+        });
+      }
+      for (const task of pending.splice(0)) block(task, 'candidate changed before the next task batch started');
+      onProgress();
+      break;
+    }
+
+    for (let index = pending.length - 1; index >= 0; index -= 1) {
+      const task = pending[index];
+      const unavailableDependency = (task.dependsOn ?? []).find((dependency) => {
+        const receipt = results.get(dependency);
+        return receipt ? receipt.status !== 'passed' : !selectedIds.has(dependency);
+      });
+      if (!unavailableDependency) continue;
+      block(task, 'required dependency did not pass');
+      pending.splice(index, 1);
+      onProgress();
+    }
+
+    const stage = pending[0]?.stage ?? 'default';
+    const groups = new Set();
+    const batch = [];
+    for (const task of pending) {
+      if ((task.stage ?? 'default') !== stage) continue;
+      if ((task.dependsOn ?? []).some((dependency) => results.get(dependency)?.status !== 'passed')) continue;
+      const group = task.concurrencyGroup ?? task.id;
+      if (groups.has(group)) continue;
+      groups.add(group);
+      batch.push(task);
+      if (batch.length >= maxConcurrentTasks) break;
+    }
+    if (!batch.length) {
+      for (const task of pending.splice(0)) block(task, 'required dependency did not pass or no task is runnable');
+      onProgress();
+      break;
+    }
+
+    for (const task of batch) pending.splice(pending.indexOf(task), 1);
+    const startedAt = new Map(batch.map((task) => [task.id, Date.now()]));
+    for (const task of batch) onTaskStart(task, startedAt.get(task.id));
+    onProgress();
+    await Promise.all(batch.map(async (task) => {
+      let receipt;
+      try {
+        receipt = await executeTask(task);
+        if (!receipt || receipt.taskId !== task.id ||
+            !['passed', 'failed', 'incomplete', 'blocked', 'not-run'].includes(receipt.status)) {
+          throw new Error('task runner returned an invalid receipt');
+        }
+      } catch (error) {
+        receipt = {
+          taskId: task.id,
+          status: 'failed',
+          error: error.message,
+          required: task.required !== false,
+        };
+      }
+      receipt = { ...receipt, ...metadata(task) };
+      results.set(task.id, receipt);
+      onTaskFinish(task, receipt);
+      onProgress();
+    }));
+
+    if (!checkSource()) {
+      sourceChanged = true;
+      for (const [taskId, receipt] of results) {
+        if (receipt.status === 'passed') results.set(taskId, {
+          ...receipt,
+          status: 'blocked',
+          reason: 'candidate source or compiled test artifact changed during concurrent execution',
+        });
+      }
+      for (const task of pending.splice(0)) block(task, 'candidate changed during task batch');
+      onProgress();
+    }
+  }
+  return { results, sourceChanged };
 }
 
 function hashArtifacts(task) {
@@ -621,42 +791,38 @@ async function execute(plan) {
       (plan.executionContext.github && plan.executionContext.github.sha !== plan.candidate.commit);
     const selected = plan.tasks.filter((task) => task.selected);
     const progressState = {};
+    for (const task of plan.tasks.filter((item) => !item.selected)) results.set(task.id, {
+      taskId: task.id,
+      status: 'excluded',
+      reason: task.reason,
+      required: true,
+    });
     if (missing) {
       for (const task of selected) results.set(task.id, { taskId: task.id, status: 'not-run', reason: 'runtime, test artifact, or workflow SHA prerequisite is missing' });
     } else {
-      for (const task of selected) {
-        const spec = validation.tasks.find((item) => item.id === task.id);
-        if (spec.githubOnly && process.env.GITHUB_ACTIONS !== 'true') {
-          results.set(task.id, { taskId: task.id, status: 'not-run', reason: 'requires the ephemeral GitHub PostgreSQL service' });
-          break;
-        }
-        const before = captureCandidate(discoverInventory());
-        if (before.sourceSha256 !== plan.candidate.sourceSha256) {
-          sourceChanged = true;
-          results.set(task.id, { taskId: task.id, status: 'blocked', reason: 'candidate changed after planning' });
-          break;
-        }
-        const taskStartedAt = Date.now();
-        writeValidationProgress(selected, results, task, taskStartedAt, progressState);
-        const heartbeat = setInterval(
-          () => writeValidationProgress(selected, results, task, taskStartedAt, progressState),
-          PROGRESS_INTERVAL_MS,
-        );
-        heartbeat.unref();
-        let taskResult;
-        try {
-          taskResult = await runTask(task, runRoot);
-        } finally {
-          clearInterval(heartbeat);
-        }
-        results.set(task.id, taskResult);
-        writeValidationProgress(selected, results, null, 0, progressState);
-        if (captureCandidate(discoverInventory()).sourceSha256 !== plan.candidate.sourceSha256) {
-          sourceChanged = true;
-          results.set(task.id, { ...taskResult, status: 'blocked', error: 'source changed during execution' });
-          break;
-        }
-        if (taskResult.status !== 'passed') break;
+      const runningTasks = new Map();
+      const reportProgress = () => writeValidationProgress(selected, results, runningTasks, progressState);
+      const heartbeat = setInterval(reportProgress, PROGRESS_INTERVAL_MS);
+      heartbeat.unref();
+      try {
+        const pool = await runTaskPool(selected, {
+          maxConcurrentTasks: plan.maxConcurrentTasks,
+          results,
+          checkSource: () => captureCandidate(discoverInventory()).sourceSha256 === plan.candidate.sourceSha256,
+          runTask: async (task) => {
+            const spec = validation.tasks.find((item) => item.id === task.id);
+            if (spec.githubOnly && process.env.GITHUB_ACTIONS !== 'true') {
+              return { taskId: task.id, status: 'not-run', reason: 'requires the ephemeral GitHub PostgreSQL service' };
+            }
+            return runTask(task, runRoot);
+          },
+          onTaskStart: (task, startedAt) => runningTasks.set(task.id, startedAt),
+          onTaskFinish: (task) => runningTasks.delete(task.id),
+          onProgress: reportProgress,
+        });
+        sourceChanged = pool.sourceChanged;
+      } finally {
+        clearInterval(heartbeat);
       }
     }
     for (const task of plan.tasks) {
@@ -666,8 +832,13 @@ async function execute(plan) {
         reason: task.selected ? 'a prerequisite task did not pass' : task.reason,
       });
     }
-    writeValidationProgress(selected, results, null, 0, progressState);
-    const tasks = plan.tasks.map((task) => results.get(task.id));
+    writeValidationProgress(selected, results, new Map(), progressState);
+    const tasks = plan.tasks.map((task) => ({
+      ...results.get(task.id),
+      stage: task.stage,
+      concurrencyGroup: task.concurrencyGroup,
+      dependsOn: task.dependsOn,
+    }));
     const totals = {
       planned: plan.tasks.filter((task) => task.selected).length,
       executed: tasks.filter((task) => task.startedAt).length,
@@ -694,6 +865,7 @@ async function execute(plan) {
       inventoryLaneDigests: plan.inventoryLaneDigests,
       inventorySha256: plan.inventorySha256,
       executionContext: plan.executionContext,
+      maxConcurrentTasks: plan.maxConcurrentTasks,
       status,
       sourceChanged,
       runtimes: plan.runtimes,

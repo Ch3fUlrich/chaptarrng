@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, statSync, w
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { createPlan, createShortTemporaryPathAlias, currentRepoFiles, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, runTask, sha256GitText } from './engine.mjs';
+import { createPlan, createShortTemporaryPathAlias, currentRepoFiles, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, runTask, runTaskPool, sha256GitText } from './engine.mjs';
 import { validation } from './config.mjs';
 
 function withEnvironmentVariable(name, value, action) {
@@ -131,6 +131,112 @@ test('live progress summary distinguishes completed, blocked, pending, and runni
     formatValidationProgress('sample', tasks, results, tasks[2], 65_000),
     '[validation] sample: 1/3 selected tasks complete (1 passed, 0 failed, 1 blocked, 1 pending); running Long task (1m05s)',
   );
+});
+
+test('live progress summary lists every active task', () => {
+  const tasks = [
+    { id: 'engine-contract-tests', name: 'Engine contracts' },
+    { id: 'dotnet-core-tests', name: 'Core NUnit tests' },
+  ];
+  const running = new Map([
+    ['engine-contract-tests', Date.now() - 2000],
+    ['dotnet-core-tests', Date.now() - 5000],
+  ]);
+  const summary = formatValidationProgress('sample', tasks, new Map(), running);
+  assert.match(summary, /running Engine contracts \(0m02s\), Core NUnit tests \(0m05s\)/);
+});
+
+test('bounded pool overlaps independent native commands and keeps their logs separate', async (t) => {
+  const runRoot = mkdtempSync(path.join(os.tmpdir(), 'chaptarr-validation-pool-'));
+  t.after(() => rmSync(runRoot, { recursive: true, force: true }));
+  const tasks = [
+    { id: 'contract-one', name: 'Contract one', stage: 'tests', concurrencyGroup: 'contract-output' },
+    { id: 'contract-two', name: 'Contract two', stage: 'tests', concurrencyGroup: 'nunit-output' },
+  ];
+  let active = 0;
+  let maximumActive = 0;
+  const pool = await runTaskPool(tasks, {
+    maxConcurrentTasks: 2,
+    runTask: async (task) => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      try {
+        return await runTask({ id: task.id }, runRoot, {
+          id: task.id,
+          kind: 'test',
+          command: [
+            process.execPath,
+            '-e',
+            'setTimeout(() => process.stdout.write("# tests 1\\n# pass 1\\n# fail 0\\n"), 80)',
+          ],
+          resultFormat: 'node-test',
+          timeoutSeconds: 10,
+        });
+      } finally {
+        active -= 1;
+      }
+    },
+  });
+
+  assert.equal(maximumActive, 2);
+  assert.deepEqual(tasks.map((task) => pool.results.get(task.id).status), ['passed', 'passed']);
+  assert.deepEqual(tasks.map((task) => pool.results.get(task.id).logFile), ['contract-one.log', 'contract-two.log']);
+  assert.deepEqual(tasks.map((task) => pool.results.get(task.id).concurrencyGroup), ['contract-output', 'nunit-output']);
+});
+
+test('bounded pool serializes tasks that share an output group', async () => {
+  const tasks = [
+    { id: 'first', stage: 'tests', concurrencyGroup: 'shared-output' },
+    { id: 'second', stage: 'tests', concurrencyGroup: 'shared-output' },
+  ];
+  let active = 0;
+  let maximumActive = 0;
+  const pool = await runTaskPool(tasks, {
+    maxConcurrentTasks: 2,
+    runTask: async (task) => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      active -= 1;
+      return { taskId: task.id, status: 'passed' };
+    },
+  });
+  assert.equal(maximumActive, 1);
+  assert.deepEqual([...pool.results.values()].map((receipt) => receipt.status), ['passed', 'passed']);
+});
+
+test('bounded pool blocks failed dependencies but keeps independent tasks running', async () => {
+  const tasks = [
+    { id: 'contract', stage: 'tests', concurrencyGroup: 'contract-output' },
+    { id: 'core', stage: 'tests', concurrencyGroup: 'nunit-output', dependsOn: ['contract'] },
+    { id: 'independent', stage: 'tests', concurrencyGroup: 'database-output' },
+  ];
+  const started = [];
+  const pool = await runTaskPool(tasks, {
+    maxConcurrentTasks: 2,
+    runTask: async (task) => {
+      started.push(task.id);
+      return { taskId: task.id, status: task.id === 'contract' ? 'failed' : 'passed' };
+    },
+  });
+  assert.deepEqual(started.sort(), ['contract', 'independent']);
+  assert.equal(pool.results.get('core').status, 'blocked');
+  assert.equal(pool.results.get('independent').status, 'passed');
+});
+
+test('bounded pool invalidates successful receipts when source identity changes', async () => {
+  const tasks = [
+    { id: 'first', stage: 'tests', concurrencyGroup: 'first-output' },
+    { id: 'second', stage: 'tests', concurrencyGroup: 'second-output' },
+  ];
+  let sourceChecks = 0;
+  const pool = await runTaskPool(tasks, {
+    maxConcurrentTasks: 2,
+    checkSource: () => ++sourceChecks === 1,
+    runTask: async (task) => ({ taskId: task.id, status: 'passed' }),
+  });
+  assert.equal(pool.sourceChanged, true);
+  assert.deepEqual([...pool.results.values()].map((receipt) => receipt.status), ['blocked', 'blocked']);
 });
 
 test('source fingerprints normalize Git text line endings across runner operating systems', () => {
@@ -318,6 +424,11 @@ test('test-only planning distinguishes local and hosted tasks regardless of ambi
     'engine-contract-tests', 'postgres-migrations-smoke',
   ]);
   assert.match(postgresPlan.executionContext.nodeId, /postgres/);
+  assert.equal(postgresPlan.maxConcurrentTasks, 2);
+  assert.equal(postgresPlan.tasks.find((task) => task.id === 'engine-contract-tests').stage, 'tests');
+  assert.equal(postgresPlan.tasks.find((task) => task.id === 'dotnet-core-tests').concurrencyGroup, 'nunit-results');
+  assert.deepEqual(postgresPlan.tasks.find((task) => task.id === 'dotnet-core-tests').dependsOn, []);
+  assert.deepEqual(postgresPlan.tasks.find((task) => task.id === 'postgres-migrations-smoke').dependsOn, ['engine-contract-tests']);
 });
 
 test('explicit PostgreSQL task planning includes only its contract dependency', () => {

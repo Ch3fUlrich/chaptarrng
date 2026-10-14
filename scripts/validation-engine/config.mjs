@@ -35,7 +35,9 @@ export const validation = {
     'release-notes/20261012-validation-playwright-cache.md',
     'release-notes/20261012-trusted-test-sandbox.md',
     'release-notes/20261012-validation-sandbox-hardening.md',
+    'release-notes/20261013-bounded-validation-task-pool.md',
   ],
+  maxConcurrentTasks: 2,
   runtimes: [
     { command: process.execPath, args: ['--version'], versionPattern: '^v26\\.10\\.0$' },
   ],
@@ -82,6 +84,8 @@ export const validation = {
       id: 'engine-contract-tests',
       name: 'Validation and cross-platform reconciliation contracts',
       kind: 'test',
+      stage: 'tests',
+      concurrencyGroup: 'engine-contract-output',
       command: [process.execPath, '--test', '--test-reporter=tap', 'scripts/validation-engine/engine.test.mjs', 'scripts/validation-engine/trusted-sandbox.contract.mjs', 'scripts/validation-engine/trusted-test-launcher.contract.mjs', 'scripts/validation-engine/reconcile.test.mjs'],
       resultFormat: 'node-test',
       inventory: ['validation-contracts', 'trusted-sandbox-contracts', 'trusted-launcher-contracts', 'reconciliation-contracts'],
@@ -91,6 +95,8 @@ export const validation = {
       id: 'dotnet-core-tests',
       name: 'Chaptarr Core NUnit tests on the native runner',
       kind: 'test',
+      stage: 'tests',
+      concurrencyGroup: 'nunit-results',
       command: [
         'dotnet', 'test', 'src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj',
         '--configuration', 'Release', '--no-restore', '--no-build', '--verbosity', 'normal',
@@ -102,13 +108,14 @@ export const validation = {
       nodeIds: ['chaptarr-linux-X64', 'chaptarr-win-X64', 'chaptarr-osx-ARM64'],
       artifacts: ['_tests/net10.0/Chaptarr.Core.Test.dll'],
       runtimes: [{ command: 'dotnet', args: ['--version'], versionPattern: '^10\\.0\\.401$' }],
-      dependsOn: ['engine-contract-tests'],
       timeoutSeconds: 5400,
     },
     {
       id: 'postgres-migrations-smoke',
       name: 'Fresh PostgreSQL schema migration smoke test',
       kind: 'test',
+      stage: 'tests',
+      concurrencyGroup: 'postgres-smoke-fixtures',
       command: ['bash', 'scripts/validation-engine/run-postgres-migrations.sh'],
       env: {
         Chaptarr__Postgres__Host: 'localhost',
