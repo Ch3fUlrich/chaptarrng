@@ -6,7 +6,7 @@
 
 A Snapetech-maintained Chaptarr fork for audiobook and eBook libraries.
 
-[![License](https://img.shields.io/github/license/snapetech/chaptarrng)](https://github.com/snapetech/chaptarrng/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/snapetech-org/chaptarrng)](https://github.com/snapetech-org/chaptarrng/blob/main/LICENSE)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/platform/support/policy)
 [![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/nqFGsGUug2)
 
@@ -41,7 +41,7 @@ The published `0.9.969` release does not include a populated BookshelfNG
 database converter or a BookshelfNG package/channel bridge. Do not point
 ChaptarrNG at a BookshelfNG `/config` directory or treat the projects as
 drop-in replacements yet. See the current
-[BookshelfNG consolidation report](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
+[BookshelfNG consolidation report](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
 for migration and release evidence.
 
 ChaptarrNG is independently maintained and is not affiliated with the Servarr team or the Readarr, Sonarr, Radarr, Lidarr, or Prowlarr projects.
@@ -76,7 +76,7 @@ unpublished work, blocks retirement as a whole and remains an individual
 acceptance gate. Carrying over a BookshelfNG capability adds to this set; it
 does not replace or reduce ChaptarrNG's own blockers.
 
-See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
+See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
 
 ## Key Features
 
@@ -167,7 +167,7 @@ use `localhost` from inside SeerrNG.
 
 Or use Docker Compose:
 ```bash
-wget https://raw.githubusercontent.com/snapetech/chaptarrng/main/docker-compose.yml
+wget https://raw.githubusercontent.com/snapetech-org/chaptarrng/main/docker-compose.yml
 # Edit paths in docker-compose.yml
 docker compose up -d
 ```
@@ -275,14 +275,14 @@ The feature is not a general-purpose web downloader. It depends on a source retu
 ### Unraid Community Applications
 
 ChaptarrNG's Unraid template is maintained in the dedicated
-[ChaptarrNG Unraid package repository](https://github.com/snapetech/chaptarrng-unraid).
+[ChaptarrNG Unraid package repository](https://github.com/snapetech-org/chaptarrng-unraid).
 It installs the maintained fork image, maps the web interface on port `8789`,
 and provides separate paths for appdata, audiobooks, ebooks, and downloads.
 The image uses `PUID=99` and `PGID=100` by default; change those values to match
 the ownership of your media shares.
 
 To make ChaptarrNG searchable in Community Applications, submit the package
-repository URL `https://github.com/snapetech/chaptarrng-unraid` through
+repository URL `https://github.com/snapetech-org/chaptarrng-unraid` through
 Unraid's Community Apps submission flow and complete its validation scan.
 Stable releases from the application repository's `main` branch publish the
 `latest` image to GHCR.
@@ -293,7 +293,7 @@ Building from source requires the .NET 10 SDK, Node.js, and Yarn. When running C
 **Linux / macOS:**
 ```bash
 # Clone the repository
-git clone https://github.com/snapetech/chaptarrng.git
+git clone https://github.com/snapetech-org/chaptarrng.git
 cd chaptarrng
 
 # Build the backend
@@ -311,7 +311,7 @@ dotnet _output/publish/Chaptarr.dll
 **Windows (Command Prompt):**
 ```cmd
 :: Clone the repository
-git clone https://github.com/snapetech/chaptarrng.git
+git clone https://github.com/snapetech-org/chaptarrng.git
 cd chaptarrng
 
 :: Build the backend
@@ -341,7 +341,7 @@ Note: the inherited assembly is named `Chaptarr.dll` on Linux/macOS and `Chaptar
 - [ImageSharp build-license guide](docs/development/imagesharp-license.md): why source builds need a Six Labors license, how to obtain one, and where to configure it
 - [Validation engine guide](docs/development/validation-engine.md): local and CI validation tasks, progress reporting, and receipt checks
 - [Changelog](CHANGELOG.md): release-by-release changes shipped by the fork
-- [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md): setup and request lifecycle
+- [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md): setup and request lifecycle
 - [SeerrNG integration contract](docs/SEERRNG_INTEGRATION.md): capabilities, service-key setup, and integration smoke test
 - [API identity and lifecycle](docs/API_IDENTITY_AND_LIFECYCLE.md): compatibility details for maintainers
 

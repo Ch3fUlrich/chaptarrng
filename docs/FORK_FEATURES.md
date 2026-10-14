@@ -6,7 +6,7 @@ Readarr. The fork was created on August 31, 2026 from the parent repository's
 `develop` branch at the
 [shared fork-base commit](https://github.com/Chaptarr/chaptarr/commit/423b1bba1d47657d24ddfbf9c5418892972a1229).
 This guide covers the published feature set through
-[`v0.9.969`](https://github.com/snapetech/chaptarrng/releases/tag/v0.9.969)
+[`v0.9.969`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.969)
 and the additional feature and maintenance work present in the current fork
 checkout. Some additions described here may not yet be in a published image;
 the [changelog](../CHANGELOG.md) is the record of released changes. The parent
@@ -47,10 +47,10 @@ upstream-backlog changes and the YunoHost publisher retirement. The merge does
 not complete the upstream issue/PR audit.
 
 The pinned backlog snapshot at
-[`c26dd7f`](https://github.com/snapetech/chaptarrng/tree/c26dd7f) was 306
+[`c26dd7f`](https://github.com/snapetech-org/chaptarrng/tree/c26dd7f) was 306
 commits ahead and 13 behind ChaptarrNG `main`, with 680 changed paths (45,693
 insertions and 6,178 deletions). Its
-[ledger](https://github.com/snapetech/chaptarrng/blob/c26dd7f/docs/maintainers/upstream-backlog.json)
+[ledger](https://github.com/snapetech-org/chaptarrng/blob/c26dd7f/docs/maintainers/upstream-backlog.json)
 records 305 upstream issue and pull-request items: 213 implemented items
 awaiting final validation and 79 unreviewed. That snapshot adds or extends
 RanobeDB and Audible metadata, audiobook conversion and metadata, safe
@@ -136,7 +136,7 @@ Setup and behavior:
 
 - [SeerrNG integration guide](./SEERRNG_INTEGRATION.md)
 - [API identity and lifecycle contract](./API_IDENTITY_AND_LIFECYCLE.md)
-- [SeerrNG Bookshelf backend guide](https://github.com/snapetech/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md)
+- [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md)
 
 ## Library identity and file organization
 
@@ -327,14 +327,14 @@ branch and builds fork-owned container images for GHCR. Release notes and the
 changelog summarize user-facing changes and required operator actions.
 
 The fork also maintains an [Unraid Community Applications
-package](https://github.com/snapetech/chaptarrng-unraid). Check its instructions
+package](https://github.com/snapetech-org/chaptarrng-unraid). Check its instructions
 for supported architectures, paths, and upgrade steps.
 ## ChaptarrNG retirement blockers
 
 Retiring BookshelfNG into ChaptarrNG and retiring ChaptarrNG into upstream
 Chaptarr are separate decisions. The first gate is the complete BookshelfNG
 feature, data, and distribution inventory in the
-[BookshelfNG parity roadmap](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
+[BookshelfNG parity roadmap](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
 BookshelfNG stays active until every capability it added or materially
 extended is present in ChaptarrNG or has a tested, documented replacement.
 
@@ -457,8 +457,8 @@ All gates are open until tested against a supported upstream release. The
 current upstream comparison is pinned above; it does not prove equivalence for
 later upstream commits. BookshelfNG's current inventory and migration evidence
 are recorded in its
-[consolidation report](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
-and [feature matrix](https://github.com/snapetech/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
+[consolidation report](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
+and [feature matrix](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
 At candidate `d763525`, the unpublished consolidation worktree passed 3,966 of
 3,969 Chaptarr Core tests (3 skipped), including 36 focused preference and
 matching tests. The consolidation PR's migration-controller regression

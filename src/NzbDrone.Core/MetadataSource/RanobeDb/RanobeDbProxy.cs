@@ -224,7 +224,7 @@ namespace NzbDrone.Core.MetadataSource.RanobeDb
                 .AddQueryParam("limit", limit.ToString(CultureInfo.InvariantCulture))
                 .AddQueryParam("rf", "digital")
                 .Accept(HttpAccept.Json)
-                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech/chaptarrng)")
+                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech-org/chaptarrng)")
                 .Build();
 
             return GetResponse<RanobeDbBooksResponse>(request, "books search", useCache, ttl);
@@ -238,7 +238,7 @@ namespace NzbDrone.Core.MetadataSource.RanobeDb
                 .AddQueryParam("limit", BooksPageSize.ToString(CultureInfo.InvariantCulture))
                 .AddQueryParam("rf", "digital")
                 .Accept(HttpAccept.Json)
-                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech/chaptarrng)")
+                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech-org/chaptarrng)")
                 .Build();
 
             return GetResponse<RanobeDbBooksResponse>(request, $"books for staff {staffId}", useCache, DetailCacheTtl);
@@ -248,7 +248,7 @@ namespace NzbDrone.Core.MetadataSource.RanobeDb
         {
             var request = new HttpRequestBuilder($"{ApiBaseUrl}/book/{bookId}")
                 .Accept(HttpAccept.Json)
-                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech/chaptarrng)")
+                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech-org/chaptarrng)")
                 .Build();
 
             return GetResponse<RanobeDbBookResponse>(request, $"book {bookId}", useCache, DetailCacheTtl)?.Book;
@@ -258,7 +258,7 @@ namespace NzbDrone.Core.MetadataSource.RanobeDb
         {
             var request = new HttpRequestBuilder($"{ApiBaseUrl}/release/{releaseId}")
                 .Accept(HttpAccept.Json)
-                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech/chaptarrng)")
+                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech-org/chaptarrng)")
                 .Build();
 
             return GetResponse<RanobeDbReleaseResponse>(request, $"release {releaseId}", useCache, DetailCacheTtl)?.Release;
@@ -275,7 +275,7 @@ namespace NzbDrone.Core.MetadataSource.RanobeDb
 
             var request = new HttpRequestBuilder($"{ApiBaseUrl}/staff/{staffId}")
                 .Accept(HttpAccept.Json)
-                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech/chaptarrng)")
+                .SetHeader("User-Agent", "ChaptarrNG/1.0 (+https://github.com/snapetech-org/chaptarrng)")
                 .Build();
 
             return GetResponse<RanobeDbStaffResponse>(request, $"staff {staffId}", useCache, DetailCacheTtl)?.Staff;

@@ -6,14 +6,14 @@
   <Network>bridge</Network>
   <Shell>bash</Shell>
   <Privileged>false</Privileged>
-  <Icon>https://raw.githubusercontent.com/snapetech/chaptarrng/main/Logo/256.png</Icon>
+  <Icon>https://raw.githubusercontent.com/snapetech-org/chaptarrng/main/Logo/256.png</Icon>
   <WebUI>http://[IP]:[PORT:8789]/</WebUI>
   <Overview>Built on .NET 10 LTS, ChaptarrNG manages audiobook and eBook libraries with format-aware automation and optional SeerrNG integration.</Overview>
   <Description>ChaptarrNG is Snapetech's maintained fork of Chaptarr, with format-scoped book requests and durable pending-import handling for SeerrNG. It is a standalone book manager and does not require SeerrNG. This template installs the ChaptarrNG GHCR image, stores app data under /config, and provides separate audiobook, ebook, and download paths. Set PUID and PGID to match your share ownership; the image defaults to 99:100.</Description>
-  <Support>https://github.com/snapetech/chaptarrng/issues</Support>
-  <Project>https://github.com/snapetech/chaptarrng</Project>
-  <TemplateURL>https://raw.githubusercontent.com/snapetech/chaptarrng-unraid/main/templates/chaptarrng.xml</TemplateURL>
-  <ReadMe>https://github.com/snapetech/chaptarrng-unraid/blob/main/README.md</ReadMe>
+  <Support>https://github.com/snapetech-org/chaptarrng/issues</Support>
+  <Project>https://github.com/snapetech-org/chaptarrng</Project>
+  <TemplateURL>https://raw.githubusercontent.com/snapetech-org/chaptarrng-unraid/main/templates/chaptarrng.xml</TemplateURL>
+  <ReadMe>https://github.com/snapetech-org/chaptarrng-unraid/blob/main/README.md</ReadMe>
   <Category>MediaApp:Books Status:Beta</Category>
   <ExtraSearchTerms>chaptarrng chaptarr books ebooks audiobooks readarr seerrng</ExtraSearchTerms>
   <Changes>Initial ChaptarrNG Community Applications template for the SeerrNG-maintained fork.</Changes>

@@ -52,7 +52,7 @@ its contents.
 
 ```bash
 # Clone ChaptarrNG
-git clone https://github.com/snapetech/chaptarrng.git
+git clone https://github.com/snapetech-org/chaptarrng.git
 cd chaptarrng
 
 # Install frontend dependencies

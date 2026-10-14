@@ -18,13 +18,13 @@ class MoreInfo extends Component {
           {/* No Home Page entry: chaptarr.com does not serve a site yet; re-add if a landing page ships. */}
           <DescriptionListItemTitle>{translate('Wiki')}</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://github.com/snapetech/chaptarrng#documentation">{translate('Wiki')}</Link>
+            <Link to="https://github.com/snapetech-org/chaptarrng#documentation">{translate('Wiki')}</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>{translate('ImageSharpBuildLicense')}</DescriptionListItemTitle>
           <DescriptionListItemDescription>
             {translate('ImageSharpBuildLicenseDescription')}{' '}
-            <Link to="https://github.com/snapetech/chaptarrng/blob/main/docs/development/imagesharp-license.md">
+            <Link to="https://github.com/snapetech-org/chaptarrng/blob/main/docs/development/imagesharp-license.md">
               {translate('ImageSharpLicenseGuide')}
             </Link>
           </DescriptionListItemDescription>
@@ -38,12 +38,12 @@ class MoreInfo extends Component {
 
           <DescriptionListItemTitle>{translate('Source')}</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://github.com/snapetech/chaptarrng">{'github.com/snapetech/chaptarrng'}</Link>
+            <Link to="https://github.com/snapetech-org/chaptarrng">{'github.com/snapetech-org/chaptarrng'}</Link>
           </DescriptionListItemDescription>
 
           <DescriptionListItemTitle>{translate('FeatureRequests')}</DescriptionListItemTitle>
           <DescriptionListItemDescription>
-            <Link to="https://github.com/snapetech/chaptarrng/issues">{'github.com/snapetech/chaptarrng/issues'}</Link>
+            <Link to="https://github.com/snapetech-org/chaptarrng/issues">{'github.com/snapetech-org/chaptarrng/issues'}</Link>
           </DescriptionListItemDescription>
 
         </DescriptionList>
