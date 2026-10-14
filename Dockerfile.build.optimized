@@ -127,6 +127,13 @@ RUN useradd -u 99 -g 100 -d /config -s /bin/bash abc \
     && mkdir -p /config \
     && chown -R abc:users /config
 
+COPY docker-healthcheck.sh /usr/local/bin/chaptarr-healthcheck
+RUN chmod +x /usr/local/bin/chaptarr-healthcheck
+
+# Containers are updated by pulling a new image, not by the in-app updater.
+ENV CHAPTARR_PACKAGE_UPDATE_MECHANISM=Docker \
+    CHAPTARR_PACKAGE_UPDATE_MECHANISM_MESSAGE="Pull the new ChaptarrNG image to update."
+
 WORKDIR /app
 COPY --from=build /app .
 
@@ -134,6 +141,6 @@ RUN chown -R abc:users /app
 
 EXPOSE 8789
 HEALTHCHECK --interval=30s --timeout=10s --start-period=2m --retries=3 \
-    CMD wget --quiet --output-document=/dev/null http://127.0.0.1:8789/ping || exit 1
+    CMD ["/usr/local/bin/chaptarr-healthcheck"]
 USER abc
 CMD ["dotnet", "/app/Chaptarr.dll", "-nobrowser", "-data=/config"]
