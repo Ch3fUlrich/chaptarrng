@@ -31,27 +31,27 @@ function getConversionProgressLabel(message, progress) {
   }
 
   if (normalizedMessage.startsWith('cancelled')) {
-    return 'Cancelled';
+    return translate('ConversionCancelled');
   }
 
   if (normalizedMessage.startsWith('verifying')) {
-    return 'Verifying';
+    return translate('QueueConversionVerifying');
   }
 
   if (normalizedMessage.startsWith('finalizing')) {
-    return 'Finalizing';
+    return translate('QueueConversionFinalizing');
   }
 
   if (normalizedMessage.startsWith('preparing import')) {
-    return 'Preparing import';
+    return translate('ImportPreparing');
   }
 
   if (normalizedMessage.startsWith('importing')) {
-    return 'Importing';
+    return translate('Importing');
   }
 
   if (normalizedMessage.startsWith('converted m4b imported')) {
-    return 'Imported';
+    return translate('QueueConversionImported');
   }
 
   const stepMatch = message?.match(/(\d+)\s+of\s+(\d+)/i);

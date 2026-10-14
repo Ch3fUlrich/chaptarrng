@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import React, { useState } from 'react';
 import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
+import translate from 'Utilities/String/translate';
 import ImportProgressMessage from './ImportProgressMessage';
 import styles from './Message.css';
 
@@ -96,21 +97,21 @@ function Message(props) {
     // Determine the current stage based on message content
     let stageIcon = getIconName(name);
     let stageText = message;
-    let pausedText = 'Import paused';
-    let actionText = isPaused ? 'Resume' : 'Pause';
+    let pausedText = translate('ImportProgressImportPaused');
+    let actionText = translate(isPaused ? 'Resume' : 'Pause');
     
     if (message.includes('Scanning folder') || message.includes('library scan')) {
       stageIcon = icons.FOLDER_OPEN;
-      pausedText = 'Folder scan paused';
+      pausedText = translate('FolderScanPaused');
     } else if (message.includes('Searching for authors') || message.includes('Processing author')) {
       stageIcon = icons.SEARCH;
-      pausedText = 'Author search paused';
+      pausedText = translate('AuthorSearchPaused');
     } else if (message.includes('Matching books') || message.includes('Identifying book')) {
       stageIcon = icons.BOOK;
-      pausedText = 'Book matching paused';
+      pausedText = translate('BookMatchingPaused');
     } else if (message.includes('Importing book files') || message.includes('Processing files')) {
       stageIcon = icons.DOWNLOAD;
-      pausedText = 'File import paused';
+      pausedText = translate('FileImportPaused');
     }
     
     return (

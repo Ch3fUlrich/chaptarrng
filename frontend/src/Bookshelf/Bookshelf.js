@@ -392,7 +392,7 @@ class Bookshelf extends Component {
 
             {
               !isFetching && !!error &&
-                <div>{getErrorMessage(error, 'Failed to load author from API')}</div>
+                <div>{getErrorMessage(error, translate('ErrorPageAuthorUnavailable'))}</div>
             }
 
             {

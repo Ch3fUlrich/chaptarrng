@@ -92,7 +92,7 @@ function getInfoRowProps(row, props) {
     } = props;
 
     return {
-      title: `ReleaseDate: ${formatDateTime(releaseDate, longDateFormat, timeFormat)}`,
+      title: `${translate('ReleaseDate')}: ${formatDateTime(releaseDate, longDateFormat, timeFormat)}`,
       iconName: icons.CALENDAR,
       label: getRelativeDate(
         releaseDate,
@@ -116,7 +116,7 @@ function getInfoRowProps(row, props) {
     } = props;
 
     return {
-      title: `Added: ${formatDateTime(added, longDateFormat, timeFormat)}`,
+      title: `${translate('Added')}: ${formatDateTime(added, longDateFormat, timeFormat)}`,
       iconName: icons.ADD,
       label: getRelativeDate(
         added,

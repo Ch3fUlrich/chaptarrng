@@ -350,12 +350,12 @@ export const actionHandlers = handleThunks({
     allowQueuedResponse: true,
     onQueued: (dispatch, getState, payload) => {
       const author = (getState().authors.items || []).find((item) => item.id === payload.id);
-      const name = author ? author.authorName : 'the author';
+      const name = author ? author.authorName : translate('Author');
 
       dispatch(showMessage({
         id: `author-delete-queued-${payload.id}`,
         name: 'AuthorDeleteQueued',
-        message: `Deleting ${name} in the background. It will be removed when a worker is free - you can leave this page.`,
+        message: translate('AuthorDeleteQueuedNotification', { name }),
         type: 'info',
         hideAfter: 15
       }));
@@ -387,7 +387,9 @@ export const actionHandlers = handleThunks({
       dispatch(showMessage({
         id: `author-monitor-toggle-no-root-folder-${id}-${effectiveMediaType}`,
         name: 'AuthorMonitorToggleNoRootFolder',
-        message: `No ${effectiveMediaType} root folder configured for this author`,
+        message: translate('AuthorMissingMediaTypeRootFolder', {
+          mediaType: translate(effectiveMediaType === 'ebook' ? 'EbookLabel' : 'AudiobookLabel')
+        }),
         type: 'warning',
         hideAfter: 10
       }));
@@ -465,7 +467,7 @@ export const actionHandlers = handleThunks({
       dispatch(showMessage({
         id: `author-save-failed-${id}-${Date.now()}`,
         name: 'AuthorSaveFailed',
-        message: getErrorMessage(xhr, 'Unable to save author settings'),
+        message: getErrorMessage(xhr, translate('UnableToSaveAuthorSettings')),
         type: 'error',
         hideAfter: 10
       }));

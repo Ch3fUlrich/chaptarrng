@@ -14,7 +14,7 @@ import styles from './RestoreBackupModalContent.css';
 
 function getErrorMessage(error) {
   if (!error || !error.responseJSON || !error.responseJSON.message) {
-    return 'Error restoring backup';
+    return translate('BackupRestoreError');
   }
 
   return error.responseJSON.message;

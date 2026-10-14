@@ -45,7 +45,7 @@ class HardcoverApiKeyModal extends Component {
     const { apiKey } = this.state;
 
     if (!apiKey.trim()) {
-      this.setState({ saveError: 'API key is required' });
+      this.setState({ saveError: translate('ApiKeyRequired') });
       return;
     }
 
@@ -84,7 +84,7 @@ class HardcoverApiKeyModal extends Component {
     });
 
     request.request.fail((xhr) => {
-      let errorMessage = 'Failed to save API key';
+      let errorMessage = translate('FailedToSaveApiKey');
 
       if (Array.isArray(xhr?.responseJSON)) {
         const messages = xhr.responseJSON
@@ -95,9 +95,9 @@ class HardcoverApiKeyModal extends Component {
       } else if (xhr.responseJSON && typeof xhr.responseJSON === 'object') {
         errorMessage = xhr.responseJSON.error || xhr.responseJSON.message || errorMessage;
       } else if (xhr.status === 400) {
-        errorMessage = 'Invalid API key. Please check your token and try again.';
+        errorMessage = translate('InvalidApiKeyTryAgain');
       } else if (xhr.status >= 500) {
-        errorMessage = 'Hardcover\'s API is currently unavailable. Please try again later.';
+        errorMessage = translate('HardcoverApiUnavailableTryAgain');
       }
 
       this.setState({

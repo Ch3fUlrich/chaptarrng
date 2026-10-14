@@ -154,7 +154,7 @@ class FileBrowserModalContent extends Component {
                       emptyParent &&
                         <FileBrowserRow
                           type="computer"
-                          name="My Computer"
+                          name={translate('MyComputer')}
                           path={parent}
                           onPress={this.onRowPress}
                         />

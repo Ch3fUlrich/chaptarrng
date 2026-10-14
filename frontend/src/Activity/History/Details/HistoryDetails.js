@@ -55,11 +55,11 @@ function formatChange(oldValue, newValue) {
 
 function formatConversionTagMode(tagMode) {
   if (tagMode === 'clean') {
-    return 'Clean matched tags';
+    return translate('CleanMatchedTags');
   }
 
   if (tagMode === 'preserve') {
-    return 'Preserve source tags';
+    return translate('PreserveSourceTags');
   }
 
   return tagMode;

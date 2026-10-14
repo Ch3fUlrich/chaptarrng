@@ -109,7 +109,7 @@ class AuthorDetailsPageConnector extends Component {
     if (!isFetching && !!error) {
       return (
         <div className={styles.errorMessage}>
-          {getErrorMessage(error, 'Failed to load author from API')}
+          {getErrorMessage(error, translate('ErrorPageAuthorUnavailable'))}
         </div>
       );
     }

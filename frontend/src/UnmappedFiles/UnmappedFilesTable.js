@@ -498,7 +498,7 @@ class UnmappedFilesTable extends Component {
         this.setState({
           isFetchingSendLogsPreview: false,
           sendLogsPreview: null,
-          sendLogsPreviewError: xhr?.responseJSON?.message || xhr?.responseText || 'Unable to preview matching logs'
+          sendLogsPreviewError: xhr?.responseJSON?.message || xhr?.responseText || translate('UnableToPreviewMatchingLogs')
         });
       });
   };
@@ -616,7 +616,7 @@ class UnmappedFilesTable extends Component {
                             (sendLogsPreview.samples || []).map((entry, index) => {
                               const tags = entry.tags || {};
                               const tagKeys = Object.keys(tags);
-                              const primaryLine = entry.decision || entry.reason || (entry.success ? 'Matched' : 'No match');
+                              const primaryLine = entry.decision || entry.reason || translate(entry.success ? 'Matched' : 'NoMatch');
                               const rejectionLine = entry.topRejectionReason ?
                                 `${entry.topRejectionReason}${entry.topRejectionDetail ? `: ${entry.topRejectionDetail}` : ''}` :
                                 null;
@@ -638,7 +638,7 @@ class UnmappedFilesTable extends Component {
                                     onPress={() => this.onSendLogsPreviewSamplePress(index)}
                                   >
                                     <div style={{ fontWeight: 600 }}>
-                                      {entry.path || entry.fileName || '(unknown file)'}
+                                      {entry.path || entry.fileName || translate('UnknownFile')}
                                     </div>
 
                                     {

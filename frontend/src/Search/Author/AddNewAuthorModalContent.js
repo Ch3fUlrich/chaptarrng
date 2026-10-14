@@ -62,11 +62,11 @@ class AddNewAuthorModalContent extends Component {
       ...otherProps
     } = this.props;
 
-    let addLabel = 'Add Audiobooks';
+    let addLabel = translate('AddAudiobooksLabel');
     if (selectedMediaType === 'ebook') {
-      addLabel = 'Add Ebooks';
+      addLabel = translate('AddEbooksLabel');
     } else if (selectedMediaType === 'both') {
-      addLabel = 'Add Audiobooks + Ebooks';
+      addLabel = translate('AddAudiobooksAndEbooksLabel');
     }
 
     const audiobookRoot = audiobookRootFolderPath?.value;

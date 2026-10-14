@@ -75,25 +75,31 @@ function QueueStatusCell(props) {
   // status === 'downloading'
   let iconName = icons.DOWNLOADING;
   let iconKind = kinds.DEFAULT;
-  let title = translate('Title');
+  let title = translate('QueueStatusDownloading');
 
   if (status === 'paused') {
     iconName = icons.PAUSED;
-    title = 'Paused';
+    title = translate('QueueStatusPaused');
   }
 
   if (status === 'queued') {
     iconName = icons.QUEUED;
-    title = 'Queued';
+    title = translate('Queued');
   }
 
   if (status === 'completed') {
     iconName = icons.DOWNLOADED;
-    title = 'Downloaded';
+    title = translate('Downloaded');
 
     if (isConverting) {
       iconName = icons.REFRESH;
-      title = conversionStatus === 'cancelling' ? 'Cancelling conversion' : `Converting${convertToQuality ? ` to ${convertToQuality}` : ''}`;
+      if (conversionStatus === 'cancelling') {
+        title = translate('CancellingConversion');
+      } else if (convertToQuality) {
+        title = translate('ConvertingToQuality', { quality: convertToQuality });
+      } else {
+        title = translate('Converting');
+      }
       iconKind = kinds.PRIMARY;
     }
 
@@ -113,23 +119,23 @@ function QueueStatusCell(props) {
 
     if (isWaitingForConversion) {
       iconName = icons.REFRESH;
-      title = `Downloaded - Waiting to Convert to ${convertToQuality}`;
+      title = translate('WaitingToConvertToQuality', { quality: convertToQuality });
       iconKind = kinds.PURPLE;
     }
 
     if (isPreparingConversion) {
       iconName = icons.REFRESH;
-      title = `Preparing conversion to ${convertToQuality}`;
+      title = translate('PreparingConversionToQuality', { quality: convertToQuality });
       iconKind = kinds.PRIMARY;
     }
 
     if (!isConverting && !isWaitingForConversion && !isPreparingConversion && trackedDownloadState === 'importPending') {
-      title += ' - Waiting to Import';
+      title = translate('QueueStatusDownloadedWaitingToImport');
       iconKind = kinds.PURPLE;
     }
 
     if (!isConverting && !isPreparingConversion && trackedDownloadState === 'importing') {
-      title += ' - Importing';
+      title = translate('QueueStatusDownloadedImporting');
       iconKind = kinds.PRIMARY;
     }
 
@@ -139,7 +145,7 @@ function QueueStatusCell(props) {
     }
 
     if (trackedDownloadState === 'failedPending') {
-      title += ' - Waiting to Process';
+      title = translate('QueueStatusDownloadedWaitingToProcess');
       iconKind = kinds.DANGER;
     }
   }
@@ -151,47 +157,49 @@ function QueueStatusCell(props) {
   if (isConversionFailed) {
     iconName = icons.DANGER;
     iconKind = kinds.DANGER;
-    title = 'Conversion failed';
+    title = translate('ConversionFailed');
   }
 
   if (isConversionCancelled) {
     iconName = icons.STOP;
     iconKind = kinds.WARNING;
-    title = 'Conversion cancelled';
+    title = translate('ConversionCancelled');
   }
 
   if (status === 'delay') {
     iconName = icons.PENDING;
-    title = 'Pending';
+    title = translate('QueueStatusPending');
   }
 
   if (status === 'downloadClientUnavailable') {
     iconName = icons.PENDING;
     iconKind = kinds.WARNING;
-    title = 'Pending - Download client is unavailable';
+    title = translate('QueueStatusPendingDownloadClientUnavailable');
   }
 
   if (status === 'failed') {
     iconName = icons.DOWNLOADING;
     iconKind = kinds.DANGER;
-    title = 'Download failed';
+    title = translate('DownloadFailed');
   }
 
   if (status === 'warning') {
     iconName = icons.DOWNLOADING;
     iconKind = kinds.WARNING;
-    title = `Download warning: ${errorMessage || 'check download client for more details'}`;
+    title = translate('QueueStatusDownloadWarningWithDetails', {
+      details: errorMessage || translate('QueueStatusDownloadClientMoreDetails')
+    });
   }
 
   if (hasError && !isConverting && !isConversionFailed && !isConversionCancelled) {
     if (status === 'completed') {
       iconName = icons.DOWNLOAD;
       iconKind = kinds.DANGER;
-      title = `Import failed: ${sourceTitle}`;
+      title = `${translate('ImportFailed')}: ${sourceTitle}`;
     } else {
       iconName = icons.DOWNLOADING;
       iconKind = kinds.DANGER;
-      title = 'Download failed';
+      title = translate('DownloadFailed');
     }
   }
 

@@ -25,7 +25,7 @@ function getTitle(time, start, end, view, longDateFormat) {
   } else if (view === 'month') {
     return timeDayjs.format('MMMM YYYY');
   } else if (view === 'agenda') {
-    return 'Agenda';
+    return translate('Agenda');
   }
 
   let startFormat = 'MMM D YYYY';

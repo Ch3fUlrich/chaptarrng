@@ -526,7 +526,7 @@ class InteractiveImportModalContent extends Component {
 
           {
             isPopulated && !items.length && !isFetching &&
-              'No book files were found in the selected folder'
+              translate('InteractiveImportNoFilesFoundInFolder')
           }
         </ModalBody>
 

@@ -17,7 +17,7 @@ function Legend(props) {
   if (showCutoffUnmetIcon) {
     iconsToShow.push(
       <LegendIconItem
-        name="Cutoff Not Met"
+        name={translate('CutoffNotMetLabel')}
         icon={icons.TRACK_FILE}
         kind={kinds.WARNING}
         tooltip={translate('QualityCutoffHasNotBeenMet')}

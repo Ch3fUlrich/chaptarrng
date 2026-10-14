@@ -7,6 +7,7 @@ import createAjaxRequest from 'Utilities/createAjaxRequest';
 import requestAction from 'Utilities/requestAction';
 import getSectionState from 'Utilities/State/getSectionState';
 import updateSectionState from 'Utilities/State/updateSectionState';
+import translate from 'Utilities/String/translate';
 import createHandleActions from './Creators/createHandleActions';
 
 //
@@ -78,7 +79,7 @@ function openOAuthWindow(url, payload, windowName) {
     typeof newWindow.closed == 'undefined'
   ) {
     return {
-      error: createOAuthError(payload, 'Pop-ups are being blocked by your browser')
+      error: createOAuthError(payload, translate('OAuthPopupsBlocked'))
     };
   }
 

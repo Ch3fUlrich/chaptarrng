@@ -10,16 +10,22 @@ function formatShortTimeSpan(timeSpan) {
   const hours = Math.floor(duration.asHours());
   const minutes = Math.floor(duration.asMinutes());
   const seconds = Math.floor(duration.asSeconds());
+  const locale = typeof document === 'undefined' ? undefined : document.documentElement.lang;
+  const formatUnit = (value, unit) => new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit,
+    unitDisplay: 'long'
+  }).format(value);
 
   if (hours > 0) {
-    return `${hours} hour(s)`;
+    return formatUnit(hours, 'hour');
   }
 
   if (minutes > 0) {
-    return `${minutes} minute(s)`;
+    return formatUnit(minutes, 'minute');
   }
 
-  return `${seconds} second(s)`;
+  return formatUnit(seconds, 'second');
 }
 
 export default formatShortTimeSpan;

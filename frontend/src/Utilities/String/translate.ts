@@ -19,21 +19,33 @@ export async function fetchTranslations(): Promise<boolean> {
         const locale = data.Locale.replace(/_/g, '-');
         document.documentElement.lang = locale;
         const language = locale.toLowerCase().split('-', 1)[0];
-        document.documentElement.dir = ['ar', 'dv', 'fa', 'he', 'ku', 'ps', 'sd', 'ug', 'ur', 'yi'].includes(language)
+        document.documentElement.dir = [
+          'ar',
+          'dv',
+          'fa',
+          'he',
+          'ku',
+          'ps',
+          'sd',
+          'ug',
+          'ur',
+          'yi',
+        ].includes(language)
           ? 'rtl'
           : 'ltr';
       }
 
       resolve(true);
-    } catch (error) {
+    } catch {
       resolve(false);
     }
   });
 }
 
-export default function translate(
+function translateWithDefault(
   key: string,
-  tokens: Record<string, string | number | boolean> = {}
+  fallback: string,
+  tokens: Record<string, string | number | boolean>
 ) {
   const { isProduction = true } = window.Chaptarr;
 
@@ -41,7 +53,7 @@ export default function translate(
     console.warn(`Missing translation for key: ${key}`);
   }
 
-  const translation = translations[key] || key;
+  const translation = translations[key] || fallback;
 
   tokens.appName = 'Chaptarr';
 
@@ -53,4 +65,19 @@ export default function translate(
   return translation.replace(/\{([a-z0-9]+?)\}/gi, (match, tokenMatch) =>
     String(tokens[tokenMatch] ?? match)
   );
+}
+
+export function translateWithFallback(
+  key: string,
+  fallback: string,
+  tokens: Record<string, string | number | boolean> = {}
+) {
+  return translateWithDefault(key, fallback, tokens);
+}
+
+export default function translate(
+  key: string,
+  tokens: Record<string, string | number | boolean> = {}
+) {
+  return translateWithDefault(key, key, tokens);
 }

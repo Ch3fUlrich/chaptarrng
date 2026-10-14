@@ -148,7 +148,7 @@ class EditDelayProfileModalContentConnector extends Component {
         this.props.setDelayProfileValue({ name: 'preferredProtocol', value: 'torrent' });
         break;
       default:
-        throw Error(`Unknown protocol option: ${value}`);
+        throw Error(translate('UnknownDelayProfileProtocolOption', { option: value }));
     }
   };
 

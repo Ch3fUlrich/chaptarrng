@@ -50,9 +50,9 @@ class TableOptionsModal extends Component {
     let pageSizeError = null;
 
     if (value < 5) {
-      pageSizeError = 'Page size must be at least 5';
+      pageSizeError = translate('TablePageSizeMinimumError', { min: 5 });
     } else if (value > 250) {
-      pageSizeError = 'Page size must not exceed 250';
+      pageSizeError = translate('TablePageSizeMaximumError', { max: 250 });
     } else {
       this.props.onTableOptionChange({ pageSize: value });
     }

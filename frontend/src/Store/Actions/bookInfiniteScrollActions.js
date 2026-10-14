@@ -2,6 +2,7 @@ import { createAction } from 'redux-actions';
 import bookInfiniteScrollReducer, { initialState, MARK_BOOKS_QUERY_STALE } from 'Store/Reducers/bookInfiniteScrollReducer';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+import translate from 'Utilities/String/translate';
 
 //
 // Variables
@@ -163,7 +164,7 @@ export const actionHandlers = handleThunks({
           payload: {
             queryKey,
             requestId: requestKey,
-            error: xhr.responseText || 'Failed to fetch buckets'
+            error: xhr.responseText || translate('FailedToFetchBuckets')
           }
         });
       }
@@ -257,7 +258,7 @@ export const actionHandlers = handleThunks({
             queryKey,
             pageIndex,
             requestId: requestKey,
-            error: xhr.responseText || 'Failed to fetch page'
+            error: xhr.responseText || translate('FailedToFetchBooksPage')
           }
         });
       }

@@ -86,12 +86,12 @@ class DeleteAuthorModalContent extends Component {
     const addImportListExclusion = this.state.addImportListExclusion;
     const readdAuthor = this.state.readdAuthor;
 
-    let deleteFilesLabel = `Delete ${bookFileCount} Book Files`;
+    let deleteFilesLabel = translate('DeleteAuthorBookFilesCountLabel', { count: bookFileCount });
     let deleteFilesHelpText = translate('DeleteFilesHelpText');
 
     if (bookFileCount === 0) {
-      deleteFilesLabel = 'Delete Author Folder';
-      deleteFilesHelpText = 'Delete the author folder and its contents';
+      deleteFilesLabel = translate('DeleteAuthorFolderLabel');
+      deleteFilesHelpText = translate('DeleteAuthorFolderContentsHelpText');
     }
 
     return (

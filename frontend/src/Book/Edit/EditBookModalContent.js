@@ -54,7 +54,7 @@ class EditBookModalContent extends Component {
     } = item;
 
     const hasFile = statistics ? statistics.bookFileCount > 0 : false;
-    const errorMessage = getErrorMessage(error, 'Unable to load editions');
+    const errorMessage = getErrorMessage(error, translate('UnableToLoadEditions'));
 
     return (
       <ModalContent onModalClose={onModalClose}>

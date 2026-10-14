@@ -371,7 +371,7 @@ class BookDetailsHeader extends Component {
                 />
 
                 <span className={styles.qualityProfileName}>
-                  {(mediaType === 'audiobook' ? audiobookMonitored : ebookMonitored) ? 'Monitored' : 'Not Monitored'}
+                  {translate((mediaType === 'audiobook' ? audiobookMonitored : ebookMonitored) ? 'Monitored' : 'NotMonitored')}
                 </span>
               </Label>
 

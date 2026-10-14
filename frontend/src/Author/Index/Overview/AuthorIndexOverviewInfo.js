@@ -68,7 +68,7 @@ function getInfoRowProps(row, props) {
   const { name } = row;
 
   if (name === 'monitored') {
-    const monitoredText = props.monitored ? 'Monitored' : 'Unmonitored';
+    const monitoredText = translate(props.monitored ? 'Monitored' : 'Unmonitored');
 
     return {
       title: monitoredText,
@@ -94,7 +94,7 @@ function getInfoRowProps(row, props) {
     } = props;
 
     return {
-      title: `Last Book: ${lastBook.title}`,
+      title: `${translate('LastBook')}: ${lastBook.title}`,
       iconName: icons.CALENDAR,
       label: getRelativeDate(
         lastBook.releaseDate,
@@ -118,7 +118,7 @@ function getInfoRowProps(row, props) {
     } = props;
 
     return {
-      title: `Added: ${formatDateTime(added, longDateFormat, timeFormat)}`,
+      title: `${translate('Added')}: ${formatDateTime(added, longDateFormat, timeFormat)}`,
       iconName: icons.ADD,
       label: getRelativeDate(
         added,
@@ -134,12 +134,12 @@ function getInfoRowProps(row, props) {
 
   if (name === 'bookCount') {
     const { bookCount } = props;
-    let books = '1 book';
+    let books = translate('BookCountMessage', { count: bookCount });
 
     if (bookCount === 0) {
-      books = 'No books';
+      books = translate('NoBooks');
     } else if (bookCount > 1) {
-      books = `${bookCount} books`;
+      books = translate('BooksCountMessage', { count: bookCount });
     }
 
     return {

@@ -628,7 +628,7 @@ class BookIndex extends Component {
             {
               !isFetching && !!error &&
                 <div className={styles.errorMessage}>
-                  {getErrorMessage(error, 'Failed to load books from API')}
+                  {getErrorMessage(error, translate('ErrorPageBooksUnavailable'))}
                 </div>
             }
 

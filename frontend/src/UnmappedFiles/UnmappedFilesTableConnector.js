@@ -14,6 +14,7 @@ import createCommandExecutingSelector from 'Store/Selectors/createCommandExecuti
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import { registerPagePopulator, unregisterPagePopulator } from 'Utilities/pagePopulator';
+import translate from 'Utilities/String/translate';
 import UnmappedFilesTable from './UnmappedFilesTable';
 
 function createMapStateToProps() {
@@ -123,9 +124,10 @@ function createMapDispatchToProps(dispatch, props) {
         commandFinished: (command) => {
           const isFailure = command.status === 'failed';
           const progressMessage = command.body?.progressMessage;
-          const message = isFailure ?
-            (progressMessage || command.message || 'Failed to send matching logs for review') :
-            (progressMessage || command.message || 'Matching logs sent for review');
+          const fallbackMessage = translate(isFailure ?
+            'UnmappedFilesSendLogsFailureMessage' :
+            'UnmappedFilesSendLogsSuccessMessage');
+          const message = progressMessage || command.message || fallbackMessage;
 
           dispatch(showMessage({
             id: `send-matching-logs-${command.id}`,

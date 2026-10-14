@@ -22,7 +22,7 @@ function PendingImportStatus(props) {
         <div className={styles.processing}>
           <LoadingIndicator size={20} />
           <span className={styles.message}>
-            {message || 'Processing import...'}
+            {message || translate('PendingImportProcessing')}
           </span>
           {progress > 0 && (
             <span className={styles.progress}>

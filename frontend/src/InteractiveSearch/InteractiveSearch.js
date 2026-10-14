@@ -298,7 +298,7 @@ class InteractiveSearch extends Component {
                   size="small"
                   onPress={this.onToggleHiddenResults}
                 >
-                  {showHiddenResults ? `Hide ${hiddenCount} Hidden Results` : `Show ${hiddenCount} Hidden Results`}
+                  {translate(showHiddenResults ? 'HideHiddenResults' : 'ShowHiddenResults', { count: hiddenCount })}
                 </Button>
               </div> :
               null}

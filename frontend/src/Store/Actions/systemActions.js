@@ -449,7 +449,7 @@ export const actionHandlers = handleThunks({
         const messageId = `proxy-test-${Date.now()}`;
         dispatch(showMessage({
           id: messageId,
-          message: `Proxy test successful: ${data.message}`,
+          message: translate('ProxyTestSuccessfulWithDetails', { details: data.message }),
           type: 'success'
         }));
         
@@ -464,7 +464,7 @@ export const actionHandlers = handleThunks({
         const messageId = `proxy-test-error-${Date.now()}`;
         dispatch(showMessage({
           id: messageId,
-          message: `Proxy test failed: ${data.message}`,
+          message: translate('ProxyTestFailedWithDetails', { details: data.message }),
           type: 'error'
         }));
         
@@ -474,7 +474,7 @@ export const actionHandlers = handleThunks({
         }, 8000);
         
         // Reject the promise for validation failure
-        deferred.reject({ message: data.message || 'Proxy test failed' });
+        deferred.reject({ message: data.message || translate('ProxyTestFailed') });
       }
     });
 
@@ -482,7 +482,9 @@ export const actionHandlers = handleThunks({
       const messageId = `proxy-test-fail-${Date.now()}`;
       dispatch(showMessage({
         id: messageId,
-        message: `Proxy test failed: ${xhr.responseText || 'Connection failed'}`,
+        message: translate('ProxyTestFailedWithDetails', {
+          details: xhr.responseText || translate('ConnectionFailed')
+        }),
         type: 'error'
       }));
       
@@ -492,7 +494,7 @@ export const actionHandlers = handleThunks({
       }, 8000);
       
       // Reject the promise for network failure
-      deferred.reject({ message: xhr.responseText || 'Connection failed' });
+      deferred.reject({ message: xhr.responseText || translate('ConnectionFailed') });
     });
 
     return deferred.promise();

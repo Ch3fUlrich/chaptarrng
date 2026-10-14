@@ -266,7 +266,7 @@ function SettingsBackupModal({ isOpen, onModalClose }) {
                   className={styles.statusAlert}
                   kind={kinds.DANGER}
                 >
-                  {translate('SettingsBackupFailedToLoadLocations', { message: 'Network error' })}
+                  {translate('SettingsBackupFailedToLoadLocations', { message: translate('NetworkError') })}
                 </Alert>
               </FormGroup>
             )}

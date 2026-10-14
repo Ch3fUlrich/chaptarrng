@@ -50,11 +50,16 @@ function EditNotificationModalContent(props) {
     fields,
     message
   } = item;
+  let titleKey = implementationName ? 'AddNamedConnectionTitle' : 'AddConnectionTitle';
+
+  if (id) {
+    titleKey = implementationName ? 'EditNamedConnectionTitle' : 'EditConnectionTitle';
+  }
 
   return (
     <ModalContent onModalClose={onModalClose}>
       <ModalHeader>
-        {`${id ? 'Edit' : 'Add'} Connection${implementationName ? ` - ${implementationName}` : ''}`}
+        {translate(titleKey, { name: implementationName })}
       </ModalHeader>
 
       <ModalBody>

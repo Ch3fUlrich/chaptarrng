@@ -278,9 +278,9 @@ class AddNewSeriesModalContent extends Component {
 
               <div className={styles.bookCountAndButton}>
                 <Label size={sizes.LARGE}>
-                  {displayWorkCount} {translate(displayWorkCount === 1 ? 'Book' : 'Books')}
-                  {displayPrimaryWorkCount !== displayWorkCount && ` (${displayPrimaryWorkCount} Primary)`}
-                  {hasBooks && ` • ${selectedCount} Selected`}
+                  {translate(displayWorkCount === 1 ? 'BookCountMessage' : 'BooksCountMessage', { count: displayWorkCount })}
+                  {displayPrimaryWorkCount !== displayWorkCount && translate('SeriesPrimaryWorkCount', { count: displayPrimaryWorkCount })}
+                  {hasBooks && ` • ${translate('SeriesBooksSelectedCount', { count: selectedCount })}`}
                 </Label>
                 <div className={styles.addButtons}>
                   <SpinnerButton
@@ -289,7 +289,7 @@ class AddNewSeriesModalContent extends Component {
                     isSpinning={isSubmitting}
                     isDisabled={isSubmitting || isFetching || isAddDisabled || !hasBooks || selectedCount === 0}
                     onPress={this.onAddSelectedPress}
-                    title={`Add all authors from "${title}" and monitor the selected books.`}
+                    title={translate('AddAuthorsFromSeriesAndMonitorSelectedBooks', { title })}
                   >
                     <Icon name={icons.ADD} />
                     {' '}
@@ -302,7 +302,7 @@ class AddNewSeriesModalContent extends Component {
                     isSpinning={isSubmitting}
                     isDisabled={isSubmitting || isFetching || isAddDisabled || !hasBooks}
                     onPress={this.onAddAllPress}
-                    title={`Add all authors from "${title}" and monitor all books in this series.`}
+                    title={translate('AddAuthorsFromSeriesAndMonitorAllBooks', { title })}
                   >
                     <Icon name={icons.ADD} />
                     {' '}

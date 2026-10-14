@@ -212,7 +212,7 @@ function ManageDownloadClientsModalContent(
 
   const errorMessage = getErrorMessage(
     error,
-    'Unable to load download clients.'
+    translate('UnableToLoadDownloadClients')
   );
   const anySelected = selectedCount > 0;
 

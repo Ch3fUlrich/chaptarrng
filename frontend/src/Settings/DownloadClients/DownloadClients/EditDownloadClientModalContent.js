@@ -246,7 +246,9 @@ class EditDownloadClientModalContent extends Component {
     return (
       <ModalContent onModalClose={onModalClose}>
         <ModalHeader>
-          {`${id ? 'Edit' : 'Add'} Download Client - ${implementationName}`}
+          {id ?
+            translate('EditMetadataHeader', { name: `${translate('DownloadClient')} - ${implementationName}` }) :
+            translate('AddName', { name: `${translate('DownloadClient')} - ${implementationName}` })}
         </ModalHeader>
 
         <ModalBody>
@@ -371,7 +373,7 @@ class EditDownloadClientModalContent extends Component {
                                   className={styles.linkedPairToggle}
                                   isLinked={isLinked}
                                   isLastButton={true}
-                                  title={isLinked ? 'Unlink categories' : 'Link categories'}
+                                  title={translate(isLinked ? 'UnlinkCategories' : 'LinkCategories')}
                                   onPress={() => this.onToggleLink('linkCategories', 'audiobookCategory', 'ebookCategory')}
                                 />
                                 <div className={styles.linkedPairLine} />
@@ -446,7 +448,7 @@ class EditDownloadClientModalContent extends Component {
                                   className={styles.linkedPairToggle}
                                   isLinked={isLinked}
                                   isLastButton={true}
-                                  title={isLinked ? 'Unlink post-import categories' : 'Link post-import categories'}
+                                  title={translate(isLinked ? 'UnlinkPostImportCategories' : 'LinkPostImportCategories')}
                                   onPress={() => this.onToggleLink('linkPostImportCategories', 'audiobookImportedCategory', 'ebookImportedCategory')}
                                 />
                                 <div className={styles.linkedPairLine} />
@@ -521,7 +523,7 @@ class EditDownloadClientModalContent extends Component {
                                   className={styles.linkedPairToggle}
                                   isLinked={isLinked}
                                   isLastButton={true}
-                                  title={isLinked ? 'Unlink tags' : 'Link tags'}
+                                  title={translate(isLinked ? 'UnlinkTags' : 'LinkTags')}
                                   onPress={() => this.onToggleLink('linkClientTags', 'audiobookTags', 'ebookTags')}
                                 />
                                 <div className={styles.linkedPairLine} />
@@ -629,7 +631,7 @@ class EditDownloadClientModalContent extends Component {
                             className={styles.linkedPairToggle}
                             isLinked={this.state.linkTags}
                             isLastButton={true}
-                            title={this.state.linkTags ? 'Unlink tags' : 'Link tags'}
+                            title={translate(this.state.linkTags ? 'UnlinkTags' : 'LinkTags')}
                             onPress={() => this.onToggleInputLink('linkTags', 'audiobookTags', 'ebookTags')}
                           />
                           <div className={styles.linkedPairLine} />

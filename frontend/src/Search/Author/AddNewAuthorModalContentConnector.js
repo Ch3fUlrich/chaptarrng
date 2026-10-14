@@ -12,6 +12,7 @@ import createSystemStatusSelector from 'Store/Selectors/createSystemStatusSelect
 import selectSettings from 'Store/Selectors/selectSettings';
 import { normalizeMonitorNewItemsOption, resolveMonitorNewItemsOptionValue } from 'Utilities/Author/monitorNewItemsOptions';
 import { resolveMonitorOption, resolveMonitorOptionValue } from 'Utilities/Author/monitorOptions';
+import translate from 'Utilities/String/translate';
 import AddNewAuthorModalContent from './AddNewAuthorModalContent';
 
 const rootDerivedAuthorDefaults = {
@@ -325,7 +326,7 @@ class AddNewAuthorModalContentConnector extends Component {
         this.props.showMessage({
           id: `add-new-default-media-type-saved-${Date.now()}`,
           name: 'AddNewDefaultMediaTypeSaved',
-          message: 'Saved default media type',
+          message: translate('DefaultMediaTypeSaved'),
           type: 'success',
           hideAfter: 5
         });
@@ -333,7 +334,7 @@ class AddNewAuthorModalContentConnector extends Component {
         this.props.showMessage({
           id: `add-new-default-media-type-save-failed-${Date.now()}`,
           name: 'AddNewDefaultMediaTypeSaveFailed',
-          message: this.props.uiSaveError?.responseJSON?.message || 'Unable to save default media type',
+          message: this.props.uiSaveError?.responseJSON?.message || translate('UnableToSaveDefaultMediaType'),
           type: 'error',
           hideAfter: 8
         });

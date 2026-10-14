@@ -6,6 +6,7 @@ import createAjaxRequest from 'Utilities/createAjaxRequest';
 import dayjs from 'Utilities/Date/dayjsSetup';
 import updateSectionState from 'Utilities/State/updateSectionState';
 import naturalExpansion from 'Utilities/String/naturalExpansion';
+import translate from 'Utilities/String/translate';
 import { set, update, updateItem } from './baseActions';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
@@ -136,7 +137,7 @@ export const actionHandlers = handleThunks({
     }
 
     if (!payload.downloadId && !payload.folder) {
-      dispatch(set({ section, error: { message: '`downloadId` or `folder` is required.' } }));
+      dispatch(set({ section, error: { message: translate('InteractiveImportDownloadIdOrFolderRequired') } }));
       return;
     }
 

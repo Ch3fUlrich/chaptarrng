@@ -6,6 +6,7 @@ import { createSelector } from 'reselect';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { fetchBookFiles } from 'Store/Actions/bookFileActions';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
+import translate from 'Utilities/String/translate';
 import FileDetails from './FileDetails';
 
 function createMapStateToProps() {
@@ -44,7 +45,7 @@ class FileDetailsConnector extends Component {
     } = this.props;
 
     const item = find(items, { id });
-    const errorMessage = getErrorMessage(error, 'Unable to load manual import items');
+    const errorMessage = getErrorMessage(error, translate('UnableToLoadManualImportItems'));
 
     if (isFetching || !item) {
       return (

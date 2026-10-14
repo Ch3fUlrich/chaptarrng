@@ -15,6 +15,7 @@ import selectSettings from 'Store/Selectors/selectSettings';
 import { normalizeMonitorNewItemsOption } from 'Utilities/Author/monitorNewItemsOptions';
 import { normalizeMonitorOption, resolveMonitorOption } from 'Utilities/Author/monitorOptions';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+import translate from 'Utilities/String/translate';
 import AddNewSeriesModalContent from './AddNewSeriesModalContent';
 
 function createMapStateToProps() {
@@ -257,7 +258,7 @@ class AddNewSeriesModalContentConnector extends Component {
         this.props.dispatchShowMessage({
           id: `add-new-default-media-type-saved-${Date.now()}`,
           name: 'AddNewDefaultMediaTypeSaved',
-          message: 'Saved default media type',
+          message: translate('DefaultMediaTypeSaved'),
           type: 'success',
           hideAfter: 5
         });
@@ -265,7 +266,7 @@ class AddNewSeriesModalContentConnector extends Component {
         this.props.dispatchShowMessage({
           id: `add-new-default-media-type-save-failed-${Date.now()}`,
           name: 'AddNewDefaultMediaTypeSaveFailed',
-          message: this.props.uiSaveError?.responseJSON?.message || 'Unable to save default media type',
+          message: this.props.uiSaveError?.responseJSON?.message || translate('UnableToSaveDefaultMediaType'),
           type: 'error',
           hideAfter: 8
         });
@@ -336,7 +337,7 @@ class AddNewSeriesModalContentConnector extends Component {
     });
 
     request.fail((xhr) => {
-      const error = xhr.responseJSON?.error || xhr.responseJSON?.message || 'Failed to load series details';
+      const error = xhr.responseJSON?.error || xhr.responseJSON?.message || translate('SeriesDetailsLoadFailed');
       this.setState({
         isFetchingSeries: false,
         seriesDetails: null,
@@ -357,7 +358,7 @@ class AddNewSeriesModalContentConnector extends Component {
 
   getApiErrorMessage = (xhr) => {
     if (!xhr) {
-      return 'Failed to add series';
+      return translate('SeriesAddError');
     }
 
     const responseJson = xhr.responseJSON;
@@ -387,7 +388,7 @@ class AddNewSeriesModalContentConnector extends Component {
       return xhr.responseText;
     }
 
-    return 'Failed to add series';
+    return translate('SeriesAddError');
   };
 
   onAddSeriesPress = ({
@@ -514,9 +515,16 @@ class AddNewSeriesModalContentConnector extends Component {
       const authorsCount = data.addedAuthors?.length || 0;
       const booksCount = data.monitoredBooks?.length || 0;
       const pendingCount = data.pendingAuthorImportIds?.length || 0;
-      const labelSuffix = mediaTypeLabel ? ` (${mediaTypeLabel})` : '';
-      const queueSuffix = pendingCount > 0 ? `, queued ${pendingCount} author(s) for import` : '';
-      const message = `Added series "${this.props.title}"${labelSuffix} — ${authorsCount} author(s) added${queueSuffix}, monitoring ${booksCount} book(s)`;
+      const localizedMediaTypeLabel = mediaTypeLabel === 'Audiobooks' ? translate('Audiobooks') : translate('Ebooks');
+      const mediaTypeSuffix = mediaTypeLabel ? ` (${localizedMediaTypeLabel})` : '';
+      const queueSuffix = pendingCount > 0 ? translate('SeriesAddQueuedAuthorsSuffix', { pendingCount }) : '';
+      const message = translate('SeriesAddedMessage', {
+        seriesTitle: this.props.title,
+        mediaTypeSuffix,
+        authorsCount,
+        booksCount,
+        queueSuffix
+      });
 
       this.setState({ isAddingSeries: false, addError: null });
 
@@ -550,7 +558,7 @@ class AddNewSeriesModalContentConnector extends Component {
 
     const validateResultOrThrow = (data) => {
       if (!data || !data.success) {
-        const error = data?.errorMessage || 'Failed to add series';
+        const error = data?.errorMessage || translate('SeriesAddError');
         throw new Error(error);
       }
 
@@ -569,7 +577,7 @@ class AddNewSeriesModalContentConnector extends Component {
         try {
           validateResultOrThrow(data1);
         } catch (e) {
-          handleFailure(e.message || 'Failed to add series');
+          handleFailure(e.message || translate('SeriesAddError'));
           return;
         }
 
@@ -579,12 +587,20 @@ class AddNewSeriesModalContentConnector extends Component {
           try {
             validateResultOrThrow(data2);
           } catch (e) {
-            const partialError = e.message || 'Failed to add series';
+            const partialError = e.message || translate('SeriesAddError');
             const authorsCount = data1?.addedAuthors?.length || 0;
             const booksCount = data1?.monitoredBooks?.length || 0;
             const pendingCount = data1?.pendingAuthorImportIds?.length || 0;
-            const queueSuffix = pendingCount > 0 ? `, queued ${pendingCount} author(s) for import` : '';
-            const message = `Added series "${this.props.title}" (Audiobooks) — ${authorsCount} author(s) added${queueSuffix}, monitoring ${booksCount} book(s). Failed to add eBooks: ${partialError}`;
+            const queueSuffix = pendingCount > 0 ? translate('SeriesAddQueuedAuthorsSuffix', { pendingCount }) : '';
+            const message = translate('SeriesAddedAudiobooksPartialFailureMessage', {
+              seriesTitle: this.props.title,
+              audiobooksLabel: translate('Audiobooks'),
+              authorsCount,
+              booksCount,
+              queueSuffix,
+              ebooksLabel: translate('Ebooks'),
+              error: partialError
+            });
             handleFailure(message);
             return;
           }
@@ -598,8 +614,17 @@ class AddNewSeriesModalContentConnector extends Component {
             ...(data2?.pendingAuthorImportIds || [])
           ]);
           const pendingCount = pendingIds.size;
-          const queueSuffix = pendingCount > 0 ? `; queued ${pendingCount} author(s) for import` : '';
-          const message = `Added series "${this.props.title}" — Audiobooks: ${audiobookAuthors} author(s), ${audiobookBooks} book(s); eBooks: ${ebookAuthors} author(s), ${ebookBooks} book(s)${queueSuffix}`;
+          const queueSuffix = pendingCount > 0 ? translate('SeriesAddQueuedAuthorsSuffix', { pendingCount }) : '';
+          const message = translate('SeriesAddedBothMediaTypesMessage', {
+            seriesTitle: this.props.title,
+            audiobooksLabel: translate('Audiobooks'),
+            audiobookAuthors,
+            audiobookBooks,
+            ebooksLabel: translate('Ebooks'),
+            ebookAuthors,
+            ebookBooks,
+            queueSuffix
+          });
 
           this.setState({ isAddingSeries: false, addError: null });
 
@@ -623,8 +648,16 @@ class AddNewSeriesModalContentConnector extends Component {
           const authorsCount = data1?.addedAuthors?.length || 0;
           const booksCount = data1?.monitoredBooks?.length || 0;
           const pendingCount = data1?.pendingAuthorImportIds?.length || 0;
-          const queueSuffix = pendingCount > 0 ? `, queued ${pendingCount} author(s) for import` : '';
-          const message = `Added series "${this.props.title}" (Audiobooks) — ${authorsCount} author(s) added${queueSuffix}, monitoring ${booksCount} book(s). Failed to add eBooks: ${partialError}`;
+          const queueSuffix = pendingCount > 0 ? translate('SeriesAddQueuedAuthorsSuffix', { pendingCount }) : '';
+          const message = translate('SeriesAddedAudiobooksPartialFailureMessage', {
+            seriesTitle: this.props.title,
+            audiobooksLabel: translate('Audiobooks'),
+            authorsCount,
+            booksCount,
+            queueSuffix,
+            ebooksLabel: translate('Ebooks'),
+            error: partialError
+          });
           handleFailure(message);
         });
       });
@@ -643,7 +676,7 @@ class AddNewSeriesModalContentConnector extends Component {
       try {
         validateResultOrThrow(data);
       } catch (e) {
-        handleFailure(e.message || 'Failed to add series');
+        handleFailure(e.message || translate('SeriesAddError'));
         return;
       }
 

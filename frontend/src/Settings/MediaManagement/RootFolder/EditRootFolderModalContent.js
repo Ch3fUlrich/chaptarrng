@@ -116,15 +116,15 @@ class EditRootFolderModalContent extends Component {
   getSaveButtonText = () => {
     const folderTypeValue = this.props.item?.folderType?.value;
     const rootFolderId = this.props.item?.id?.value;
-    const verb = rootFolderId ? 'Update' : 'Save';
+    const isUpdating = Boolean(rootFolderId);
 
     if (folderTypeValue === FolderType.Mixed) {
-      return `${verb} Mixed Folder`;
+      return translate(isUpdating ? 'UpdateMixedFolder' : 'SaveMixedFolder');
     }
 
     return this.state.selectedMediaType === 'audiobook' ?
-      `${verb} Audiobook Folder` :
-      `${verb} Ebook Folder`;
+      translate(isUpdating ? 'UpdateAudiobookFolder' : 'SaveAudiobookFolder') :
+      translate(isUpdating ? 'UpdateEbookFolder' : 'SaveEbookFolder');
   };
 
   onSmartSavePress = () => {
@@ -153,10 +153,10 @@ class EditRootFolderModalContent extends Component {
     if (saveError.responseJSON && saveError.responseJSON.length > 0) {
       return saveError.responseJSON[0].errorMessage ||
         saveError.responseJSON[0].message ||
-        'An error occurred while saving the root folder';
+        translate('RootFolderSaveError');
     }
 
-    return 'An error occurred while saving the root folder';
+    return translate('RootFolderSaveError');
   };
 
   render() {
@@ -916,7 +916,7 @@ class EditRootFolderModalContent extends Component {
                 {this.getSaveErrorMessage()}
                 {
                   saveError.message && saveError.message.toLowerCase().includes('permission') &&
-                    ' Please check that the Docker container has read permissions for this directory.'
+                    ` ${translate('RootFolderDockerReadPermissionHelpText')}`
                 }
               </Alert>
           }

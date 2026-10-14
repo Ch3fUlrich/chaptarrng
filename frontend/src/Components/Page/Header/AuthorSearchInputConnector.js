@@ -2,6 +2,7 @@ import { push } from 'connected-react-router';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { showMessage } from 'Store/Actions/appActions';
+import translate from 'Utilities/String/translate';
 import AuthorSearchInput from './AuthorSearchInput';
 
 function createMapStateToProps() {
@@ -41,7 +42,7 @@ function createMapDispatchToProps(dispatch, props) {
     onHardcoverSetupRequired() {
       dispatch(showMessage({
         id: `hardcover-setup-${Date.now()}`,
-        message: 'Hardcover search is disabled until you connect your Hardcover account in Quickstart.',
+        message: translate('HardcoverSearchRequiresQuickstart'),
         type: 'warning',
         hideAfter: 10,
         clickable: true,

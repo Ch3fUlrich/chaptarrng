@@ -9,6 +9,7 @@ import { fetchQualityProfileSchema } from 'Store/Actions/settingsActions';
 import createAuthorSelector from 'Store/Selectors/createAuthorSelector';
 import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
 import getQualities from 'Utilities/Quality/getQualities';
+import translate from 'Utilities/String/translate';
 import BookFileEditorTableContent from './BookFileEditorTableContent';
 
 function createSchemaSelector() {
@@ -20,7 +21,7 @@ function createSchemaSelector() {
       let error = null;
 
       if (qualityProfiles.schemaError) {
-        error = 'Unable to load qualities';
+        error = translate('UnableToLoadQualities');
       }
 
       return {

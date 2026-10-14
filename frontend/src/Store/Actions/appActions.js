@@ -5,7 +5,10 @@ import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import getSectionState from 'Utilities/State/getSectionState';
 import updateSectionState from 'Utilities/State/updateSectionState';
-import { fetchTranslations as fetchAppTranslations } from 'Utilities/String/translate';
+import {
+  fetchTranslations as fetchAppTranslations,
+  translateWithFallback
+} from 'Utilities/String/translate';
 import createHandleActions from './Creators/createHandleActions';
 
 function getDimensions(width, height) {
@@ -176,7 +179,10 @@ export const actionHandlers = handleThunks({
       translations: {
         isFetching: false,
         isPopulated: isFetchingComplete,
-        error: isFetchingComplete ? null : 'Failed to load translations from API'
+        error: isFetchingComplete ? null : translateWithFallback(
+          'ErrorPageTranslationsUnavailable',
+          'Failed to load translations from API'
+        )
       }
     }));
   }

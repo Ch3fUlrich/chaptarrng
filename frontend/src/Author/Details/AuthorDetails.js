@@ -438,8 +438,8 @@ class AuthorDetails extends Component {
               <Alert kind={kinds.INFO}>
                 {
                   isDeleteAuthorQueued ?
-                    'This author is queued for deletion. It will be deleted in the background once a worker is free, and it will disappear from the library when it finishes. You can leave this page.' :
-                    'This author is being deleted in the background. It will disappear from the library when it finishes. You can leave this page.'
+                    translate('AuthorDeletionQueued') :
+                    translate('AuthorDeletionInProgress')
                 }
               </Alert> :
               null

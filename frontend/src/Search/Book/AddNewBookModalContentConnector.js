@@ -8,6 +8,7 @@ import { saveUISettings, setUISettingsValue } from 'Store/Actions/settingsAction
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import createSystemStatusSelector from 'Store/Selectors/createSystemStatusSelector';
 import selectSettings from 'Store/Selectors/selectSettings';
+import translate from 'Utilities/String/translate';
 import AddNewBookModalContent from './AddNewBookModalContent';
 
 function createMapStateToProps() {
@@ -83,7 +84,7 @@ class AddNewBookModalContentConnector extends Component {
         this.props.showMessage({
           id: `add-new-default-media-type-save-failed-${Date.now()}`,
           name: 'AddNewDefaultMediaTypeSaveFailed',
-          message: this.props.uiSaveError?.responseJSON?.message || 'Unable to save default media type',
+          message: this.props.uiSaveError?.responseJSON?.message || translate('UnableToSaveDefaultMediaType'),
           type: 'error',
           hideAfter: 8
         });
@@ -91,7 +92,7 @@ class AddNewBookModalContentConnector extends Component {
         this.props.showMessage({
           id: `add-new-default-media-type-saved-${Date.now()}`,
           name: 'AddNewDefaultMediaTypeSaved',
-          message: 'Saved default media type',
+          message: translate('DefaultMediaTypeSaved'),
           type: 'success',
           hideAfter: 5
         });
@@ -143,7 +144,7 @@ class AddNewBookModalContentConnector extends Component {
       this.props.showMessage({
         id: `add-book-missing-foreign-book-id-${Date.now()}`,
         name: 'AddBookMissingForeignBookId',
-        message: 'Cannot add this book: missing upstream provider book/work ID',
+        message: translate('BookAddMissingProviderBookWorkId'),
         type: 'error',
         hideAfter: 10
       });
@@ -154,7 +155,7 @@ class AddNewBookModalContentConnector extends Component {
       this.props.showMessage({
         id: `add-book-missing-foreign-author-id-${Date.now()}`,
         name: 'AddBookMissingForeignAuthorId',
-        message: 'Cannot add this book: missing upstream provider author ID',
+        message: translate('BookAddMissingProviderAuthorId'),
         type: 'error',
         hideAfter: 10
       });

@@ -94,18 +94,20 @@ function getAddButtonLabel(props, mediaType) {
   const missingMediaTypes = getMissingMediaTypes(props);
 
   if (!missingMediaTypes.length) {
-    return 'Both Formats Added';
+    return translate('BookBothFormatsAddedLabel');
   }
 
   if (!canAddSelectedMediaType(props, mediaType)) {
-    return 'Already Added';
+    return translate('BookAlreadyAddedLabel');
   }
 
   if (mediaType === 'both') {
-    return 'Add Audiobook + eBook';
+    return translate('AddBothBookFormatsLabel');
   }
 
-  return mediaType === 'ebook' ? 'Add eBook' : 'Add Audiobook';
+  return mediaType === 'ebook' ?
+    translate('AddEbookBookLabel') :
+    translate('AddAudiobookBookLabel');
 }
 
 class AddNewBookModalContent extends Component {
@@ -217,8 +219,10 @@ class AddNewBookModalContent extends Component {
       localEbookBooks
     });
     const addErrorFallback = addFailedMediaType ?
-      `Could not add ${addFailedMediaType === 'ebook' ? 'eBook' : 'audiobook'}.` :
-      'Could not add this book.';
+      translate('CouldNotAddMediaType', {
+        mediaType: translate(addFailedMediaType === 'ebook' ? 'EbookLabel' : 'AudiobookLabel')
+      }) :
+      translate('CouldNotAddThisBook');
     const addErrorMessage = addError ? getErrorMessage(addError, addError.message || addErrorFallback) : null;
 
     return (

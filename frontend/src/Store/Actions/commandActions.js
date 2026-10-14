@@ -3,11 +3,11 @@ import { messageTypes } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import { isSameCommand } from 'Utilities/Command';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+import translate from 'Utilities/String/translate';
 import { hideMessage, showMessage } from './appActions';
 import { removeItem, set, update, updateItem } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
 import createRemoveItemHandler from './Creators/createRemoveItemHandler';
-import translate from 'Utilities/String/translate';
 
 //
 // Variables
@@ -278,7 +278,7 @@ export const actionHandlers = handleThunks({
       dispatch(showMessage({
         id: 'bulk-commands-pause',
         name: 'PauseAllCommands',
-        message: xhr?.responseJSON?.message || xhr?.responseText || 'Unable to pause commands',
+        message: xhr?.responseJSON?.message || xhr?.responseText || translate('UnableToPauseCommands'),
         type: messageTypes.ERROR,
         hideAfter: 8
       }));
@@ -309,7 +309,7 @@ export const actionHandlers = handleThunks({
       dispatch(showMessage({
         id: 'bulk-commands-cancel',
         name: 'CancelAllCommands',
-        message: xhr?.responseJSON?.message || xhr?.responseText || 'Unable to cancel commands',
+        message: xhr?.responseJSON?.message || xhr?.responseText || translate('UnableToCancelCommands'),
         type: messageTypes.ERROR,
         hideAfter: 8
       }));
@@ -340,7 +340,7 @@ export const actionHandlers = handleThunks({
       dispatch(showMessage({
         id: 'bulk-commands-resume',
         name: 'ResumeAllCommands',
-        message: xhr?.responseJSON?.message || xhr?.responseText || 'Unable to resume commands',
+        message: xhr?.responseJSON?.message || xhr?.responseText || translate('UnableToResumeCommands'),
         type: messageTypes.ERROR,
         hideAfter: 8
       }));

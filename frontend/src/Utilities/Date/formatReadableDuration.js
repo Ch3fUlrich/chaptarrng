@@ -1,11 +1,21 @@
 import dayjs from 'Utilities/Date/dayjsSetup';
 
 function formatReadableDuration(timeSpan) {
-  if (!timeSpan) {
+  if (timeSpan === null || timeSpan === undefined || timeSpan === '') {
     return '';
   }
 
   const duration = dayjs.duration(timeSpan);
+  const locale = typeof document === 'undefined' ?
+    undefined :
+    document.documentElement.lang;
+  const formatUnit = (value, unit) => {
+    return new Intl.NumberFormat(locale, {
+      style: 'unit',
+      unit,
+      unitDisplay: 'short'
+    }).format(value);
+  };
 
   const totalHours = Math.floor(duration.asHours());
   const minutes = duration.get('minutes'); // Only the minute portion, not total minutes
@@ -13,16 +23,16 @@ function formatReadableDuration(timeSpan) {
   const parts = [];
 
   if (totalHours > 0) {
-    parts.push(`${totalHours} hr`);
+    parts.push(formatUnit(totalHours, 'hour'));
   }
 
   if (minutes > 0) {
-    parts.push(`${minutes} min`);
+    parts.push(formatUnit(minutes, 'minute'));
   }
 
   // If no hours or minutes, show "0 min"
   if (parts.length === 0) {
-    return '0 min';
+    return formatUnit(0, 'minute');
   }
 
   return parts.join(' ');

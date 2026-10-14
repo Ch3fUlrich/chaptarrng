@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, statSync, w
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { createPlan, createShortTemporaryPathAlias, currentRepoFiles, discoverInventory, formatValidationProgress, globRegex, isolatedChildEnvironment, parseNodeTestSummary, parseNUnitSummary, runTask, runTaskPool, sha256GitText } from './engine.mjs';
 import { validation } from './config.mjs';
 
@@ -38,6 +39,196 @@ function assertChromiumCacheWorkflowContract(source) {
   }
   assert.match(workflow, /PLAYWRIGHT_BROWSERS_PATH=\$PLAYWRIGHT_BROWSERS_PATH.*\$GITHUB_ENV/);
 }
+
+test('book-file count and matching-log toast fallbacks stay localized', () => {
+  const header = readFileSync(new URL('../../frontend/src/Author/Details/AuthorDetailsHeader.js', import.meta.url), 'utf8');
+  assert.match(header, /translate\('BookFilesCountSingularMessage'\)/);
+  assert.match(header, /translate\(\s*'BookFilesCountPluralMessage',\s*\{\s*count: bookFileCount\s*\}\s*\)/);
+  assert.doesNotMatch(header, /['"]\d* book files?['"]/);
+
+  const connector = readFileSync(new URL('../../frontend/src/UnmappedFiles/UnmappedFilesTableConnector.js', import.meta.url), 'utf8');
+  assert.match(connector, /translate\(isFailure \?\s*'UnmappedFilesSendLogsFailureMessage'\s*:\s*'UnmappedFilesSendLogsSuccessMessage'\)/);
+  assert.match(connector, /progressMessage \|\| command\.message \|\| fallbackMessage/);
+  assert.doesNotMatch(connector, /['"](?:Failed to send matching logs for review|Matching logs sent for review)['"]/);
+});
+
+test('keyboard-shortcut descriptions are displayed through Core localization', () => {
+  const definitions = readFileSync(new URL('../../frontend/src/Components/keyboardShortcuts.js', import.meta.url), 'utf8');
+  const modal = readFileSync(new URL('../../frontend/src/Components/Page/Header/KeyboardShortcutsModalContent.js', import.meta.url), 'utf8');
+  for (const key of [
+    'KeyboardShortcutOpenModal',
+    'KeyboardShortcutCloseModal',
+    'KeyboardShortcutAcceptConfirmation',
+    'KeyboardShortcutFocusSearch',
+    'KeyboardShortcutSaveSettings',
+  ]) {
+    assert.ok(definitions.includes(key), `missing shortcut translation key ${key}`);
+  }
+  assert.match(modal, /translate\(shortcut\.name\)/);
+  assert.doesNotMatch(definitions, /['"](?:Open This Modal|Close Current Modal|Accept Confirmation Modal|Focus Search Box|Save Settings)['"]/);
+});
+
+test('readable durations format both units and zero through the selected locale', () => {
+  const source = readFileSync(new URL('../../frontend/src/Utilities/Date/formatReadableDuration.js', import.meta.url), 'utf8');
+  assert.match(source, /new Intl\.NumberFormat\(locale,\s*\{[\s\S]*?unitDisplay: 'short'/);
+  assert.match(source, /formatUnit\(totalHours, 'hour'\)/);
+  assert.match(source, /formatUnit\(minutes, 'minute'\)/);
+  assert.match(source, /formatUnit\(0, 'minute'\)/);
+  assert.doesNotMatch(source, /['"]\s(?:hr|min)['"]/);
+
+  const executable = source
+    .replace("import dayjs from 'Utilities/Date/dayjsSetup';", '')
+    .replace('export default formatReadableDuration;', 'module.exports = formatReadableDuration;');
+  const sandbox = {
+    dayjs: {
+      duration(milliseconds) {
+        return {
+          asHours: () => milliseconds / 3600000,
+          get: () => Math.floor(milliseconds / 60000) % 60,
+        };
+      },
+    },
+    document: { documentElement: { lang: 'fr' } },
+    Intl,
+    module: { exports: {} },
+  };
+  runInNewContext(executable, sandbox);
+  const formatReadableDuration = sandbox.module.exports;
+  const formatHour = (value) => new Intl.NumberFormat('fr', {
+    style: 'unit',
+    unit: 'hour',
+    unitDisplay: 'short',
+  }).format(value);
+  const formatMinute = (value) => new Intl.NumberFormat('fr', {
+    style: 'unit',
+    unit: 'minute',
+    unitDisplay: 'short',
+  }).format(value);
+
+  assert.equal(formatReadableDuration(3900000), `${formatHour(1)} ${formatMinute(5)}`);
+  assert.equal(formatReadableDuration(30000), formatMinute(0));
+  assert.equal(formatReadableDuration(0), formatMinute(0));
+  assert.equal(formatReadableDuration(null), '');
+});
+
+test('bundle-recovery copy uses Core strings when available and English only as final fallback', () => {
+  const source = readFileSync(new URL('../../frontend/src/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /fetch\(`\$\{apiRoot\}\/localization`/);
+  assert.match(source, /translations\[key\] \|\| fallback/);
+  for (const key of [
+    'BootstrapRecoveryTitle',
+    'BootstrapRecoveryMessage',
+    'BootstrapRecoveryProxyHint',
+    'BootstrapRecoveryRefreshButton',
+  ]) {
+    assert.ok(source.includes(key), `missing recovery translation key ${key}`);
+  }
+});
+
+test('new visible messages exist in every target catalog with matching placeholders', () => {
+  const locales = ['es', 'zh_CN', 'hi', 'de', 'ja', 'fr', 'pt_BR', 'ar', 'ko', 'zh_TW', 'vi', 'id'];
+  const keys = [
+    'BookFilesCountSingularMessage',
+    'BookFilesCountPluralMessage',
+    'UnmappedFilesSendLogsFailureMessage',
+    'UnmappedFilesSendLogsSuccessMessage',
+    'BootstrapRecoveryTitle',
+    'BootstrapRecoveryMessage',
+    'BootstrapRecoveryProxyHint',
+    'BootstrapRecoveryRefreshButton',
+    'KeyboardShortcutOpenModal',
+    'KeyboardShortcutCloseModal',
+    'KeyboardShortcutAcceptConfirmation',
+    'KeyboardShortcutFocusSearch',
+    'KeyboardShortcutSaveSettings',
+    'Warnings',
+    'InteractiveImportChooseLabel',
+    'InteractiveImportLocalLabel',
+    'InteractiveImportSelectToAddLabel',
+    'InteractiveImportSelectAuthorToOverrideSuggestedBookTooltip',
+    'InteractiveImportSelectBookToOverrideSuggestedEditionTooltip',
+    'InteractiveImportSelectAuthorAndBookTooltip',
+    'InteractiveImportReadyUsingLocalLibraryTooltip',
+    'InteractiveImportSelectLocalEditionTooltip',
+    'InteractiveImportAddAndPinSuggestedEditionTooltip',
+    'InteractiveImportAddSuggestedWorkBeforeImportTooltip',
+    'InteractiveImportModeRequiredError',
+    'InteractiveImportAuthorRequiredError',
+    'InteractiveImportBookRequiredError',
+    'InteractiveImportEditionRequiredError',
+    'InteractiveImportQualityRequiredError',
+    'TablePageSizeMinimumError',
+    'TablePageSizeMaximumError',
+    'BackupTypeManual',
+    'BackupTypeBeforeUpdate',
+    'RejectionsWarnings',
+    'OnlyTorrent',
+    'OnlyUsenet',
+    'ProxyTestFailed',
+  ];
+  const catalogUrl = (locale) => new URL(`../../src/NzbDrone.Core/Localization/Core/${locale}.json`, import.meta.url);
+  const english = JSON.parse(readFileSync(catalogUrl('en'), 'utf8'));
+  const placeholders = (value) => [...value.matchAll(/\{([a-z0-9]+)\}/gi)].map((match) => match[1]).sort();
+
+  for (const locale of locales) {
+    const catalog = JSON.parse(readFileSync(catalogUrl(locale), 'utf8'));
+    for (const key of keys) {
+      assert.equal(typeof catalog[key], 'string', `${locale}.${key} must be present`);
+      assert.notEqual(catalog[key].trim(), '', `${locale}.${key} must not be empty`);
+      assert.deepEqual(placeholders(catalog[key]), placeholders(english[key]), `${locale}.${key} placeholders must match`);
+    }
+  }
+});
+
+test('remaining fixed UI copy uses Core translations while runtime details stay intact', () => {
+  const importRow = readFileSync(new URL('../../frontend/src/InteractiveImport/Interactive/InteractiveImportRow.js', import.meta.url), 'utf8');
+  for (const key of [
+    'Warnings',
+    'RejectionsWarnings',
+    'InteractiveImportChooseLabel',
+    'InteractiveImportLocalLabel',
+    'InteractiveImportSelectToAddLabel',
+    'InteractiveImportSelectAuthorToOverrideSuggestedBookTooltip',
+    'InteractiveImportSelectBookToOverrideSuggestedEditionTooltip',
+    'InteractiveImportSelectAuthorAndBookTooltip',
+    'InteractiveImportReadyUsingLocalLibraryTooltip',
+    'InteractiveImportSelectLocalEditionTooltip',
+    'InteractiveImportAddAndPinSuggestedEditionTooltip',
+    'InteractiveImportAddSuggestedWorkBeforeImportTooltip',
+  ]) {
+    assert.ok(importRow.includes(`translate('${key}')`), `interactive import must use ${key}`);
+  }
+  assert.match(importRow, /title=\{path\}/);
+  assert.match(importRow, /\{rejection\.reason\}/);
+  assert.match(importRow, /\{warning\}/);
+  assert.doesNotMatch(importRow, /(?:statusTitle|bookTitleAttribute|editionTitleAttribute|actionLabel|actionTitle)\s*=\s*['"]/);
+
+  const importConnector = readFileSync(new URL('../../frontend/src/InteractiveImport/Interactive/InteractiveImportModalContentConnector.js', import.meta.url), 'utf8');
+  for (const key of [
+    'InteractiveImportModeRequiredError',
+    'InteractiveImportAuthorRequiredError',
+    'InteractiveImportBookRequiredError',
+    'InteractiveImportEditionRequiredError',
+    'InteractiveImportQualityRequiredError',
+  ]) {
+    assert.ok(importConnector.includes(`translate('${key}')`), `interactive import validation must use ${key}`);
+  }
+
+  const tableOptions = readFileSync(new URL('../../frontend/src/Components/Table/TableOptions/TableOptionsModal.js', import.meta.url), 'utf8');
+  assert.match(tableOptions, /translate\('TablePageSizeMinimumError',\s*\{\s*min:\s*5\s*\}\)/);
+  assert.match(tableOptions, /translate\('TablePageSizeMaximumError',\s*\{\s*max:\s*250\s*\}\)/);
+
+  const backupRow = readFileSync(new URL('../../frontend/src/System/Backup/BackupRow.js', import.meta.url), 'utf8');
+  assert.match(backupRow, /type === 'manual'[\s\S]*?translate\('BackupTypeManual'\)/);
+  assert.match(backupRow, /type === 'update'[\s\S]*?translate\('BackupTypeBeforeUpdate'\)/);
+
+  const delayProfile = readFileSync(new URL('../../frontend/src/Settings/Profiles/Delay/DelayProfile.js', import.meta.url), 'utf8');
+  assert.match(delayProfile, /translate\('OnlyTorrent'\)/);
+  assert.match(delayProfile, /translate\('OnlyUsenet'\)/);
+
+  const generalSettings = readFileSync(new URL('../../frontend/src/Settings/General/GeneralSettingsConnector.js', import.meta.url), 'utf8');
+  assert.match(generalSettings, /error\.message \|\| translate\('ProxyTestFailed'\)/);
+});
 
 test('test source patterns include nested project files but exclude sibling projects', () => {
   const pattern = globRegex('src/Chaptarr.Core.Test/**/*.cs');

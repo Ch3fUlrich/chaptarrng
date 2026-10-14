@@ -51,7 +51,7 @@ class QuickstartHardcoverSection extends Component {
 
     const renderButtonContent = () => {
       if (!isHardcoverConfigured) {
-        return 'Add Hardcover';
+        return translate('AddHardcoverButton');
       }
 
       if (hardcoverUsername) {
@@ -71,7 +71,7 @@ class QuickstartHardcoverSection extends Component {
         );
       }
 
-      return 'Connected';
+      return translate('HardcoverConnectedStatus');
     };
 
     if (this.props.compact) {

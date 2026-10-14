@@ -51,7 +51,53 @@ function isWebpackLoadError(error) {
   );
 }
 
-function showRefreshRequiredMessage(error) {
+const rightToLeftLanguages = new Set([
+  'ar',
+  'dv',
+  'fa',
+  'he',
+  'ku',
+  'ps',
+  'sd',
+  'ug',
+  'ur',
+  'yi',
+]);
+
+async function getBootstrapTranslations() {
+  try {
+    const urlBase = window.Chaptarr.urlBase || '';
+    const apiRoot = `${urlBase.replace(/\/+$/, '')}/api/v1`;
+    const response = await fetch(`${apiRoot}/localization`, {
+      headers: {
+        'X-Api-Key': window.Chaptarr.apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      return {};
+    }
+
+    const localization = await response.json();
+    if (typeof localization.Locale === 'string') {
+      const locale = localization.Locale.replace(/_/g, '-');
+      const language = locale.toLowerCase().split('-', 1)[0];
+      document.documentElement.lang = locale;
+      document.documentElement.dir = rightToLeftLanguages.has(language)
+        ? 'rtl'
+        : 'ltr';
+    }
+
+    return localization.Strings || {};
+  } catch {
+    return {};
+  }
+}
+
+async function showRefreshRequiredMessage(error) {
+  const translations = await getBootstrapTranslations();
+  const translate = (key, fallback) => translations[key] || fallback;
+
   document.body.innerHTML = '';
 
   const container = document.createElement('div');
@@ -69,18 +115,22 @@ function showRefreshRequiredMessage(error) {
   `;
 
   const title = document.createElement('h1');
-  title.textContent = 'Refresh Required';
+  title.textContent = translate('BootstrapRecoveryTitle', 'Refresh Required');
   title.style.cssText = 'margin-bottom: 16px; color: #e67e22;';
 
   const message = document.createElement('p');
-  message.textContent =
-    'Chaptarr couldn’t load one or more application files. Please refresh the page to continue.';
+  message.textContent = translate(
+    'BootstrapRecoveryMessage',
+    'Chaptarr couldn’t load one or more application files. Please refresh the page to continue.'
+  );
   message.style.cssText =
     'margin-bottom: 24px; font-size: 16px; line-height: 1.5; max-width: 500px;';
 
   const details = document.createElement('p');
-  details.textContent =
-    'If this keeps happening behind a reverse proxy, disable caching for the UI and check for upstream timeouts.';
+  details.textContent = translate(
+    'BootstrapRecoveryProxyHint',
+    'If this keeps happening behind a reverse proxy, disable caching for the UI and check for upstream timeouts.'
+  );
   details.style.cssText =
     'margin-bottom: 24px; font-size: 14px; line-height: 1.5; max-width: 500px; color: #555;';
 
@@ -95,7 +145,10 @@ function showRefreshRequiredMessage(error) {
   }
 
   const button = document.createElement('button');
-  button.textContent = 'Refresh Page';
+  button.textContent = translate(
+    'BootstrapRecoveryRefreshButton',
+    'Refresh Page'
+  );
   button.style.cssText = `
     background-color: #3498db;
     color: white;
@@ -174,7 +227,7 @@ async function start() {
     }
 
     if (isWebpackLoadError(error)) {
-      showRefreshRequiredMessage(error);
+      await showRefreshRequiredMessage(error);
       return;
     }
 

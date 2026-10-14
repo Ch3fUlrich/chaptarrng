@@ -7,6 +7,7 @@ import createSetSettingValueReducer from 'Store/Actions/Creators/Reducers/create
 import { createThunk } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import getProviderState from 'Utilities/State/getProviderState';
+import translate from 'Utilities/String/translate';
 import { set, update, updateItem } from '../baseActions';
 
 function normalizeRootFolder(rootFolder) {
@@ -280,7 +281,7 @@ export default {
         dispatch(set({
           section,
           isSaving: false,
-          saveError: { message: 'Invalid folder type. Please refresh and try again.' }
+          saveError: { message: translate('InvalidFolderTypeRefresh') }
         }));
         return;
       }
