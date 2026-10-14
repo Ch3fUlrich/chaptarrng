@@ -60,7 +60,7 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
             "|| (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
         )
         trusted_runner_json = '{"group":"trusted-main","labels":["self-hosted","Linux","X64","host"]}'
-        expected = "$" + "{{ matrix.os == 'ubuntu-latest' && (" + main_condition + " && vars.TRUSTED_MAIN_RUNNERS_ENABLED == 'true' && fromJSON('" + trusted_runner_json + "') || matrix.os }}"
+        expected = "$" + "{{ matrix.os == 'ubuntu-latest' && " + main_condition + " && vars.TRUSTED_MAIN_RUNNERS_ENABLED == 'true' && fromJSON('" + trusted_runner_json + "') || matrix.os }}"
         self.assertEqual(runner, expected)
         self.assertNotIn("github.event_name == 'pull_request'", runner)
         self.assertNotIn("startsWith(github.ref, 'refs/heads/')", runner)
