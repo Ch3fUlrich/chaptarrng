@@ -22,7 +22,7 @@ import styles from './BookshelfInput.css';
 const columns = [
   {
     name: 'name',
-    label: 'Bookshelf',
+    label: () => translate('Bookshelf'),
     isSortable: false,
     isVisible: true
   }

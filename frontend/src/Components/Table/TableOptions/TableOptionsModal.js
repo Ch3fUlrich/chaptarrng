@@ -191,7 +191,7 @@ class TableOptionsModal extends Component {
 
                           <div>
                             <FormInputHelpText
-                              text="Choose which columns are visible and which order they appear in"
+                              text={translate('ChooseTableColumnsDescription')}
                             />
 
                             <div className={styles.columns}>

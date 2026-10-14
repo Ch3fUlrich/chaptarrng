@@ -10,6 +10,7 @@ import {
 } from 'Store/Actions/settingsActions';
 import selectSettings from 'Store/Selectors/selectSettings';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+import translate from 'Utilities/String/translate';
 import EditRemotePathMappingModalContent from './EditRemotePathMappingModalContent';
 
 const newRemotePathMapping = {
@@ -76,7 +77,7 @@ const selectRemotePathMappingOptions = createSelector(
       return {
         key: downloadClient.id,
         value: downloadClient.name,
-        hint: !host ? 'No host configured' : host,
+        hint: !host ? translate('ProxyNoHostConfigured') : host,
         isDisabled: !host,
         host
       };
@@ -84,8 +85,8 @@ const selectRemotePathMappingOptions = createSelector(
 
     downloadClientOptions.unshift({
       key: 0,
-      value: 'Host-wide mapping',
-      hint: 'Traditional mapping by host'
+      value: translate('RemotePathMappingHostWideOption'),
+      hint: translate('RemotePathMappingTraditionalHostHint')
     });
 
     return {

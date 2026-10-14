@@ -7,11 +7,11 @@ import { filterTypes } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import dayjs from 'Utilities/Date/dayjsSetup';
+import translate from 'Utilities/String/translate';
 import { set, update } from './baseActions';
 import { executeCommandHelper } from './commandActions';
 import createHandleActions from './Creators/createHandleActions';
 import createClearReducer from './Creators/Reducers/createClearReducer';
-
 //
 // Variables
 
@@ -50,7 +50,7 @@ export const defaultState = {
   filters: [
     {
       key: 'all',
-      label: 'All',
+      label: () => translate('All'),
       filters: [
         {
           key: 'monitored',
@@ -61,7 +61,7 @@ export const defaultState = {
     },
     {
       key: 'monitored',
-      label: 'Monitored Only',
+      label: () => translate('MonitoredOnly'),
       filters: [
         {
           key: 'monitored',

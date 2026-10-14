@@ -26,15 +26,19 @@ const bitrateOptions = [
   { key: 320, value: '320 kbps' }
 ];
 
-const audioChannelOptions = [
-  { key: 'source', value: 'Keep source channels' },
-  { key: 'mono', value: 'Convert to mono' }
-];
+function getAudioChannelOptions() {
+  return [
+    { key: 'source', value: translate('KeepSourceChannels') },
+    { key: 'mono', value: translate('ConvertToMono') }
+  ];
+}
 
-const tagModeOptions = [
-  { key: 'preserve', value: 'Preserve source tags' },
-  { key: 'clean', value: 'Clean matched tags' }
-];
+function getTagModeOptions() {
+  return [
+    { key: 'preserve', value: translate('PreserveSourceTags') },
+    { key: 'clean', value: translate('CleanMatchedTags') }
+  ];
+}
 
 class ConversionSettings extends Component {
 
@@ -158,7 +162,7 @@ class ConversionSettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="audiobookConversionTagMode"
-                      values={tagModeOptions}
+                      values={getTagModeOptions()}
                       helpText={translate('AudiobookConversionTagModeHelpText')}
                       onChange={onInputChange}
                       {...settings.audiobookConversionTagMode}
@@ -177,7 +181,7 @@ class ConversionSettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="audiobookConversionAudioChannels"
-                      values={audioChannelOptions}
+                      values={getAudioChannelOptions()}
                       helpText={translate('AudiobookConversionAudioChannelsHelpText')}
                       onChange={onInputChange}
                       {...settings.audiobookConversionAudioChannels}

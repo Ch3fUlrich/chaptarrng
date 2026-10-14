@@ -193,7 +193,7 @@ class AddNewItem extends Component {
     const metadataProviders = [
       { key: 'hardcover', value: 'Hardcover', isDisabled: !isHardcoverConfigured },
       { key: 'goodreads', value: 'Goodreads' },
-      { key: 'audible', value: 'Audiobooks' }
+      { key: 'audible', value: translate('Audiobooks') }
       // Future providers can be added here:
       // { key: 'openlibrary', value: 'OpenLibrary' },
       // { key: 'googlebooks', value: 'Google Books' }

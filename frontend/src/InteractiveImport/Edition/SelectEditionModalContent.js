@@ -17,12 +17,12 @@ import styles from './SelectEditionModalContent.css';
 const columns = [
   {
     name: 'book',
-    label: 'Book',
+    label: () => translate('Book'),
     isVisible: true
   },
   {
     name: 'edition',
-    label: 'Edition',
+    label: () => translate('Edition'),
     isVisible: true
   }
 ];

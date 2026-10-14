@@ -258,7 +258,7 @@ class InteractiveImportRow extends Component {
     const pathCell = additionalFile ? (
       <Tooltip
         anchor={pathCellContents}
-        tooltip='This file is already in your library for a release you are currently importing'
+        tooltip={translate('FileAlreadyInLibraryForCurrentRelease')}
         position={tooltipPositions.TOP}
       />
     ) : pathCellContents;

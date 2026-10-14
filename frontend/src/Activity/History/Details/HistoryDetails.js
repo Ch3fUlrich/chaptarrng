@@ -292,7 +292,7 @@ function HistoryDetails(props) {
         {
           !!sourceFileCount &&
             <DescriptionListItem
-              title="Source Files"
+              title={translate('SourceFiles')}
               data={sourceFileCount}
             />
         }
@@ -300,7 +300,7 @@ function HistoryDetails(props) {
         {
           !!sourceQuality &&
             <DescriptionListItem
-              title="Source Quality"
+              title={translate('SourceQuality')}
               data={sourceQuality}
             />
         }
@@ -308,7 +308,7 @@ function HistoryDetails(props) {
         {
           !!targetQuality &&
             <DescriptionListItem
-              title="Converted Quality"
+              title={translate('ConvertedQuality')}
               data={targetQuality}
             />
         }
@@ -317,7 +317,7 @@ function HistoryDetails(props) {
           !!convertedPath &&
             <DescriptionListItem
               descriptionClassName={styles.description}
-              title="Converted File"
+              title={translate('ConvertedFile')}
               data={convertedPath}
             />
         }

@@ -80,7 +80,7 @@ class RootFolders extends Component {
 
     // Set minimal default values - user will configure per-media-type settings via toggle
     if (setRootFolderValue) {
-      setRootFolderValue({ name: 'name', value: 'Media Library' });
+      setRootFolderValue({ name: 'name', value: translate('MediaLibrary') });
       setRootFolderValue({ name: 'audiobookMonitored', value: true });
       setRootFolderValue({ name: 'audiobookMonitorExistingMode', value: 'all' });
       setRootFolderValue({ name: 'audiobookMonitorNewItems', value: 'all' });

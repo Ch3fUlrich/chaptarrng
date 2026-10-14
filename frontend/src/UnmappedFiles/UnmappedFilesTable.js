@@ -549,6 +549,16 @@ class UnmappedFilesTable extends Component {
 
     const hasPreviewEntries = (sendLogsPreview?.totalEntries || 0) > 0;
     const sendDisabled = isFetchingSendLogsPreview || !!sendLogsPreviewError || !hasPreviewEntries;
+    const sendLogsMediaType = sendLogsPreview?.mediaType === 'audiobook' ?
+      translate('Audiobooks') :
+      sendLogsPreview?.mediaType === 'ebook' ?
+        translate('Ebooks') :
+        sendLogsPreview?.mediaType;
+    const sendLogsScope = sendLogsPreview?.scope === 'all' ?
+      translate('All') :
+      sendLogsPreview?.scope === 'selected' ?
+        translate('Selected') :
+        sendLogsPreview?.scope;
 
     return (
       <Modal
@@ -583,8 +593,8 @@ class UnmappedFilesTable extends Component {
                 <div>
                   <div style={{ marginBottom: '12px' }}>
                     <strong>{sendLogsPreview.totalEntries}</strong> {translate('UnmappedFilesSendLogsEntriesWillBeSent')}
-                    {sendLogsPreview.mediaType && sendLogsPreview.mediaType !== 'all' ? ` ${translate('UnmappedFilesSendLogsForMediaType', { mediaType: sendLogsPreview.mediaType })}` : ''}
-                    {sendLogsPreview.scope ? ` ${translate('UnmappedFilesSendLogsScopeSuffix', { scope: sendLogsPreview.scope })}` : ''}.
+                    {sendLogsPreview.mediaType && sendLogsPreview.mediaType !== 'all' ? ` ${translate('UnmappedFilesSendLogsForMediaType', { mediaType: sendLogsMediaType })}` : ''}
+                    {sendLogsPreview.scope ? ` ${translate('UnmappedFilesSendLogsScopeSuffix', { scope: sendLogsScope })}` : ''}.
                   </div>
 
                   {

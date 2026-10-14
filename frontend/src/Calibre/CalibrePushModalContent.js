@@ -19,7 +19,7 @@ const calibreFields = [
   { name: 'series', label: 'Series' },
   { name: 'comments', label: 'Description' },
   { name: 'publisher', label: 'Publisher' },
-  { name: 'pubdate', label: 'Publish Date' },
+  { name: 'pubdate', label: 'PublishDate' },
   { name: 'languages', label: 'Language' },
   { name: 'tags', label: 'Tags' },
   { name: 'rating', label: 'Rating' },
@@ -125,7 +125,7 @@ class CalibrePushModalContent extends Component {
                   </div>
 
                   <div className={styles.label}>
-                    {field.label}
+                    {translate(field.label)}
                   </div>
 
                   <div className={styles.value}>

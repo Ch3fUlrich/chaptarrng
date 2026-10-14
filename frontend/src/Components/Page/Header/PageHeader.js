@@ -4,6 +4,7 @@ import keyboardShortcuts, { shortcuts } from 'Components/keyboardShortcuts';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
+import translate from 'Utilities/String/translate';
 import AuthorSearchInputConnector from './AuthorSearchInputConnector';
 import ImportProgressIndicatorConnector from './ImportProgressIndicatorConnector';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
@@ -59,7 +60,7 @@ class PageHeader extends Component {
             <img
               className={styles.logo}
               src={`${window.Chaptarr.urlBase}/Content/Images/chaptarr-logo.svg`}
-              alt="Chaptarr Logo"
+              alt={translate('ChaptarrLogoAlt')}
             />
           </Link>
         </div>
@@ -79,7 +80,7 @@ class PageHeader extends Component {
           <IconButton
             className={styles.donate}
             name={icons.HEART}
-            aria-label="Donate"
+            aria-label={translate('Donate')}
             to="/system/status#donations"
             size={14}
           />

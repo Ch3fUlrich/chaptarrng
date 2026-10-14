@@ -18,61 +18,61 @@ const hiddenResultsPageSize = 50;
 const columns = [
   {
     name: 'rank',
-    label: 'Rank',
+    label: () => translate('Rank'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'protocol',
-    label: 'Source',
+    label: () => translate('Source'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'age',
-    label: 'Age',
+    label: () => translate('Age'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'title',
-    label: 'Title',
+    label: () => translate('Title'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'indexer',
-    label: 'Indexer',
+    label: () => translate('Indexer'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'size',
-    label: 'Size',
+    label: () => translate('Size'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'peers',
-    label: 'Peers',
+    label: () => translate('Peers'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'duration',
-    label: 'Duration',
+    label: () => translate('Duration'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'narrator',
-    label: 'Narrator',
+    label: () => translate('Narrator'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'quality',
-    label: 'Quality',
+    label: () => translate('Quality'),
     isSortable: true,
     isVisible: true
   },
@@ -80,7 +80,7 @@ const columns = [
     name: 'customFormats',
     label: React.createElement(Icon, {
       name: icons.INTERACTIVE,
-      title: 'Custom Format'
+      title: () => translate('CustomFormat')
     }),
     isSortable: true,
     isVisible: true
@@ -89,7 +89,7 @@ const columns = [
     name: 'indexerFlags',
     label: React.createElement(Icon, {
       name: icons.FLAG,
-      title: 'Indexer Flags'
+      title: () => translate('IndexerFlags')
     }),
     isSortable: true,
     isVisible: true
@@ -98,7 +98,7 @@ const columns = [
     name: 'rejections',
     label: React.createElement(Icon, {
       name: icons.DANGER,
-      title: 'Rejections'
+      title: () => translate('Rejections')
     }),
     isSortable: true,
     fixedSortDirection: sortDirections.ASCENDING,

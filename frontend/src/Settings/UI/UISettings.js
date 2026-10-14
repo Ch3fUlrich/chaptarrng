@@ -15,36 +15,79 @@ import themes from 'Styles/Themes';
 import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
 
-export const firstDayOfWeekOptions = [
-  { key: 0, value: 'Sunday' },
-  { key: 1, value: 'Monday' }
-];
+function getLocale() {
+  return document.documentElement.lang || navigator.language || 'en';
+}
 
-export const weekColumnOptions = [
-  { key: 'ddd M/D', value: 'Tue 3/25', hint: 'ddd M/D' },
-  { key: 'ddd MM/DD', value: 'Tue 03/25', hint: 'ddd MM/DD' },
-  { key: 'ddd D/M', value: 'Tue 25/3', hint: 'ddd D/M' },
-  { key: 'ddd DD/MM', value: 'Tue 25/03', hint: 'ddd DD/MM' }
-];
+function getDateParts(options) {
+  const date = new Date(Date.UTC(2014, 2, 25, 17, 0));
+  return new Intl.DateTimeFormat(getLocale(), {
+    timeZone: 'UTC',
+    ...options
+  }).formatToParts(date).reduce((parts, part) => {
+    parts[part.type] = part.value;
+    return parts;
+  }, {});
+}
 
-const shortDateFormatOptions = [
-  { key: 'MMM D YYYY', value: 'Mar 25 2014', hint: 'MMM D YYYY' },
-  { key: 'DD MMM YYYY', value: '25 Mar 2014', hint: 'DD MMM YYYY' },
-  { key: 'MM/D/YYYY', value: '03/25/2014', hint: 'MM/D/YYYY' },
-  { key: 'MM/DD/YYYY', value: '03/25/2014', hint: 'MM/DD/YYYY' },
-  { key: 'DD/MM/YYYY', value: '25/03/2014', hint: 'DD/MM/YYYY' },
-  { key: 'YYYY-MM-DD', value: '2014-03-25', hint: 'YYYY-MM-DD' }
-];
+function getTime(hour, minute, hour12) {
+  const date = new Date(Date.UTC(2014, 2, 25, hour, minute));
+  return new Intl.DateTimeFormat(getLocale(), {
+    timeZone: 'UTC',
+    hour: 'numeric',
+    minute: minute ? '2-digit' : undefined,
+    hour12
+  }).format(date);
+}
 
-const longDateFormatOptions = [
-  { key: 'dddd, MMMM D YYYY', value: 'Tuesday, March 25, 2014' },
-  { key: 'dddd, D MMMM YYYY', value: 'Tuesday, 25 March, 2014' }
-];
+export function getFirstDayOfWeekOptions() {
+  return [
+    { key: 0, value: translate('Sunday') },
+    { key: 1, value: translate('Monday') }
+  ];
+}
 
-export const timeFormatOptions = [
-  { key: 'h(:mm)a', value: '5pm/5:30pm' },
-  { key: 'HH:mm', value: '17:00/17:30' }
-];
+export function getWeekColumnOptions() {
+  const { weekday, month, day } = getDateParts({ weekday: 'short', month: 'numeric', day: 'numeric' });
+
+  return [
+    { key: 'ddd M/D', value: `${weekday} ${month}/${day}`, hint: 'ddd M/D' },
+    { key: 'ddd MM/DD', value: `${weekday} ${month.padStart(2, '0')}/${day.padStart(2, '0')}`, hint: 'ddd MM/DD' },
+    { key: 'ddd D/M', value: `${weekday} ${day}/${month}`, hint: 'ddd D/M' },
+    { key: 'ddd DD/MM', value: `${weekday} ${day.padStart(2, '0')}/${month.padStart(2, '0')}`, hint: 'ddd DD/MM' }
+  ];
+}
+
+function getShortDateFormatOptions() {
+  const monthShort = getDateParts({ month: 'short' }).month;
+  const numeric = getDateParts({ month: '2-digit', day: '2-digit', year: 'numeric' });
+
+  return [
+    { key: 'MMM D YYYY', value: `${monthShort} ${numeric.day} ${numeric.year}`, hint: 'MMM D YYYY' },
+    { key: 'DD MMM YYYY', value: `${numeric.day} ${monthShort} ${numeric.year}`, hint: 'DD MMM YYYY' },
+    { key: 'MM/D/YYYY', value: `${numeric.month}/${numeric.day}/${numeric.year}`, hint: 'MM/D/YYYY' },
+    { key: 'MM/DD/YYYY', value: `${numeric.month}/${numeric.day}/${numeric.year}`, hint: 'MM/DD/YYYY' },
+    { key: 'DD/MM/YYYY', value: `${numeric.day}/${numeric.month}/${numeric.year}`, hint: 'DD/MM/YYYY' },
+    { key: 'YYYY-MM-DD', value: `${numeric.year}-${numeric.month}-${numeric.day}`, hint: 'YYYY-MM-DD' }
+  ];
+}
+
+function getLongDateFormatOptions() {
+  const first = getDateParts({ weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const second = getDateParts({ month: 'long', day: 'numeric', year: 'numeric' });
+
+  return [
+    { key: 'dddd, MMMM D YYYY', value: `${first.weekday}, ${first.month} ${first.day}, ${first.year}` },
+    { key: 'dddd, D MMMM YYYY', value: `${first.weekday}, ${second.day} ${second.month}, ${second.year}` }
+  ];
+}
+
+export function getTimeFormatOptions() {
+  return [
+    { key: 'h(:mm)a', value: `${getTime(17, 0, true)}/${getTime(17, 30, true)}`, hint: 'h(:mm)a' },
+    { key: 'HH:mm', value: `${getTime(17, 0, false)}/${getTime(17, 30, false)}`, hint: 'HH:mm' }
+  ];
+}
 
 class UISettings extends Component {
 
@@ -65,7 +108,7 @@ class UISettings extends Component {
 
     const uiLanguages = languages.filter((item) => item.value !== 'Original');
     const themeOptions = Object.keys(themes)
-      .map((theme) => ({ key: theme, value: titleCase(theme) }));
+      .map((theme) => ({ key: theme, value: theme === 'auto' ? translate('Automatic') : translate(titleCase(theme)) }));
 
     return (
       <PageContent title={translate('UISettings')}>
@@ -102,7 +145,7 @@ class UISettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="firstDayOfWeek"
-                      values={firstDayOfWeekOptions}
+                      values={getFirstDayOfWeekOptions()}
                       onChange={onInputChange}
                       {...settings.firstDayOfWeek}
                     />
@@ -116,7 +159,7 @@ class UISettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="calendarWeekColumnHeader"
-                      values={weekColumnOptions}
+                      values={getWeekColumnOptions()}
                       onChange={onInputChange}
                       helpText={translate('CalendarWeekColumnHeaderHelpText')}
                       {...settings.calendarWeekColumnHeader}
@@ -135,7 +178,7 @@ class UISettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="shortDateFormat"
-                      values={shortDateFormatOptions}
+                      values={getShortDateFormatOptions()}
                       onChange={onInputChange}
                       {...settings.shortDateFormat}
                     />
@@ -149,7 +192,7 @@ class UISettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="longDateFormat"
-                      values={longDateFormatOptions}
+                      values={getLongDateFormatOptions()}
                       onChange={onInputChange}
                       {...settings.longDateFormat}
                     />
@@ -163,7 +206,7 @@ class UISettings extends Component {
                     <FormInputGroup
                       type={inputTypes.SELECT}
                       name="timeFormat"
-                      values={timeFormatOptions}
+                      values={getTimeFormatOptions()}
                       onChange={onInputChange}
                       {...settings.timeFormat}
                     />

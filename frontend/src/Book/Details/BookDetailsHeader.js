@@ -57,20 +57,28 @@ function getDownloadStatusLabel(queueItem, grabbed) {
   }
 
   if (conversionStatus === 'failed') {
-    return { kind: kinds.DANGER, icon: icons.REFRESH, title: 'Conversion failed' };
+    return { kind: kinds.DANGER, icon: icons.REFRESH, title: translate('ConversionFailed') };
   }
 
   if (conversionStatus === 'cancelled') {
-    return { kind: kinds.WARNING, icon: icons.STOP, title: 'Conversion cancelled' };
+    return { kind: kinds.WARNING, icon: icons.STOP, title: translate('ConversionCancelled') };
   }
 
   if (conversionStatus === 'converting' || conversionStatus === 'cancelling') {
+    let title = translate('Converting');
+
+    if (convertToQuality) {
+      title = translate('ConvertingToQuality', { quality: convertToQuality });
+    }
+
+    if (conversionStatus === 'cancelling') {
+      title = translate('CancellingConversion');
+    }
+
     return {
       kind: kinds.PRIMARY,
       icon: icons.REFRESH,
-      title: conversionStatus === 'cancelling' ?
-        'Cancelling conversion' :
-        `Converting${convertToQuality ? ` to ${convertToQuality}` : ''}`
+      title
     };
   }
 
@@ -78,7 +86,9 @@ function getDownloadStatusLabel(queueItem, grabbed) {
     return {
       kind: kinds.PRIMARY,
       icon: icons.REFRESH,
-      title: `Preparing conversion${convertToQuality ? ` to ${convertToQuality}` : ''}`
+      title: convertToQuality ?
+        translate('PreparingConversionToQuality', { quality: convertToQuality }) :
+        translate('PreparingConversion')
     };
   }
 
@@ -86,20 +96,22 @@ function getDownloadStatusLabel(queueItem, grabbed) {
     return {
       kind: kinds.PURPLE,
       icon: icons.REFRESH,
-      title: `Waiting to convert${convertToQuality ? ` to ${convertToQuality}` : ''}`
+      title: convertToQuality ?
+        translate('WaitingToConvertToQuality', { quality: convertToQuality }) :
+        translate('WaitingToConvert')
     };
   }
 
   if (trackedDownloadState === 'failedPending') {
-    return { kind: kinds.DANGER, icon: icons.DOWNLOADED, title: 'Import failed - waiting to process' };
+    return { kind: kinds.DANGER, icon: icons.DOWNLOADED, title: translate('ImportFailedWaitingToProcess') };
   }
 
   if (trackedDownloadState === 'importing') {
-    return { kind: kinds.PRIMARY, icon: icons.DOWNLOADED, title: 'Importing' };
+    return { kind: kinds.PRIMARY, icon: icons.DOWNLOADED, title: translate('Importing') };
   }
 
   if (trackedDownloadState === 'importPending') {
-    return { kind: kinds.PURPLE, icon: icons.DOWNLOADED, title: 'Waiting to import' };
+    return { kind: kinds.PURPLE, icon: icons.DOWNLOADED, title: translate('WaitingToImport') };
   }
 
   if (trackedDownloadState === 'importBlocked') {

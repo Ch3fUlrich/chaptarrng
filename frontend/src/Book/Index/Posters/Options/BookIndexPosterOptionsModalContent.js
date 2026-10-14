@@ -13,11 +13,13 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 
-const posterSizeOptions = [
-  { key: 'small', value: 'Small' },
-  { key: 'medium', value: 'Medium' },
-  { key: 'large', value: 'Large' }
-];
+function getPosterSizeOptions() {
+  return [
+    { key: 'small', value: translate('Small') },
+    { key: 'medium', value: translate('Medium') },
+    { key: 'large', value: translate('Large') }
+  ];
+}
 
 class BookIndexPosterOptionsModalContent extends Component {
 
@@ -130,7 +132,7 @@ class BookIndexPosterOptionsModalContent extends Component {
                 type={inputTypes.SELECT}
                 name="size"
                 value={size}
-                values={posterSizeOptions}
+                values={getPosterSizeOptions()}
                 onChange={this.onChangePosterOption}
               />
             </FormGroup>

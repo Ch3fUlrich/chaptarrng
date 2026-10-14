@@ -14,6 +14,7 @@ import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
 import getAuthorMediaTypeRootFolderStatus from 'Utilities/Author/getAuthorMediaTypeRootFolderStatus';
+import translate from 'Utilities/String/translate';
 import AuthorDetailsSeries from './AuthorDetailsSeries';
 
 function createMapStateToProps() {
@@ -38,7 +39,7 @@ function createMapStateToProps() {
       if (!currentSeries) {
         return {
           id: seriesId,
-          label: 'Unknown Series',
+          label: translate('UnknownSeries'),
           items: [],
           positionMap: {},
           columns: series.columns,

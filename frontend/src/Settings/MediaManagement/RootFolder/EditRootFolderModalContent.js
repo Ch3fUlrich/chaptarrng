@@ -233,12 +233,12 @@ class EditRootFolderModalContent extends Component {
     const { selectedMediaType } = this.state;
 
     const outputProfileValue = outputProfile?.value ?? 'default';
-    const profileHelpText = calibreProfiles.options.find((x) => x.key === outputProfileValue)?.description || '';
+    const profileHelpText = calibreProfiles.getOptions().find((x) => x.key === outputProfileValue)?.description || '';
 
     return (
       <ModalContent onModalClose={onModalClose}>
         <ModalHeader>
-          {rootFolderId ? 'Edit Root Folder' : 'Add Root Folder'}
+          {translate(rootFolderId ? 'EditRootFolder' : 'AddRootFolder')}
         </ModalHeader>
 
         <ModalBody>
@@ -848,7 +848,7 @@ class EditRootFolderModalContent extends Component {
                                     />
                                   }
                                   title={translate('CalibreOutputFormat')}
-                                  body="Specify the output format. Options are: MOBI, EPUB, AZW3, DOCX, FB2, HTMLZ, LIT, LRF, PDB, PDF, PMLZ, RB, RTF, SNB, TCR, TXT, TXTZ, ZIP"
+                                  body={translate('CalibreOutputFormatTooltip')}
                                   position={tooltipPositions.RIGHT}
                                 />
                               </FormLabel>
@@ -873,7 +873,7 @@ class EditRootFolderModalContent extends Component {
                                     />
                                   }
                                   title={translate('CalibreOutputProfile')}
-                                  body="Specify the output profile. The output profile tells the Calibre conversion system how to optimize the created document for the specified device (such as by resizing images for the device screen size). In some cases, an output profile can be used to optimize the output for a particular device, but this is rarely necessary."
+                                  body={translate('CalibreOutputProfileTooltip')}
                                   position={tooltipPositions.RIGHT}
                                 />
                               </FormLabel>
@@ -881,7 +881,7 @@ class EditRootFolderModalContent extends Component {
                               <FormInputGroup
                                 type={inputTypes.SELECT}
                                 name="outputProfile"
-                                values={calibreProfiles.options}
+                                values={calibreProfiles.getOptions()}
                                 helpText={profileHelpText}
                                 {...outputProfile}
                                 onChange={onInputChange}

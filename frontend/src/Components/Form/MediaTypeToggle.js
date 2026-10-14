@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import translate from 'Utilities/String/translate';
 import SegmentedToggle from './SegmentedToggle';
 import styles from './MediaTypeToggle.css';
 
@@ -25,19 +26,19 @@ function MediaTypeToggle(props) {
   const options = [
     {
       key: 'audiobook',
-      label: 'Audiobooks',
+      label: translate('Audiobooks'),
       icon: <span className={styles.icon}>🎧</span>,
       isDisabled: audiobookDisabled
     },
     includeBoth ? {
       key: 'both',
-      label: 'Both',
+      label: translate('Both'),
       icon: null,
       isDisabled: bothDisabled
     } : null,
     {
       key: 'ebook',
-      label: 'eBooks',
+      label: translate('Ebooks'),
       icon: <span className={styles.icon}>📖</span>,
       isDisabled: ebookDisabled
     }

@@ -80,7 +80,7 @@ const COLUMNS: Column[] = [
   },
   {
     name: 'tags',
-    label: 'Tags',
+    label: () => translate('Tags'),
     isSortable: true,
     isVisible: true,
   },

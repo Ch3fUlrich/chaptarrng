@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Chaptarr.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Localization;
@@ -20,6 +21,7 @@ namespace Chaptarr.Api.V1.Localization
             _serializerSettings.PropertyNamingPolicy = null;
         }
 
+        [AllowAnonymous]
         [HttpGet]
         public string GetLocalizationDictionary()
         {

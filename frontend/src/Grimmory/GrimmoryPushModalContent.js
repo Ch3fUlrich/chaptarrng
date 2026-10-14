@@ -17,7 +17,7 @@ const grimmoryFields = [
   { name: 'series', label: 'Series' },
   { name: 'description', label: 'Description' },
   { name: 'publisher', label: 'Publisher' },
-  { name: 'publisheddate', label: 'PublishedDate' },
+  { name: 'publisheddate', label: 'PublishDate' },
   { name: 'language', label: 'Language' },
   { name: 'tags', label: 'Tags' },
   { name: 'identifiers', label: 'Identifiers' }

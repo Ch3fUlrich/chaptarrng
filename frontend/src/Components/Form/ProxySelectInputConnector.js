@@ -34,15 +34,15 @@ function createMapStateToProps() {
       if (includeNone) {
         values.push({
           key: 'null',
-          value: isProxyEnabled ? 'Use default proxy' : 'Proxy disabled'
+          value: translate(isProxyEnabled ? 'ProxyUseDefault' : 'ProxyDisabled')
         });
       }
 
       if (includeDirectConnection) {
         values.push({
           key: -1,
-          value: 'Direct connection',
-          hint: 'Do not use a proxy for this indexer'
+          value: translate('ProxyDirectConnection'),
+          hint: translate('ProxyDirectConnectionHint')
         });
       }
 

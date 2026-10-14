@@ -50,41 +50,41 @@ import styles from './InteractiveImportModalContent.css';
 const COLUMNS = [
   {
     name: 'path',
-    label: 'Path',
+    label: () => translate('Path'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'action',
-    label: 'Action',
+    label: () => translate('Action'),
     isVisible: true,
     className: styles.action
   },
   {
     name: 'author',
-    label: 'Author',
+    label: () => translate('Author'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'book',
-    label: 'Book',
+    label: () => translate('Book'),
     isVisible: true
   },
   {
     name: 'releaseGroup',
-    label: 'Edition',
+    label: () => translate('Edition'),
     isVisible: true
   },
   {
     name: 'quality',
-    label: 'Quality',
+    label: () => translate('Quality'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'size',
-    label: 'Size',
+    label: () => translate('Size'),
     isSortable: true,
     isVisible: true
   },
@@ -111,7 +111,7 @@ const COLUMNS = [
     label: React.createElement(Icon, {
       name: icons.DANGER,
       kind: kinds.DANGER,
-      title: 'Rejections / Warnings'
+      title: () => translate('RejectionsWarnings')
     }),
     isSortable: true,
     isVisible: true
@@ -356,7 +356,7 @@ class InteractiveImportModalContent extends Component {
     const selectedItem = selectedIds.length ? find(items, { id: selectedIds[0] }) : null;
     const importIdsByBook = mapValues(groupBy(filter(items, (x) => x.book), (x) => x.book.id), (x) => x.map((y) => y.id));
     const editions = values(mapValues(keyBy(filter(items, (x) => x.book), (x) => x.book.id), (x) => ({ matchedEditionId: x.editionId, book: x.book })));
-    const errorMessage = getErrorMessage(error, 'Unable to load manual import items');
+    const errorMessage = getErrorMessage(error, translate('UnableToLoadManualImportItems'));
     const isLocalReady = (item) => item.author && item.author.id > 0 && item.book && item.book.id > 0 && item.editionId;
     const readyNowCount = items.filter(isLocalReady).length;
     const willAddCount = items.filter((item) => !isLocalReady(item) && item.suggestedForeignAuthorId).length;
@@ -379,7 +379,7 @@ class InteractiveImportModalContent extends Component {
     if (allowAuthorChange) {
       bulkSelectOptions.splice(1, 0, {
         key: AUTHOR,
-        value: 'Select Author'
+        value: translate('SelectAuthor')
       });
     }
 
@@ -483,9 +483,9 @@ class InteractiveImportModalContent extends Component {
           {
             isPopulated && !!items.length && !isFetching ?
               <div className={styles.matchSummary}>
-                <Label kind={kinds.SUCCESS}>{`Ready now (local): ${readyNowCount}`}</Label>
-                <Label kind={kinds.INFO}>{`Will add from metadata: ${willAddCount}`}</Label>
-                <Label kind={kinds.WARNING}>{`Needs manual choice: ${needsChoiceCount}`}</Label>
+                <Label kind={kinds.SUCCESS}>{translate('ManualImportReadyNowLocalCount', { count: readyNowCount })}</Label>
+                <Label kind={kinds.INFO}>{translate('ManualImportWillAddFromMetadataCount', { count: willAddCount })}</Label>
+                <Label kind={kinds.WARNING}>{translate('ManualImportNeedsManualChoiceCount', { count: needsChoiceCount })}</Label>
               </div> :
               null
           }

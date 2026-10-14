@@ -18,24 +18,24 @@ import styles from './SelectBookModalContent.css';
 const columns = [
   {
     name: 'mediaType',
-    label: 'Type',
+    label: () => translate('Type'),
     isVisible: true
   },
   {
     name: 'title',
-    label: 'Book Title',
+    label: () => translate('BookTitle'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'releaseDate',
-    label: 'Release Date',
+    label: () => translate('ReleaseDate'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'status',
-    label: 'Book Status',
+    label: () => translate('BookStatus'),
     isVisible: true
   }
 ];

@@ -16,22 +16,28 @@ import translate from 'Utilities/String/translate';
 import NamingConnector from './Naming/NamingConnector';
 import RootFoldersConnector from './RootFolder/RootFoldersConnector';
 
-const rescanAfterRefreshOptions = [
-  { key: 'always', value: 'Always' },
-  { key: 'afterManual', value: 'After Manual Refresh' },
-  { key: 'never', value: 'Never' }
-];
+function getRescanAfterRefreshOptions() {
+  return [
+    { key: 'always', value: translate('Always') },
+    { key: 'afterManual', value: translate('AfterManualRefresh') },
+    { key: 'never', value: translate('Never') }
+  ];
+}
 
-const allowFingerprintingOptions = [
-  { key: 'allFiles', value: 'Always' },
-  { key: 'newFiles', value: 'For new imports only' },
-  { key: 'never', value: 'Never' }
-];
+function getAllowFingerprintingOptions() {
+  return [
+    { key: 'allFiles', value: translate('Always') },
+    { key: 'newFiles', value: translate('NewImportsOnly') },
+    { key: 'never', value: translate('Never') }
+  ];
+}
 
-const fileDateOptions = [
-  { key: 'none', value: 'None' },
-  { key: 'bookReleaseDate', value: 'Book Release Date' }
-];
+function getFileDateOptions() {
+  return [
+    { key: 'none', value: translate('NoFileDate') },
+    { key: 'bookReleaseDate', value: translate('ReleaseDate') }
+  ];
+}
 
 function getMatchingStrictnessHelpText(value) {
   switch (value) {
@@ -349,7 +355,7 @@ class MediaManagement extends Component {
                       name="rescanAfterRefresh"
                       helpText={translate('RescanAfterRefreshHelpText')}
                       helpTextWarning={translate('RescanAfterRefreshHelpTextWarning')}
-                      values={rescanAfterRefreshOptions}
+                      values={getRescanAfterRefreshOptions()}
                       onChange={onInputChange}
                       {...settings.rescanAfterRefresh}
                     />
@@ -368,7 +374,7 @@ class MediaManagement extends Component {
                       name="allowFingerprinting"
                       helpText={translate('AllowFingerprintingHelpText')}
                       helpTextWarning={translate('AllowFingerprintingHelpTextWarning')}
-                      values={allowFingerprintingOptions}
+                      values={getAllowFingerprintingOptions()}
                       onChange={onInputChange}
                       {...settings.allowFingerprinting}
                     />
@@ -386,7 +392,7 @@ class MediaManagement extends Component {
                       type={inputTypes.SELECT}
                       name="fileDate"
                       helpText={translate('FileDateHelpText')}
-                      values={fileDateOptions}
+                      values={getFileDateOptions()}
                       onChange={onInputChange}
                       {...settings.fileDate}
                     />
@@ -484,7 +490,7 @@ class MediaManagement extends Component {
                           name="chownGroup"
                           helpText={translate('ChownGroupHelpText')}
                           helpTextWarning={translate('ChownGroupHelpTextWarning')}
-                          values={fileDateOptions}
+                          values={getFileDateOptions()}
                           onChange={onInputChange}
                           {...settings.chownGroup}
                         />

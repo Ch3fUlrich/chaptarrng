@@ -132,7 +132,7 @@ function getInfoRowProps(row, props) {
 
   if (name === 'path') {
     return {
-      title: 'Path',
+      title: translate('Path'),
       iconName: icons.FOLDER,
       label: getBookAuthorPath(props)
     };
@@ -140,7 +140,7 @@ function getInfoRowProps(row, props) {
 
   if (name === 'sizeOnDisk') {
     return {
-      title: 'Size on Disk',
+      title: translate('SizeOnDisk'),
       iconName: icons.DRIVE,
       label: formatBytes(props.sizeOnDisk)
     };

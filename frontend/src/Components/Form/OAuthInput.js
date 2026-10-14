@@ -3,6 +3,7 @@ import React from 'react';
 import FormInputHelpText from 'Components/Form/FormInputHelpText';
 import SpinnerErrorButton from 'Components/Link/SpinnerErrorButton';
 import { kinds } from 'Helpers/Props';
+import translate from 'Utilities/String/translate';
 
 function getOAuthErrorText(error) {
   if (!error) {
@@ -36,6 +37,7 @@ function OAuthInput(props) {
   } = props;
 
   const errorText = getOAuthErrorText(error);
+  const buttonLabel = label || translate('StartOAuth');
 
   const implementationName = providerData && typeof providerData.implementationName === 'string'
     ? providerData.implementationName
@@ -52,7 +54,7 @@ function OAuthInput(props) {
         error={error}
         onPress={onPress}
       >
-        {label}
+        {buttonLabel}
       </SpinnerErrorButton>
 
       {
@@ -68,15 +70,13 @@ function OAuthInput(props) {
 }
 
 OAuthInput.propTypes = {
-  label: PropTypes.string.isRequired,
+  label: PropTypes.string,
   authorizing: PropTypes.bool.isRequired,
   error: PropTypes.object,
   providerData: PropTypes.object,
   onPress: PropTypes.func.isRequired
 };
 
-OAuthInput.defaultProps = {
-  label: 'Start OAuth'
-};
+OAuthInput.defaultProps = {};
 
 export default OAuthInput;

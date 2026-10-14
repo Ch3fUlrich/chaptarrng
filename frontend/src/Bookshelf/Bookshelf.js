@@ -32,13 +32,13 @@ const columns = [
   },
   {
     name: 'sortName',
-    label: 'Name',
+    label: () => translate('Name'),
     isSortable: true,
     isVisible: true
   },
   {
     name: 'bookCount',
-    label: 'Books',
+    label: () => translate('Books'),
     isSortable: false,
     isVisible: true
   }

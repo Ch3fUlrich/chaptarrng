@@ -100,7 +100,7 @@ export const defaultState = {
       },
       {
         name: 'customFormats',
-        label: 'Formats',
+        label: () => translate('Formats'),
         isSortable: false,
         isVisible: true
       },
