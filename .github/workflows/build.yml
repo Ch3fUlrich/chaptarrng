@@ -71,8 +71,8 @@ jobs:
 
   build:
     if: github.event_name != 'pull_request' || github.event.action != 'edited'
-    # Pull request code always uses hosted runners; only main uses the local Linux runner.
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && fromJSON('["self-hosted","Linux","X64","host"]') || matrix.os }}
+    # Pull requests stay hosted; the Ubuntu main entry uses the pool only after opt-in.
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && vars.TRUSTED_MAIN_RUNNERS_ENABLED == 'true' && fromJSON('{"group":"trusted-main","labels":["self-hosted","Linux","X64","host"]}') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:

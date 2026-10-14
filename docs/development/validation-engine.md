@@ -6,6 +6,13 @@ discovered test inventory, native case totals, platform identity, workflow
 attempt, and private task logs. A final GitHub job reconciles the Linux,
 Windows, macOS, and PostgreSQL smoke receipts before the workflow is complete.
 
+## GitHub runner routing
+
+The Ubuntu Linux build-matrix entry may use the shared organization runner pool
+only when `TRUSTED_MAIN_RUNNERS_ENABLED` is set to `true`; while unset, it
+stays hosted. Pull requests and Windows/macOS matrix entries remain hosted. The
+organization group is restricted to this workflow on `refs/heads/main`.
+
 ## Local use
 
 Use Node.js `26.10.0` and .NET SDK `10.0.401`, matching the CI toolchain. Build
