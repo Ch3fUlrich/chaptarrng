@@ -640,8 +640,10 @@ export async function runTask(task, runRoot, testSpec = null) {
   const startedAt = new Date().toISOString();
   const started = Date.now();
   const childEnvironment = isolatedChildEnvironment(spec, runRoot);
-  const needsShortTemporaryPath = process.platform === 'linux' &&
-    childEnvironment.DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT === 'true';
+  const needsShortTemporaryPath = process.platform === 'linux' && (
+    spec.shortTemporaryPath === true ||
+    childEnvironment.DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT === 'true'
+  );
   let temporaryAlias = null;
   let timedOut = false;
   let child;

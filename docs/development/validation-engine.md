@@ -81,10 +81,12 @@ unreviewed candidate through the same launcher because planning imports its
 validation configuration. GitHub Actions remains responsible for hosted
 validation.
 
-Each runner has a limit of two concurrent validation tasks. On the platform
-nodes, the engine-contract suite can run beside the Core NUnit suite; their
-logs, NUnit results, and task environments are separate. The PostgreSQL smoke
-remains gated by the engine contracts on its dedicated node and still uses
+Each runner has a limit of two concurrent validation tasks. The engine-contract
+command also caps Node's test-file workers at two, so it cannot fan out across
+every CPU reported by a large self-hosted host. On the platform nodes, the
+engine-contract suite can run beside the Core NUnit suite; their logs, NUnit
+results, and task environments are separate. The PostgreSQL smoke remains gated
+by the engine contracts on its dedicated node and still uses
 only the workflow's disposable databases. Tasks that share writable output
 must use the same concurrency group so the scheduler runs them in separate
 batches.
@@ -144,10 +146,11 @@ receive an explicit environment allowlist and each task's declared settings.
 Every task gets run-owned home, temporary, XDG, and .NET CLI directories. NuGet
 packages use a private cache shared only within the validation run. Test tasks
 run with `CI=true` and `NODE_ENV=test` regardless of the invoking shell's values.
-For Linux Chromium tests, the engine creates a short private symlink under
-`/dev/shm` that points to the isolated task temp directory. This keeps
-Chromium's UNIX-domain socket path within the kernel limit without depending on
-shared `/tmp`; browser temp data still lands in the task directory.
+For Linux tests that use Chromium or start a nested trusted sandbox, the engine
+creates a short private symlink under `/dev/shm` that points to the isolated
+task temp directory. This keeps UNIX-domain socket paths within the kernel
+limit without depending on shared `/tmp`; temporary data still lands in the
+task directory.
 
 The artifact downloader preserves each runner receipt in its own subdirectory,
 and the reconciler finds `receipt.json` recursively so same-named artifacts do

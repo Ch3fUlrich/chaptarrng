@@ -241,6 +241,7 @@ function makeSandboxCommand({
     realpathSync(source),
     path.posix.join(GUEST_WORKSPACE, relative.split(path.sep).join('/')),
   ]);
+  mkdirSync(path.join(runDirectory, 'tmp'), { recursive: true, mode: 0o700 });
   mkdirSync(path.join(runDirectory, 'dependencies'), { recursive: true });
   for (let index = 0; index < mounts.length; index++)
     mkdirSync(path.join(runDirectory, 'dependencies', String(index)), {
@@ -260,9 +261,9 @@ function makeSandboxCommand({
     HOME: `${GUEST_RUN}/home`,
     USERPROFILE: `${GUEST_RUN}/home`,
     DOTNET_CLI_HOME: `${GUEST_RUN}/dotnet-cli`,
-    TMPDIR: '/tmp',
-    TMP: '/tmp',
-    TEMP: '/tmp',
+    TMPDIR: `${GUEST_RUN}/tmp`,
+    TMP: `${GUEST_RUN}/tmp`,
+    TEMP: `${GUEST_RUN}/tmp`,
     APPDATA: `${GUEST_RUN}/AppData/Roaming`,
     LOCALAPPDATA: `${GUEST_RUN}/AppData/Local`,
     XDG_CONFIG_HOME: `${GUEST_RUN}/xdg-config`,

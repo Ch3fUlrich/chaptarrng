@@ -394,6 +394,11 @@ test('Chromium installation and tests share the private-runner cache path', () =
 });
 
 test('test-only planning distinguishes local and hosted tasks regardless of ambient workflow environment', () => {
+  const engineContractTask = validation.tasks.find((task) => task.id === 'engine-contract-tests');
+  assert.ok(engineContractTask);
+  assert.equal(engineContractTask.command.includes('--test-concurrency=2'), true);
+  assert.equal(engineContractTask.shortTemporaryPath, true);
+
   const localPlan = withEnvironmentVariable('GITHUB_ACTIONS', undefined, () =>
     withEnvironmentVariable('VALIDATION_NODE_ID', undefined, () =>
       withEnvironmentVariable('GITHUB_TOKEN', 'synthetic-runtime-token', () =>

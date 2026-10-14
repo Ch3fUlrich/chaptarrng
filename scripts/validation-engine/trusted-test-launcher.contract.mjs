@@ -235,6 +235,9 @@ const originalCheckout = ${JSON.stringify(source)};
 assert.throws(() => readFileSync(path.join(originalCheckout, 'auth.json')), { code: 'ENOENT' });
 assert.throws(() => writeFileSync(hostFile, 'escaped'));
 assert.equal(readFileSync('/run/validation-engine-sandbox', 'utf8'), process.env.VALIDATION_OUTER_SANDBOX_TOKEN);
+assert.equal(process.env.TMPDIR, '/mnt/run-data/tmp');
+assert.equal(process.env.TMP, '/mnt/run-data/tmp');
+assert.equal(process.env.TEMP, '/mnt/run-data/tmp');
 assert.equal(fixtureDependency, 'sibling dependency resolved');
 const connectionResults = await Promise.all([
   new Promise((resolve) => { const socket = net.connect(hostPort, '127.0.0.1'); socket.once('connect', () => { socket.destroy(); resolve('connected'); }); socket.once('error', () => resolve('blocked')); socket.setTimeout(1000, () => { socket.destroy(); resolve('blocked'); }); }),
