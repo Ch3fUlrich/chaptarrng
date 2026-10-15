@@ -4,7 +4,7 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
-## [0.9.970](https://github.com/snapetech-org/chaptarrng/compare/v0.9.969..v0.9.970) - 2026-10-15
+## [0.9.970](https://github.com/snapetech-org/chaptarrng/compare/v0.9.970..v0.9.970) - 2026-10-15
 
 ### User-facing changes
 
@@ -105,6 +105,10 @@ history grouped from conventional commits.
 
 - **Distribution:** **Breaking:** ChaptarrNG no longer maintains its YunoHost package or attaches YunoHost release bundles. Operators using YunoHost should confirm the package's supported update source before upgrading ChaptarrNG.
   - **Action required:** Before upgrading ChaptarrNG, confirm the YunoHost package's supported update source.
+
+### Bug Fixes
+- *(docker)* Restore an arm/v7-capable Node image for the browser stage (#121) - ([1a8304d](https://github.com/snapetech-org/chaptarrng/commit/1a8304dc04c5322cfcc5c52f8c3ceca2cd5b0bc6))
+## [0.9.970](https://github.com/snapetech-org/chaptarrng/compare/v0.9.969..v0.9.970) - 2026-10-15
 
 ### Security
 - *(ci)* Keep pull request jobs on hosted runners (#69) - ([02d38e1](https://github.com/snapetech-org/chaptarrng/commit/02d38e186c56554662de2b62d0f24c7b4b1da4f1))
@@ -362,9 +366,7 @@ history grouped from conventional commits.
 - *(frontend)* Remove moment dependency - ([7bb5ccf](https://github.com/snapetech-org/chaptarrng/commit/7bb5ccf4ccab07f9c54d0bd6dd810623446ecec9))
 - *(repository)* Migrate GitHub owner links (#109) - ([8b228fd](https://github.com/snapetech-org/chaptarrng/commit/8b228fdccbd8c11fe4ebbd25753b8034a87f05b7))
 - Route trusted main validation through shared pool (#101) - ([55ce02f](https://github.com/snapetech-org/chaptarrng/commit/55ce02f37319859ffb3a9ce62ac10541cd08b864))
-- Run independent validation tasks in a bounded pool (#99) - ([4364742](https://github.com/snapetech-org/chaptarrng/commit/4364742e7811aca8c501c13897b5dd6daabe1710))
-
-## [0.9.969](https://github.com/snapetech-org/chaptarrng/compare/v0.9.969..v0.9.969) - 2026-10-15
+- Run independent validation tasks in a bounded pool (#99) - ([4364742](https://github.com/snapetech-org/chaptarrng/commit/4364742e7811aca8c501c13897b5dd6daabe1710))## [0.9.969](https://github.com/snapetech-org/chaptarrng/compare/v0.9.969..v0.9.969) - 2026-10-15
 
 ### User-facing changes
 
