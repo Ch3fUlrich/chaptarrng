@@ -113,6 +113,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
             private static readonly SemaphoreSlim _globalIngestGate = new SemaphoreSlim(1, 1);
             private readonly ConcurrentDictionary<string, DateTime> _negativeCacheByUnit = new ConcurrentDictionary<string, DateTime>();
             private readonly ConcurrentDictionary<string, DateTime> _authorLastProcessed = new ConcurrentDictionary<string, DateTime>();
+            private readonly UnmappedRescanBackoff _unmappedRescanBackoff = new UnmappedRescanBackoff();
             private const int NegativeCacheMinutes = 30; // TTL for negative result caching
             private const int LargeAuthorReadyCompactionFileThreshold = 100;
             private static readonly TimeSpan LargeAuthorReadyCompactionDurationThreshold = TimeSpan.FromMinutes(2);
@@ -416,9 +417,21 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Services
 
                         var normalized = NormalizeDirectory(folder);
                         var files = _mediaFileService.GetFilesWithBasePath(normalized);
-                        if (files.Any(file => file.EditionId == 0))
+                        var unmapped = files.Where(file => file.EditionId == 0).ToList();
+                        if (unmapped.Count == 0)
+                        {
+                            _unmappedRescanBackoff.Clear($"{author.Id}|{normalized}");
+                            return;
+                        }
+
+                        var signature = UnmappedRescanBackoff.BuildSignature(unmapped, author.LastInfoSync);
+                        if (_unmappedRescanBackoff.ShouldRescan($"{author.Id}|{normalized}", signature, DateTime.UtcNow))
                         {
                             foldersToRescan.Add(normalized);
+                        }
+                        else
+                        {
+                            _logger.Debug("[INGEST-AUTHOR-READY] Skipping repeat rescan of {0} unmapped file(s) under '{1}' for author '{2}'; nothing changed since the last attempt", unmapped.Count, normalized, author.Name);
                         }
                     }
 

@@ -73,9 +73,12 @@ namespace NzbDrone.Core.Parser
         private const int HintOnlyPrefixGuardTokenThreshold = 2;
         private const string DecimalPointToken = "chaptarrdecimalpoint";
 
-        private static readonly Regex TokenRegex = new Regex(@"\p{Nd}+(?:\.\p{Nd}+)+|[\p{L}\p{Nd}]+", RegexOptions.Compiled);
+        // A dot followed by a standalone four-digit year is a scene-style separator, not a decimal point.
+        private const string NotFollowedByYearSegment = @"(?!(?:18|19|20|21)\p{Nd}{2}(?!\p{Nd}))";
+
+        private static readonly Regex TokenRegex = new Regex(@"\p{Nd}+(?:\." + NotFollowedByYearSegment + @"\p{Nd}+)+|[\p{L}\p{Nd}]+", RegexOptions.Compiled);
         private static readonly Regex PossessiveRegex = new Regex(@"['\u2018\u2019]s\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex DecimalPointBetweenDigitsRegex = new Regex(@"(?<=\p{Nd})\.(?=\p{Nd})", RegexOptions.Compiled);
+        private static readonly Regex DecimalPointBetweenDigitsRegex = new Regex(@"(?<=\p{Nd})\." + NotFollowedByYearSegment + @"(?=\p{Nd})", RegexOptions.Compiled);
         private static readonly Regex OptionalQualifierSegmentRegex = new Regex(@"\s*[\(\[](?<label>[^\)\]]+)[\)\]]\s*", RegexOptions.Compiled);
         private static readonly Regex SubtitleLeadingArticleRegex = new Regex(@"(?<prefix>[:;\-\u2013\u2014]\s+)(?<article>a|an|the)\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex SubtitleArticleInsertionPointRegex = new Regex(@"(?<prefix>[:;\-\u2013\u2014]\s+)(?<head>[\p{L}\p{Nd}])", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -848,7 +851,36 @@ namespace NzbDrone.Core.Parser
 
         internal static bool TokensMatch(string left, string right)
         {
-            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase) || TokenSynonyms.AreSynonyms(left, right);
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
+                   NumericTokensEqual(left, right) ||
+                   TokenSynonyms.AreSynonyms(left, right);
+        }
+
+        private static bool NumericTokensEqual(string left, string right)
+        {
+            if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right) ||
+                !NumericTokenRegex.IsMatch(left) || !NumericTokenRegex.IsMatch(right))
+            {
+                return false;
+            }
+
+            var leftParts = left.Split('.');
+            var rightParts = right.Split('.');
+
+            // Zero padding is only normalized for short integer parts so long identifiers are never conflated.
+            if (leftParts[0].Length > 4 || rightParts[0].Length > 4)
+            {
+                return false;
+            }
+
+            return TrimLeadingZeros(leftParts[0]) == TrimLeadingZeros(rightParts[0]) &&
+                   (leftParts.Length > 1 ? leftParts[1] : string.Empty) == (rightParts.Length > 1 ? rightParts[1] : string.Empty);
+        }
+
+        private static string TrimLeadingZeros(string digits)
+        {
+            var trimmed = digits.TrimStart('0');
+            return trimmed.Length == 0 ? "0" : trimmed;
         }
 
         private static TitleMatchResult ChooseBetterResult(TitleMatchResult current, TitleMatchResult candidate)

@@ -210,10 +210,21 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 {
                     throw;
                 }
+                catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException || ex is IOException)
+                {
+                    // A file that vanished or cannot be read is an expected condition, not a defect.
+                    _logger.Warn("Unable to read file {0}: {1}", file.FullName, ex.Message);
+                    _logger.Debug(ex, "Read failure details for {0}", file.FullName);
+
+                    var unreadableBook = new LocalBook { Path = file.FullName };
+                    var unreadableRejection = new Rejection("Failed to process file: " + ex.Message);
+                    decisions.Add(new ImportDecision<LocalBook>(unreadableBook, unreadableRejection));
+                }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Error processing file {0}", file.FullName);
-                    
+                    _logger.Warn("Error processing file {0}: {1}", file.FullName, ex.Message);
+                    _logger.Debug(ex, "Processing failure details for {0}", file.FullName);
+
                     // Create a rejected decision for files we can't process
                     var failedBook = new LocalBook { Path = file.FullName };
                     var rejection = new Rejection("Failed to process file: " + ex.Message);

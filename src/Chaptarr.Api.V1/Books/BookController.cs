@@ -601,11 +601,10 @@ namespace Chaptarr.Api.V1.Books
             }
             catch (Exception ex)
             {
+                // Not a validation problem: let the error pipeline answer with a server error so callers
+                // can tell a crash from a rejected request.
                 _logger.Error(ex, "[V1-BOOK-IMPORT] Unexpected error during import");
-                throw new ValidationException(new[]
-                {
-                    new ValidationFailure("Import", $"Failed to import book: {ex.Message}")
-                });
+                throw;
             }
         }
 

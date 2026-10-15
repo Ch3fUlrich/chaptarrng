@@ -11,6 +11,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Books.Services;
+using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles.Events;
@@ -62,6 +63,21 @@ namespace Chaptarr.Core.Test.Books
                 return DeleteIfUnchangedResult;
             }
             public void CleanupOldCompleted() => CleanupCount++;
+        }
+
+        private sealed class StubExclusionService : IImportListExclusionService
+        {
+            public List<ImportListExclusion> Exclusions { get; } = new();
+
+            public ImportListExclusion Add(ImportListExclusion importListExclusion) => throw new NotImplementedException();
+            public List<ImportListExclusion> All() => Exclusions;
+            public void Delete(int id) => throw new NotImplementedException();
+            public void Delete(List<int> ids) => throw new NotImplementedException();
+            public void Delete(string foreignId) => throw new NotImplementedException();
+            public ImportListExclusion Get(int id) => throw new NotImplementedException();
+            public ImportListExclusion FindByForeignId(string foreignId) => Exclusions.FirstOrDefault(e => e.ForeignId == foreignId);
+            public List<ImportListExclusion> FindByForeignId(List<string> foreignIds) => Exclusions.Where(e => foreignIds.Contains(e.ForeignId)).ToList();
+            public ImportListExclusion Update(ImportListExclusion importListExclusion) => throw new NotImplementedException();
         }
 
         private class AuthorServiceProxy : DispatchProxy
@@ -276,12 +292,14 @@ namespace Chaptarr.Core.Test.Books
             AuthorTerminalException terminal = null,
             Author author = null,
             IBookService bookService = null,
-            IProvideBookInfo bookInfo = null)
+            IProvideBookInfo bookInfo = null,
+            IImportListExclusionService exclusions = null,
+            bool authorIsLocal = true)
         {
             author ??= new Author { Id = 42, Name = "Existing Author" };
 
             var authorService = DispatchProxy.Create<IAuthorService, AuthorServiceProxy>();
-            ((AuthorServiceProxy)authorService).CurrentAuthor = author;
+            ((AuthorServiceProxy)authorService).CurrentAuthor = authorIsLocal ? author : null;
 
             var authorLibraryService = DispatchProxy.Create<IAuthorLibraryService, AuthorLibraryProxy>();
             ((AuthorLibraryProxy)authorLibraryService).Terminal = terminal;
@@ -302,6 +320,7 @@ namespace Chaptarr.Core.Test.Books
                 bookInfo,
                 commandQueue,
                 eventAggregator,
+                exclusions ?? new StubExclusionService(),
                 LogManager.GetCurrentClassLogger());
         }
 
@@ -336,6 +355,7 @@ namespace Chaptarr.Core.Test.Books
                 bookInfo,
                 commandQueue,
                 eventAggregator,
+                new StubExclusionService(),
                 LogManager.GetCurrentClassLogger());
 
             handler.Execute(new ProcessPendingImportsCommand());
@@ -371,6 +391,7 @@ namespace Chaptarr.Core.Test.Books
                 DispatchProxy.Create<IProvideBookInfo, BookInfoProxy>(),
                 commandQueue,
                 eventAggregator,
+                new StubExclusionService(),
                 LogManager.GetCurrentClassLogger());
 
             handler.Execute(new ProcessPendingImportsCommand());
@@ -404,6 +425,7 @@ namespace Chaptarr.Core.Test.Books
                 DispatchProxy.Create<IProvideBookInfo, BookInfoProxy>(),
                 commandQueue,
                 eventAggregator,
+                new StubExclusionService(),
                 LogManager.GetCurrentClassLogger());
 
             handler.Execute(new ProcessPendingImportsCommand());
@@ -440,6 +462,7 @@ namespace Chaptarr.Core.Test.Books
                 DispatchProxy.Create<IProvideBookInfo, BookInfoProxy>(),
                 commandQueue,
                 eventAggregator,
+                new StubExclusionService(),
                 LogManager.GetCurrentClassLogger());
 
             handler.Execute(new ProcessPendingImportsCommand());
@@ -909,6 +932,60 @@ namespace Chaptarr.Core.Test.Books
             Assert.That(pendingImportService.DeletedIds, Does.Not.Contain(pending.Id));
             Assert.That(commandQueue.Pushed.OfType<BookSearchCommand>(), Is.Empty);
             Assert.That(eventAggregator.Events.OfType<PendingAuthorImportFailedEvent>().Count(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void retrying_import_for_an_excluded_author_that_is_not_in_the_library_should_stop()
+        {
+            var pendingImportService = new StubPendingAuthorImportService();
+            var pending = Pending(300);
+            pending.AttemptCount = 4;
+            pendingImportService.DueResponses.Enqueue(new List<PendingAuthorImport> { pending });
+            var exclusions = new StubExclusionService();
+            exclusions.Exclusions.Add(new ImportListExclusion { ForeignId = pending.ProviderId, Name = "Removed" });
+            var eventAggregator = new RecordingEventAggregator();
+
+            var handler = BuildHandler(pendingImportService, new RecordingCommandQueue(), eventAggregator, exclusions: exclusions, authorIsLocal: false);
+
+            handler.Execute(new ProcessPendingImportsCommand());
+
+            Assert.That(pending.OverallStatus, Is.EqualTo(PendingImportStatus.Failed));
+            Assert.That(pending.LastError, Does.Contain("exclusion"));
+            Assert.That(eventAggregator.Events.OfType<PendingAuthorImportFailedEvent>().Count(), Is.EqualTo(1));
+            Assert.That(eventAggregator.Events.OfType<PendingAuthorImportSucceededEvent>(), Is.Empty);
+        }
+
+        [Test]
+        public void first_attempt_for_an_excluded_author_should_still_run_as_an_explicit_request()
+        {
+            var pendingImportService = new StubPendingAuthorImportService();
+            var pending = Pending(301);
+            pendingImportService.DueResponses.Enqueue(new List<PendingAuthorImport> { pending });
+            var exclusions = new StubExclusionService();
+            exclusions.Exclusions.Add(new ImportListExclusion { ForeignId = pending.ProviderId, Name = "Removed" });
+
+            var handler = BuildHandler(pendingImportService, new RecordingCommandQueue(), new RecordingEventAggregator(), exclusions: exclusions, authorIsLocal: false);
+
+            handler.Execute(new ProcessPendingImportsCommand());
+
+            Assert.That(pending.LastError ?? string.Empty, Does.Not.Contain("exclusion"));
+        }
+
+        [Test]
+        public void retrying_import_should_continue_when_the_author_is_already_in_the_library()
+        {
+            var pendingImportService = new StubPendingAuthorImportService();
+            var pending = Pending(302);
+            pending.AttemptCount = 2;
+            pendingImportService.DueResponses.Enqueue(new List<PendingAuthorImport> { pending });
+            var exclusions = new StubExclusionService();
+            exclusions.Exclusions.Add(new ImportListExclusion { ForeignId = pending.ProviderId, Name = "Present" });
+
+            var handler = BuildHandler(pendingImportService, new RecordingCommandQueue(), new RecordingEventAggregator(), exclusions: exclusions, authorIsLocal: true);
+
+            handler.Execute(new ProcessPendingImportsCommand());
+
+            Assert.That(pending.LastError ?? string.Empty, Does.Not.Contain("exclusion"));
         }
     }
 }

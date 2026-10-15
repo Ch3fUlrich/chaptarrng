@@ -528,5 +528,43 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                 }
             }
         }
+
+        [Test]
+        public void vanished_file_should_be_rejected_without_an_error_level_log()
+        {
+            var target = new NLog.Targets.MemoryTarget { Layout = "${level}|${message}|${exception}" };
+            var factory = new LogFactory();
+            var logConfig = new NLog.Config.LoggingConfiguration(factory);
+            logConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, target);
+            factory.Configuration = logConfig;
+
+            var missing = new FileSystem().FileInfo.New(
+                Path.Combine(TestContext.CurrentContext.WorkDirectory, $"vanished-{Guid.NewGuid():N}.mp3"));
+
+            var sut = new SimpleImportDecisionMaker(
+                metadataTagService: DispatchProxy.Create<IMetadataTagService, MetadataTagServiceProxy>(),
+                fileMatchingService: DispatchProxy.Create<IFileMatchingService, FileMatchingServiceProxy>(),
+                authorService: DispatchProxy.Create<IAuthorService, AuthorServiceProxy>(),
+                bookService: DispatchProxy.Create<IBookService, ThrowingProxy<IBookService>>(),
+                editionService: DispatchProxy.Create<IEditionService, ThrowingProxy<IEditionService>>(),
+                mediaFileService: DispatchProxy.Create<IMediaFileService, ThrowingProxy<IMediaFileService>>(),
+                logger: factory.GetCurrentClassLogger());
+
+            var decisions = sut.GetImportDecisions(
+                new List<IFileInfo> { missing },
+                idOverrides: null,
+                itemInfo: new ImportDecisionMakerInfo(),
+                config: new ImportDecisionMakerConfig { Filter = FilterFilesType.None, NewDownload = true, IncludeExisting = true });
+
+            var logs = target.Logs.ToList();
+            Assert.Multiple(() =>
+            {
+                Assert.That(decisions, Has.Count.EqualTo(1));
+                Assert.That(decisions.Single().Approved, Is.False);
+                Assert.That(decisions.Single().Rejections.Single().Reason, Does.StartWith("Failed to process file"));
+                Assert.That(logs.Any(l => l.StartsWith("Error|") || l.StartsWith("Fatal|")), Is.False, string.Join("\n", logs));
+                Assert.That(logs.Any(l => l.StartsWith("Warn|")), Is.True);
+            });
+        }
     }
 }

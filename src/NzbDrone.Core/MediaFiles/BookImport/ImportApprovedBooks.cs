@@ -503,6 +503,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             createdNewBookInstance = true;
                             _logger.Debug("[MANUAL-EDITION-PROTECTION] Created new book instance ID: {0} for files not matching pinned edition",
                                 newBookInstance.Id);
+                            WarnIfExplicitSelectionRedirected(bookDecisions, book, newBookInstance, "the pinned edition differs from the matched edition");
                             __route = "manual-edition-protection";
                         }
                     }
@@ -578,6 +579,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 createdNewBookInstance = true;
                                 _logger.Debug("[ADDITIONAL-COPY] Created new book instance with ID: {0} for additional copy",
                                     newBookInstance.Id);
+                                WarnIfExplicitSelectionRedirected(bookDecisions, book, newBookInstance, "the book already has files and upgrades are not allowed");
                                 __route = "additional-copy";
                         }
                     }
@@ -1007,6 +1009,21 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             {
                 events.Add(convertedEvent);
             }
+        }
+
+        private void WarnIfExplicitSelectionRedirected(IEnumerable<ImportDecision<LocalBook>> decisions, Book requestedBook, Book newBook, string reason)
+        {
+            if (decisions?.Any(d => d?.Item?.IsManualImport == true) != true)
+            {
+                return;
+            }
+
+            _logger.Warn("{0}", FormatSelectionRedirectMessage(requestedBook, newBook, reason));
+        }
+
+        internal static string FormatSelectionRedirectMessage(Book requestedBook, Book newBook, string reason)
+        {
+            return $"[MANUAL-IMPORT] Requested book {requestedBook?.Id} was redirected to new book {newBook?.Id} because {reason}.";
         }
 
         private void CleanupNewBookInstanceIfEmpty(bool createdNewBookInstance, Book newBookInstance, Edition newEdition, List<BookFile> importedBookFilesForBook)
