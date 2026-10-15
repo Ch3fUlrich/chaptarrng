@@ -56,7 +56,9 @@ module.exports = (env) => {
         'node_modules'
       ],
       alias: {
-        'react-middle-truncate': 'react-middle-truncate/lib/react-middle-truncate'
+        'react-middle-truncate': 'react-middle-truncate/lib/react-middle-truncate',
+        'react/jsx-runtime$': require.resolve('react/jsx-runtime'),
+        'react/jsx-dev-runtime$': require.resolve('react/jsx-dev-runtime')
       },
       fallback: {
         buffer: false,
