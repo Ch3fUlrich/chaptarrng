@@ -62,7 +62,7 @@ chmod 0700 "$work/bin/docker" "$work/bin/skopeo"
 
 manifest='{"schemaVersion":2}'
 digest="sha256:$(printf '%s\n' "$manifest" | sha256sum | cut -d ' ' -f1)"
-source="ghcr.io/snapetech/chaptarrng@${digest}"
+source="ghcr.io/snapetech-org/chaptarrng@${digest}"
 script="$repo_root/packaging/scripts/publish-image-aliases.sh"
 docker_workflow="$repo_root/.github/workflows/docker-publish.yml"
 release_workflow="$repo_root/.github/workflows/release.yml"
@@ -70,7 +70,7 @@ package_workflow="$repo_root/.github/workflows/release-distribution.yml"
 chocolatey_publish_script="$repo_root/packaging/scripts/publish-chocolatey-packages.ps1"
 build_workflow="$repo_root/.github/workflows/build.yml"
 
-grep -Fq 'STANDARD_IMAGE: ghcr.io/snapetech/chaptarrng' "$docker_workflow"
+grep -Fq 'STANDARD_IMAGE: ghcr.io/snapetech-org/chaptarrng' "$docker_workflow"
 grep -Fq 'REGISTRY: ghcr.io' "$docker_workflow"
 grep -Fq 'registry: ${{ env.REGISTRY }}' "$docker_workflow"
 grep -Fq 'image="${STANDARD_IMAGE}"' "$docker_workflow"
