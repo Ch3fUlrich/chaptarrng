@@ -21,11 +21,12 @@ Thanks for your interest in contributing to ChaptarrNG.
 - Be open to discussion and feedback
 
 ### 3. Submit Code
-- Fork the repository
-- Create a feature branch (`git checkout -b feature/amazing-feature`)
+- Clone the repository; fork it only if you do not have write access
+- Work on `main` when current GitHub rules allow direct pushes; otherwise create a feature branch
+  (`git checkout -b feature/amazing-feature`)
 - Make your changes
 - Test thoroughly
-- Submit a Pull Request
+- Open a pull request only when current GitHub rules require one; push directly to `main` when they allow it
 
 ### 4. Improve Documentation
 - Fix typos, clarify instructions
