@@ -6,6 +6,7 @@ import { fetchMetadataProfileGenres, fetchMetadataProfileSchema, saveMetadataPro
 import createProfileInUseSelector from 'Store/Selectors/createProfileInUseSelector';
 import createProviderSettingsSelector from 'Store/Selectors/createProviderSettingsSelector';
 import EditMetadataProfileModalContent from './EditMetadataProfileModalContent';
+import { identifierRequirements } from './identifierRequirement';
 
 function createMapStateToProps() {
   return createSelector(
@@ -74,6 +75,14 @@ class EditMetadataProfileModalContentConnector extends Component {
   // Listeners
 
   onInputChange = ({ name, value }) => {
+    if (name === 'skipMissingIdentifierRequirement') {
+      const flags = identifierRequirements[value] ?? identifierRequirements.none;
+
+      this.props.setMetadataProfileValue({ name: 'skipMissingIsbn', value: flags.skipMissingIsbn });
+      this.props.setMetadataProfileValue({ name: 'skipMissingAsin', value: flags.skipMissingAsin });
+      return;
+    }
+
     this.props.setMetadataProfileValue({ name, value });
 
     if (name === 'skipMissingIdentifierOmnibus' && !value) {

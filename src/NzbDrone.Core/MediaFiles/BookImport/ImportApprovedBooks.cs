@@ -182,6 +182,19 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             private readonly IUpgradableSpecification _upgradableSpecification;
             private readonly Logger _logger;
 
+        internal void TryDeleteCalibreSource(string path)
+        {
+            try
+            {
+                _diskProvider.DeleteFile(path);
+            }
+            catch (Exception ex)
+            {
+                // The book is already in Calibre; failing the import here would make a retry add it twice.
+                _logger.Warn(ex, "Imported {0} into Calibre but could not remove the source file", path);
+            }
+        }
+
         public ImportApprovedBooks(
             IMediaFileService mediaFileService,
             IMetadataTagService metadataTagService,
@@ -1626,7 +1639,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                                 if (!copyOnly && !calibreSource.PathEquals(bookFile.Path))
                                 {
-                                    _diskProvider.DeleteFile(calibreSource);
+                                    TryDeleteCalibreSource(calibreSource);
                                 }
                             }
                             else if (copyOnly)
