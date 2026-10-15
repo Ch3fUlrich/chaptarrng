@@ -1,6 +1,7 @@
 # Release-note fragments
 
-Add one Markdown fragment for every user-facing pull request. The release
+For any user-facing change, add one structured fragment under `release-notes/` describing it. A
+single fragment may cover related user-facing changes in the same pull request. Keep shipped fragments unchanged. The release
 workflow collects fragments added since the last published release and includes
 them in the generated changelog, GitHub release, and Discord announcement.
 
@@ -36,6 +37,7 @@ editing a fragment that has shipped. Preview changes with:
 yarn release-notes:preview --base origin/main --head HEAD
 ~~~
 
-For changes with no user-visible behavior, documentation, security, or
-operational effect, put release-note: none in the pull request description and
-select the internal-only option in the pull request template.
+For internal-only work, no fragment is needed. In a pull request, either select the internal-only
+option in the template or put `release-note: none` on its own line in the description. When a
+direct push or merge check reads commit messages, put the same marker on its own line in the
+commit message.

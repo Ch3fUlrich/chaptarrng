@@ -120,10 +120,9 @@ Set `CHAPTARRNG_UNRAID_REPO` if that checkout is elsewhere.
 ## Submitting pull requests
 
 1. **Before submitting:**
-   - Rebase on the latest `main` branch
-   - Ensure all tests pass (`dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj`)
+   - Keep the branch current with `main` only when current GitHub rules require it, using rebase or merge
+   - Merge after the checks and approvals required by current GitHub rules are satisfied
    - Update documentation if needed
-   - One feature/fix per PR
 
 2. **PR Description should include:**
    - What changed and why
@@ -132,9 +131,8 @@ Set `CHAPTARRNG_UNRAID_REPO` if that checkout is elsewhere.
    - Testing performed
 
 3. **After submitting:**
-   - Respond to code review feedback
-   - Make requested changes
-   - Be patient - reviews take time
+   - Respond to any review feedback and make requested changes
+   - An explicit maintainer direction to merge is sufficient; no additional review or approval is required beyond current GitHub rules. Use any merge method enabled in GitHub
 
 ## Questions?
 
