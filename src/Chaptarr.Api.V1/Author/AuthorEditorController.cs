@@ -21,19 +21,38 @@ namespace Chaptarr.Api.V1.Author
         private readonly IRootFolderService _rootFolderService;
         private readonly IQualityProfileService _qualityProfileService;
         private readonly IMetadataProfileService _metadataProfileService;
+        private readonly IBackfillAuthorRootFolders _rootFolderBackfill;
 
         public AuthorEditorController(
             IAuthorService authorService,
             IManageCommandQueue commandQueueManager,
             IRootFolderService rootFolderService,
             IQualityProfileService qualityProfileService,
-            IMetadataProfileService metadataProfileService)
+            IMetadataProfileService metadataProfileService,
+            IBackfillAuthorRootFolders rootFolderBackfill)
         {
+            _rootFolderBackfill = rootFolderBackfill;
             _authorService = authorService;
             _commandQueueManager = commandQueueManager;
             _rootFolderService = rootFolderService;
             _qualityProfileService = qualityProfileService;
             _metadataProfileService = metadataProfileService;
+        }
+
+        /// <summary>
+        /// Fills the blank audiobook or ebook root folder of authors that have only one, from the
+        /// effective default root folder. With dryRun=true only the counts are returned.
+        /// </summary>
+        [HttpPost("backfill-roots")]
+        public IActionResult BackfillRootFolders([FromQuery] bool dryRun = false)
+        {
+            if (dryRun)
+            {
+                return Ok(_rootFolderBackfill.Backfill(true));
+            }
+
+            var command = _commandQueueManager.Push(new BackfillAuthorRootFoldersCommand());
+            return Accepted(new { commandId = command?.Id });
         }
 
         [HttpPut]

@@ -296,6 +296,7 @@
   "FailureStage": "Failure stage",
   "GenericSeriesTitleWithDifferentPositionPlaceholder": "Only series-title fields with a different position",
   "KnownAccurateMetadataPlaceholder": "Known accurate metadata",
+  "MamUnsatisfiedSlotStatusStale": "Unsatisfied-torrent slot status is unavailable or out of date, so grabs from these MyAnonaMouse indexers are blocked until it refreshes: {0}",
   "NamingBuilderErrorConsecutiveFolderSeparators": "Cannot have consecutive folder separators",
   "NamingBuilderErrorEmptyGroup": "A group must contain at least one item.",
   "NamingBuilderErrorMissingToken": "The token key is missing.",

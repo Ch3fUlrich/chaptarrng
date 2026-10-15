@@ -74,6 +74,28 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(memory.Logs, Has.Some.EqualTo($"Warn|Skipping scan cleanup for {target} because its root folder {root} is not visible. This may be a missing mount or unavailable root folder."));
         }
 
+        [Test]
+        public void rescan_reports_each_folder_as_a_command_progress_message()
+        {
+            var memory = ConfigureProgressLogging();
+            var subject = CreateSubject("/books", rootExists: true);
+
+            subject.ReportFolderProgress(2, 5, "/books/Author", isInitialImport: false);
+
+            Assert.That(memory.Logs, Has.Some.EqualTo("Info|progress|Scanning folder 2/5: /books/Author"));
+        }
+
+        [Test]
+        public void initial_import_keeps_folder_progress_out_of_the_command_message()
+        {
+            var memory = ConfigureProgressLogging();
+            var subject = CreateSubject("/books", rootExists: true);
+
+            subject.ReportFolderProgress(2, 5, "/books/Author", isInitialImport: true);
+
+            Assert.That(memory.Logs, Has.Some.EqualTo("Debug|plain|Scanning folder 2/5: /books/Author"));
+        }
+
         private static DiskScanService CreateSubject(string rootPath, bool rootExists)
         {
             var diskProvider = DispatchProxy.Create<NzbDrone.Common.Disk.IDiskProvider, DiskProviderProxy>();
@@ -110,11 +132,32 @@ namespace Chaptarr.Core.Test.MediaFiles
                 logger: LogManager.GetLogger(nameof(DiskScanMissingFolderLoggingFixture)));
         }
 
-        private static MemoryTarget ConfigureLogging()
+        private sealed class ProgressFlagTarget : TargetWithLayout
+        {
+            public List<string> Logs { get; } = new();
+
+            protected override void Write(LogEventInfo logEvent)
+            {
+                var kind = logEvent.Properties.ContainsKey("Status") ? "progress" : "plain";
+                Logs.Add($"{logEvent.Level}|{kind}|{logEvent.FormattedMessage}");
+            }
+        }
+
+        private static ProgressFlagTarget ConfigureProgressLogging()
+        {
+            var target = new ProgressFlagTarget();
+            var config = new LoggingConfiguration();
+            config.AddRule(LogLevel.Debug, LogLevel.Fatal, target, nameof(DiskScanMissingFolderLoggingFixture));
+            LogManager.Configuration = config;
+            LogManager.ReconfigExistingLoggers();
+            return target;
+        }
+
+        private static MemoryTarget ConfigureLogging(string layout = "${level}|${message}")
         {
             var memory = new MemoryTarget("disk-scan-memory")
             {
-                Layout = "${level}|${message}"
+                Layout = layout
             };
             var config = new LoggingConfiguration();
             config.AddRule(LogLevel.Debug, LogLevel.Fatal, memory, nameof(DiskScanMissingFolderLoggingFixture));

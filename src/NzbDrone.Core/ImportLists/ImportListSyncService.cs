@@ -313,6 +313,22 @@ namespace NzbDrone.Core.ImportLists
             return config;
         }
 
+        // True when the list monitors a format the author has no settings for yet (no root folder or quality profile).
+        internal static bool AuthorLacksEnabledMediaSide(Author author, IGoodreadsDualMediaImportListSettings settings)
+        {
+            if (author == null || settings == null)
+            {
+                return false;
+            }
+
+            var lacksAudiobook = settings.MonitorAudiobooks &&
+                                 (author.AudiobookRootFolderPath.IsNullOrWhiteSpace() || author.AudiobookQualityProfileId == null);
+            var lacksEbook = settings.MonitorEbooks &&
+                             (author.EbookRootFolderPath.IsNullOrWhiteSpace() || author.EbookQualityProfileId == null);
+
+            return lacksAudiobook || lacksEbook;
+        }
+
         private bool QueueAuthorForImportList(ImportListDefinition importList,
             string authorProviderId,
             string authorName,
@@ -2501,6 +2517,7 @@ namespace NzbDrone.Core.ImportLists
                         // Respect "Monitor Existing" for authors already in Chaptarr. Newly added authors should always be processed.
                         if (!importList.ShouldMonitorExisting)
                         {
+                            _logger.Debug("Import list '{0}': not monitoring book {1} for author {2} because Monitor Existing is off", importList.Name, bookProviderId, authorProviderId);
                             continue;
                         }
 
@@ -2569,6 +2586,10 @@ namespace NzbDrone.Core.ImportLists
                                 {
                                     _bookService.UpdateMany(books);
                                     booksMonitored++;
+                                }
+                                else
+                                {
+                                    _logger.Debug("Import list '{0}': no local book matches {1} for existing author {2}; nothing to monitor yet", importList.Name, bookProviderId, author.Name);
                                 }
 
                                 EnsureAuthorMonitoringForBooks(author, books);
@@ -2976,6 +2997,22 @@ namespace NzbDrone.Core.ImportLists
 
                             if (!targetBooks.Any())
                             {
+                                var existingAuthorSettings = GetGoodreadsSettings(importList);
+
+                                if (existingAuthorSettings != null && AuthorLacksEnabledMediaSide(author, existingAuthorSettings))
+                                {
+                                    // The author was added for one format only. Bring the list's other enabled format
+                                    // (profiles, root folder, catalog) in through the same queued path a new author takes.
+                                    var sideConfig = BuildMonitoringConfigForGoodreadsImportList(importList, existingAuthorSettings, authorProviderId, report.Author, goodreadsBooksToMonitor);
+
+                                    if (!QueueAuthorForImportList(importList, authorProviderId, report.Author, sideConfig, pendingAuthors, "missing media type"))
+                                    {
+                                        applyFailureCount++;
+                                    }
+
+                                    continue;
+                                }
+
                                 _logger.Warn("Import list '{0}': book '{1}' by '{2}' was not found locally after ensuring author exists; it may have been filtered out or the media type is disabled",
                                     importList.Name, report.Book, report.Author);
                                 continue;
