@@ -74,7 +74,7 @@ jobs:
           echo 'Package retries must run from main.' >&2
           exit 1
         fi
-        state="$(gh release view "$TAG" --json isDraft,isPrerelease)"
+        state="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease)"
         echo "$state" | jq -e '.isDraft == false and .isPrerelease == false' >/dev/null
         {
           echo "tag=$TAG"
@@ -405,6 +405,11 @@ jobs:
     if: needs.credentials.outputs.chocolatey == 'true'
     runs-on: windows-latest
     steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ inputs.tag }}
+        persist-credentials: false
+
     - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: chaptarrng-chocolatey-packages
