@@ -154,3 +154,6 @@ docs/api/
 Tools/ffmpeg/*/
 Tools/ffprobe/*/
 !Tools/README.md
+
+# Local dependency links
+node_modules
