@@ -1057,7 +1057,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     Size = fileInfo.Length,
                     Modified = fileInfo.LastWriteTimeUtc,
                     Quality = file.Quality,
-                    IndexerFlags = (IndexerFlags)file.IndexerFlags
+                    IndexerFlags = (IndexerFlags)file.IndexerFlags,
+                    IsGraphicAudio = file.IsGraphicAudio == true,
+                    AudioProductionType = file.AudioProductionType
                 };
 
                 var importDecision = new ImportDecision<LocalBook>(localTrack);

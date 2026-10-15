@@ -53,7 +53,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return Decision.Accept();
             }
 
-            foreach (var file in subject.Books.Where(b => b.BookFiles != null).SelectMany(c => c.BookFiles))
+            foreach (var file in SplitPartFileFilter.ComparableFiles(subject, subject.Books.Where(b => b.BookFiles != null).SelectMany(c => c.BookFiles)))
             {
                 if (file == null)
                 {

@@ -103,15 +103,36 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             string importSourcePath,
             int editionId,
             bool manualReplaceExisting,
-            BookImportBatchState batchState)
+            BookImportBatchState batchState,
+            int incomingReleasePart = 0,
+            bool? incomingIsGraphicAudio = null)
         {
             if (existingFile?.Path.IsNullOrWhiteSpace() != false)
             {
                 return false;
             }
 
+            // One piece of a split release only ever supersedes the same piece of an earlier grab.
+            // It must not displace its sibling pieces, nor a complete copy of the book. A complete
+            // file (no release part) is still free to replace every piece.
+            if (incomingReleasePart > 0 && existingFile.ReleasePart != incomingReleasePart)
+            {
+                return false;
+            }
+
             if (importSourcePath.IsNotNullOrWhiteSpace() &&
                 existingFile.Path.Equals(importSourcePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // A dramatized (GraphicAudio / full cast) recording and a straight read of the same
+            // edition are different productions, not an upgrade of one another. Only an explicit
+            // replace may swap one for the other. incomingIsGraphicAudio is null for non-audio imports.
+            if (!manualReplaceExisting &&
+                incomingIsGraphicAudio.HasValue &&
+                existingFile.MediaType == "audiobook" &&
+                existingFile.IsGraphicAudio != incomingIsGraphicAudio.Value)
             {
                 return false;
             }
@@ -1201,10 +1222,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             .ToHashSet(StringComparer.OrdinalIgnoreCase)
                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+                    bool? incomingIsGraphicAudio = BookFile.DetermineMediaType(localBook.Quality) == "audiobook"
+                        ? localBook.IsGraphicAudio || DetectGraphicAudioFromLocalTags(localBook)
+                        : null;
+
                     var filesToReplace = existingFiles
                         .Where(f =>
                         {
-                            if (IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState))
+                            if (IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState, localBook.ReleasePart, incomingIsGraphicAudio))
                             {
                                 return true;
                             }
@@ -1217,7 +1242,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             }
 
                             return conversionSourcePaths.Contains(f.Path) &&
-                                   IsReplaceableExistingFile(f, localBook.Path, f.EditionId, true, batchState);
+                                   IsReplaceableExistingFile(f, localBook.Path, f.EditionId, true, batchState, localBook.ReleasePart);
                         })
                         .ToList();
 
@@ -1320,6 +1345,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                         bookFile.Part = localBook.Part > 0 ? localBook.Part : 1;
                         bookFile.PartCount = localBook.PartCount;
+                        bookFile.ReleasePart = localBook.ReleasePart;
+                        bookFile.ReleasePartCount = localBook.ReleasePartCount;
                         bookFile.Size = localBook.Size;
                         bookFile.Modified = localBook.Modified;
                         bookFile.Quality = localBook.Quality;
@@ -1355,6 +1382,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             CalibreId = localBook.CalibreId,
                             Part = localBook.Part > 0 ? localBook.Part : 1,
                             PartCount = localBook.PartCount,
+                            ReleasePart = localBook.ReleasePart,
+                            ReleasePartCount = localBook.ReleasePartCount,
                             Size = localBook.Size,
                             Modified = localBook.Modified,
                             DateAdded = DateTime.UtcNow,
@@ -4398,6 +4427,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 Author = author,
                 Part = localBook.Part,
                 PartCount = localBook.PartCount,
+                ReleasePart = localBook.ReleasePart,
+                ReleasePartCount = localBook.ReleasePartCount,
                 MediaType = BookFile.DetermineMediaType(localBook.Quality)
             };
 
@@ -4443,6 +4474,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     Author = author,
                     Part = localBook.Part,
                     PartCount = localBook.PartCount,
+                    ReleasePart = localBook.ReleasePart,
+                    ReleasePartCount = localBook.ReleasePartCount,
                     MediaType = BookFile.DetermineMediaType(localBook.Quality)
                 };
 

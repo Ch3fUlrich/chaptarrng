@@ -631,7 +631,7 @@ namespace NzbDrone.Core.MediaFiles
             return new ImportDecision<LocalBook>(local);
         }
 
-        private static void ApplyTrackedReleaseEvidence(
+        internal static void ApplyTrackedReleaseEvidence(
             IEnumerable<ImportDecision<LocalBook>> decisions,
             RemoteBook remoteBook,
             DownloadClientItem downloadClientItem)
@@ -654,6 +654,9 @@ namespace NzbDrone.Core.MediaFiles
                 sceneName = parsed?.ReleaseTitle;
             }
 
+            var splitPart = NzbDrone.Core.Parser.ReleasePackDetector.ParseSplitPart(
+                !string.IsNullOrWhiteSpace(release?.Title) ? release.Title : sceneName);
+
             sceneName = string.IsNullOrWhiteSpace(sceneName)
                 ? null
                 : NzbDrone.Core.Parser.Parser.RemoveFileExtension(sceneName);
@@ -675,6 +678,8 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
                 localBook.IndexerFlags = release?.IndexerFlags ?? localBook.IndexerFlags;
+                localBook.ReleasePart = splitPart?.Index ?? 0;
+                localBook.ReleasePartCount = splitPart?.Count ?? 0;
                 localBook.IsGraphicAudio = release?.IsGraphicAudio == true || parsed?.IsGraphicAudio == true;
                 localBook.AudioProductionType = !string.IsNullOrWhiteSpace(parsed?.AudioProductionType)
                     ? parsed.AudioProductionType

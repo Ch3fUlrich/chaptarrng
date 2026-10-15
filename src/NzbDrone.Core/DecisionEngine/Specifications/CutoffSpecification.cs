@@ -42,7 +42,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return Decision.Reject("No quality profile configured for {0} files", subject.ParsedBookInfo.Quality.Quality.Name);
             }
 
-            foreach (var file in subject.Books.SelectMany(b => b.BookFiles))
+            foreach (var file in SplitPartFileFilter.ComparableFiles(subject, subject.Books.SelectMany(b => b.BookFiles)))
             {
                 var currentQualities = new List<QualityModel> { file.Quality };
 
