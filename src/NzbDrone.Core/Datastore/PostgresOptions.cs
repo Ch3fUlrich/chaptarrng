@@ -11,6 +11,9 @@ namespace NzbDrone.Core.Datastore
         public string MainDb { get; set; }
         public string LogDb { get; set; }
         public string CacheDb { get; set; }
+        public string SslMode { get; set; }
+        public string RootCert { get; set; }
+        public bool? NoResetOnClose { get; set; }
 
         public static PostgresOptions GetOptions()
         {

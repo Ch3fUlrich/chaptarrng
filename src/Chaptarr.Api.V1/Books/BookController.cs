@@ -617,7 +617,9 @@ namespace Chaptarr.Api.V1.Books
             [FromQuery] bool includeAllAuthorBooks = false,
             [FromQuery] string mediaType = null,
             [FromQuery] bool? monitored = null,
-            [FromQuery] string include = null)
+            [FromQuery] string include = null,
+            [FromQuery] int? offset = null,
+            [FromQuery] int? limit = null)
         {
             _logger.DebugSafe("[API-PERFORMANCE] GetBooks called: authorId={0}, bookIds.Count={1}, bookId='{2}', titleSlug='{3}', mediaType='{4}', monitored={5}",
                 authorId, bookIds?.Count ?? 0, bookId, titleSlug, mediaType, monitored);
@@ -681,6 +683,12 @@ namespace Chaptarr.Api.V1.Books
                     {
                         _logger.Debug("[API-DEBUG] All view (all books): {0} books", filteredBooks.Count);
                     }
+                }
+
+                if (BookListPaging.IsRequested(offset, limit))
+                {
+                    Response.Headers["X-Total-Count"] = filteredBooks.Count.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+                    filteredBooks = BookListPaging.Slice(filteredBooks, offset, limit, b => b.Id);
                 }
 
                 return MapToResource(filteredBooks,

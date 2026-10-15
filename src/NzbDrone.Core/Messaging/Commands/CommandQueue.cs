@@ -11,9 +11,11 @@ namespace NzbDrone.Core.Messaging.Commands
         private readonly object _mutex = new object();
         private readonly List<CommandModel> _items;
         private readonly Func<string, int> _getDiskAccessGroupLimit;
+        private readonly Func<int> _getThreadLimit;
 
-        public CommandQueue(Func<string, int> getDiskAccessGroupLimit = null)
+        public CommandQueue(Func<string, int> getDiskAccessGroupLimit = null, Func<int> getThreadLimit = null)
         {
+            _getThreadLimit = getThreadLimit;
             _items = new List<CommandModel>();
             _getDiskAccessGroupLimit = getDiskAccessGroupLimit ?? (_ => 1);
         }
@@ -220,6 +222,13 @@ namespace NzbDrone.Core.Messaging.Commands
                                 continue;
                             }
 
+                            // Commands that leave a thread free never take the last one, so short commands
+                            // keep running while a backlog of these is waiting on shared resources.
+                            if (candidate.Body.LeavesThreadForOtherCommands && IsAtThreadReserveLimit(candidate, startedCommands))
+                            {
+                                continue;
+                            }
+
                             // Release selection must observe a stable library inventory. Searches wait for
                             // active disk work, and disk work waits for an active search, independent of the
                             // configured concurrency for ordinary disk-access groups.
@@ -262,6 +271,19 @@ namespace NzbDrone.Core.Messaging.Commands
             }
 
             return rval;
+        }
+
+        private bool IsAtThreadReserveLimit(CommandModel candidate, List<CommandModel> startedCommands)
+        {
+            if (_getThreadLimit == null)
+            {
+                return false;
+            }
+
+            var limit = Math.Max(1, _getThreadLimit() - 1);
+            var running = startedCommands.Count(r => string.Equals(r.Name, candidate.Name, StringComparison.OrdinalIgnoreCase));
+
+            return running >= limit;
         }
 
         private bool IsBlockedByDiskAccess(Command candidate, List<CommandModel> startedCommands)

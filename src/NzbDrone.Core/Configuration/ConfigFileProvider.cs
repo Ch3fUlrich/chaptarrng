@@ -65,6 +65,9 @@ namespace NzbDrone.Core.Configuration
         string PostgresMainDb { get; }
         string PostgresLogDb { get; }
         string PostgresCacheDb { get; }
+        string PostgresSslMode { get; }
+        string PostgresRootCert { get; }
+        bool PostgresNoResetOnClose { get; }
         bool TrustCgnatIpAddresses { get; }
         string OidcAuthority { get; }
         string OidcClientId { get; }
@@ -292,6 +295,9 @@ namespace NzbDrone.Core.Configuration
         public string PostgresMainDb => _postgresOptions?.MainDb ?? GetValue("PostgresMainDb", "chaptarr-main", persist: false);
         public string PostgresLogDb => _postgresOptions?.LogDb ?? GetValue("PostgresLogDb", "chaptarr-log", persist: false);
         public string PostgresCacheDb => _postgresOptions?.CacheDb ?? GetValue("PostgresCacheDb", "chaptarr-cache", persist: false);
+        public string PostgresSslMode => _postgresOptions?.SslMode ?? GetValue("PostgresSslMode", string.Empty, persist: false);
+        public string PostgresRootCert => _postgresOptions?.RootCert ?? GetValue("PostgresRootCert", string.Empty, persist: false);
+        public bool PostgresNoResetOnClose => _postgresOptions?.NoResetOnClose ?? GetValueBoolean("PostgresNoResetOnClose", true, persist: false);
         public int PostgresPort => (_postgresOptions?.Port ?? 0) != 0 ? _postgresOptions.Port : GetValueInt("PostgresPort", 5432, persist: false);
 
         public string Theme => _appOptions.Theme ?? GetValue("Theme", "auto", persist: false);

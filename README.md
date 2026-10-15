@@ -220,6 +220,9 @@ Environment variables:
 - `Chaptarr__Postgres__MainDb` (default: `chaptarr-main`)
 - `Chaptarr__Postgres__LogDb` (default: `chaptarr-log`)
 - `Chaptarr__Postgres__CacheDb` (default: `chaptarr-cache`)
+- `Chaptarr__Postgres__SslMode` (optional: `disable`, `allow`, `prefer`, `require`, `verify-ca`, or `verify-full`; when unset the Npgsql default applies)
+- `Chaptarr__Postgres__RootCert` (optional: path to a PEM root certificate used to verify the server for `verify-ca` and `verify-full`; startup fails with a clear message if the file is missing)
+- `Chaptarr__Postgres__NoResetOnClose` (default: `true`; skips the session reset round-trip when a pooled connection is returned, set to `false` to restore it)
 
 Note: ChaptarrNG does not create PostgreSQL databases automatically; create the databases and grant the configured user access.
 
