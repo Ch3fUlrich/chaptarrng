@@ -13,8 +13,12 @@ history grouped from conventional commits.
 - **Dependencies:** The frontend build and lint dependency tree now rejects brace and parenthesis patterns nested deeper than 256 levels, preventing the recursive parser from exhausting the JavaScript call stack while the upstream package has no published fix.
 
 ### Bug Fixes
-- *(docker)* Copy local braces package before dependency install - ([b97fdec](https://github.com/snapetech-org/chaptarrng/commit/b97fdec12704f2edcbbe49592da3d4dd78bb9697))
+- *(docker)* Include local braces dependency in cross build - ([702215d](https://github.com/snapetech-org/chaptarrng/commit/702215db08be1f07419644dd40400799bada6b12))
 ## [0.9.973](https://github.com/snapetech-org/chaptarrng/compare/v0.9.972..v0.9.973) - 2026-10-16
+
+### Bug Fixes
+- *(docker)* Copy local braces package before dependency install - ([b97fdec](https://github.com/snapetech-org/chaptarrng/commit/b97fdec12704f2edcbbe49592da3d4dd78bb9697))
+- *(security)* Bound frontend braces parser nesting - ([f990f64](https://github.com/snapetech-org/chaptarrng/commit/f990f64c4f4bdb1072eb034e5b95a3470bb37be8))## [0.9.973](https://github.com/snapetech-org/chaptarrng/compare/v0.9.972..v0.9.973) - 2026-10-16
 
 ### Bug Fixes
 - *(security)* Bound frontend braces parser nesting - ([f990f64](https://github.com/snapetech-org/chaptarrng/commit/f990f64c4f4bdb1072eb034e5b95a3470bb37be8))## [0.9.972](https://github.com/snapetech-org/chaptarrng/compare/v0.9.971..v0.9.972) - 2026-10-16
