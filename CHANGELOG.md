@@ -4,6 +4,17 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.973](https://github.com/snapetech-org/chaptarrng/compare/v0.9.972..v0.9.973) - 2026-10-16
+
+### User-facing changes
+
+#### Security
+
+- **Dependencies:** The frontend build and lint dependency tree now rejects brace and parenthesis patterns nested deeper than 256 levels, preventing the recursive parser from exhausting the JavaScript call stack while the upstream package has no published fix.
+
+### Bug Fixes
+- *(security)* Bound frontend braces parser nesting - ([f990f64](https://github.com/snapetech-org/chaptarrng/commit/f990f64c4f4bdb1072eb034e5b95a3470bb37be8))
+
 ## [0.9.972](https://github.com/snapetech-org/chaptarrng/compare/v0.9.971..v0.9.972) - 2026-10-16
 
 ### User-facing changes
