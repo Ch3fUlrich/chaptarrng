@@ -144,6 +144,7 @@ jobs:
       with:
         name: chaptarrng-aur-recipes
         path: ${{ runner.temp }}/aur-output/
+        include-hidden-files: true
         retention-days: 1
         if-no-files-found: error
 
