@@ -1,6 +1,6 @@
 # Move a BookshelfNG installation to ChaptarrNG
 
-> **Release status.** Use the standard ChaptarrNG `v0.9.972` release or a
+> **Release status.** Use the standard ChaptarrNG `v0.9.973` release or a
 > later stable version for the final BookshelfNG `0.4.21.70` source. That
 > BookshelfNG release includes an optional source-side helper that creates a
 > full appdata archive before invoking ChaptarrNG's preview, apply, and

@@ -1,6 +1,6 @@
 {
   "name": "chaptarrng",
-  "version": "0.9.972",
+  "version": "0.9.973",
   "description": "ChaptarrNG, the SeerrNG-maintained Chaptarr fork",
   "scripts": {
     "release-notes:preview": "node scripts/preview-release-notes.mjs",
@@ -167,6 +167,7 @@
     "yarn": "1.22.22"
   },
   "resolutions": {
+    "braces": "file:patches/braces",
     "**/@babel/plugin-transform-modules-systemjs": "7.29.8",
     "**/colord": "2.9.4",
     "**/cross-spawn": "7.0.6",

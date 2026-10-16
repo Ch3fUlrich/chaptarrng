@@ -29,8 +29,9 @@ The application continues to identify itself as `Chaptarr` through its Readarr-c
 BookshelfNG `0.4.21.70` is designated its final release. The release includes
 a source-side helper that archives appdata before calling the standard
 ChaptarrNG migration and rollback commands. The matching ChaptarrNG release is
-[`v0.9.972`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.972);
-it includes stricter rejection of incomplete or stale media maps. Read the
+[`v0.9.973`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.973);
+it includes stricter rejection of incomplete or stale media maps and a frontend
+dependency security fix. Read the
 [BookshelfNG handoff guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md)
 before migrating.
 
@@ -73,7 +74,7 @@ not be included in the latest published image yet.
 
 The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
 defines the cumulative upstream gate: every BookshelfNG feature carried over
-and every ChaptarrNG feature introduced or maintained through `v0.9.971`
+and every ChaptarrNG feature introduced or maintained through `v0.9.973`
 blocks retirement as a whole and remains an individual acceptance gate.
 Carrying over a BookshelfNG capability adds to this set; it does not replace
 or reduce ChaptarrNG's own blockers.
@@ -386,6 +387,11 @@ CI runs CodeQL and Trivy dependency/secret scans. Published container images
 include a BuildKit SBOM and provenance metadata, plus a GitHub build-provenance
 attestation. The Compose example also enables `no-new-privileges` and binds
 the published web port to loopback by default.
+
+The frontend build uses a local `braces` parser depth limit while its upstream
+package has no published fix for GHSA-vfj7-8cjw-p6xm. See the
+[dependency security notes](docs/dependency-security.md) for the patch details,
+audit commands, and removal criteria.
 
 Use the `X-Api-Key` header for API clients. ChaptarrNG still accepts the legacy
 `apikey` query parameter for compatibility, so reverse proxies should redact
