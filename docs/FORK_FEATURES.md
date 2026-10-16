@@ -15,11 +15,9 @@ comparison is Chaptarr's `develop` branch as reviewed on 2026-10-12 at
 ChaptarrNG `main`'s history.
 
 This guide groups behavior rather than listing every fix, dependency update,
-or upstream report. The
-[upstream issue and PR ledger](./maintainers/upstream-backlog.json) provides
-the item-by-item audit snapshot and its evidence. Some items remain
-unreviewed, need reproduction, or depend on an external service; the ledger
-and this overview do not claim that the full upstream backlog is resolved.
+or upstream report. Some items need reproduction or depend on an external
+service, so this overview does not claim that every reported problem is
+resolved.
 
 The published release is the comparison baseline, not the limit of the
 retirement scope. The later ChaptarrNG gate covers the cumulative union of
@@ -52,18 +50,11 @@ equivalence until the matrix checks pass.
 
 The current integration candidate carries the metadata-profile edition and
 series preferences, their consumers, the BookshelfNG database/configuration
-migration, and the current upstream-backlog changes. It uses the ordinary
+migration, and the accompanying fixes. It uses the ordinary
 ChaptarrNG executable and image for both fresh installs and migrated installs;
-there is no compatibility build. PR #100 does not complete the upstream
-issue/PR audit or either retirement gate.
+there is no compatibility build.
 
-The earlier pinned backlog snapshot at
-[`c26dd7f`](https://github.com/snapetech-org/chaptarrng/tree/c26dd7f) was 306
-commits ahead and 13 behind ChaptarrNG `main`, with 680 changed paths (45,693
-insertions and 6,178 deletions). Its
-[ledger](https://github.com/snapetech-org/chaptarrng/blob/c26dd7f/docs/maintainers/upstream-backlog.json)
-records 305 upstream issue and pull-request items: 213 implemented items
-awaiting final validation and 79 unreviewed. That snapshot adds or extends
+This work adds or extends
 RanobeDB and Audible metadata, audiobook conversion and metadata, safe
 existing-file adoption, import matching and recovery, Calibre, AudioBookShelf,
 Grimmory, Emby/Jellyfin, MQTT/Home Assistant events, Prometheus metrics,
@@ -105,7 +96,7 @@ The sections below also cover the maintained import, metadata, external-library,
 and developer-validation additions. They are separate from the SeerrNG contract
 and can be used without SeerrNG.
 
-The upstream-backlog work also adds an optional MQTT Gateway for library
+This work also adds an optional MQTT Gateway for library
 snapshots, lifecycle events, and Home Assistant discovery, plus opt-in
 canonical lifecycle requests for existing Webhook connections. See the
 [MQTT Gateway guide](./MQTT_GATEWAY.md) for topic and payload details.

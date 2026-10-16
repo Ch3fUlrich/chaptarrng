@@ -12,6 +12,11 @@ namespace NzbDrone.Core.Parser.Model
         public int CalibreId { get; set; }
         public int Part { get; set; }
         public int PartCount { get; set; }
+
+        // Position and total of the split release this file was delivered in (0 when the file is not
+        // one piece of a split release). Taken from the tracked release title, not from file contents.
+        public int ReleasePart { get; set; }
+        public int ReleasePartCount { get; set; }
         public long Size { get; set; }
         public DateTime Modified { get; set; }
         public int? DurationSeconds { get; set; }

@@ -149,6 +149,59 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         {
             private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _entries = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(StringComparer.Ordinal);
 
+            // Hydrated books shared across the files of one preview. Matching only reads these entities
+            // (the one write is an idempotent fill of a missing Author), so instances are shared rather than copied.
+            private readonly System.Collections.Concurrent.ConcurrentDictionary<int, Book> _books = new System.Collections.Concurrent.ConcurrentDictionary<int, Book>();
+
+            public Book GetBook(int bookId, Func<int, Book> load)
+            {
+                if (_books.TryGetValue(bookId, out var cached))
+                {
+                    return cached;
+                }
+
+                var book = load(bookId);
+                if (book != null)
+                {
+                    _books[bookId] = book;
+                }
+
+                return book;
+            }
+
+            public List<Book> GetBooks(IReadOnlyCollection<int> bookIds, Func<List<int>, List<Book>> load)
+            {
+                var result = new List<Book>(bookIds.Count);
+                var missing = new List<int>();
+
+                foreach (var id in bookIds)
+                {
+                    if (_books.TryGetValue(id, out var cached))
+                    {
+                        result.Add(cached);
+                    }
+                    else
+                    {
+                        missing.Add(id);
+                    }
+                }
+
+                if (missing.Count > 0)
+                {
+                    foreach (var book in load(missing) ?? new List<Book>())
+                    {
+                        if (book == null)
+                        {
+                            continue;
+                        }
+
+                        result.Add(_books.GetOrAdd(book.Id, book));
+                    }
+                }
+
+                return result;
+            }
+
             // The memo must never change behaviour: anything that cannot be keyed, serialized or deserialized
             // (for example a NaN/Infinity score, which System.Text.Json refuses) falls back to computing directly.
             public T GetOrCompute<T>(string kind, Func<string> keyFactory, Func<T> compute)
@@ -187,6 +240,18 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 return value;
             }
+        }
+
+        private Book GetBookForMatching(int bookId)
+        {
+            var memo = _perFileFtsMemo.Value;
+            return memo == null ? _bookService.GetBook(bookId) : memo.GetBook(bookId, _bookService.GetBook);
+        }
+
+        private List<Book> GetBooksForMatching(List<int> bookIds)
+        {
+            var memo = _perFileFtsMemo.Value;
+            return memo == null ? _bookService.GetBooks(bookIds) : memo.GetBooks(bookIds, _bookService.GetBooks);
         }
 
         internal T WithPerFileFtsMemo<T>(bool enabled, Func<T> body)
@@ -4855,7 +4920,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             {
                 try
                 {
-                    var book = _bookService.GetBook(candidate.BookId);
+                    var book = GetBookForMatching(candidate.BookId);
                     if (booksById != null)
                     {
                         booksById[candidate.BookId] = book;
@@ -6551,7 +6616,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 try
                 {
                     var uniqueBookIds = ftsResults.Select(r => r.BookId).Distinct().ToList();
-                    var books = _bookService.GetBooks(uniqueBookIds) ?? new List<Book>();
+                    var books = GetBooksForMatching(uniqueBookIds) ?? new List<Book>();
                     booksById = books
                         .Where(b => b != null)
                         .GroupBy(b => b.Id)
@@ -10012,7 +10077,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 try
                 {
-                    var loaded = _bookService.GetBook(bookId);
+                    var loaded = GetBookForMatching(bookId);
                     if (booksById != null)
                     {
                         booksById[bookId] = loaded;

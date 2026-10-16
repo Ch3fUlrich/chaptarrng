@@ -27,9 +27,9 @@ on:
         required: false
 
 env:
-  # The public package predates the repository transfer into snapetech-org.
-  # Keep the stable image identity used by existing installs and documentation.
-  STANDARD_IMAGE: ghcr.io/snapetech/chaptarrng
+  # The standard image is published under the organization that owns the
+  # repository so the workflow token can push to it.
+  STANDARD_IMAGE: ghcr.io/snapetech-org/chaptarrng
   REGISTRY: ghcr.io
 
 jobs:

@@ -24,7 +24,7 @@ source. Run Validate and Scan in the portal before submitting.
 ## Manual installation
 
 Use the [ChaptarrNG template XML](templates/chaptarrng.xml) with Unraid's
-Docker template workflow. It installs `ghcr.io/snapetech/chaptarrng:latest`
+Docker template workflow. It installs `ghcr.io/snapetech-org/chaptarrng:latest`
 and configures persistent appdata, audiobook, ebook, and download paths.
 
 - Web UI: port `8789`

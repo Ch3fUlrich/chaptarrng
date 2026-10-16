@@ -17,6 +17,8 @@ namespace NzbDrone.Core.Messaging.Commands
 
         private static readonly int THREAD_LIMIT = ParseThreadLimit(Environment.GetEnvironmentVariable(ThreadLimitEnvVar));
 
+        internal static int ThreadLimit => THREAD_LIMIT;
+
         private readonly Logger _logger;
         private readonly IServiceFactory _serviceFactory;
         private readonly IManageCommandQueue _commandQueueManager;

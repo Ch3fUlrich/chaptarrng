@@ -2569,8 +2569,57 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return $"hardcover:{tokenFingerprint}:{normalizedTerm}";
         }
 
+        private static bool TryNormalizeProviderPrefixedTerm(string term, out string normalized)
+        {
+            normalized = null;
+            var trimmed = term?.Trim();
+            if (trimmed.IsNullOrWhiteSpace())
+            {
+                return false;
+            }
+
+            var firstColon = trimmed.IndexOf(':');
+            if (firstColon <= 0 ||
+                firstColon >= trimmed.Length - 1 ||
+                trimmed.IndexOf(':', firstColon + 1) != -1)
+            {
+                return false;
+            }
+
+            var prefix = trimmed.Substring(0, firstColon).Trim().ToLowerInvariant();
+            if (!ProviderIdHelper.IsCanonicalPrefix(prefix))
+            {
+                return false;
+            }
+
+            return ProviderIdHelper.TryNormalize(trimmed, null, out normalized);
+        }
+
         public List<Author> SearchForNewAuthor(string title)
         {
+            // A single-colon canonical id (hc:252214, gr:2514) names one author; resolve it on the
+            // author endpoint instead of running it through the work lookup.
+            if (TryNormalizeProviderPrefixedTerm(title, out var normalizedAuthorId))
+            {
+                try
+                {
+                    var author = GetAuthorInfo(normalizedAuthorId);
+                    return author == null ? new List<Author>() : new List<Author> { author };
+                }
+                catch (AuthorNotFoundException)
+                {
+                    return new List<Author>();
+                }
+                catch (InvalidProviderIdException)
+                {
+                    return new List<Author>();
+                }
+                catch (InvalidOperationException)
+                {
+                    return new List<Author>();
+                }
+            }
+
             var books = SearchForNewBook(title, null);
 
             return books

@@ -491,7 +491,7 @@ jobs:
       ANNOUNCEMENT_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag }}
       ANNOUNCEMENT_BODY: ${{ needs.release.outputs.release_body }}
       ANNOUNCEMENT_WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      ANNOUNCEMENT_IMAGE_REF: ghcr.io/snapetech/chaptarrng:${{ needs.release.outputs.version }}
+      ANNOUNCEMENT_IMAGE_REF: ghcr.io/snapetech-org/chaptarrng:${{ needs.release.outputs.version }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:

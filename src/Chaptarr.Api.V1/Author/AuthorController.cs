@@ -466,8 +466,20 @@ namespace Chaptarr.Api.V1.Author
             var config = new MonitoringConfig
             {
                 IsManualAddition = true,
-                CreateAudiobook = !string.IsNullOrWhiteSpace(authorResource.AudiobookRootFolderPath),
-                CreateEbook = !string.IsNullOrWhiteSpace(authorResource.EbookRootFolderPath),
+                CreateAudiobook = ShouldCreateMediaType(
+                    authorResource.AudiobookRootFolderPath,
+                    authorResource.AudiobookQualityProfileId,
+                    authorResource.AudiobookMetadataProfileId,
+                    authorResource.AudiobookMonitored,
+                    authorResource.AudiobookMonitorExistingMode,
+                    addOptions?.MediaType == BookMediaType.Audiobook),
+                CreateEbook = ShouldCreateMediaType(
+                    authorResource.EbookRootFolderPath,
+                    authorResource.EbookQualityProfileId,
+                    authorResource.EbookMetadataProfileId,
+                    authorResource.EbookMonitored,
+                    authorResource.EbookMonitorExistingMode,
+                    addOptions?.MediaType == BookMediaType.Ebook),
                 AudiobookMonitored = exactAudiobookRequest ? true : authorResource.AudiobookMonitored,
                 AudiobookMonitorNewItems = authorResource.AudiobookMonitorNewItems,
                 AudiobookMonitorExistingMode = audiobookMonitorExistingMode,
@@ -960,6 +972,27 @@ namespace Chaptarr.Api.V1.Author
             }
 
             _bookMonitoredService.SetBookMonitoredStatus(author, options);
+        }
+
+        /// <summary>
+        /// A media type is added when a root folder is supplied, or when the request explicitly asks
+        /// for it through a profile, positive monitoring, a monitor mode, or the add option media type.
+        /// Without a root folder the library service fills the effective default root folder.
+        /// </summary>
+        internal static bool ShouldCreateMediaType(
+            string rootFolderPath,
+            int? qualityProfileId,
+            int? metadataProfileId,
+            bool? monitored,
+            MonitorTypes? monitorExistingMode,
+            bool addOptionsTargetMediaType)
+        {
+            return !string.IsNullOrWhiteSpace(rootFolderPath) ||
+                   qualityProfileId > 0 ||
+                   metadataProfileId > 0 ||
+                   monitored == true ||
+                   monitorExistingMode.HasValue ||
+                   addOptionsTargetMediaType;
         }
 
         internal static bool ShouldApplyInitialBookMonitoring(bool mediaTypeCatalogAlreadyPresent, MonitorTypes? monitorMode)

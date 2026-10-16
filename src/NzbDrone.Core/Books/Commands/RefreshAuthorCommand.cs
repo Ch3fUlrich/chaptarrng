@@ -53,5 +53,7 @@ namespace NzbDrone.Core.Books.Commands
         public override bool IsLongRunning => !AuthorId.HasValue;
 
         public override bool IsTypeExclusive => !AuthorId.HasValue;
+
+        public override bool LeavesThreadForOtherCommands => true;
     }
 }

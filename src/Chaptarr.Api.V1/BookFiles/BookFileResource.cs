@@ -23,6 +23,8 @@ namespace Chaptarr.Api.V1.BookFiles
         public MediaInfoResource MediaInfo { get; set; }
         public string MediaType { get; set; }
         public string Narrator { get; set; }
+        public bool IsGraphicAudio { get; set; }
+        public string AudioProductionType { get; set; }
         public Dictionary<string, List<string>> Tags { get; set; }
         public MatchProvenance MatchProvenance { get; set; }
         public string ImportUnitKey { get; set; }
@@ -66,6 +68,8 @@ namespace Chaptarr.Api.V1.BookFiles
                 MediaInfo = model.MediaInfo.ToResource(),
                 MediaType = model.MediaType,
                 Narrator = model.Narrator,
+                IsGraphicAudio = model.IsGraphicAudio,
+                AudioProductionType = model.AudioProductionType,
                 MatchProvenance = model.MatchProvenance,
                 ImportUnitKey = model.EditionId == 0 ? BookImportUnitGroupingService.BuildFallbackUnitKey(model) : null,
                 ImportUnitRoot = model.EditionId == 0 ? BookImportUnitGroupingService.GetFallbackUnitRoot(model.Path) : null
@@ -93,6 +97,8 @@ namespace Chaptarr.Api.V1.BookFiles
                 MediaInfo = model.MediaInfo.ToResource(),
                 MediaType = model.MediaType,
                 Narrator = model.Narrator,
+                IsGraphicAudio = model.IsGraphicAudio,
+                AudioProductionType = model.AudioProductionType,
                 MatchProvenance = model.MatchProvenance,
                 QualityCutoffNotMet = author.GetQualityProfileForQuality(model.Quality.Quality) != null ? upgradableSpecification.QualityCutoffNotMet(author.GetQualityProfileForQuality(model.Quality.Quality), model.Quality) : false,
                 IndexerFlags = (int)model.IndexerFlags,

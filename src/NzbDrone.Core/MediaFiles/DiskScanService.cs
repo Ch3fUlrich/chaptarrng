@@ -95,6 +95,20 @@ namespace NzbDrone.Core.MediaFiles
             _logger = logger;
         }
 
+        // Initial imports report through ImportStageProgressEvent, and a command message would interfere with
+        // that display. Every other scan has no stage events, so surface the folder as the command message.
+        internal void ReportFolderProgress(int index, int total, string folder, bool isInitialImport)
+        {
+            if (isInitialImport)
+            {
+                _logger.Debug("Scanning folder {0}/{1}: {2}", index, total, folder);
+            }
+            else
+            {
+                _logger.ProgressInfo("Scanning folder {0}/{1}: {2}", index, total, folder);
+            }
+        }
+
         public void Scan(List<string> folders = null, FilterFilesType filter = FilterFilesType.Known, List<int> authorIds = null, bool isInitialImport = false, CancellationToken cancellationToken = default)
         {
             _logger.Debug("[DISK-SCAN] Starting scan - folders: [{0}], filter: {1}",
@@ -151,9 +165,7 @@ namespace NzbDrone.Core.MediaFiles
                     continue;
                 }
 
-                // Don't show scanning folder notification - it interferes with import progress display
-                // _logger.ProgressInfo("Scanning folder {0}/{1}: {2}", processedFolders + 1, folders.Count, folder);
-                _logger.Debug("Scanning folder {0}/{1}: {2}", processedFolders + 1, folders.Count, folder);
+                ReportFolderProgress(processedFolders + 1, folders.Count, folder, isInitialImport);
                 LogMemorySnapshot("Disk scan folder start {0}/{1}: {2}", processedFolders + 1, folders.Count, folder);
 
                 try

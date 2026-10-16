@@ -75,7 +75,7 @@ namespace NzbDrone.Core.Messaging.Commands
             _knownTypes = knownTypes;
             _logger = logger;
 
-            _commandQueue = new CommandQueue(GetDiskAccessGroupLimit);
+            _commandQueue = new CommandQueue(GetDiskAccessGroupLimit, () => CommandExecutor.ThreadLimit);
             _cancellationTokenSources = new ConcurrentDictionary<int, CancellationTokenSource>();
         }
 

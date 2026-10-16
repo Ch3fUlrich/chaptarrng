@@ -28,7 +28,7 @@ namespace Chaptarr.Core.Test.Api
                 AudiobookRootFolderPath = "/library/audiobooks"
             });
 
-            var controller = new AuthorEditorController(authorService, commandQueue, CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService());
+            var controller = new AuthorEditorController(authorService, commandQueue, CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService(), null);
 
             controller.SaveAll(new AuthorEditorResource
             {
@@ -57,7 +57,7 @@ namespace Chaptarr.Core.Test.Api
                 EbookRootFolderPath = "/library/ebooks"
             });
 
-            var controller = new AuthorEditorController(authorService, commandQueue, CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService());
+            var controller = new AuthorEditorController(authorService, commandQueue, CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService(), null);
 
             controller.SaveAll(new AuthorEditorResource
             {
@@ -82,7 +82,7 @@ namespace Chaptarr.Core.Test.Api
                 EbookMonitorNewItems = null
             };
             var authorService = CreateAuthorService(author);
-            var controller = new AuthorEditorController(authorService, new RecordingCommandQueue(), CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService());
+            var controller = new AuthorEditorController(authorService, new RecordingCommandQueue(), CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService(), null);
 
             controller.SaveAll(new AuthorEditorResource
             {
@@ -109,7 +109,7 @@ namespace Chaptarr.Core.Test.Api
                 AudiobookRootFolderPath = "/library/audiobooks"
             };
             var authorService = CreateAuthorService(author);
-            var controller = new AuthorEditorController(authorService, new RecordingCommandQueue(), CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService());
+            var controller = new AuthorEditorController(authorService, new RecordingCommandQueue(), CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService(), null);
 
             controller.SaveAll(new AuthorEditorResource
             {
@@ -134,7 +134,7 @@ namespace Chaptarr.Core.Test.Api
                 AudiobookRootFolderPath = "/library/audiobooks"
             };
             var authorService = CreateAuthorService(author);
-            var controller = new AuthorEditorController(authorService, new RecordingCommandQueue(), CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService())
+            var controller = new AuthorEditorController(authorService, new RecordingCommandQueue(), CreateRootFolderService(), new TestQualityProfileService(), new TestMetadataProfileService(), null)
             {
                 ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
                 {

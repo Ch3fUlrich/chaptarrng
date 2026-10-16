@@ -167,6 +167,21 @@ namespace NzbDrone.Core.Organizer
                 components[^1] = CleanFileName(originalFileName, namingConfig);
             }
 
+            // Pieces of a book that was published as several releases each arrive as their own set of
+            // files, so two pieces can easily share a file name. Unless the pattern already tells them
+            // apart, mark the piece in the file name so a later piece cannot land on an earlier one.
+            if (bookFile.ReleasePart > 0 &&
+                components.Count > 0 &&
+                !pattern.Contains("ReleasePart", StringComparison.InvariantCultureIgnoreCase) &&
+                !pattern.Contains("Original Filename", StringComparison.InvariantCultureIgnoreCase) &&
+                !pattern.Contains("Original Title", StringComparison.InvariantCultureIgnoreCase))
+            {
+                var marker = bookFile.ReleasePartCount >= bookFile.ReleasePart
+                    ? $"(Part {bookFile.ReleasePart} of {bookFile.ReleasePartCount})"
+                    : $"(Part {bookFile.ReleasePart})";
+                components[^1] = $"{components[^1]} {marker}";
+            }
+
             return Path.Combine(components.ToArray());
         }
 
@@ -669,6 +684,22 @@ namespace NzbDrone.Core.Organizer
             tokenHandlers["{Original Title}"] = m => GetOriginalTitle(bookFile);
             tokenHandlers["{Original Filename}"] = m => GetOriginalFileName(bookFile);
             tokenHandlers["{Release Group}"] = m => bookFile.ReleaseGroup ?? m.DefaultValue("Chaptarr");
+
+            if (bookFile.ReleasePart > 0)
+            {
+                tokenHandlers["{ReleasePart}"] = m => FormatPartToken(
+                    bookFile.ReleasePart,
+                    Math.Max(bookFile.ReleasePart, bookFile.ReleasePartCount),
+                    m.CustomFormat);
+
+                if (bookFile.ReleasePartCount >= bookFile.ReleasePart)
+                {
+                    tokenHandlers["{ReleaseParts}"] = m => FormatPartToken(
+                        bookFile.ReleasePartCount,
+                        bookFile.ReleasePartCount,
+                        m.CustomFormat);
+                }
+            }
 
             if (bookFile.PartCount > 1)
             {

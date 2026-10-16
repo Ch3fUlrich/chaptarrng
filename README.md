@@ -149,7 +149,7 @@ for eligibility, acquisition, and build setup.
 
 Pull the image:
 ```bash
-docker pull ghcr.io/snapetech/chaptarrng:latest
+docker pull ghcr.io/snapetech-org/chaptarrng:latest
 ```
 
 Run with Docker:
@@ -164,7 +164,7 @@ docker run -d \
   -v /path/to/ebooks:/ebooks \
   -v /path/to/downloads:/downloads \
   --restart unless-stopped \
-  ghcr.io/snapetech/chaptarrng:latest
+  ghcr.io/snapetech-org/chaptarrng:latest
 ```
 
 Note: if `PUID`/`PGID` are not set, the image defaults to `99:100`. If `/path/to/config` doesn't exist, Docker will create it as `root:root`. Create it first (or fix ownership) so it matches `PUID`/`PGID`. Avoid setting `user:` in Compose; it bypasses the entrypoint permission setup. On Unraid, media folders commonly use `99:100`, so use `PUID=99` and `PGID=100` unless your share is owned differently. If multiple containers/users share the same media group, add `-e UMASK=002`. When testing permissions with `docker exec`, test as the app user, not root, for example: `docker exec -u 99:100 chaptarrng sh -c 'id; touch /audiobooks/.chaptarr-write-test && rm /audiobooks/.chaptarr-write-test'`.
@@ -220,6 +220,9 @@ Environment variables:
 - `Chaptarr__Postgres__MainDb` (default: `chaptarr-main`)
 - `Chaptarr__Postgres__LogDb` (default: `chaptarr-log`)
 - `Chaptarr__Postgres__CacheDb` (default: `chaptarr-cache`)
+- `Chaptarr__Postgres__SslMode` (optional: `disable`, `allow`, `prefer`, `require`, `verify-ca`, or `verify-full`; when unset the Npgsql default applies)
+- `Chaptarr__Postgres__RootCert` (optional: path to a PEM root certificate used to verify the server for `verify-ca` and `verify-full`; startup fails with a clear message if the file is missing)
+- `Chaptarr__Postgres__NoResetOnClose` (default: `true`; skips the session reset round-trip when a pooled connection is returned, set to `false` to restore it)
 
 Note: ChaptarrNG does not create PostgreSQL databases automatically; create the databases and grant the configured user access.
 

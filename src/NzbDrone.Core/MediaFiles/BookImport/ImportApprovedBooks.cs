@@ -103,15 +103,36 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             string importSourcePath,
             int editionId,
             bool manualReplaceExisting,
-            BookImportBatchState batchState)
+            BookImportBatchState batchState,
+            int incomingReleasePart = 0,
+            bool? incomingIsGraphicAudio = null)
         {
             if (existingFile?.Path.IsNullOrWhiteSpace() != false)
             {
                 return false;
             }
 
+            // One piece of a split release only ever supersedes the same piece of an earlier grab.
+            // It must not displace its sibling pieces, nor a complete copy of the book. A complete
+            // file (no release part) is still free to replace every piece.
+            if (incomingReleasePart > 0 && existingFile.ReleasePart != incomingReleasePart)
+            {
+                return false;
+            }
+
             if (importSourcePath.IsNotNullOrWhiteSpace() &&
                 existingFile.Path.Equals(importSourcePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // A dramatized (GraphicAudio / full cast) recording and a straight read of the same
+            // edition are different productions, not an upgrade of one another. Only an explicit
+            // replace may swap one for the other. incomingIsGraphicAudio is null for non-audio imports.
+            if (!manualReplaceExisting &&
+                incomingIsGraphicAudio.HasValue &&
+                existingFile.MediaType == "audiobook" &&
+                existingFile.IsGraphicAudio != incomingIsGraphicAudio.Value)
             {
                 return false;
             }
@@ -160,6 +181,19 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             private readonly ICustomFormatCalculationService _customFormatCalculationService;
             private readonly IUpgradableSpecification _upgradableSpecification;
             private readonly Logger _logger;
+
+        internal void TryDeleteCalibreSource(string path)
+        {
+            try
+            {
+                _diskProvider.DeleteFile(path);
+            }
+            catch (Exception ex)
+            {
+                // The book is already in Calibre; failing the import here would make a retry add it twice.
+                _logger.Warn(ex, "Imported {0} into Calibre but could not remove the source file", path);
+            }
+        }
 
         public ImportApprovedBooks(
             IMediaFileService mediaFileService,
@@ -503,6 +537,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             createdNewBookInstance = true;
                             _logger.Debug("[MANUAL-EDITION-PROTECTION] Created new book instance ID: {0} for files not matching pinned edition",
                                 newBookInstance.Id);
+                            WarnIfExplicitSelectionRedirected(bookDecisions, book, newBookInstance, "the pinned edition differs from the matched edition");
                             __route = "manual-edition-protection";
                         }
                     }
@@ -578,6 +613,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                 createdNewBookInstance = true;
                                 _logger.Debug("[ADDITIONAL-COPY] Created new book instance with ID: {0} for additional copy",
                                     newBookInstance.Id);
+                                WarnIfExplicitSelectionRedirected(bookDecisions, book, newBookInstance, "the book already has files and upgrades are not allowed");
                                 __route = "additional-copy";
                         }
                     }
@@ -1009,6 +1045,21 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
         }
 
+        private void WarnIfExplicitSelectionRedirected(IEnumerable<ImportDecision<LocalBook>> decisions, Book requestedBook, Book newBook, string reason)
+        {
+            if (decisions?.Any(d => d?.Item?.IsManualImport == true) != true)
+            {
+                return;
+            }
+
+            _logger.Warn("{0}", FormatSelectionRedirectMessage(requestedBook, newBook, reason));
+        }
+
+        internal static string FormatSelectionRedirectMessage(Book requestedBook, Book newBook, string reason)
+        {
+            return $"[MANUAL-IMPORT] Requested book {requestedBook?.Id} was redirected to new book {newBook?.Id} because {reason}.";
+        }
+
         private void CleanupNewBookInstanceIfEmpty(bool createdNewBookInstance, Book newBookInstance, Edition newEdition, List<BookFile> importedBookFilesForBook)
         {
             if (!createdNewBookInstance || newBookInstance == null)
@@ -1184,10 +1235,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             .ToHashSet(StringComparer.OrdinalIgnoreCase)
                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+                    bool? incomingIsGraphicAudio = BookFile.DetermineMediaType(localBook.Quality) == "audiobook"
+                        ? localBook.IsGraphicAudio || DetectGraphicAudioFromLocalTags(localBook)
+                        : null;
+
                     var filesToReplace = existingFiles
                         .Where(f =>
                         {
-                            if (IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState))
+                            if (IsReplaceableExistingFile(f, localBook.Path, edition.Id, manualReplaceExisting, batchState, localBook.ReleasePart, incomingIsGraphicAudio))
                             {
                                 return true;
                             }
@@ -1200,7 +1255,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             }
 
                             return conversionSourcePaths.Contains(f.Path) &&
-                                   IsReplaceableExistingFile(f, localBook.Path, f.EditionId, true, batchState);
+                                   IsReplaceableExistingFile(f, localBook.Path, f.EditionId, true, batchState, localBook.ReleasePart);
                         })
                         .ToList();
 
@@ -1303,6 +1358,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                         bookFile.Part = localBook.Part > 0 ? localBook.Part : 1;
                         bookFile.PartCount = localBook.PartCount;
+                        bookFile.ReleasePart = localBook.ReleasePart;
+                        bookFile.ReleasePartCount = localBook.ReleasePartCount;
                         bookFile.Size = localBook.Size;
                         bookFile.Modified = localBook.Modified;
                         bookFile.Quality = localBook.Quality;
@@ -1338,6 +1395,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             CalibreId = localBook.CalibreId,
                             Part = localBook.Part > 0 ? localBook.Part : 1,
                             PartCount = localBook.PartCount,
+                            ReleasePart = localBook.ReleasePart,
+                            ReleasePartCount = localBook.ReleasePartCount,
                             Size = localBook.Size,
                             Modified = localBook.Modified,
                             DateAdded = DateTime.UtcNow,
@@ -1580,7 +1639,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                                 if (!copyOnly && !calibreSource.PathEquals(bookFile.Path))
                                 {
-                                    _diskProvider.DeleteFile(calibreSource);
+                                    TryDeleteCalibreSource(calibreSource);
                                 }
                             }
                             else if (copyOnly)
@@ -4381,6 +4440,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 Author = author,
                 Part = localBook.Part,
                 PartCount = localBook.PartCount,
+                ReleasePart = localBook.ReleasePart,
+                ReleasePartCount = localBook.ReleasePartCount,
                 MediaType = BookFile.DetermineMediaType(localBook.Quality)
             };
 
@@ -4426,6 +4487,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     Author = author,
                     Part = localBook.Part,
                     PartCount = localBook.PartCount,
+                    ReleasePart = localBook.ReleasePart,
+                    ReleasePartCount = localBook.ReleasePartCount,
                     MediaType = BookFile.DetermineMediaType(localBook.Quality)
                 };
 

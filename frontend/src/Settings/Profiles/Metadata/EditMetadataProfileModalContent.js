@@ -15,6 +15,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import Tooltip from 'Components/Tooltip/Tooltip';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
+import { getIdentifierRequirement } from './identifierRequirement';
 import styles from './EditMetadataProfileModalContent.css';
 
 function fieldWithDefault(field, value) {
@@ -64,8 +65,18 @@ function EditMetadataProfileModalContent(props) {
   const minPopularityField = fieldWithDefault(minPopularity, 0);
   const minPagesField = fieldWithDefault(minPages, 0);
   const skipMissingDateField = fieldWithDefault(skipMissingDate, false);
-  const skipMissingIsbnField = fieldWithDefault(skipMissingIsbn, false);
-  const skipMissingAsinField = fieldWithDefault(skipMissingAsin, false);
+  const identifierRequirementField = {
+    ...fieldWithDefault(skipMissingIsbn, false),
+    value: getIdentifierRequirement(skipMissingIsbn?.value, skipMissingAsin?.value),
+    errors: [...(skipMissingIsbn?.errors ?? []), ...(skipMissingAsin?.errors ?? [])],
+    warnings: [...(skipMissingIsbn?.warnings ?? []), ...(skipMissingAsin?.warnings ?? [])]
+  };
+  const identifierRequirementOptions = [
+    { key: 'none', value: translate('SkipMissingIdentifierNone') },
+    { key: 'both', value: translate('SkipMissingIdentifierBoth') },
+    { key: 'either', value: translate('SkipMissingIdentifierEither') },
+    { key: 'asin', value: translate('SkipMissingIdentifierAsin') }
+  ];
   const skipPartsAndSetsField = fieldWithDefault(skipPartsAndSets, false);
   const skipSeriesSecondaryField = fieldWithDefault(skipSeriesSecondary, false);
   const skipMissingIdentifierOmnibusField = fieldWithDefault(skipMissingIdentifierOmnibus, false);
@@ -168,24 +179,11 @@ function EditMetadataProfileModalContent(props) {
                 </FormLabel>
 
                 <FormInputGroup
-                  type={inputTypes.CHECK}
-                  name="skipMissingIsbn"
-                  {...skipMissingIsbnField}
+                  type={inputTypes.SELECT}
+                  name="skipMissingIdentifierRequirement"
+                  values={identifierRequirementOptions}
+                  {...identifierRequirementField}
                   helpText={translate(`SkipMissingIdentifier${labelSuffix}HelpText`)}
-                  onChange={onInputChange}
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>
-                  {translate(`SkipMissingAsin${labelSuffix}`)}
-                </FormLabel>
-
-                <FormInputGroup
-                  type={inputTypes.CHECK}
-                  name="skipMissingAsin"
-                  {...skipMissingAsinField}
-                  helpText={translate(`SkipMissingAsin${labelSuffix}HelpText`)}
                   onChange={onInputChange}
                 />
               </FormGroup>

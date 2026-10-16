@@ -472,6 +472,58 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             return result;
         }
 
+        private string GetUnresolvableSuggestionWarning(LocalBook localBook, string path)
+        {
+            if (localBook?.Book != null ||
+                _authorService == null ||
+                _bookService == null ||
+                string.IsNullOrWhiteSpace(localBook?.SuggestedForeignAuthorId) ||
+                string.IsNullOrWhiteSpace(localBook.SuggestedForeignBookId))
+            {
+                return null;
+            }
+
+            try
+            {
+                if (!ProviderIdHelper.TryNormalize(localBook.SuggestedForeignAuthorId, defaultPrefix: null, out var authorId) ||
+                    !ProviderIdHelper.TryNormalize(localBook.SuggestedForeignBookId, defaultPrefix: null, out var workId))
+                {
+                    return null;
+                }
+
+                var author = _authorService.FindByProviderId(authorId.Substring(0, authorId.IndexOf(':')), ProviderIdHelper.StripPrefix(authorId));
+                if (author == null || author.Id <= 0)
+                {
+                    return null;
+                }
+
+                var mediaType = MediaFileExtensions.TextExtensions.Contains(Path.GetExtension(path ?? string.Empty))
+                    ? BookMediaType.Ebook
+                    : BookMediaType.Audiobook;
+                var catalogHasWork = _bookService
+                    .FindAllByWorkProviderId(workId.Substring(0, workId.IndexOf(':')), ProviderIdHelper.StripPrefix(workId), mediaType)
+                    .Any(book => book != null && book.AuthorId == author.Id && book.MediaType == mediaType);
+
+                return SuggestionCannotBeAddedFromMetadata(true, localBook.SuggestedForeignEditionId, catalogHasWork)
+                    ? $"Suggestion '{localBook.SuggestedBookTitle ?? workId}' cannot be added from metadata. Select a local book instead."
+                    : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Could not check suggested match for '{0}'", path);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// A suggestion is unresolvable when its author is already local but the author's catalog has no entry
+        /// for the suggested work and the suggestion carries no edition to build one from.
+        /// </summary>
+        internal static bool SuggestionCannotBeAddedFromMetadata(bool authorIsLocal, string suggestedForeignEditionId, bool catalogHasWork)
+        {
+            return authorIsLocal && !catalogHasWork && string.IsNullOrWhiteSpace(suggestedForeignEditionId);
+        }
+
         private static string Truncate(string value, int max)
         {
             return value == null || value.Length <= max ? value : value.Substring(0, max) + "...";
@@ -533,6 +585,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             if (conflictReason.IsNotNullOrWhiteSpace())
             {
                 rejections.Add(new Rejection(conflictReason, RejectionType.Temporary));
+            }
+
+            var unresolvableSuggestion = GetUnresolvableSuggestionWarning(decision.Item, actualPath);
+            if (unresolvableSuggestion.IsNotNullOrWhiteSpace())
+            {
+                rejections.Add(new Rejection(unresolvableSuggestion, RejectionType.Temporary));
             }
 
             item.Rejections = rejections;
@@ -999,7 +1057,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     Size = fileInfo.Length,
                     Modified = fileInfo.LastWriteTimeUtc,
                     Quality = file.Quality,
-                    IndexerFlags = (IndexerFlags)file.IndexerFlags
+                    IndexerFlags = (IndexerFlags)file.IndexerFlags,
+                    IsGraphicAudio = file.IsGraphicAudio == true,
+                    AudioProductionType = file.AudioProductionType
                 };
 
                 var importDecision = new ImportDecision<LocalBook>(localTrack);
@@ -1038,6 +1098,17 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                         catch (Exception ex)
                         {
                             _logger.Debug(ex, "Failed to load edition {0} for manual import file '{1}'", file.EditionId, actualPath);
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(file.ForeignEditionId) && book != null)
+                    {
+                        try
+                        {
+                            edition = SelectEditionOfBook(_editionService.GetEditionByForeignEditionId(file.ForeignEditionId), book);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Debug(ex, "Failed to resolve foreign edition {0} for manual import file '{1}'", file.ForeignEditionId, actualPath);
                         }
                     }
                 }
@@ -1120,7 +1191,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 }
 
                 if (isExplicitLocalSelection &&
-                    !ManualEditionSelectionMatchesBook(edition, book, file.EditionId, out var manualEditionRejection))
+                    !ManualEditionSelectionMatchesBook(edition, book, edition?.Id ?? file.EditionId, out var manualEditionRejection))
                 {
                     throw new InvalidOperationException(manualEditionRejection);
                 }
@@ -1444,6 +1515,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 return false;
             }
 
+            // Another part of an expected book that was rejected or failed (for example a vanished file)
+            // means the download is incomplete even though a sibling part imported that same book.
+            if (importResults.Any(result => result.Result != ImportResultType.Imported &&
+                                            result.ImportDecision?.Item?.Book != null &&
+                                            expectedBookIds.Contains(result.ImportDecision.Item.Book.Id)))
+            {
+                return false;
+            }
+
             var expectedAudiobookBookIds = expectedBooks
                 .Where(book => book.MediaType == BookMediaType.Audiobook)
                 .Select(book => book.Id)
@@ -1630,7 +1710,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 
             if (requestedEditionId <= 0)
             {
-                rejectionReason = $"Edition must be selected for '{book.Title}'.";
+                rejectionReason = $"Edition must be selected for '{book.Title}'. Pass a numeric editionId, or a foreignEditionId that belongs to this book.";
                 return false;
             }
 
@@ -1671,6 +1751,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             }
 
             return true;
+        }
+
+        internal static Edition SelectEditionOfBook(Edition candidate, Book book)
+        {
+            return candidate != null && book != null && candidate.BookId == book.Id ? candidate : null;
         }
 
         internal static bool EditionBelongsToBook(Edition edition, Book book)

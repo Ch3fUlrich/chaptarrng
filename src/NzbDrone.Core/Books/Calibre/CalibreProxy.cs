@@ -597,6 +597,21 @@ namespace NzbDrone.Core.Books.Calibre
             ExecuteSetFields(calibreId, payload, settings);
         }
 
+        internal static List<string> BuildTags(Book book)
+        {
+            var textInfo = CultureInfo.InvariantCulture.TextInfo;
+
+            return (book?.Genres ?? new List<string>())
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Select(x => textInfo.ToTitleCase(x.Replace('-', ' ')))
+                .ToList();
+        }
+
+        internal static int BuildRating(Edition edition)
+        {
+            return (int)((edition?.Ratings?.Value ?? 0) * 2);
+        }
+
         public void SetFields(BookFile file, CalibreSettings settings, bool updateCover = true, bool embed = false)
         {
             var edition = file.Edition;
@@ -604,7 +619,7 @@ namespace NzbDrone.Core.Books.Calibre
             var preferredSeries = book?.Author?.GetMetadataProfileFor(book.MediaType)?.PreferredSeries;
             var serieslink = CalibreSeriesSelector.Select(book, preferredSeries);
 
-            var series = serieslink?.Series.Value;
+            var series = serieslink?.Series?.Value;
             double? seriesIndex = null;
             if (double.TryParse(serieslink?.Position, out var index))
             {
@@ -614,7 +629,7 @@ namespace NzbDrone.Core.Books.Calibre
 
             _logger.Trace("Book: {0} Series: {1}, Position: {2}", book, series?.Title, seriesIndex);
 
-            var cover = edition.Images.FirstOrDefault(x => x.CoverType == MediaCoverTypes.Cover);
+            var cover = edition.Images?.FirstOrDefault(x => x.CoverType == MediaCoverTypes.Cover);
             string image = null;
             if (cover != null)
             {
@@ -630,8 +645,7 @@ namespace NzbDrone.Core.Books.Calibre
                 }
             }
 
-            var textInfo = CultureInfo.InvariantCulture.TextInfo;
-            var genres = book.Genres.Select(x => textInfo.ToTitleCase(x.Replace('-', ' '))).ToList();
+            var genres = BuildTags(book);
 
             var payload = new CalibreChangesPayload
             {
@@ -648,7 +662,7 @@ namespace NzbDrone.Core.Books.Calibre
                         : null,
                     Tags = genres,
                     Comments = edition.Overview,
-                    Rating = (int)(edition.Ratings.Value * 2),
+                    Rating = BuildRating(edition),
                     Identifiers = new Dictionary<string, string>
                     {
                         { "isbn", edition.Isbn13 },

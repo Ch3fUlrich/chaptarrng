@@ -160,12 +160,25 @@ namespace NzbDrone.Core.Books
             return a != null && b != null && WorkIdMatcher.WorkIdMatches(a, b);
         }
 
+        internal static void EnsureCleanTitle(Book book)
+        {
+            if (book == null || !string.IsNullOrWhiteSpace(book.CleanTitle))
+            {
+                return;
+            }
+
+            // Books.CleanTitle is NOT NULL; derive it the same way metadata refresh does.
+            book.CleanTitle = (book.Title ?? string.Empty).CleanBookTitle().CleanAuthorName() ?? string.Empty;
+        }
+
         private void EnsureBookDbFields(Book book)
         {
             if (book == null)
             {
                 return;
             }
+
+            EnsureCleanTitle(book);
 
             static string CanonicalizeOrNull(string providerId, string expectedPrefix)
             {

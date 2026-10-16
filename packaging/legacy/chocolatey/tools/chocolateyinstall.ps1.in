@@ -6,7 +6,7 @@ $stageDir = Join-Path $installRoot 'app.new'
 $backupDir = Join-Path $installRoot 'app.previous'
 $binDir = Join-Path $appDir 'bin'
 $dataDir = Join-Path $installRoot 'data'
-$exePath = Join-Path $binDir 'Chaptarr.exe'
+$exePath = Join-Path $binDir 'Chaptarr.Console.exe'
 $archivePath = Join-Path $installRoot 'ChaptarrNG-__VERSION__-win-x64.zip'
 $archiveUrl = 'https://github.com/snapetech/chaptarrng/releases/download/v__VERSION__/ChaptarrNG-__VERSION__-win-x64.zip'
 
@@ -21,7 +21,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $stageDir 'bin') | Out-Null
 Get-ChocolateyWebFile -PackageName 'bookshelfng' -FileFullPath $archivePath `
   -Url $archiveUrl -Checksum '__ARCHIVE_SHA256__' -ChecksumType 'sha256'
 Expand-Archive -LiteralPath $archivePath -DestinationPath (Join-Path $stageDir 'bin') -Force
-if (-not (Test-Path (Join-Path $stageDir 'bin\Chaptarr.exe')) -or
+if (-not (Test-Path (Join-Path $stageDir 'bin\Chaptarr.Console.exe')) -or
     -not (Test-Path (Join-Path $stageDir 'bin\UI\index.html'))) {
   throw 'The verified ChaptarrNG archive is missing its executable or web UI.'
 }

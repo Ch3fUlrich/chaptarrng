@@ -187,6 +187,28 @@ namespace Chaptarr.Core.Test.MetadataSource.BookInfo
         }
 
         [Test]
+        public void should_resolve_a_provider_prefixed_author_term_on_the_author_endpoint()
+        {
+            var httpClient = new RecordingHttpClient(req =>
+                new HttpResponse(req, new HttpHeader { ContentType = "application/json" }, "{}", HttpStatusCode.NotFound));
+
+            var proxy = CreateProxy(httpClient);
+
+            var results = proxy.SearchForNewAuthor("hc:252214");
+
+            var urls = httpClient.Requests.Select(r => Uri.UnescapeDataString(r.Url.ToString())).ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(urls, Is.Not.Empty);
+                Assert.That(urls, Has.All.Contain("/api/v5/author"));
+                Assert.That(urls, Has.None.Contain("/api/v5/work"));
+                Assert.That(urls.First(), Does.Contain("id=hc:252214"));
+                Assert.That(results, Is.Empty);
+            });
+        }
+
+        [Test]
         public void should_reject_a_bare_numeric_author_id_without_calling_the_metadata_server()
         {
             var httpClient = new RecordingHttpClient(_ =>

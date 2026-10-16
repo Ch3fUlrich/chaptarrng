@@ -31,6 +31,10 @@ namespace NzbDrone.Core.Messaging.Commands
         public virtual bool IsTypeExclusive => false;
         public virtual bool IsLongRunning => false;
 
+        // When true, commands of this type never occupy every command thread at once, so at least one
+        // thread stays available for other work.
+        public virtual bool LeavesThreadForOtherCommands => false;
+
         public string Name { get; private set; }
         public DateTime? LastExecutionTime { get; set; }
         public DateTime? LastStartTime { get; set; }

@@ -1,6 +1,6 @@
 services:
   chaptarrng:
-    image: ghcr.io/snapetech/chaptarrng:latest
+    image: ghcr.io/snapetech-org/chaptarrng:latest
     container_name: chaptarrng
     # Optional for large scans; choose a limit the host can spare for this library.
     # mem_limit: 4g

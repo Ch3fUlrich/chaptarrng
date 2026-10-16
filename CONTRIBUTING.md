@@ -21,11 +21,12 @@ Thanks for your interest in contributing to ChaptarrNG.
 - Be open to discussion and feedback
 
 ### 3. Submit Code
-- Fork the repository
-- Create a feature branch (`git checkout -b feature/amazing-feature`)
+- Clone the repository; fork it only if you do not have write access
+- Work on `main` when current GitHub rules allow direct pushes; otherwise create a feature branch
+  (`git checkout -b feature/amazing-feature`)
 - Make your changes
 - Test thoroughly
-- Submit a Pull Request
+- Open a pull request only when current GitHub rules require one; push directly to `main` when they allow it
 
 ### 4. Improve Documentation
 - Fix typos, clarify instructions
@@ -120,10 +121,9 @@ Set `CHAPTARRNG_UNRAID_REPO` if that checkout is elsewhere.
 ## Submitting pull requests
 
 1. **Before submitting:**
-   - Rebase on the latest `main` branch
-   - Ensure all tests pass (`dotnet test src/Chaptarr.Core.Test/Chaptarr.Core.Test.csproj`)
+   - Keep the branch current with `main` only when current GitHub rules require it, using rebase or merge
+   - Merge after the checks and approvals required by current GitHub rules are satisfied
    - Update documentation if needed
-   - One feature/fix per PR
 
 2. **PR Description should include:**
    - What changed and why
@@ -132,9 +132,8 @@ Set `CHAPTARRNG_UNRAID_REPO` if that checkout is elsewhere.
    - Testing performed
 
 3. **After submitting:**
-   - Respond to code review feedback
-   - Make requested changes
-   - Be patient - reviews take time
+   - Respond to any review feedback and make requested changes
+   - An explicit maintainer direction to merge is sufficient; no additional review or approval is required beyond current GitHub rules. Use any merge method enabled in GitHub
 
 ## Questions?
 

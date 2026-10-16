@@ -33,7 +33,7 @@ and leaves the source database untouched.
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
   dotnet /app/Chaptarr.dll -preview-bookshelf-migration -data=/config
 ```
 
@@ -63,7 +63,7 @@ explicit apply command once:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
   dotnet /app/Chaptarr.dll -migrate-bookshelf -confirm-bookshelf-service-stopped -data=/config
 ```
 
@@ -81,7 +81,7 @@ BookshelfNG backup without changing either database:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
   dotnet /app/Chaptarr.dll -preview-bookshelf-restore \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
     -data=/config
@@ -92,7 +92,7 @@ After preview passes, apply the restore while all services remain stopped:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
   dotnet /app/Chaptarr.dll -restore-bookshelf \
     -confirm-bookshelf-service-stopped \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
@@ -111,7 +111,7 @@ ChaptarrNG database and preserves the failed restore candidate for inspection.
 
 Stop BookshelfNG and back up the full appdata directory. In **Apps > Previous
 Apps**, apply the updated BookshelfNG template. It points to
-`ghcr.io/snapetech/chaptarrng:latest`, the same image used by fresh ChaptarrNG
+`ghcr.io/snapetech-org/chaptarrng:latest`, the same image used by fresh ChaptarrNG
 installs, while retaining the old `/config`, `/data`, `/download`, port,
 PUID/PGID, timezone, and Hardcover settings. Starting the container runs the
 regular ChaptarrNG app and its automatic migration. The old `config.xml` keeps
@@ -136,7 +136,7 @@ default BookshelfNG port, the shape is:
 ```yaml
 services:
   chaptarrng:
-    image: ghcr.io/snapetech/chaptarrng:latest
+    image: ghcr.io/snapetech-org/chaptarrng:latest
     container_name: chaptarrng
     environment:
       PUID: "99"
