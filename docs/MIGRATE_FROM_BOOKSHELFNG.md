@@ -1,13 +1,13 @@
 # Move a BookshelfNG installation to ChaptarrNG
 
-> **Not available in the current published release.** ChaptarrNG PR #100 is
-> still under review. The published `v0.9.969` image and packages do not contain
-> the converter, and no BookshelfNG update channel has been redirected. Keep
-> BookshelfNG installed until this guide is updated to name a released,
-> migration-enabled ChaptarrNG version and its tested channel-specific upgrade.
+> **Release status.** The standard ChaptarrNG image includes BookshelfNG
+> conversion and rollback commands from `v0.9.970`; use that version or a later
+> stable release. This converter supports migration-158 SQLite databases.
+> Pinned images, native packages, and updater channels need separate upgrade
+> steps; database conversion alone does not update an installation channel.
 
-The candidate uses one standard ChaptarrNG application and container build for
-fresh and migrated installations. The same `Chaptarr` executable provides an
+Fresh and migrated installations use the same standard ChaptarrNG application
+and container build. The `Chaptarr` executable provides an
 explicit preview and apply command. Normal startup also detects and converts a
 supported BookshelfNG database automatically.
 
@@ -54,8 +54,10 @@ editions and files. Run preview again with the map in place. Normal startup
 uses the same map and converter, so no separate migration build is needed.
 
 The map is tied to source book IDs and the current ambiguous-record set. If the
-database changes after review, preview rejects missing or stale entries and
-generates an updated review instead of guessing.
+database changes after review, preview rejects missing entries and stale
+choices. It also rejects map entries for books that are no longer ambiguous,
+including when the current source needs no map; remove stale entries or use the
+updated review file, then preview again instead of guessing.
 
 After preview succeeds, either let normal startup apply conversion or run the
 explicit apply command once:
@@ -190,32 +192,55 @@ to choose `audiobook`, `ebook`, or `both` for each listed record.
 
 This proves one populated migration-158 SQLite path on Linux/amd64. It does not
 prove older BookshelfNG schemas, PostgreSQL conversion, every provider or
-notification setting, representative M4B conversion, hosted Windows/package
-upgrades, rollback against a real populated deployment, populated SeerrNG
-requests, or complete feature parity. Synthetic fixture coverage now exercises
-preview, rollback after a post-migration write, preservation of the current
-ChaptarrNG database, and rejection of a wrongly identified backup. The
-candidate remains unpublished, and every
-feature, installation, and distribution channel is still an independent
-BookshelfNG retirement blocker.
+notification setting, representative M4B conversion, Windows-native
+conversion, package-channel upgrades, rollback against a real populated deployment, populated SeerrNG
+requests, or complete feature parity. Feature, installation, and distribution
+channels remain separate continuity checks.
 
-Hosted validation exposed two cross-platform issues on earlier candidates:
-Windows failed four migration promotion/rollback tests, and macOS Bash 3.2
-rejected the Unraid branch-guard script's Bash 4 uppercase expansion. The
-branch-guard now uses `tr`, and migration promotion uses `File.Replace`; the
-focused migration fixtures pass 23/23 locally. The latest hosted Windows run
-failed four migration/rollback tests. The new PR #100 receipt records only
-safe exception types, the first Chaptarr application method, and SQLite's
-numeric primary error code; exception text and paths remain redacted. A new exact-head Windows rerun is queued to capture that detail.
-PR #130 contains the Bash 3.2 branch-guard fix and its local tests pass; the
-current native macOS hosted run remains pending. The validation-engine tests
-for PR #100 pass 26/26 locally. Neither hosted blocker is
-closed.
+An earlier hosted Windows run of the migration candidate failed four
+promotion/rollback cases. The Linux image checks below do not establish a
+passing native Windows migration run.
+
+## Published image smoke test (2026-10-15)
+
+The public standard `v0.9.971` Linux/amd64 image
+([release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.971))
+was exercised against a populated synthetic database built from the checked-in
+BookshelfNG migration-158 schema and importer fixture: one author, one source
+book, two editions, two files, and two history rows.
+
+Preview left the source database bytes unchanged and created no backup. The
+explicit apply command converted the data to native migration v120, retained
+the v158 source backup, and passed SQLite integrity and foreign-key checks.
+After adding a configuration row as the image's default service user (UID 99),
+rollback restored the v158 source and retained the newer ChaptarrNG database,
+including that write, in its ChaptarrNG backup.
+
+On a separate copy, the ordinary container startup command detected and
+converted the same source automatically, retained its backup, passed the
+container health check, and passed SQLite integrity and foreign-key checks.
+A v157 preview was rejected with the source bytes unchanged and no backup or
+promotion. These checks exercise the published Linux image and synthetic
+fixture; they do not replace validation against an operator's own data or prove
+support for another schema or database engine.
+
+A separate fixture included a monitored source book with no editions. Preview
+stopped without changing the database and wrote the review file with mode
+`0600`, owned by the container's default UID 99. After the operator map chose
+`both`, preview passed and apply created audiobook and ebook records with the
+source monitoring state, removed the review file, retained the source backup,
+and passed SQLite integrity and foreign-key checks.
 
 ## Limits and update channels
 
-The ordinary ChaptarrNG release builds one image. The candidate release
-workflow in PR #100 dispatches that image's exact multi-architecture digest to
+The standard ChaptarrNG image includes conversion and rollback from `v0.9.970`.
+The channel and package inventory below is an audit snapshot from 2026-10-14;
+it describes the separate legacy handoff work at that time and is not a live
+status feed. Use the current release information and the upgrade steps below
+when deciding how to update a pinned image or package.
+
+The ordinary ChaptarrNG release builds one image. The ChaptarrNG release
+workflow dispatches that image's exact multi-architecture digest to
 the public personal-account bridge repository
 [`snapetech/bookshelfng-ghcr-release-bridge`](https://github.com/snapetech/bookshelfng-ghcr-release-bridge),
 which republishes it as `ghcr.io/snapetech/bookshelfng:latest`, `:hardcover`,

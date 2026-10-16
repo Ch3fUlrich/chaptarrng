@@ -29,15 +29,15 @@ namespace NzbDrone.Core.Datastore
         {
             var required = FindRequiredMappings(source);
             var reviewPath = Path.GetFullPath(sourceDatabasePath) + ".bookshelf-media-review.json";
-            if (required.Count == 0)
-            {
-                RemoveStaleReview(reviewPath);
-                return new Dictionary<int, BookshelfMediaChoice>();
-            }
-
             var mapPath = Path.GetFullPath(sourceDatabasePath) + ".bookshelf-media-map.json";
             if (!File.Exists(mapPath))
             {
+                if (required.Count == 0)
+                {
+                    RemoveStaleReview(reviewPath);
+                    return new Dictionary<int, BookshelfMediaChoice>();
+                }
+
                 WriteReview(reviewPath, required, ReadReviewChoices(reviewPath));
                 throw MissingMappings(required.Count, mapPath, reviewPath);
             }

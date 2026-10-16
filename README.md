@@ -26,32 +26,25 @@ The application continues to identify itself as `Chaptarr` through its Readarr-c
 
 ### BookshelfNG consolidation status
 
-The proposed BookshelfNG consolidation carries its enhanced features into
-ChaptarrNG without dropping ChaptarrNG's own work. BookshelfNG's retirement
-gate is whether its capabilities are carried into and validated in ChaptarrNG.
-ChaptarrNG has a separate, later upstream-retirement gate: the complete union
-of those ported capabilities and every feature ChaptarrNG maintains or is
-actively adding, including work not yet in a published release, must be
-preserved upstream. That union blocks retirement as a whole. The
+BookshelfNG is consolidated into the standard ChaptarrNG application. Its
+feature and data-parity gate remains separate from upstream retirement, which
+covers the union of BookshelfNG capabilities carried over and ChaptarrNG
+features introduced or maintained through the current release.
+That upstream retirement audit is paused and incomplete. The
 [combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
-tracks both gates and the individual blockers, including active development
-that is not in a release yet.
+lists the capability and acceptance gates; it does not mean implementation is
+active or the backlog is resolved.
 
-The published `0.9.969` release does not include a BookshelfNG database
-converter or a BookshelfNG package/channel bridge. An unpublished candidate
-using the ordinary ChaptarrNG Linux/amd64 image passed preview, explicit apply,
-and normal startup against separate copies of one real populated migration-158
-SQLite database. Its backup matched all 39 source table definitions and every
-source row. Eighty-one books still need operator-selected media mappings; test
-choices were not reviewed as correct classifications. Synthetic rollback
-preview and restoration after a post-migration write now pass focused tests;
-real populated-deployment rollback remains open. Older schemas, PostgreSQL,
-complete settings/client behavior, feature parity, and channel bridges remain
-open. Do not point ChaptarrNG at a
-BookshelfNG `/config` directory or treat the projects as drop-in replacements
-yet. See the current
-[BookshelfNG consolidation report](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/chaptarr-consolidation.md)
-for migration and release evidence.
+The standard ChaptarrNG image includes BookshelfNG preview, apply, automatic
+startup conversion, and rollback commands beginning with `v0.9.970`. It
+supports BookshelfNG migration-158 SQLite databases only. The public `v0.9.971`
+Linux/amd64 image passed synthetic preview, apply, startup, rollback, and
+operator media-map checks; those checks do not prove older schemas, PostgreSQL,
+real-deployment rollback, full feature parity, or package/update-channel
+handoff. Do not treat the projects as drop-in replacements: back up first and
+follow the [migration guide](docs/MIGRATE_FROM_BOOKSHELFNG.md), including its
+preview and media-map steps. The [combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+tracks the remaining feature and channel gates.
 
 ChaptarrNG is independently maintained and is not affiliated with the Servarr team or the Readarr, Sonarr, Radarr, Lidarr, or Prowlarr projects.
 
@@ -64,9 +57,11 @@ runtime, while source builds require the .NET 10 SDK.
 - **Pending-import integration:** Chaptarr's current development branch also has pending author imports. ChaptarrNG exposes that asynchronous work through the SeerrNG capability contract and keeps retry/cancel behavior safe when multiple requests share an import.
 - **Restricted service access:** ChaptarrNG `0.9.941` and later can use a SeerrNG-only API key for supported book requests, searches, library status, and pending imports without granting global administration or destructive access.
 - **Standalone additions maintained here:** An optional built-in indexer and download client can search configured ebook sources, use API-key downloads, and optionally fall back to browser-assisted links. Full backup archives can use passphrase-based authenticated encryption; the direct Chaptarr project separately offers encryption for quick-start settings backups.
-- **Safer list and file workflows:** Preview an import list's next sync, inspect durable per-list sync history, and review import matching evidence. Imports check occupied destinations before writing; supported archives can be extracted, and multipart audiobooks can be merged or converted with progress and cancellation.
-- **More metadata and library connections:** RanobeDB adds light-novel ebook metadata. Optional AudioBookShelf, Calibre, and Grimmory connections synchronize library data, while Emby/Jellyfin can refresh after an import.
-- **Operations and automation:** An optional MQTT gateway publishes library snapshots and lifecycle events, including Home Assistant discovery. A separate Prometheus listener exposes low-cardinality metrics. Large library views use paged reads, and long author deletions run in the background.
+- **Safer list and file workflows:** Preview an import list's next sync, inspect durable per-list sync history, and review manual-import matching evidence. Book-file downloads are limited to configured roots; imports check destinations before writing, extract supported archives, and can merge or convert multipart audiobooks with progress and cancellation. New multi-part releases can remain as separate book files.
+- **More metadata and library connections:** RanobeDB adds light-novel ebook metadata; Audible searches can use a selected marketplace. Metadata profiles can rank edition terms and choose preferred series. AudioBookShelf, Calibre, Grimmory, and BookLore BookDrop provide optional library connections, while Emby/Jellyfin can refresh after an import.
+- **Search and library maintenance:** Indexers can run optional recurring searches for missing monitored books. MyAnonaMouse health reports explain when stale account status blocks grabs. Operators can preview and backfill missing author root folders without moving files.
+- **Operations and automation:** An optional MQTT gateway publishes library snapshots and lifecycle events, including Home Assistant discovery. A separate Prometheus listener exposes low-cardinality metrics. The full-library API supports paging, large library views use paged reads, and long author deletions run in the background.
+- **Localization:** The interface and help text have catalogs for 12 additional languages, including Indonesian and Traditional Chinese, with English fallback for untranslated strings.
 - **Fork-owned distribution:** ChaptarrNG publishes its own images and maintains an Unraid package. Its [fork feature guide](docs/FORK_FEATURES.md) compares these additions with the parent project.
 
 The [fork feature guide](docs/FORK_FEATURES.md) covers the additions and their
@@ -79,11 +74,11 @@ The feature guide describes the current source checkout; some newer work may
 not be included in the latest published image yet.
 
 The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
-defines the later upstream gate: every BookshelfNG feature carried over plus
-every ChaptarrNG feature maintained or actively developed, including
-unpublished work, blocks retirement as a whole and remains an individual
-acceptance gate. Carrying over a BookshelfNG capability adds to this set; it
-does not replace or reduce ChaptarrNG's own blockers.
+defines the cumulative upstream gate: every BookshelfNG feature carried over
+and every ChaptarrNG feature introduced or maintained through `v0.9.971`
+blocks retirement as a whole and remains an individual acceptance gate.
+Carrying over a BookshelfNG capability adds to this set; it does not replace
+or reduce ChaptarrNG's own blockers.
 
 See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerrng/blob/main/docs/using-seerr/bookshelf-backend.md) for setup and the integration contract.
 
@@ -97,7 +92,7 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerr
 * **Publisher Aware** - Special handling for dramatized audiobooks and multi-part releases
 * **Audio Formats** - Handles M4B, MP3 chapters, and multi-file audiobooks
 * **MP3 → M4B Conversion** - Convert new downloads or books already in the library into a single chaptered M4B, with chapter preservation or insertion if missing. Conversion shows progress and can be cancelled (powered by [m4b-tool](https://github.com/sandreas/m4b-tool))
-* **Multipart Audiobooks** - Optionally merge eligible multi-part audiobook downloads into one M4B after checking the final destination
+* **Multipart Audiobooks** - Import numbered parts side by side with `{ReleasePart}` and `{ReleaseParts}` filename tokens, or optionally merge eligible downloads into one M4B after checking the final destination
 
 ### Organization
 * **Dual Media Libraries** - You can have separate root folders for audiobooks and eBooks or choose to have your eBooks placed alongside your audiobooks
@@ -133,6 +128,11 @@ share an IP address, keep their combined requests below the service limit.
 See the [RanobeDB API documentation](https://ranobedb.org/api/docs/v0) and
 [database licensing notes](https://ranobedb.org/about) before enabling this
 source.
+
+Audible search and ASIN lookups can use a configured marketplace for the US,
+UK, France, Germany, Italy, Spain, Canada, Australia, India, Japan, or Brazil.
+Results use that storefront's language headers and link back to the selected
+marketplace.
 
 ## Getting Started
 

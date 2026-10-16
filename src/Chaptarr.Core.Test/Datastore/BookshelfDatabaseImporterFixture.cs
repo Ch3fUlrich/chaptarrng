@@ -385,6 +385,36 @@ namespace Chaptarr.Core.Test.Datastore
         }
 
         [Test]
+        public void should_refuse_a_stale_media_map_when_the_current_source_has_no_ambiguous_books()
+        {
+            File.WriteAllText(_sourcePath + ".bookshelf-media-map.json", """
+                {
+                  "version": 1,
+                  "books": [
+                    { "sourceBookId": 30, "mediaType": "ebook" }
+                  ]
+                }
+                """);
+            var before = File.ReadAllBytes(_sourcePath);
+
+            var exception = Assert.Throws<InvalidDataException>(() => new MigrationController(
+                LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
+                    _sourceConnectionString,
+                    new MigrationContext(MigrationType.Main),
+                    DatabaseType.SQLite));
+            var review = File.ReadAllText(_sourcePath + ".bookshelf-media-review.json");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exception.Message, Does.Contain("not ambiguous in the current source"));
+                Assert.That(File.ReadAllBytes(_sourcePath), Is.EqualTo(before));
+                Assert.That(review, Does.Contain("\"books\""));
+                Assert.That(review, Does.Not.Contain("\"sourceBookId\": 30"));
+                Assert.That(Directory.GetFiles(_directory, "*.bookshelfng-backup-*.db"), Is.Empty);
+            });
+        }
+
+        [Test]
         public void should_keep_completed_media_choices_in_the_review_when_a_map_is_incomplete()
         {
             InsertBookWithoutEdition(32, monitored: true);
