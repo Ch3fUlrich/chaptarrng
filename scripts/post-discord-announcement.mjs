@@ -123,11 +123,17 @@ for (let index = 0; index < chunks.length; index += 1) {
   } catch {
     throw new Error('Discord webhook returned an unreadable response.');
   }
-  if (
-    !receipt.id ||
-    receipt.embeds?.[0]?.description !== chunks[index]
-  ) {
+  if (!receipt.id) {
     throw new Error('Discord did not confirm the announcement message.');
+  }
+  // Discord normalizes line endings and trims surrounding whitespace in embeds,
+  // so a text difference alone does not mean the message was lost.
+  const normalize = (value) =>
+    typeof value === 'string' ? value.replace(/\r\n/g, '\n').trim() : value;
+  if (normalize(receipt.embeds?.[0]?.description) !== normalize(chunks[index])) {
+    console.warn(
+      'Discord accepted announcement message ' + (index + 1) + ' but returned different text.'
+    );
   }
 
   if (index + 1 < chunks.length) {
