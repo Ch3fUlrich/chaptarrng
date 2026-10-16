@@ -50,6 +50,36 @@ namespace Chaptarr.Core.Test.IndexerTests
             };
         }
 
+        // Homelab regression: German kids series are released as '<Series> - Folge N - <Title>', so the
+        // '<title> <author>' query finds nothing; the series variants must carry the series and the number.
+        [TestCase("27")]
+        [TestCase("31")]
+        public void should_query_series_and_folge_number_for_german_kids_series(string position)
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                BookTitle = "Der Zauberspiegel",
+                Books = new List<Book>
+                {
+                    new Book
+                    {
+                        MediaType = BookMediaType.Audiobook,
+                        SeriesName = "Bibi Blocksberg",
+                        SeriesPosition = position
+                    }
+                }
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+            var urls = chain.GetTier(chain.Tiers - 1).SelectMany(s => s.Select(r => r.HttpRequest.Url.FullUri)).ToList();
+
+            Assert.That(urls, Has.Some.Contains("t=book").And.Contains("title=Bibi%20Blocksberg%20Der%20Zauberspiegel"));
+            Assert.That(urls, Has.Some.Contains("t=book").And.Contains($"title=Bibi%20Blocksberg%20{position}"));
+            Assert.That(urls, Has.Some.Contains("t=search").And.Contains($"q=Bibi%20Blocksberg%20{position}"));
+        }
+
         [Test]
         public void should_add_series_search_variants_tier_when_series_and_position_are_present()
         {
