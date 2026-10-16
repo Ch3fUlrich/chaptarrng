@@ -4,6 +4,21 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.972](https://github.com/snapetech-org/chaptarrng/compare/v0.9.971..v0.9.972) - 2026-10-16
+
+### User-facing changes
+
+#### Fixed
+
+- **Migration:** Migration preview now rejects incomplete, extra, or stale media-map entries and reports which source book records need review before conversion can continue.
+  - **Action required:** Re-run preview after updating a media map or source database.
+- **Migration:** The BookshelfNG migration guide now identifies the first released ChaptarrNG image with conversion and rollback commands, replacing its stale v0.9.969 notice.
+  - **Action required:** Use ChaptarrNG v0.9.970 or later for BookshelfNG conversion.
+
+### Bug Fixes
+- *(migration)* Reject stale media maps and document handoff - ([e1e95d3](https://github.com/snapetech-org/chaptarrng/commit/e1e95d3227810c2c227eb0831be0dbeca85132e5))
+- *(migration)* Reject stale maps and refresh docs - ([c1579b5](https://github.com/snapetech-org/chaptarrng/commit/c1579b5a60c6ac1ee67216e20dbd9d7eef7661fa))
+
 ## [0.9.971](https://github.com/snapetech-org/chaptarrng/compare/v0.9.970..v0.9.971) - 2026-10-16
 
 ### User-facing changes
