@@ -71,8 +71,8 @@ jobs:
 
   build:
     if: github.event_name != 'pull_request' || github.event.action != 'edited'
-    # Every build matrix leg uses GitHub-hosted runners.
-    runs-on: ubuntu-latest
+    # Every platform matrix leg uses its corresponding GitHub-hosted runner.
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
