@@ -25,7 +25,8 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     NUGET_XMLDOC_MODE=skip \
     NUGET_HTTP_TIMEOUT=180 \
-    DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_HTTP2ENABLE=false
+    DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_HTTP2ENABLE=false \
+    NuGetAudit=false
 
 # Copy only dependency manifests so cache is preserved when code changes
 COPY package.json yarn.lock ./
