@@ -26,24 +26,22 @@ The application continues to identify itself as `Chaptarr` through its Readarr-c
 
 ### BookshelfNG consolidation status
 
-BookshelfNG is consolidated into the standard ChaptarrNG application. Its
-feature and data-parity gate remains separate from upstream retirement, which
-covers the union of BookshelfNG capabilities carried over and ChaptarrNG
-features introduced or maintained through the current release.
-That upstream retirement audit is paused and incomplete. The
-[combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
-lists the capability and acceptance gates; it does not mean implementation is
-active or the backlog is resolved.
+BookshelfNG `0.4.21.70` is designated its final release. The release includes
+a source-side helper that archives appdata before calling the standard
+ChaptarrNG migration and rollback commands. The matching ChaptarrNG release is
+[`v0.9.972`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.972);
+it includes stricter rejection of incomplete or stale media maps. Read the
+[BookshelfNG handoff guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md)
+before migrating.
 
-The standard ChaptarrNG image includes BookshelfNG preview, apply, automatic
-startup conversion, and rollback commands beginning with `v0.9.970`. It
-supports BookshelfNG migration-158 SQLite databases only. The public `v0.9.971`
-Linux/amd64 image passed synthetic preview, apply, startup, rollback, and
-operator media-map checks; those checks do not prove older schemas, PostgreSQL,
-real-deployment rollback, full feature parity, or package/update-channel
-handoff. Do not treat the projects as drop-in replacements: back up first and
-follow the [migration guide](docs/MIGRATE_FROM_BOOKSHELFNG.md), including its
-preview and media-map steps. The [combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
+The conversion scope is the exact BookshelfNG migration-158 SQLite schema.
+Ambiguous book formats require operator review. The source helper backs up
+appdata, but does not copy external media/download folders, translate every
+external setting, or update pinned images and package channels. Older schemas,
+PostgreSQL, full feature parity, and several real-world rollback and channel
+paths remain unverified. The guarded BookshelfNG release bridge remains
+disabled by default; it does not redirect live tags or packages. The
+[combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
 tracks the remaining feature and channel gates.
 
 ChaptarrNG is independently maintained and is not affiliated with the Servarr team or the Readarr, Sonarr, Radarr, Lidarr, or Prowlarr projects.

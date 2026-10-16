@@ -6,7 +6,7 @@ Readarr. The fork was created on August 31, 2026 from the parent repository's
 `develop` branch at the
 [shared fork-base commit](https://github.com/Chaptarr/chaptarr/commit/423b1bba1d47657d24ddfbf9c5418892972a1229).
 This guide covers the published feature set through
-[`v0.9.971`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.971)
+[`v0.9.972`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.972)
 and the additional feature and maintenance work present in the current fork
 checkout. The source comparison below was refreshed on 2026-10-16; release and
 migration evidence is dated separately. The [changelog](../CHANGELOG.md) is
@@ -15,15 +15,19 @@ branch at
 [`e67374f`](https://github.com/Chaptarr/chaptarr/commit/e67374f), which is in
 ChaptarrNG `main`'s history.
 
-**Migration update (2026-10-15).** The standard ChaptarrNG image includes the
+**Migration update (2026-10-16).** The standard ChaptarrNG image includes the
 BookshelfNG converter and rollback commands from
 [`v0.9.970`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.970).
 The public `v0.9.971` image passed preview, explicit apply, rollback after a
 post-migration write, ordinary startup, and the operator media-map review loop
-against populated synthetic migration-158 SQLite fixtures. The converter
-still supports only migration-158 SQLite; older schemas and PostgreSQL remain
-unsupported, and successful database conversion does not complete feature
-parity or legacy-channel handoff.
+against populated synthetic migration-158 SQLite fixtures. `v0.9.972` adds
+strict rejection of incomplete or stale media maps. The final BookshelfNG
+`0.4.21.70` release includes a source-side appdata archive helper; its
+[operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md)
+documents use with the standard image. Conversion still supports only
+migration-158 SQLite; older schemas and PostgreSQL remain unsupported, and
+successful database conversion does not complete feature parity or legacy
+channel handoff.
 
 This guide groups behavior rather than listing every fix, dependency update,
 or upstream report. Some items need reproduction or depend on an external
@@ -53,7 +57,7 @@ that BookshelfNG feature parity, package handoff, or upstream Chaptarr
 retirement is complete.
 
 The cumulative blocker set now includes the features released through
-`v0.9.971`: BookshelfNG migration and rollback, author-root backfill, managed
+`v0.9.972`: BookshelfNG migration and rollback, author-root backfill, managed
 book-file downloads, recurring missing-book searches, Audible marketplace
 selection, BookLore BookDrop uploads, metadata edition/series preferences,
 import-list preview and history, new localization catalogs, paged full-library

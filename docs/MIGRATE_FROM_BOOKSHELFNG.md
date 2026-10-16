@@ -1,10 +1,14 @@
 # Move a BookshelfNG installation to ChaptarrNG
 
-> **Release status.** The standard ChaptarrNG image includes BookshelfNG
-> conversion and rollback commands from `v0.9.970`; use that version or a later
-> stable release. This converter supports migration-158 SQLite databases.
-> Pinned images, native packages, and updater channels need separate upgrade
-> steps; database conversion alone does not update an installation channel.
+> **Release status.** Use the standard ChaptarrNG `v0.9.972` release or a
+> later stable version for the final BookshelfNG `0.4.21.70` source. That
+> BookshelfNG release includes an optional source-side helper that creates a
+> full appdata archive before invoking ChaptarrNG's preview, apply, and
+> rollback commands; see the
+> [BookshelfNG operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md).
+> Conversion supports the exact migration-158 SQLite schema. Pinned images,
+> native packages, and updater channels need separate upgrade steps; database
+> conversion alone does not update an installation channel.
 
 Fresh and migrated installations use the same standard ChaptarrNG application
 and container build. The `Chaptarr` executable provides an
