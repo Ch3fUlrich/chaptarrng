@@ -8,10 +8,8 @@ Windows, macOS, and PostgreSQL smoke receipts before the workflow is complete.
 
 ## GitHub runner routing
 
-The Ubuntu Linux build-matrix entry may use the shared organization runner pool
-only when `TRUSTED_MAIN_RUNNERS_ENABLED` is set to `true`; while unset, it
-stays hosted. Pull requests and Windows/macOS matrix entries remain hosted. The
-organization group is restricted to this workflow on `refs/heads/main`.
+Every platform matrix leg runs on GitHub-hosted runners. The Linux leg uses
+`ubuntu-latest`; Windows and macOS keep their corresponding hosted runners.
 
 ## Local use
 
@@ -81,15 +79,12 @@ unreviewed candidate through the same launcher because planning imports its
 validation configuration. GitHub Actions remains responsible for hosted
 validation.
 
-Each runner has a limit of two concurrent validation tasks. The engine-contract
-command also caps Node's test-file workers at two, so it cannot fan out across
-every CPU reported by a large self-hosted host. On the platform nodes, the
-engine-contract suite can run beside the Core NUnit suite; their logs, NUnit
-results, and task environments are separate. The PostgreSQL smoke remains gated
-by the engine contracts on its dedicated node and still uses
-only the workflow's disposable databases. Tasks that share writable output
-must use the same concurrency group so the scheduler runs them in separate
-batches.
+The engine-contract command caps Node's test-file workers at two, independent of
+the available CPU count. Local engine-contract runs can sit beside the Core
+NUnit suite because their logs, NUnit results, and task environments are
+separate. PostgreSQL smoke tests run on GitHub-hosted Linux and use only the
+workflow's disposable databases. Tasks that share writable output must use the
+same concurrency group so the scheduler runs them in separate batches.
 
 During a run, the engine writes a compact task summary to stderr when each task
 starts and finishes, then once per minute while a task is still running. The
@@ -109,11 +104,9 @@ does not enter the build context, image layers, or image metadata.
 
 The Core task runs the existing NUnit project with `--no-build` and
 `--no-restore`, so its receipt refers to the test assembly built from that same
-checkout. Linux direct-download tests need the Playwright Chromium cache. CI
-installs it in a run-specific cache and passes only that cache path to the NUnit
-task. The self-hosted Linux runner invokes PowerShell through Aqua with
-`AQUA_ROOT_DIR` inside the private job directory, so package downloads do not
-write to the shared runner installation. Local Linux runs should set
+checkout. Linux direct-download tests need the Playwright Chromium cache. Hosted
+CI installs it with system dependencies in a run-specific cache and passes only
+that cache path to the NUnit task. Local Linux runs should set
 `PLAYWRIGHT_BROWSERS_PATH` for both browser installation and the trusted
 launcher; the launcher mounts the cache read-only.
 The engine passes the cache path only to the Core task and keeps its per-task

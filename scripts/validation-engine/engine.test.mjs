@@ -21,11 +21,10 @@ function withEnvironmentVariable(name, value, action) {
 
 function assertChromiumCacheWorkflowContract(source) {
   const workflow = source.replace(/\r\n/g, '\n');
-  const cacheSetting = 'PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers';
+  const cacheSetting = 'PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright-browsers';
   assert.doesNotMatch(workflow, /^(<<<<<<<|=======|>>>>>>>).*$/m);
   const cacheSteps = [
     'Configure Chromium cache for direct-download browser tests',
-    'Install Chromium on the self-hosted Linux runner',
     'Install Chromium and system dependencies on GitHub-hosted Linux',
     'Test',
   ];
@@ -35,7 +34,7 @@ function assertChromiumCacheWorkflowContract(source) {
     assert.notEqual(start, -1, `missing workflow step: ${name}`);
     const next = workflow.indexOf('\n    - name:', start + marker.length);
     const step = workflow.slice(start, next === -1 ? workflow.length : next);
-    assert.ok(step.split('\n').some((line) => line.trim() === cacheSetting), `${name} must use the private cache path`);
+    assert.ok(step.split('\n').some((line) => line.trim() === cacheSetting), `${name} must use the per-job runner cache path`);
   }
   assert.match(workflow, /PLAYWRIGHT_BROWSERS_PATH=\$PLAYWRIGHT_BROWSERS_PATH.*\$GITHUB_ENV/);
 }
@@ -626,7 +625,7 @@ test('only the NUnit browser task receives its explicit Playwright cache path', 
   /unapproved inherited environment variable/);
 });
 
-test('Chromium installation and tests share the private-runner cache path', () => {
+test('Chromium installation and tests share the hosted-runner cache path', () => {
   const workflow = readFileSync(new URL('../../.github/workflows/build.yml', import.meta.url), 'utf8');
   const normalized = workflow.replace(/\r\n/g, '\n');
   assertChromiumCacheWorkflowContract(normalized);

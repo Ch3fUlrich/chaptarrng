@@ -71,8 +71,8 @@ jobs:
 
   build:
     if: github.event_name != 'pull_request' || github.event.action != 'edited'
-    # Pull requests stay hosted; the Ubuntu main entry uses the pool only after opt-in.
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && vars.TRUSTED_MAIN_RUNNERS_ENABLED == 'true' && fromJSON('{"group":"trusted-main","labels":["self-hosted","Linux","X64","host"]}') || matrix.os }}
+    # Every build matrix leg uses GitHub-hosted runners.
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -101,28 +101,17 @@ jobs:
       shell: pwsh
       run: ./packaging/scripts/test-chocolatey-publish-gate.ps1
 
-    - name: Test self-hosted runner trust boundary
+    - name: Test hosted runner policy
       if: matrix.os == 'ubuntu-latest'
       run: python3 scripts/test_workflow_runner_policy.py
 
-    - name: Test private runner temporary storage setup
-      if: runner.os == 'Linux'
-      run: ./scripts/test-private-runner-temp.sh
-
-    - name: Configure private runner temporary storage
-      id: private-runner-temp
-      if: runner.os == 'Linux'
-      env:
-        PRIVATE_RUNNER_TEMP_PREFIX: chaptarr
-      run: ./scripts/prepare-private-runner-temp.sh
-
-    - name: Configure private .NET install directory
+    - name: Configure .NET install directory
       if: runner.os == 'Linux'
       shell: bash
       run: |
         set -euo pipefail
-        mkdir -m 700 -- "$PRIVATE_RUNNER_TEMP/dotnet"
-        printf 'DOTNET_INSTALL_DIR=%s/dotnet\n' "$PRIVATE_RUNNER_TEMP" >> "$GITHUB_ENV"
+        mkdir -p -- "$RUNNER_TEMP/dotnet"
+        printf 'DOTNET_INSTALL_DIR=%s/dotnet\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
 
     - name: Require ImageSharp build license
@@ -254,52 +243,13 @@ jobs:
     - name: Configure Chromium cache for direct-download browser tests
       if: runner.os == 'Linux'
       env:
-        PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
+        PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright-browsers
       run: echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
 
-    - name: Install Chromium on the self-hosted Linux runner
-      if: runner.os == 'Linux' && runner.environment == 'self-hosted'
-      env:
-        PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
-      shell: bash
-      run: |
-        set -euo pipefail
-        pwsh_command="$(command -v pwsh)"
-        read -r -N 2 magic < "$pwsh_command" || true
-        aqua_root=''
-        aqua_config=''
-        aqua_policy_config=''
-        if [[ "$magic" == '#!' ]]; then
-          aqua_root="$(sed -n 's/^export AQUA_ROOT_DIR="\([^"]*\)"$/\1/p' "$pwsh_command" | head -n 1)"
-          aqua_config="$(sed -n 's/^export AQUA_CONFIG="\([^"]*\)"$/\1/p' "$pwsh_command" | head -n 1)"
-          aqua_policy_config="$(sed -n 's/^export AQUA_POLICY_CONFIG="\([^"]*\)"$/\1/p' "$pwsh_command" | head -n 1)"
-        fi
-
-        if [[ -n "$aqua_root" ]]; then
-          [[ "$aqua_root" == /* && "$aqua_root" != *$'\n'* && -x "$aqua_root/bin/aqua" ]] \
-            || { echo 'The PowerShell Aqua wrapper has an invalid Aqua installation path.' >&2; exit 1; }
-          [[ -n "$aqua_config" && "$aqua_config" == /* && "$aqua_config" != *$'\n'* && -r "$aqua_config" ]] \
-            || { echo 'The PowerShell Aqua wrapper has no readable Aqua configuration.' >&2; exit 1; }
-          [[ -n "${PRIVATE_RUNNER_TEMP:-}" && -d "$PRIVATE_RUNNER_TEMP" ]] \
-            || { echo 'Private runner temporary storage is unavailable.' >&2; exit 1; }
-
-          export AQUA_ROOT_DIR="$PRIVATE_RUNNER_TEMP/aqua"
-          export AQUA_CONFIG="$aqua_config"
-          if [[ -n "$aqua_policy_config" ]]; then
-            [[ "$aqua_policy_config" == /* && "$aqua_policy_config" != *$'\n'* && -r "$aqua_policy_config" ]] \
-              || { echo 'The PowerShell Aqua wrapper has an invalid policy configuration.' >&2; exit 1; }
-            export AQUA_POLICY_CONFIG="$aqua_policy_config"
-          fi
-
-          "$aqua_root/bin/aqua" exec -- pwsh ./_tests/net10.0/playwright.ps1 install chromium
-        else
-          pwsh ./_tests/net10.0/playwright.ps1 install chromium
-        fi
-
     - name: Install Chromium and system dependencies on GitHub-hosted Linux
-      if: runner.os == 'Linux' && runner.environment != 'self-hosted'
+      if: runner.os == 'Linux'
       env:
-        PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
+        PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright-browsers
       run: pwsh ./_tests/net10.0/playwright.ps1 install --with-deps chromium
 
     - name: Verify Unraid package sync stays off feature branches
@@ -310,10 +260,10 @@ jobs:
       id: validation
       env:
         DIRECT_DOWNLOAD_REQUIRE_PLAYWRIGHT: ${{ runner.os == 'Linux' && 'true' || 'false' }}
-        PLAYWRIGHT_BROWSERS_PATH: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/playwright-browsers
+        PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/playwright-browsers
         VALIDATION_NODE_ID: chaptarr-${{ matrix.platform }}-${{ runner.arch }}
-        VALIDATION_TEMP_ROOT: ${{ steps.private-runner-temp.outputs.path || runner.temp }}
-        VALIDATION_RECEIPT_EXPORT: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/chaptarr-validation/receipt.json
+        VALIDATION_TEMP_ROOT: ${{ runner.temp }}
+        VALIDATION_RECEIPT_EXPORT: ${{ runner.temp }}/chaptarr-validation/receipt.json
       shell: bash
       run: |
         set -euo pipefail
@@ -330,7 +280,7 @@ jobs:
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: chaptarr-validation-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.platform }}-${{ runner.arch }}
-        path: ${{ steps.private-runner-temp.outputs.path || runner.temp }}/chaptarr-validation/receipt.json
+        path: ${{ runner.temp }}/chaptarr-validation/receipt.json
         retention-days: 7
         if-no-files-found: error
 

@@ -49,22 +49,14 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
         self.assertRegex(push, r"(?m)^    branches:\s*\[\s*main\s*\]$")
         self.assertNotIn("**", push)
 
-    def test_pull_requests_never_select_the_persistent_runner(self) -> None:
+    def test_build_matrix_uses_hosted_runners(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
         build = job_block(source, "build")
         runner_match = re.search(r"(?m)^    runs-on: (?P<runner>[^\n]+)$", build)
         self.assertIsNotNone(runner_match)
-        runner = runner_match.group("runner")
-        main_condition = (
-            "((github.event_name == 'push' && github.ref == 'refs/heads/main') "
-            "|| (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
-        )
-        trusted_runner_json = '{"group":"trusted-main","labels":["self-hosted","Linux","X64","host"]}'
-        expected = "$" + "{{ matrix.os == 'ubuntu-latest' && " + main_condition + " && vars.TRUSTED_MAIN_RUNNERS_ENABLED == 'true' && fromJSON('" + trusted_runner_json + "') || matrix.os }}"
-        self.assertEqual(runner, expected)
-        self.assertNotIn("github.event_name == 'pull_request'", runner)
-        self.assertNotIn("startsWith(github.ref, 'refs/heads/')", runner)
-        self.assertIn("fromJSON('" + trusted_runner_json + "')", runner)
+        self.assertEqual(runner_match.group("runner"), "${{ matrix.os }}")
+        self.assertNotIn("self-hosted", source)
+        self.assertNotIn("TRUSTED_MAIN_RUNNERS_ENABLED", source)
 
     def test_pr_body_edits_revalidate_notes_without_restarting_builds(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
@@ -162,18 +154,11 @@ class WorkflowRunnerPolicyTests(unittest.TestCase):
                 capture_output=True,
             )
 
-    def test_self_hosted_aqua_tools_use_the_private_root(self) -> None:
+    def test_playwright_install_uses_hosted_linux_dependencies(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
-        install = step_block(source, "Install Chromium on the self-hosted Linux runner")
-
-        self.assertIn("export AQUA_ROOT_DIR=\"$PRIVATE_RUNNER_TEMP/aqua\"", install)
-        aqua_command = (
-            '"$aqua_root/bin/aqua" exec -- pwsh '
-            './_tests/net10.0/playwright.ps1 install chromium'
-        )
-        self.assertIn(aqua_command, install)
-        self.assertIn('export AQUA_CONFIG="$aqua_config"', install)
-        self.assertIn('export AQUA_POLICY_CONFIG="$aqua_policy_config"', install)
+        self.assertIn("Install Chromium and system dependencies on GitHub-hosted Linux", source)
+        self.assertIn("install --with-deps chromium", source)
+        self.assertNotIn("runner.environment", source)
 
     def test_frontend_build_runs_after_validation_receipts_are_exported(self) -> None:
         build = job_block(WORKFLOW.read_text(encoding="utf-8"), "build")
