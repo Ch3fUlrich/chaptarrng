@@ -4,6 +4,17 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.971](https://github.com/snapetech-org/chaptarrng/compare/v0.9.970..v0.9.971) - 2026-10-16
+
+### User-facing changes
+
+#### Fixed
+
+- **Settings:** Reordering delay profiles now stores the correct position, so your updated order still appears after the settings page reloads.
+
+### Documentation
+- *(release)* Note delay profile reorder fix - ([e0de021](https://github.com/snapetech-org/chaptarrng/commit/e0de021d231b1eb03ba6f1934662af1f4f6c09dd))
+
 ## [0.9.970](https://github.com/snapetech-org/chaptarrng/compare/v0.9.970..v0.9.970) - 2026-10-15
 
 ### User-facing changes
