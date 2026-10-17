@@ -4,6 +4,16 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.974](https://github.com/snapetech-org/chaptarrng/compare/v0.9.973..v0.9.974) - 2026-10-17
+
+### Documentation
+- Consolidate v0.9.973 changelog - ([4899390](https://github.com/snapetech-org/chaptarrng/commit/4899390773f316257236be474d65212aa7ffb8bf))
+
+### Maintenance
+- Version bump to 0.9.974 - ([7e41182](https://github.com/snapetech-org/chaptarrng/commit/7e411823c58d37f3bf58d4a73fb752d872198a84))
+- Restore platform-specific hosted runners - ([5684b17](https://github.com/snapetech-org/chaptarrng/commit/5684b17677ebf7e430d5f1518ebc62b354cc3a1c))
+- Retire private GitHub Actions runners - ([27694da](https://github.com/snapetech-org/chaptarrng/commit/27694dae8c0bb49c2aa20c1c7a416f326f8807e5))
+
 ## [0.9.973](https://github.com/snapetech-org/chaptarrng/compare/v0.9.972..v0.9.973) - 2026-10-16
 
 ### User-facing changes
