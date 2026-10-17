@@ -35,6 +35,17 @@ if ! git -C "$repo_root" cat-file -e "HEAD:$source_path" >/dev/null 2>&1; then
 	exit 0
 fi
 
+template_path="templates/$source_repo.xml"
+
+if ! git -C "$repo_root" cat-file -e "HEAD:$template_path" >/dev/null 2>&1; then
+	template_path="$source_path/templates/$source_repo.xml"
+fi
+
+if ! git -C "$repo_root" cat-file -e "HEAD:$template_path" >/dev/null 2>&1; then
+	echo "No committed Unraid template exists at templates/$source_repo.xml or $source_path/templates/$source_repo.xml." >&2
+	exit 1
+fi
+
 if ! command -v rsync >/dev/null 2>&1; then
 	echo "rsync is required to sync the Unraid package." >&2
 	exit 1
@@ -56,15 +67,25 @@ esac
 
 staging_dir="$(mktemp -d)"
 trap 'rm -rf "$staging_dir"' EXIT
-git -C "$repo_root" archive --format=tar HEAD "$source_path" | tar -xf - -C "$staging_dir"
+archive_paths=("$source_path")
+if [[ "$template_path" != "$source_path/"* ]]; then
+	archive_paths+=("$template_path")
+fi
+git -C "$repo_root" archive --format=tar HEAD "${archive_paths[@]}" | tar -xf - -C "$staging_dir"
 source_dir="$staging_dir/$source_path"
+template_file="$staging_dir/$template_path"
 
-for required_file in README.md ca_profile.xml "templates/$source_repo.xml"; do
+for required_file in README.md ca_profile.xml; do
 	if [[ ! -f "$source_dir/$required_file" ]]; then
 		echo "The committed Unraid package source is missing $source_path/$required_file." >&2
 		exit 1
 	fi
 done
+
+if [[ ! -f "$template_file" ]]; then
+	echo "The committed Unraid template is missing $template_path." >&2
+	exit 1
+fi
 
 if ! git -C "$target_dir" show-ref --verify --quiet "refs/heads/$branch"; then
 	echo "The Unraid companion checkout must have a local '$branch' branch." >&2
@@ -122,7 +143,10 @@ fi
 
 rsync --archive "$source_dir/README.md" "$target_dir/README.md"
 rsync --archive "$source_dir/ca_profile.xml" "$target_dir/ca_profile.xml"
-rsync --archive --delete "$source_dir/templates/" "$target_dir/templates/"
+template_staging_dir="$staging_dir/companion-templates"
+mkdir -p "$template_staging_dir"
+rsync --archive "$template_file" "$template_staging_dir/$source_repo.xml"
+rsync --archive --delete "$template_staging_dir/" "$target_dir/templates/"
 if [[ -d "$source_dir/docs" ]]; then
 	rsync --archive --delete "$source_dir/docs/" "$target_dir/docs/"
 elif [[ -d "$target_dir/docs" ]]; then

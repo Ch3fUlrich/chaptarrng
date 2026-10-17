@@ -177,6 +177,10 @@ module.exports = (env) => {
                 source: 'frontend/src/Content/Images/Icons/*.*',
                 destination: path.join(distFolder, 'Content/Images/Icons')
               },
+              {
+                source: 'frontend/build/browserconfig.xml.in',
+                destination: path.join(distFolder, 'Content/Images/Icons/browserconfig.xml')
+              },
 
               // Images
               {
