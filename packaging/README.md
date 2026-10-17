@@ -1,11 +1,11 @@
 # Native package channels
 
-Status checked 2026-10-17, before the `v0.9.975` release run. GitHub Release
-archives are the payload for native packages; the standard ChaptarrNG container
-is built separately from the same application source and migration code. Package
-recipes add service and filesystem integration. See the [ChaptarrNG v0.9.974
-release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.974) for
-the latest published archive and checksums at the time of this check.
+Status checked 2026-10-17 after the `v0.9.975` release. GitHub Release archives
+are the payload for native packages; the standard ChaptarrNG container is built
+separately from the same application source and migration code. Package recipes
+add service and filesystem integration. See the [ChaptarrNG v0.9.975
+release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.975)
+for the published archives, checksums, and source RPMs.
 
 ## Package identities
 
@@ -18,36 +18,48 @@ the latest published archive and checksums at the time of this check.
 
 Legacy package recipes keep the old package identity, service name, and data
 path so a package upgrade can start the normal ChaptarrNG database migration.
-They are a bridge candidate, not proof that an existing installation is safe
-to upgrade.
+They are a bridge candidate, not proof that every existing install can be
+upgraded safely.
 
 ## Public status
 
 | Channel | ChaptarrNG | BookshelfNG | Remaining check |
 | --- | --- | --- | --- |
-| AUR | `chaptarrng-bin` `0.9.974-1` is published | `bookshelfng-bin` `0.4.21.70-1` remains | Test an old-package upgrade through conversion and rollback |
-| COPR | Latest `0.9.974` builds failed | Legacy identity not bridged | Both fixed RPM specs built locally on Fedora 45 without debugsource subpackages; verify the next public build |
-| Chocolatey | Public `0.9.973`; `0.9.974` push failed before the key was configured; key is now set and `0.9.975` is pending | `0.4.21.70` remains | Verify publish and Windows service upgrade; rollback remains untested |
-| Docker | `ghcr.io/snapetech-org/chaptarrng:0.9.974` is published | Mutable legacy aliases unchanged | Verify write access and digest equality before enabling the bridge |
+| AUR | `chaptarrng-bin` `0.9.975-1` is published | `bookshelfng-bin` `0.4.21.70-1` remains | Test an old-package upgrade through conversion and rollback |
+| COPR | `chaptarrng` `0.9.975-1` build succeeded | Legacy build not triggered | Test the old package identity in a Fedora upgrade before enabling its bridge |
+| Chocolatey | `0.9.975` push was rejected with HTTP 403; public ChaptarrNG remains `0.9.973` | `0.4.21.70` remains | Resolve publisher authorization, then publish and test package-manager rollback |
+| Docker | `ghcr.io/snapetech-org/chaptarrng:0.9.975` is published | Mutable legacy aliases unchanged | Verify write access and digest equality before enabling the bridge |
 
-The standard release workflow has archives for Linux x64, Linux arm64, and
-Windows x64, checksums, and source RPMs. Its Windows package job also installs
-the last public BookshelfNG package, upgrades it through the candidate legacy
-identity, and checks service startup, data retention, automatic database
-conversion, backup creation, and uninstall behavior. The `CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` Actions variable is unset, so
-legacy package IDs and image aliases remain unchanged. Do not enable it until
-the legacy upgrade paths and rollback checks below pass. Registry credentials and package names are maintained in GitHub
-Actions; their values are not stored here.
+Core release validation passed on Linux, macOS, Windows, and PostgreSQL. The
+Windows Chocolatey build and upgrade smoke also passed: it installs the
+published BookshelfNG package, upgrades through the ChaptarrNG legacy recipe,
+checks service startup and automatic database conversion, confirms that the
+backup and data remain, and verifies uninstall preserves data. The candidate
+BookshelfNG package itself was not published.
+
+The `v0.9.975` release and standard image were published successfully. The
+overall package workflow ended with a failure because Chocolatey rejected the
+new package push with HTTP 403. The workflow used a nonempty
+`CHOCOLATEY_API_KEY`, so the remaining issue is feed authorization, package
+ownership, or moderation; the key value is not recorded here.
+
+The standard ChaptarrNG COPR build succeeded as `0.9.975-1` after the specs
+stopped requesting an empty debugsource package. The workflow generated source
+RPMs for both identities, but did not trigger the legacy BookshelfNG COPR
+project because the migration bridge gate is disabled. The ChaptarrNG AUR
+identity was published at `0.9.975-1`; the BookshelfNG AUR identity was not
+updated. The `CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` Actions variable remains unset, so
+old package IDs and image aliases do not redirect to ChaptarrNG.
 
 ## Migration behavior and limits
 
-The default ChaptarrNG app-data location is different from BookshelfNG's
-native-package locations. The legacy recipes preserve the old location and
-start the standard ChaptarrNG app from there. The converter accepts only
-BookshelfNG migration-158 SQLite databases. It previews every table, requires
-operator decisions for ambiguous per-book media types, retains the source
-backup, and offers a validated rollback. Older schemas and PostgreSQL are not
-converted.
+The default ChaptarrNG app-data location differs from BookshelfNG's
+native-package locations. A legacy package recipe preserves the old location
+so the standard ChaptarrNG app can find `readarr.db` and run its migration.
+The converter accepts only BookshelfNG migration-158 SQLite databases. It
+previews every table, asks the operator to classify ambiguous books, retains
+the source backup, and supports validated rollback. Older schemas and
+PostgreSQL are not converted.
 
 Docker Compose, Unraid, and other container users can change the image to
 `ghcr.io/snapetech-org/chaptarrng` and retain `/config`, media/download mounts,
@@ -64,19 +76,12 @@ retirement decision.
 
 ## Work required before enabling the legacy bridge
 
-- Publish a release containing the RPM fix and confirm both COPR projects
-  build from the published SRPMs.
-- Retry Chocolatey publication and verify the public package version and
-  checksums.
-- Run a real upgrade using each existing package manager. Confirm it preserves
-  the service identity, edited environment/configuration, permissions, and
-  data path; converts the migration-158 fixture; retains a usable backup; and
-  rolls back without losing writes made after conversion.
-- Verify that the `v0.9.975` Windows release job passes its existing
-  BookshelfNG-to-ChaptarrNG package upgrade smoke. It checks service startup,
-  automatic conversion, backup creation, data retention, and uninstall, but
-  does not exercise rollback.
-- Verify the old GHCR/Docker Hub destinations, credentials, and per-platform
+- Test AUR, COPR, and Chocolatey old-identity upgrades in disposable systems.
+  Preserve service settings and data paths, convert the migration-158 fixture,
+  retain the source backup, and verify rollback without losing later writes.
+- Resolve Chocolatey 403 authorization, then confirm `0.9.975` publishes and
+  its public checksum matches the tested package.
+- Verify old GHCR/Docker Hub destinations, credentials, and per-platform
   manifest digests before changing any mutable image aliases.
 - Complete the separate [BookshelfNG feature-parity roadmap](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md),
   or explicitly accept and document the behavior that will not move.
@@ -84,5 +89,5 @@ retirement decision.
   especially its upstream in-app updater and unsupported third-party channels.
 
 The database conversion and published-image migration smoke test are complete
-for the supported schema. BookshelfNG retirement is not complete until these
-package, service, feature-parity, and channel decisions are resolved.
+for the supported schema. The published BookshelfNG identity bridges and full
+feature/channel retirement are not.

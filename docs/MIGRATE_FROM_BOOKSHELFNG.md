@@ -1,13 +1,13 @@
 # Move a BookshelfNG installation to ChaptarrNG
 
-> **Release status (2026-10-17).** Use the standard ChaptarrNG `v0.9.974` release or a
+> **Release status (2026-10-17).** Use the standard ChaptarrNG `v0.9.975` release or a
 > later stable version for the published BookshelfNG `0.4.21.70` release. That
 > BookshelfNG release includes an optional source-side helper that creates a
 > full appdata archive before invoking ChaptarrNG's preview, apply, and
 > rollback commands; see the
 > [BookshelfNG operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md).
 > For an immutable Docker deployment, use
-> `ghcr.io/snapetech-org/chaptarrng:0.9.974`.
+> `ghcr.io/snapetech-org/chaptarrng:0.9.975`.
 > Conversion supports the exact migration-158 SQLite schema. Pinned images,
 > native packages, and updater channels need separate upgrade steps; database
 > conversion alone does not update an installation channel.
@@ -39,7 +39,7 @@ and leaves the source database untouched.
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
   dotnet /app/Chaptarr.dll -preview-bookshelf-migration -data=/config
 ```
 
@@ -71,7 +71,7 @@ explicit apply command once:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
   dotnet /app/Chaptarr.dll -migrate-bookshelf -confirm-bookshelf-service-stopped -data=/config
 ```
 
@@ -89,7 +89,7 @@ BookshelfNG backup without changing either database:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
   dotnet /app/Chaptarr.dll -preview-bookshelf-restore \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
     -data=/config
@@ -100,7 +100,7 @@ After preview passes, apply the restore while all services remain stopped:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
   dotnet /app/Chaptarr.dll -restore-bookshelf \
     -confirm-bookshelf-service-stopped \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
@@ -267,7 +267,7 @@ databases can be migrated by normal ChaptarrNG startup or with the explicit
 preview/apply commands above. Both paths retain the BookshelfNG source backup;
 rollback is available while the original backup remains intact.
 
-The public ChaptarrNG `v0.9.974` release contains the converter and standalone
+The public ChaptarrNG `v0.9.975` release contains the converter and standalone
 archives. Current package and image-channel status is tracked in
 [`packaging/README.md`](../packaging/README.md). The migration bridge is
 disabled: existing BookshelfNG package IDs and mutable image aliases do not
