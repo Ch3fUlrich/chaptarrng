@@ -135,7 +135,7 @@ marketplace.
 
 ## Getting Started
 
-> **Docker is currently the only supported way to run ChaptarrNG.** The fork is developed and tested in Docker. Releases do not include native install packages; native support is not currently offered.
+> **Docker is the primary maintained installation.** Releases also include standalone Linux and Windows archives, with package-manager feeds available on selected platforms. Publication and upgrade coverage varies by channel; check the [package status](packaging/README.md) before choosing one. For a BookshelfNG move, start with the [migration guide](docs/MIGRATE_FROM_BOOKSHELFNG.md).
 
 ChaptarrNG uses ImageSharp to resize cover images. ImageSharp 4 requires a
 valid Six Labors license when building this direct dependency from source.

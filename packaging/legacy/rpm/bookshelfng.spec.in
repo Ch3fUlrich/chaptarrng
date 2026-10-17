@@ -1,5 +1,7 @@
 %global _libdir /usr/lib
 %{!?_unitdir:%global _unitdir /usr/lib/systemd/system}
+# This self-contained release has no separate debuginfo sources.
+%global debug_package %{nil}
 %global __requires_exclude ^liblttng-ust[.]so[.]0
 
 Name:           bookshelfng

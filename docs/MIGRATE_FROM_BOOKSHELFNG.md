@@ -1,11 +1,13 @@
 # Move a BookshelfNG installation to ChaptarrNG
 
-> **Release status.** Use the standard ChaptarrNG `v0.9.973` release or a
-> later stable version for the final BookshelfNG `0.4.21.70` source. That
+> **Release status (2026-10-17).** Use the standard ChaptarrNG `v0.9.974` release or a
+> later stable version for the published BookshelfNG `0.4.21.70` release. That
 > BookshelfNG release includes an optional source-side helper that creates a
 > full appdata archive before invoking ChaptarrNG's preview, apply, and
 > rollback commands; see the
 > [BookshelfNG operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md).
+> For an immutable Docker deployment, use
+> `ghcr.io/snapetech-org/chaptarrng:0.9.974`.
 > Conversion supports the exact migration-158 SQLite schema. Pinned images,
 > native packages, and updater channels need separate upgrade steps; database
 > conversion alone does not update an installation channel.
@@ -37,7 +39,7 @@ and leaves the source database untouched.
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
   dotnet /app/Chaptarr.dll -preview-bookshelf-migration -data=/config
 ```
 
@@ -69,7 +71,7 @@ explicit apply command once:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
   dotnet /app/Chaptarr.dll -migrate-bookshelf -confirm-bookshelf-service-stopped -data=/config
 ```
 
@@ -87,7 +89,7 @@ BookshelfNG backup without changing either database:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
   dotnet /app/Chaptarr.dll -preview-bookshelf-restore \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
     -data=/config
@@ -98,7 +100,7 @@ After preview passes, apply the restore while all services remain stopped:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:<migration-enabled-version> \
+  ghcr.io/snapetech-org/chaptarrng:0.9.974 \
   dotnet /app/Chaptarr.dll -restore-bookshelf \
     -confirm-bookshelf-service-stopped \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
@@ -235,82 +237,54 @@ stopped without changing the database and wrote the review file with mode
 source monitoring state, removed the review file, retained the source backup,
 and passed SQLite integrity and foreign-key checks.
 
+## Published image smoke test (2026-10-17)
+
+The public `ghcr.io/snapetech-org/chaptarrng:0.9.974` image was exercised
+against three isolated copies of the checked-in migration-158 fixture (39
+source tables). The tested `latest` tag had the same per-platform manifest
+digests as `0.9.974` and reported application version `v0.9.974.0` at release
+commit `53a265f0`.
+
+Preview left the source database hash unchanged and created no backup. Explicit
+apply completed and retained the BookshelfNG backup. Rollback preview passed.
+After writing a setting to the converted ChaptarrNG database, rollback restored
+the BookshelfNG v158 source while retaining the later ChaptarrNG write in a
+separate backup. On a third copy, normal startup detected `readarr.db`,
+converted it to the native Chaptarr schema, and started the service.
+
+The fixture has no `/library` mount or desktop browser, so normal startup also
+logged the expected missing-root and headless-browser warnings; those did not
+stop conversion or service startup. This validates the current public image's
+migration, rollback, and automatic startup paths against the synthetic fixture.
+It does not establish behavior for older schemas, PostgreSQL, live operator
+data, every BookshelfNG feature, or every package and update channel.
+
 ## Limits and update channels
 
-The standard ChaptarrNG image includes conversion and rollback from `v0.9.970`.
-The channel and package inventory below is an audit snapshot from 2026-10-14;
-it describes the separate legacy handoff work at that time and is not a live
-status feed. Use the current release information and the upgrade steps below
-when deciding how to update a pinned image or package.
+The converter accepts SQLite databases at exactly BookshelfNG migration 158.
+It rejects older or newer schemas and does not convert PostgreSQL. Supported
+databases can be migrated by normal ChaptarrNG startup or with the explicit
+preview/apply commands above. Both paths retain the BookshelfNG source backup;
+rollback is available while the original backup remains intact.
 
-The ordinary ChaptarrNG release builds one image. The ChaptarrNG release
-workflow dispatches that image's exact multi-architecture digest to
-the public personal-account bridge repository
-[`snapetech/bookshelfng-ghcr-release-bridge`](https://github.com/snapetech/bookshelfng-ghcr-release-bridge),
-which republishes it as `ghcr.io/snapetech/bookshelfng:latest`, `:hardcover`,
-and `:softcover`. The bridge performs no build, serializes alias updates, and
-verifies that every destination digest matches the source. Its CI passed
-on commit `7e2d1b0`. The candidate BookshelfNG workflow change in PR #130
-removes the duplicate organization-owned GHCR publisher. Docker Hub
-publication uses the same standard image digest for the ChaptarrNG and
-BookshelfNG mutable tags when publisher credentials are configured.
+The public ChaptarrNG `v0.9.974` release contains the converter and standalone
+archives. Current package and image-channel status is tracked in
+[`packaging/README.md`](../packaging/README.md). The migration bridge is
+disabled: existing BookshelfNG package IDs and mutable image aliases do not
+currently redirect to ChaptarrNG. Pinned tags, digests, offline installs, and
+third-party deployment definitions always require an operator update. A
+mutable tag only affects a later pull or container recreation.
 
-The bridge repository is public, but its GitHub App installation on the
-personal account and write access to the existing `bookshelfng` package are
-not configured. The ChaptarrNG dispatch waits for the stable release to
-publish, and the bridge refuses to replay a version that is no longer the
-latest. No legacy tag has changed. Those access and digest checks must pass
-alongside source mapping, rollback, feature parity, populated-client behavior,
-release assets, and per-channel upgrade/rollback evidence before the migration
-gate can open. The Docker Hub publisher secret is also unavailable.
-Historical version tags and pinned digests remain unchanged. Mutable image
-tags affect a later pull or recreation; they do not change a running
-container.
+BookshelfNG's in-app updater still uses its existing upstream update service;
+Snapetech cannot redirect that service. The practical handoff paths are a
+manual image/package change or a separately validated legacy-identity bridge.
+The bridge must preserve each channel's app-data path and service settings and
+must be tested as an upgrade, including startup conversion and rollback, before
+it is enabled.
 
-The converter currently accepts only SQLite databases at BookshelfNG migration
-158. Older database schemas and PostgreSQL are unsupported. The populated test
-does not close the BookshelfNG feature-parity or distribution-channel
-retirement gates by itself.
-
-BookshelfNG's in-app updater checks the Readarr-owned update service, which
-Snapetech cannot redirect. Candidate package bridges now keep the AUR
-`bookshelfng-bin`, COPR `slskdn/bookshelfng`, and Chocolatey `bookshelfng`
-identities while installing the same ChaptarrNG release asset used by fresh
-installs. They preserve each channel's old data path and service name, allowing
-the standard ChaptarrNG startup migration to run. These recipes have not yet
-been published. Ordinary ChaptarrNG releases publish only the ChaptarrNG
-package identities and image tags. Publishing the old BookshelfNG package and
-container identities requires `CHAPTARRNG_MIGRATION_BRIDGE_ENABLED=true` in
-the ChaptarrNG repository; the same unset-by-default gate controls the separate
-BookshelfNG bridge workflow. Prefer one organization Actions variable scoped
-to both repositories, or set the same value in both; do not enable only one
-side. GHCR retagging is dispatched directly by the ChaptarrNG release workflow
-to a small, personal-account repository. That repository uses a GitHub App
-installation token scoped to its own contents and its own `GITHUB_TOKEN` for
-package writes. The Pacman upgrade from the published BookshelfNG AUR package
-to the candidate legacy package passed with config, data-marker, and service
-identity retained; service restart and actual database conversion remain
-untested through Pacman. Both AUR identities and both RPM identities build
-from a locally checksum-verified archive, and both RPMs pass isolated
-file-install checks. The public `v0.9.969` release has no standard archive,
-Windows installer, SRPM, or checksum assets to install.
-The new [COPR project](https://copr.fedorainfracloud.org/coprs/slskdn/chaptarrng/)
-is created for Fedora 43, 44, 45, and Rawhide x86_64. Its `chaptarrng`
-custom-source package is configured with auto-rebuild and the package-scoped
-webhook is stored in ChaptarrNG Actions as `COPR_WEBHOOK_URL`; COPR has not
-built or published a package yet. The AUR SSH key is configured, but
-`chaptarrng-bin` is not registered. ChaptarrNG still lacks Chocolatey and
-Docker Hub publisher secrets. The legacy `BOOKSHELFNG_COPR_WEBHOOK_URL` is
-configured in ChaptarrNG Actions, and the matching BookshelfNG
-`COPR_WEBHOOK_URL` was rotated to the same package-scoped endpoint. Neither
-webhook has been exercised against a COPR build, and the old project's
-external source bootstrap still needs its one-time update. The standard
-ChaptarrNG image publish path succeeded in release run `38267985018`, but its
-legacy BookshelfNG GHCR alias remains untested: the personal-account bridge
-exists only in the local worktree and still needs publication, App
-installation, and `bookshelfng` package write access. Chocolatey remains logged out in the
-available browser; Proton Pass itself is not exposed through the browser
-control. Secret values are not printed or documented. Pinned, offline,
-third-party, Windows setup, Linux
-archive, Docker, Helm, and catalog installs still need their own tested
-handoff.
+Database conversion is only one retirement requirement. ChaptarrNG does not
+yet provide full BookshelfNG behavior parity. Follow the separate
+[BookshelfNG parity roadmap](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md)
+for open feature, integration, and distribution work, including SeerrNG and
+client behavior. Do not treat successful database conversion as proof that a
+BookshelfNG deployment can be retired without losing behavior.

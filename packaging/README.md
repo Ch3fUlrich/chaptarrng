@@ -1,164 +1,88 @@
 # Native package channels
 
-The GitHub Release archive is the common application payload for native
-packages. It is built from the same ChaptarrNG source and migration utility as
-the standard container; package managers add only their service and filesystem
-integration. There is no compatibility build.
+Status checked 2026-10-17, before the `v0.9.975` release run. GitHub Release
+archives are the payload for native packages; the standard ChaptarrNG container
+is built separately from the same application source and migration code. Package
+recipes add service and filesystem integration. See the [ChaptarrNG v0.9.974
+release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.974) for
+the latest published archive and checksums at the time of this check.
 
-The standard image is published as `ghcr.io/snapetech-org/chaptarrng`, owned by
-the same organization as the repository. The legacy `bookshelfng` container
-package is not linked to a repository; grant the BookshelfNG repository
-Actions write access to it before enabling legacy alias updates.
+## Package identities
 
-The new-install package identities are:
+| Channel | New ChaptarrNG install | Existing BookshelfNG identity | Data path during upgrade |
+| --- | --- | --- | --- |
+| Arch AUR | `chaptarrng-bin` | `bookshelfng-bin` | `/var/lib/bookshelfng` |
+| Fedora COPR | `slskdn/chaptarrng` | `slskdn/bookshelfng` | `/var/lib/bookshelfng` |
+| Chocolatey | `chaptarrng` | `bookshelfng` | `%ProgramData%\BookshelfNG\data` |
+| Docker | `ghcr.io/snapetech-org/chaptarrng` | Legacy image aliases | Existing `/config` mount |
 
-| Channel | New-install identity | Release asset |
-| --- | --- | --- |
-| Arch AUR | `chaptarrng-bin` | `ChaptarrNG-<version>-linux-x64.tar.gz` |
-| Fedora COPR | `chaptarrng` | `ChaptarrNG-<version>-linux-x64.tar.gz` |
-| Chocolatey Community Repository | `chaptarrng` | `ChaptarrNG-<version>-win-x64.zip` |
+Legacy package recipes keep the old package identity, service name, and data
+path so a package upgrade can start the normal ChaptarrNG database migration.
+They are a bridge candidate, not proof that an existing installation is safe
+to upgrade.
 
-The AUR and Chocolatey files in this tree are release templates. A release
-workflow must fill in the exact version and SHA-256 of the public release asset
-before generating `.SRCINFO` or the `.nupkg`. Do not upload templates with
-unresolved values. The RPM source package must likewise verify the archive
-checksum before submitting to COPR.
+## Public status
 
-Candidate package validation used a locally checksum-verified
-`ChaptarrNG-0.9.969-linux-x64.tar.gz`. Both AUR identities built with
-`makepkg` in an Arch container, and the package metadata/path checks passed.
-Both COPR source RPMs were generated with SHA-256 sidecars; the standard
-`chaptarrng` and legacy `bookshelfng` RPMs rebuilt successfully from their
-SRPMs. Both installed into an isolated Fedora container with scriptlets and
-dependency resolution disabled; the legacy package retained its command,
-service, and environment-file paths. These tests do not exercise service
-upgrades or database migration and do not use a published standard release
-asset. RPM reports nonfatal duplicate build-ID warnings for bundled .NET app
-and updater files.
+| Channel | ChaptarrNG | BookshelfNG | Remaining check |
+| --- | --- | --- | --- |
+| AUR | `chaptarrng-bin` `0.9.974-1` is published | `bookshelfng-bin` `0.4.21.70-1` remains | Test an old-package upgrade through conversion and rollback |
+| COPR | Latest `0.9.974` builds failed | Legacy identity not bridged | Both fixed RPM specs built locally on Fedora 45 without debugsource subpackages; verify the next public build |
+| Chocolatey | Public `0.9.973`; `0.9.974` push failed before the key was configured; key is now set and `0.9.975` is pending | `0.4.21.70` remains | Verify publish and Windows service upgrade; rollback remains untested |
+| Docker | `ghcr.io/snapetech-org/chaptarrng:0.9.974` is published | Mutable legacy aliases unchanged | Verify write access and digest equality before enabling the bridge |
 
-No general native package has been published from ChaptarrNG yet. The release
-workflow now builds and validates both the new-install package identities and
-these legacy identity updates from the same ordinary ChaptarrNG release assets:
+The standard release workflow has archives for Linux x64, Linux arm64, and
+Windows x64, checksums, and source RPMs. Its Windows package job also installs
+the last public BookshelfNG package, upgrades it through the candidate legacy
+identity, and checks service startup, data retention, automatic database
+conversion, backup creation, and uninstall behavior. The `CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` Actions variable is unset, so
+legacy package IDs and image aliases remain unchanged. Do not enable it until
+the legacy upgrade paths and rollback checks below pass. Registry credentials and package names are maintained in GitHub
+Actions; their values are not stored here.
 
-| Existing BookshelfNG install | Update identity | Preserved service and data path |
-| --- | --- | --- |
-| AUR | `bookshelfng-bin` | `bookshelfng.service`, `/var/lib/bookshelfng` |
-| COPR | `bookshelfng` in `slskdn/bookshelfng` | `bookshelfng.service`, `/var/lib/bookshelfng` |
-| Chocolatey | `bookshelfng` | `BookshelfNG`, `%ProgramData%\BookshelfNG\data` |
+## Migration behavior and limits
 
-These are package-identity bridges, not another application build. They keep
-the old data location so the standard ChaptarrNG startup migration sees the
-existing `readarr.db`, converts supported migration-158 SQLite data, and
-retains the original database backup. Older or unsupported schemas fail closed
-and remain a migration blocker.
+The default ChaptarrNG app-data location is different from BookshelfNG's
+native-package locations. The legacy recipes preserve the old location and
+start the standard ChaptarrNG app from there. The converter accepts only
+BookshelfNG migration-158 SQLite databases. It previews every table, requires
+operator decisions for ambiguous per-book media types, retains the source
+backup, and offers a validated rollback. Older schemas and PostgreSQL are not
+converted.
 
-The package workflow publishes only when credentials and registrations are
-ready. Standard ChaptarrNG releases publish only the ChaptarrNG package IDs.
-Publishing existing BookshelfNG package IDs also requires the
-`CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` repository variable to be exactly
-`true`; its unset default prevents old package managers from redirecting
-before the migration, rollback, and channel gates pass. The same variable
-controls legacy mutable image tags and the BookshelfNG repository bridge.
-Prefer one organization Actions variable scoped to both repositories;
-otherwise set the same value in both. Do not enable only one side of the
-handoff.
-The new package identities are AUR `chaptarrng-bin`, COPR
-`slskdn/chaptarrng`, and Chocolatey `chaptarrng`. Configure the ChaptarrNG
-publisher secrets without putting their values in chat:
+Docker Compose, Unraid, and other container users can change the image to
+`ghcr.io/snapetech-org/chaptarrng` and retain `/config`, media/download mounts,
+ports, UID/GID, and environment settings. Unraid has a ChaptarrNG template.
+Only mutable aliases can be repointed; pinned versions and image digests need
+an operator change. A repointed tag does not change a running container.
 
-- `AUR_SSH_KEY`: configured in ChaptarrNG Actions; the maintainer account must
-  own or be authorized to update both `chaptarrng-bin` and the existing
-  `bookshelfng-bin` recipe.
-- `COPR_WEBHOOK_URL`: configured package-scoped custom webhook for the new
-  ChaptarrNG COPR package.
-- `BOOKSHELFNG_COPR_WEBHOOK_URL`: custom webhook for the existing
-  `slskdn/bookshelfng` package.
-- `CHOCOLATEY_API_KEY`: publisher key that can push both Chocolatey IDs.
+BookshelfNG's in-app updater still checks its existing upstream update service,
+which ChaptarrNG cannot redirect. Automatic migration must therefore use a
+validated image/package identity bridge, or operators must change their install
+source. Debian/PPA, Flatpak/AppImage, standalone installer definitions, Helm,
+third-party catalogs, and pinned/offline installs need an explicit handoff or
+retirement decision.
 
-The AUR key is configured in the ChaptarrNG repository and authenticated
-against the existing keefshape AUR account. The `chaptarrng-bin` AUR package
-is still absent and must wait for a public, checksummed standard release
-archive. The public [COPR project](https://copr.fedorainfracloud.org/coprs/slskdn/chaptarrng/)
-exists for Fedora 43, 44, 45, and Rawhide x86_64. Its `chaptarrng`
-custom-source package uses `packaging/rpm/copr-source.sh`, has auto-rebuild
-enabled, and its package-scoped webhook is configured in ChaptarrNG Actions as
-`COPR_WEBHOOK_URL`. No COPR build has run yet: the public `v0.9.969` release
-has no assets, including the SRPM and checksum this package requires.
+## Work required before enabling the legacy bridge
 
-ChaptarrNG still has no Chocolatey or Docker Hub publisher secrets. The
-legacy `BOOKSHELFNG_COPR_WEBHOOK_URL` is now configured in ChaptarrNG Actions;
-the matching `COPR_WEBHOOK_URL` in BookshelfNG Actions was rotated to the same
-package-scoped endpoint so its existing publisher remains usable. Neither
-webhook has been exercised against a COPR build, and the legacy project's
-external source bootstrap still needs its one-time update. GitHub does not
-reveal secret values, so they are not included here.
+- Publish a release containing the RPM fix and confirm both COPR projects
+  build from the published SRPMs.
+- Retry Chocolatey publication and verify the public package version and
+  checksums.
+- Run a real upgrade using each existing package manager. Confirm it preserves
+  the service identity, edited environment/configuration, permissions, and
+  data path; converts the migration-158 fixture; retains a usable backup; and
+  rolls back without losing writes made after conversion.
+- Verify that the `v0.9.975` Windows release job passes its existing
+  BookshelfNG-to-ChaptarrNG package upgrade smoke. It checks service startup,
+  automatic conversion, backup creation, data retention, and uninstall, but
+  does not exercise rollback.
+- Verify the old GHCR/Docker Hub destinations, credentials, and per-platform
+  manifest digests before changing any mutable image aliases.
+- Complete the separate [BookshelfNG feature-parity roadmap](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md),
+  or explicitly accept and document the behavior that will not move.
+- Decide which BookshelfNG install channels will be retired without a redirect,
+  especially its upstream in-app updater and unsupported third-party channels.
 
-The public registry check found the existing AUR `bookshelfng-bin` package at
-`0.4.21.69-1`; `chaptarrng-bin` is not registered. COPR has both the existing
-`slskdn/bookshelfng` project and the new `slskdn/chaptarrng` project, but the
-new project has no published builds yet.
-Chocolatey has the existing `bookshelfng` package; the `chaptarrng` package
-page returns 404. The public ChaptarrNG `v0.9.969` release has no standard
-Linux or Windows archives, which these package recipes require. Registry
-publication therefore remains blocked even though the local AUR and RPM
-candidate builds passed.
-
-The new COPR package uses [`packaging/rpm/copr-source.sh`](rpm/copr-source.sh),
-with `bash`, `curl`, `cpio`, and `rpm` as source-script build dependencies.
-Its package-scoped custom webhook receives the stable
-`vMAJOR.MINOR.PATCH` release tag and fetches the matching, checksummed SRPM
-from the public GitHub Release. The normal release workflow will trigger it
-only after the release and its SRPM sidecar are public.
-
-For the existing `slskdn/bookshelfng` project, update its custom-source script
-to [`packaging/legacy/rpm/copr-bookshelfng-source.sh`](legacy/rpm/copr-bookshelfng-source.sh).
-That script fetches the matching `bookshelfng-<version>-1.src.rpm` from the
-ChaptarrNG release. Its old webhook is package-scoped and needs its own
-`BOOKSHELFNG_COPR_WEBHOOK_URL` secret.
-
-Linux packages run the self-contained application under systemd as the
-`chaptarrng` service user and use `/var/lib/chaptarrng` for configuration and
-database files. Add the service user to the group that owns media/download
-directories if ChaptarrNG needs write access there. Install `ffmpeg` for
-conversion features that use it. The package declares an external update
-mechanism, so users update through pacman or dnf; package installation does not
-enable the systemd unit automatically.
-
-Chocolatey installs the self-contained Windows release as an NSSM service and
-keeps persistent data under `%ProgramData%\ChaptarrNG\data`. Package upgrades
-download and verify the archive before stopping a running service, stage the
-new payload beside the current one, and restore the old files if the package
-swap or service restart fails. They preserve the prior service state and leave
-app data in place. Updates come from Chocolatey rather than the in-app updater.
-
-After publication, pacman users install `chaptarrng-bin`, Fedora users enable
-the COPR project and install `chaptarrng`, and Windows users install
-`chaptarrng` with Chocolatey. Linux services are not enabled automatically;
-enable `chaptarrng.service` after checking media-group access. Chocolatey
-installs and starts its service automatically.
-
-The legacy recipes and dual-publish workflow are candidates and have not been
-published. The new COPR project and webhook are set up, but no package build
-has run because the current public release has no source RPM or standard
-archives. The AUR and RPM candidate builds pass against the local archive.
-On the Arch VM, Pacman upgraded the public BookshelfNG 0.4.21.69-1 package to
-the candidate 0.9.969-1 legacy package identity; the operator environment file
-and synthetic /var/lib/bookshelfng data marker survived, and the
-bookshelfng.service identity now runs the ChaptarrNG binary. Pacman retained
-the edited environment file and wrote the package default as .pacnew. This
-does not test service restart or a populated application database. The
-Chocolatey old-package upgrade smoke is defined but hosted Windows has not
-run. The public release asset, remaining publisher credentials, first-time
-registry setup, and publication remain open.
-The Docker workflow also has a candidate same-digest publisher for the old
-mutable GHCR and Docker Hub `latest`, `hardcover`, and `softcover` image names.
-The normal ChaptarrNG release leaves those aliases untouched unless
-`CHAPTARRNG_MIGRATION_BRIDGE_ENABLED=true`; the BookshelfNG bridge uses the
-same gate. It is not exercised against the live registries: GHCR package write
-access and Docker Hub credentials must be set up in ChaptarrNG, then each
-resulting digest must be checked. Historical version tags and pinned digests
-stay unchanged. Windows setup, Debian/PPA, Flatpak/AppImage, Helm, catalogs,
-and updater handoff still need separate tested bridges or an explicit
-retirement decision. Package work
-does not close the feature, data, SeerrNG, rollback, hosted-release, or full
-distribution retirement gates.
+The database conversion and published-image migration smoke test are complete
+for the supported schema. BookshelfNG retirement is not complete until these
+package, service, feature-parity, and channel decisions are resolved.
