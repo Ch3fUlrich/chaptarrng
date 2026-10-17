@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>ChaptarrNG</Name>
-  <Repository>ghcr.io/snapetech-org/chaptarrng:latest</Repository>
+  <Repository>ghcr.io/snapetech-org/chaptarrng:main</Repository>
   <Registry>https://ghcr.io/snapetech-org/chaptarrng</Registry>
   <Network>bridge</Network>
   <Shell>bash</Shell>
