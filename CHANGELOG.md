@@ -4,6 +4,33 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.975](https://github.com/snapetech-org/chaptarrng/compare/v0.9.974..v0.9.975) - 2026-10-17
+
+### User-facing changes
+
+#### Changed
+
+- **Unraid:** The ChaptarrNG Unraid template now uses the organization package's moving main tag and follows the latest validated main release. Its persistent app configuration remains unchanged.
+
+### Features
+- *(unraid)* Add Community Apps template to main repo - ([69d3844](https://github.com/snapetech-org/chaptarrng/commit/69d384491cb4b554ce51b094b1ad59b829f655c8))
+
+### Bug Fixes
+- *(packaging)* Unblock Fedora builds for both identities - ([6ed4972](https://github.com/snapetech-org/chaptarrng/commit/6ed4972a806fe5e64e14126d7dfc9a81019cdb3c))
+- *(release)* Pass Chocolatey API key explicitly - ([d336f7d](https://github.com/snapetech-org/chaptarrng/commit/d336f7d864cc47d8d3f7486259588462d177e006))
+- *(unraid)* Remove unrelated XML from CA scan - ([abb1c26](https://github.com/snapetech-org/chaptarrng/commit/abb1c262e079fb744d6bce8e6195db9e4114e3c7))
+
+### Documentation
+- *(unraid)* Correct template image guidance - ([9cca295](https://github.com/snapetech-org/chaptarrng/commit/9cca295966815e317b7db4212c5ce501cf835233))
+
+### Testing
+- Cover Bookshelf maintenance startup flags - ([d051a11](https://github.com/snapetech-org/chaptarrng/commit/d051a115ce83549458f1e032e72062d16f92ebe4))
+
+### Maintenance
+- Version bump to 0.9.975 - ([5574b5f](https://github.com/snapetech-org/chaptarrng/commit/5574b5f15780e0b76998f962e14f64abe5b88804))
+- Pin and scope public fork validation workflow - ([1c63d96](https://github.com/snapetech-org/chaptarrng/commit/1c63d96ee178d6c6f753bc904846f43de6bd59e7))
+- Add isolated public fork PR checks - ([af8ede1](https://github.com/snapetech-org/chaptarrng/commit/af8ede1056645039a27975566ba1c356c54d00d7))
+
 ## [0.9.974](https://github.com/snapetech-org/chaptarrng/compare/v0.9.973..v0.9.974) - 2026-10-17
 
 ### Documentation
