@@ -7,6 +7,9 @@ add service and filesystem integration. See the [ChaptarrNG v0.9.975
 release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.975)
 for the published archives, checksums, and source RPMs.
 
+For current BookshelfNG migration and legacy-channel acceptance status, see
+[BookshelfNG retirement status](../docs/BOOKSHELFNG_RETIREMENT.md).
+
 ## Package identities
 
 | Channel | New ChaptarrNG install | Existing BookshelfNG identity | Data path during upgrade |

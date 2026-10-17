@@ -11,6 +11,8 @@
 > Conversion supports the exact migration-158 SQLite schema. Pinned images,
 > native packages, and updater channels need separate upgrade steps; database
 > conversion alone does not update an installation channel.
+> See [BookshelfNG retirement status](BOOKSHELFNG_RETIREMENT.md) for live
+> package/channel state and the remaining acceptance gates.
 
 Fresh and migrated installations use the same standard ChaptarrNG application
 and container build. The `Chaptarr` executable provides an
@@ -80,6 +82,26 @@ directory copy and generated database backup until you have checked the
 library, root paths, profiles, indexers, download clients, notifications, and
 SeerrNG connection. The explicit stopped-service flag makes the required
 quiescent data directory an operator-confirmed precondition.
+
+## Update the local MCP connection
+
+If `snapetech-mcp` is configured for BookshelfNG, change the MCP host to use
+the ChaptarrNG app entry and URL after migration:
+
+```text
+SNAPETECH_MCP_APPS=chaptarrng
+SNAPETECH_MCP_CHAPTARRNG_URL=<ChaptarrNG base URL>
+SNAPETECH_MCP_CHAPTARRNG_API_KEY=<dedicated ChaptarrNG service key>
+```
+
+Configure that credential in ChaptarrNG as
+`CHAPTARR__AUTH__SEERRAPIKEY`, then restart the MCP process. The BookshelfNG
+entry uses a media-type selector; ChaptarrNG serves both media types through
+one entry, so remove `SNAPETECH_MCP_BOOKSHELFNG_MEDIA_TYPE`. The current MCP
+tools read status, paged books, bounded catalog search, queue, and history;
+catalog search may contact the configured metadata providers. See the
+[SnapeTech MCP guide](integrations/snapetech-mcp.md) for access and data
+boundaries.
 
 ## Roll back after ChaptarrNG has started
 

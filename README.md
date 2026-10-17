@@ -24,26 +24,23 @@ We forked Chaptarr so SeerrNG can rely on a book backend with explicit ebook/aud
 
 The application continues to identify itself as `Chaptarr` through its Readarr-compatible API so SeerrNG can detect it. **ChaptarrNG** is the name of this maintained repository, its container image, and its Unraid template.
 
-### BookshelfNG consolidation status
+For local MCP access, see the [SnapeTech MCP integration guide](docs/integrations/snapetech-mcp.md).
 
-BookshelfNG `0.4.21.70` is designated its final release. The release includes
-a source-side helper that archives appdata before calling the standard
-ChaptarrNG migration and rollback commands. The matching ChaptarrNG release is
-[`v0.9.973`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.973);
-it includes stricter rejection of incomplete or stale media maps and a frontend
-dependency security fix. Read the
-[BookshelfNG handoff guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md)
-before migrating.
+### BookshelfNG migration status
 
-The conversion scope is the exact BookshelfNG migration-158 SQLite schema.
-Ambiguous book formats require operator review. The source helper backs up
-appdata, but does not copy external media/download folders, translate every
-external setting, or update pinned images and package channels. Older schemas,
-PostgreSQL, full feature parity, and several real-world rollback and channel
-paths remain unverified. The guarded BookshelfNG release bridge remains
-disabled by default; it does not redirect live tags or packages. The
-[combined retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
-tracks the remaining feature and channel gates.
+ChaptarrNG `v0.9.975` includes the migration and rollback tools. The BookshelfNG
+source helper creates an appdata archive before it runs them. ChaptarrNG also
+initializes new author format paths from configured defaults, a behavior
+released in `v0.9.974`; explicit roots and existing authors are left alone.
+Read the [migration guide](docs/MIGRATE_FROM_BOOKSHELFNG.md) before switching.
+
+Migration currently accepts BookshelfNG migration-158 SQLite databases.
+Ambiguous book formats require operator review. The helper does not copy
+external media/download folders, translate every external setting, or update
+pinned images and package channels. The legacy bridge remains disabled, and
+full feature parity and several package-channel upgrades are still unverified.
+See the [retirement status and channel matrix](docs/BOOKSHELFNG_RETIREMENT.md)
+for the current release and acceptance gates.
 
 ChaptarrNG is independently maintained and is not affiliated with the Servarr team or the Readarr, Sonarr, Radarr, Lidarr, or Prowlarr projects.
 
@@ -74,7 +71,7 @@ not be included in the latest published image yet.
 
 The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
 defines the cumulative upstream gate: every BookshelfNG feature carried over
-and every ChaptarrNG feature introduced or maintained through `v0.9.973`
+and every ChaptarrNG feature introduced or maintained through `v0.9.975`
 blocks retirement as a whole and remains an individual acceptance gate.
 Carrying over a BookshelfNG capability adds to this set; it does not replace
 or reduce ChaptarrNG's own blockers.
@@ -95,6 +92,7 @@ See the [SeerrNG Bookshelf backend guide](https://github.com/snapetech-org/seerr
 
 ### Organization
 * **Dual Media Libraries** - You can have separate root folders for audiobooks and eBooks or choose to have your eBooks placed alongside your audiobooks
+* **Format-specific author paths** - New authors inherit missing audiobook and ebook roots from configured defaults; explicit roots remain unchanged, and existing authors or files are not modified
 * **Matching** - Match audiobook and eBook files using tags, folders, and release metadata
 * **Series Management** - Automatically organize books by series
 * **Metadata Profiles** - Control allowed languages, rank preferred edition terms, and choose the series name used in filenames and generated metadata. Stronger match evidence remains authoritative.
