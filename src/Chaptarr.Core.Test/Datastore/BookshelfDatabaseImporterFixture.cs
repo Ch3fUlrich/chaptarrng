@@ -229,8 +229,8 @@ namespace Chaptarr.Core.Test.Datastore
 
             Assert.Multiple(() =>
             {
-                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id = 30 AND MediaType = 0 AND Monitored = 1 AND ForeignEditionId = 'hc:audio-40';"), Is.EqualTo(1));
-                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id = 31 AND MediaType = 1 AND Monitored = 1 AND ForeignEditionId = 'ol:OL123M';"), Is.EqualTo(1));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id = 30 AND MediaType = 0 AND AudiobookMonitored = 1 AND EbookMonitored = 0 AND ForeignEditionId = 'hc:audio-40';"), Is.EqualTo(1));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id = 31 AND MediaType = 1 AND AudiobookMonitored = 0 AND EbookMonitored = 1 AND ForeignEditionId = 'ol:OL123M';"), Is.EqualTo(1));
                 Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Editions WHERE Id = 40 AND BookId = 30 AND Monitored = 1;"), Is.EqualTo(1));
                 Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Editions WHERE Id = 41 AND BookId = 31 AND Monitored = 1;"), Is.EqualTo(1));
                 Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
@@ -282,7 +282,7 @@ namespace Chaptarr.Core.Test.Datastore
             var review = File.ReadAllText(reviewPath);
             Assert.Multiple(() =>
             {
-                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (30, 31) AND Monitored = 0 AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (30, 31) AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
                 Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Editions WHERE BookId IN (30, 31);"), Is.EqualTo(2));
                 Assert.That(review, Does.Contain("\"sourceBookId\": 30"));
                 Assert.That(review, Does.Contain("\"mediaType\": \"both-unmonitored\""));
@@ -312,7 +312,7 @@ namespace Chaptarr.Core.Test.Datastore
             var review = File.ReadAllText(reviewPath);
             Assert.Multiple(() =>
             {
-                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (32, 34) AND Monitored = 0 AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (32, 34) AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
                 Assert.That(File.Exists(reviewPath), Is.True);
                 Assert.That(review, Does.Contain("\"sourceBookId\": 32"));
                 Assert.That(review, Does.Contain("\"mediaType\": \"both-unmonitored\""));
@@ -345,7 +345,7 @@ namespace Chaptarr.Core.Test.Datastore
 
             Assert.Multiple(() =>
             {
-                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (32, 34) AND Monitored = 0;"), Is.EqualTo(2));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (32, 34) AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
                 Assert.That(File.Exists(_sourcePath + ".bookshelf-media-review.json"), Is.False);
                 Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
                 Assert.That(QueryRows(_sourcePath, "PRAGMA foreign_key_check;"), Is.Empty);
