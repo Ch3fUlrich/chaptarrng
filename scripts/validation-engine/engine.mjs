@@ -469,6 +469,21 @@ function nunitFailureSqliteErrorCode(body) {
   return code === undefined ? null : Number(code);
 }
 
+function nunitFailureSqliteErrorKind(body) {
+  const failure = body.match(/<failure\b[^>]*>([\s\S]*?)<\/failure>/i);
+  if (!failure) return null;
+  const message = failure[1].match(/<message\b[^>]*>([\s\S]*?)<\/message>/i)?.[1];
+  if (!message) return null;
+  const detail = decodeNUnitXmlText(message).match(/\bSQLite Error\s+1:\s*'([^']*)'/i)?.[1];
+  if (detail === undefined) return null;
+  if (/^no such column:/i.test(detail)) return 'missing-column';
+  if (/^no such table:/i.test(detail)) return 'missing-table';
+  if (/syntax error/i.test(detail)) return 'syntax-error';
+  if (/already exists/i.test(detail)) return 'duplicate-object';
+  if (/constraint failed/i.test(detail)) return 'constraint-failed';
+  return 'sqlite-error';
+}
+
 export function parseNUnitSummary(xml) {
   const root = xml.match(/<test-run\b[^>]*>/)?.[0];
   if (!root) throw new Error('NUnit XML is missing its test-run summary');
@@ -487,6 +502,8 @@ export function parseNUnitSummary(xml) {
     const detail = { name, exceptionType: nunitFailureType(body), stackFrame: nunitFailureFrame(body) };
     const sqliteErrorCode = nunitFailureSqliteErrorCode(body);
     if (sqliteErrorCode !== null) detail.sqliteErrorCode = sqliteErrorCode;
+    const sqliteErrorKind = nunitFailureSqliteErrorKind(body);
+    if (sqliteErrorKind !== null) detail.sqliteErrorKind = sqliteErrorKind;
     failedTestDetails.push(detail);
   }
   const summary = {

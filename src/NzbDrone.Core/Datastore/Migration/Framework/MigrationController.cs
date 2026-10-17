@@ -49,6 +49,13 @@ namespace NzbDrone.Core.Datastore.Migration.Framework
 
                 var result = MigrateBookshelf(connectionString, migrationContext, databaseType, previewOnly: false);
                 _logger.Info("BookshelfNG database conversion completed. Original database backup retained at {0}", result.BackupPath);
+                var sourceDatabasePath = Path.GetFullPath(new SqliteConnectionStringBuilder(connectionString).DataSource);
+                var mediaReviewPath = sourceDatabasePath + ".bookshelf-media-review.json";
+                if (File.Exists(mediaReviewPath))
+                {
+                    _logger.Warn("BookshelfNG books were kept in both catalogs without monitoring where their media type was unclear. Review the migration choices at {0}", mediaReviewPath);
+                }
+
                 return;
             }
 
