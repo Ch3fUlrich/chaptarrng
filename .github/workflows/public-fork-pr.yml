@@ -11,7 +11,11 @@ concurrency:
 jobs:
   validate:
     name: Run disposable fork validation
-    if: github.event.pull_request.head.repo.fork == true && github.event.pull_request.base.repo.full_name == 'snapetech-org/chaptarrng' && github.event.pull_request.base.ref == 'main'
+    if: >-
+      github.event.pull_request.head.repo.fork == true &&
+      github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name &&
+      github.event.pull_request.base.repo.full_name == 'snapetech-org/chaptarrng' &&
+      github.event.pull_request.base.ref == 'main'
     permissions:
       contents: read
     uses: snapetech-org/chaptarrng/.github/workflows/fork-safe-validation.yml@af8ede1056645039a27975566ba1c356c54d00d7
