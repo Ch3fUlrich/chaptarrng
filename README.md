@@ -286,18 +286,19 @@ The feature is not a general-purpose web downloader. It depends on a source retu
 
 ### Unraid Community Applications
 
-ChaptarrNG's Unraid template is maintained in the dedicated
-[ChaptarrNG Unraid package repository](https://github.com/snapetech-org/chaptarrng-unraid).
-It installs the maintained fork image, maps the web interface on port `8789`,
-and provides separate paths for appdata, audiobooks, ebooks, and downloads.
-The image uses `PUID=99` and `PGID=100` by default; change those values to match
-the ownership of your media shares.
+ChaptarrNG's Unraid Community Apps template is [templates/chaptarrng.xml](templates/chaptarrng.xml),
+with repository metadata in [ca_profile.xml](ca_profile.xml). It installs the
+maintained fork image, maps the web interface on port `8789`, and provides
+separate paths for appdata, audiobooks, ebooks, and downloads. The template
+tracks the validated `main` image and uses `PUID=99` and `PGID=100` by default;
+change those values to match the ownership of your media shares.
 
 To make ChaptarrNG searchable in Community Applications, submit the package
-repository URL `https://github.com/snapetech-org/chaptarrng-unraid` through
-Unraid's Community Apps submission flow and complete its validation scan.
-Stable releases from the application repository's `main` branch publish the
-`latest` image to GHCR.
+repository URL `https://github.com/snapetech-org/chaptarrng` through Unraid's
+[Community Apps submission flow](https://ca.unraid.net/submit/new) and complete
+its Validate and Scan steps. The template's `TemplateURL` points to its raw XML
+in this repository. The `latest` GHCR tag remains available for stable Docker
+installs; the Unraid template follows the validated `main` image.
 
 ## Building from Source
 Building from source requires the .NET 10 SDK, Node.js, and Yarn. When running ChaptarrNG natively, install FFmpeg for your operating system and make sure both `ffmpeg` and `ffprobe` are available on the `PATH` used to start the application. Normal source builds do not bundle them automatically; the ChaptarrNG Docker image already includes them.

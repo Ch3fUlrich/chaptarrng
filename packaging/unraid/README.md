@@ -13,18 +13,20 @@ ChaptarrNG remains a standalone book manager; SeerrNG is optional.
 
 ## Submit to Community Applications
 
-Submit this repository URL in the [Unraid Community Apps portal](https://ca.unraid.net/submit):
+Submit the main ChaptarrNG repository in the
+[Unraid Community Apps portal](https://ca.unraid.net/submit):
 
-`https://github.com/snapetech-org/chaptarrng-unraid`
+`https://github.com/snapetech-org/chaptarrng`
 
-The template and repository profile are kept here so the portal scans only
-Unraid package files, rather than unrelated XML files in the application
-source. Run Validate and Scan in the portal before submitting.
+The portal reads `ca_profile.xml` from the repository root and the template
+from `templates/chaptarrng.xml`. Run Validate and Scan in the portal before
+submitting. This companion repository remains available as a manual template
+mirror; it is not the Community Apps submission target.
 
 ## Manual installation
 
-Use the [ChaptarrNG template XML](templates/chaptarrng.xml) with Unraid's
-Docker template workflow. It installs `ghcr.io/snapetech-org/chaptarrng:main`,
+Use this repository's [ChaptarrNG template XML](templates/chaptarrng.xml) with
+Unraid's Docker template workflow. It installs `ghcr.io/snapetech-org/chaptarrng:main`,
 which tracks the latest validated main image, and configures persistent
 appdata, audiobook, ebook, and download paths.
 
