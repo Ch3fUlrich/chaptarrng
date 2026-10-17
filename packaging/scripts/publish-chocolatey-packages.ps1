@@ -13,8 +13,14 @@ if ($packages.Count -ne $expectedCount) {
   throw "Expected $expectedCount package artifact(s) for the configured migration bridge state."
 }
 
+$apiKey = $env:CHOCOLATEY_API_KEY
+if ([string]::IsNullOrWhiteSpace($apiKey)) {
+  throw 'CHOCOLATEY_API_KEY is empty.'
+}
+$apiKeyArgument = "--api-key=$apiKey"
+
 foreach ($package in $packages) {
-  choco push $package.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
+  choco push $package.FullName --source https://push.chocolatey.org/ $apiKeyArgument
   if ($LASTEXITCODE -ne 0) {
     throw "Chocolatey rejected package $($package.Name)."
   }
