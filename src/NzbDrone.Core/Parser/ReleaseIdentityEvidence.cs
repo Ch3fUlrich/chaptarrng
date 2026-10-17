@@ -57,6 +57,12 @@ namespace NzbDrone.Core.Parser
                     return result;
                 }
 
+                if (CandidateMatchesSeries(targetBook, release.Author))
+                {
+                    result.HasPositiveIdentityEvidence = true;
+                    return result;
+                }
+
                 result.HasStructuredAuthorMismatch = true;
                 return result;
             }
@@ -67,6 +73,12 @@ namespace NzbDrone.Core.Parser
             }
 
             var cleanedReleaseTitle = Parser.CleanReleaseTitleForParsing(release.Title);
+            if (HasLeadingSeriesEpisodeIdentity(cleanedReleaseTitle, targetBook))
+            {
+                result.HasPositiveIdentityEvidence = true;
+                return result;
+            }
+
             var releaseTokens = ReleaseTitleMatchScorer.Tokenize(cleanedReleaseTitle);
             if (!TryResolveMatchedSpan(releaseTokens, titleMatch, out var matchedStart, out var matchedEnd))
             {
@@ -84,6 +96,49 @@ namespace NzbDrone.Core.Parser
             }
 
             return result;
+        }
+
+        private static bool HasLeadingSeriesEpisodeIdentity(string cleanedReleaseTitle, Book targetBook)
+        {
+            if (cleanedReleaseTitle.IsNullOrWhiteSpace() || targetBook?.SeriesName.IsNullOrWhiteSpace() != false)
+            {
+                return false;
+            }
+
+            var releaseTokens = ReleaseTitleMatchScorer.Tokenize(cleanedReleaseTitle);
+            var seriesTokens = GetMeaningfulSeriesTokens(ReleaseTitleMatchScorer.Tokenize(targetBook.SeriesName));
+            if (releaseTokens.Count == 0 || seriesTokens.Count == 0 || releaseTokens.Count <= seriesTokens.Count)
+            {
+                return false;
+            }
+
+            if (!TryAlignSeriesAtBoundary(seriesTokens, releaseTokens.Take(seriesTokens.Count).ToList()))
+            {
+                return false;
+            }
+
+            var nextIndex = seriesTokens.Count;
+            if (releaseTokens[nextIndex] == "-")
+            {
+                nextIndex++;
+            }
+
+            if (nextIndex >= releaseTokens.Count)
+            {
+                return false;
+            }
+
+            var episodeToken = releaseTokens[nextIndex];
+            if (IsPureNumberToken(episodeToken))
+            {
+                return true;
+            }
+
+            return string.Equals(episodeToken, "Folge", System.StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(episodeToken, "Episode", System.StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(episodeToken, "Band", System.StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(episodeToken, "Teil", System.StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(episodeToken, "Nr", System.StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool TryResolveMatchedSpan(IReadOnlyList<string> releaseTokens, TitleMatchResult titleMatch, out int matchedStart, out int matchedEnd)
