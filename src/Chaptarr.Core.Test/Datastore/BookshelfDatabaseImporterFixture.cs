@@ -211,15 +211,41 @@ namespace Chaptarr.Core.Test.Datastore
             Assert.That(Directory.GetFiles(_directory, "*.bookshelfng-backup-*.db"), Is.Empty);
         }
 
-        [TestCase("UPDATE Editions SET Monitored = 1 WHERE Id = 41;", "more than one monitored edition")]
-        [TestCase("UPDATE Editions SET Monitored = 0;", "need an explicit media type")]
-        public void should_refuse_ambiguous_monitoring_for_a_mixed_format_book_without_changing_the_source(string update, string expectedMessage)
+        [Test]
+        public void should_preserve_one_monitored_edition_for_each_media_format()
         {
             using (var source = new SqliteConnection(_sourceConnectionString))
             {
                 source.Open();
                 using var command = source.CreateCommand();
-                command.CommandText = update;
+                command.CommandText = "UPDATE Editions SET Monitored = 1 WHERE Id = 41;";
+                command.ExecuteNonQuery();
+            }
+
+            new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
+                _sourceConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id = 30 AND MediaType = 0 AND Monitored = 1 AND ForeignEditionId = 'hc:audio-40';"), Is.EqualTo(1));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id = 31 AND MediaType = 1 AND Monitored = 1 AND ForeignEditionId = 'ol:OL123M';"), Is.EqualTo(1));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Editions WHERE Id = 40 AND BookId = 30 AND Monitored = 1;"), Is.EqualTo(1));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Editions WHERE Id = 41 AND BookId = 31 AND Monitored = 1;"), Is.EqualTo(1));
+                Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
+                Assert.That(QueryRows(_sourcePath, "PRAGMA foreign_key_check;"), Is.Empty);
+            });
+        }
+
+        [Test]
+        public void should_refuse_multiple_monitored_editions_of_the_same_media_format()
+        {
+            using (var source = new SqliteConnection(_sourceConnectionString))
+            {
+                source.Open();
+                using var command = source.CreateCommand();
+                command.CommandText = "UPDATE Editions SET IsEbook = 0, Monitored = 1;";
                 command.ExecuteNonQuery();
             }
 
@@ -230,32 +256,99 @@ namespace Chaptarr.Core.Test.Datastore
                     new MigrationContext(MigrationType.Main),
                     DatabaseType.SQLite));
 
-            Assert.That(exception.Message, Does.Contain(expectedMessage));
+            Assert.That(exception.Message, Does.Contain("more than one monitored audiobook edition"));
             Assert.That(File.ReadAllBytes(_sourcePath), Is.EqualTo(before));
             Assert.That(Directory.GetFiles(_directory, "*.bookshelfng-backup-*.db"), Is.Empty);
         }
 
         [Test]
-        public void should_generate_a_private_review_and_refuse_a_book_without_an_explicit_media_mapping()
+        public void should_preserve_a_monitored_mixed_format_book_without_a_selected_edition_as_both_unmonitored()
         {
-            InsertBookWithoutEdition(32, monitored: true);
-            var before = File.ReadAllBytes(_sourcePath);
+            using (var source = new SqliteConnection(_sourceConnectionString))
+            {
+                source.Open();
+                using var command = source.CreateCommand();
+                command.CommandText = "UPDATE Editions SET Monitored = 0;";
+                command.ExecuteNonQuery();
+            }
 
-            var exception = Assert.Throws<InvalidDataException>(() => new MigrationController(
-                LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
-                    _sourceConnectionString,
-                    new MigrationContext(MigrationType.Main),
-                    DatabaseType.SQLite));
+            new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
+                _sourceConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite);
 
+            var backupPath = Directory.GetFiles(_directory, "readarr.db.bookshelfng-backup-*.db").Single();
             var reviewPath = _sourcePath + ".bookshelf-media-review.json";
+            var review = File.ReadAllText(reviewPath);
             Assert.Multiple(() =>
             {
-                Assert.That(exception.Message, Does.Contain("explicit media type"));
-                Assert.That(File.ReadAllBytes(_sourcePath), Is.EqualTo(before));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (30, 31) AND Monitored = 0 AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Editions WHERE BookId IN (30, 31);"), Is.EqualTo(2));
+                Assert.That(review, Does.Contain("\"sourceBookId\": 30"));
+                Assert.That(review, Does.Contain("\"mediaType\": \"both-unmonitored\""));
+                Assert.That(review, Does.Contain("\"monitored\": true"));
+                Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
+                Assert.That(QueryRows(_sourcePath, "PRAGMA foreign_key_check;"), Is.Empty);
+                if (!OperatingSystem.IsWindows())
+                {
+                    Assert.That(File.GetUnixFileMode(reviewPath), Is.EqualTo(UnixFileMode.UserRead | UnixFileMode.UserWrite));
+                }
+                Assert.That(DatabaseLineageGuard.Detect(ConnectionStringFor(backupPath), DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.BookshelfNG));
+                Assert.That(QueryScalar<int>(backupPath, "SELECT COUNT(*) FROM Books WHERE Id = 30 AND Monitored = 1;"), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public void should_automatically_preserve_a_book_without_editions_in_both_catalogs_unmonitored()
+        {
+            InsertBookWithoutEdition(32, monitored: true);
+            new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
+                _sourceConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite);
+
+            var backupPath = Directory.GetFiles(_directory, "readarr.db.bookshelfng-backup-*.db").Single();
+            var reviewPath = _sourcePath + ".bookshelf-media-review.json";
+            var review = File.ReadAllText(reviewPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (32, 34) AND Monitored = 0 AND AudiobookMonitored = 0 AND EbookMonitored = 0;"), Is.EqualTo(2));
                 Assert.That(File.Exists(reviewPath), Is.True);
-                Assert.That(File.ReadAllText(reviewPath), Does.Contain("\"sourceBookId\": 32"));
-                Assert.That(File.ReadAllText(reviewPath), Does.Contain("\"mediaType\": \"\""));
-                Assert.That(Directory.GetFiles(_directory, "*.bookshelfng-backup-*.db"), Is.Empty);
+                Assert.That(review, Does.Contain("\"sourceBookId\": 32"));
+                Assert.That(review, Does.Contain("\"mediaType\": \"both-unmonitored\""));
+                Assert.That(review, Does.Contain("\"monitored\": true"));
+                Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
+                Assert.That(QueryRows(_sourcePath, "PRAGMA foreign_key_check;"), Is.Empty);
+                Assert.That(DatabaseLineageGuard.Detect(ConnectionStringFor(backupPath), DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.BookshelfNG));
+                Assert.That(QueryScalar<int>(backupPath, "SELECT COUNT(*) FROM Books WHERE Id = 32 AND Monitored = 1;"), Is.EqualTo(1));
+                Assert.That(QueryScalar<int>(backupPath, "SELECT COUNT(*) FROM Editions WHERE BookId = 32;"), Is.Zero);
+            });
+        }
+
+        [Test]
+        public void should_accept_an_explicit_both_unmonitored_media_choice()
+        {
+            InsertBookWithoutEdition(32, monitored: true);
+            File.WriteAllText(_sourcePath + ".bookshelf-media-map.json", """
+                {
+                  "version": 1,
+                  "books": [
+                    { "sourceBookId": 32, "mediaType": "both-unmonitored" }
+                  ]
+                }
+                """);
+
+            new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
+                _sourceConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (32, 34) AND Monitored = 0;"), Is.EqualTo(2));
+                Assert.That(File.Exists(_sourcePath + ".bookshelf-media-review.json"), Is.False);
+                Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
+                Assert.That(QueryRows(_sourcePath, "PRAGMA foreign_key_check;"), Is.Empty);
             });
         }
 

@@ -6,11 +6,9 @@ BookshelfNG users to ChaptarrNG. The detailed feature inventory remains in the
 
 ## Current releases
 
-- ChaptarrNG `v0.9.975` is published with the standard image, migration tools,
+- ChaptarrNG `v0.9.976` is published with the standard image, migration tools,
   and standalone release archives.
-- BookshelfNG `0.4.21.71` is tagged as the final source release. Its GitHub
-  release is still a draft while the standalone archives are being built; the
-  latest published BookshelfNG release is `0.4.21.70`.
+- BookshelfNG `0.4.21.71` is published as the final source release.
 - The BookshelfNG `.71` tag contains issue #114's optional new-author path
   setting. ChaptarrNG has equivalent new-author path initialization in
   `v0.9.974` and later. ChaptarrNG applies configured format defaults
@@ -28,11 +26,17 @@ Apply and rollback are explicit operations, and ordinary ChaptarrNG startup
 can apply the same converter when it finds a supported source database.
 
 Some BookshelfNG books do not contain enough data to infer ebook versus
-audiobook. Preview writes a private review file and waits for a complete,
-source-matched media map. The populated-library rehearsal accounted for all
-127,177 rows across 39 source tables; 81 book classifications still required
-human choices, and the test choices were not reviewed as correct library
-decisions. Operators must review their own map before applying.
+audiobook. Preview writes a private review file. Operators can provide a
+complete, source-matched media map before conversion; with no map, conversion
+keeps each unresolved work in both ChaptarrNG catalogs, unmonitored, and
+leaves a private review file for classification after startup. This avoids
+speculative searches and keeps conversion moving, but does not infer a work's
+true format. A single monitored
+edition of each format is preserved on its corresponding ChaptarrNG record;
+multiple monitored editions of the same format still fail closed. The
+populated-library rehearsal accounted for all 127,177 rows across 39 source
+tables; 81 book classifications still required human review, and the test
+choices were not reviewed as correct library decisions.
 
 The converter does not currently accept older BookshelfNG schema versions,
 PostgreSQL databases, or two populated BookshelfNG databases at once. The
@@ -45,10 +49,10 @@ stopped, retain an independent backup, and follow the
 
 | Channel | Published ChaptarrNG state | BookshelfNG handoff state |
 | --- | --- | --- |
-| Docker / GHCR | `ghcr.io/snapetech-org/chaptarrng:0.9.975` is published. | Legacy BookshelfNG aliases have not been redirected. A mutable tag only affects a later pull/recreate; pinned tags and digests need an operator change. |
-| AUR | `chaptarrng-bin 0.9.975-1` is published. | `bookshelfng-bin 0.4.21.70-1` remains; the old identity has not been upgraded to the ChaptarrNG payload. |
-| Fedora COPR | The standard `slskdn/chaptarrng` `0.9.975-1` build succeeded. | The BookshelfNG bridge build was not triggered. |
-| Chocolatey | ChaptarrNG `0.9.975` publication returned HTTP 403; the public package remains `0.9.973`. | BookshelfNG `0.4.21.70` remains. The Windows upgrade smoke passed, but the migration package has not been published. |
+| Docker / GHCR | `ghcr.io/snapetech-org/chaptarrng:0.9.976` is published. | Legacy BookshelfNG aliases have not been redirected. A mutable tag only affects a later pull/recreate; pinned tags and digests need an operator change. |
+| AUR | `chaptarrng-bin 0.9.976-1` is published. | `bookshelfng-bin 0.4.21.71-1` remains; the old identity has not been upgraded to the ChaptarrNG payload. |
+| Fedora COPR | The standard `slskdn/chaptarrng` `0.9.976-1` build succeeded. | The BookshelfNG bridge build was not triggered. |
+| Chocolatey | ChaptarrNG `0.9.976` publication returned HTTP 403; the public package remains `0.9.973`. | BookshelfNG `0.4.21.71` remains. The Windows upgrade smoke passed, but the migration package has not been published. |
 | Unraid | The ChaptarrNG template is maintained separately. | Existing BookshelfNG templates and containers still need an explicit image/template update. |
 | Other historical channels | ChaptarrNG publishes its standard release artifacts. | PPA, Flatpak, AppImage, Helm, standalone installers, third-party catalogs, pinned/offline installs, and manually managed services do not all have a tested identity-preserving bridge. |
 

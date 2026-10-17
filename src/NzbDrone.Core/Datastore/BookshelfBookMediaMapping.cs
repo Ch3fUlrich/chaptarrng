@@ -12,7 +12,8 @@ namespace NzbDrone.Core.Datastore
     {
         Audiobook,
         Ebook,
-        Both
+        Both,
+        BothUnmonitored
     }
 
     /// <summary>
@@ -38,8 +39,11 @@ namespace NzbDrone.Core.Datastore
                     return new Dictionary<int, BookshelfMediaChoice>();
                 }
 
-                WriteReview(reviewPath, required, ReadReviewChoices(reviewPath));
-                throw MissingMappings(required.Count, mapPath, reviewPath);
+                // Keep unresolved source books available without starting format-specific
+                // searches until an operator confirms their intended media type.
+                var automaticChoices = required.ToDictionary(book => book.SourceBookId, _ => BookshelfMediaChoice.BothUnmonitored);
+                WriteReview(reviewPath, required, automaticChoices);
+                return automaticChoices;
             }
 
             ResolutionDocument document;
@@ -69,7 +73,7 @@ namespace NzbDrone.Core.Datastore
                 {
                     WriteReview(reviewPath, required, choices);
                     throw new InvalidDataException(
-                        $"BookshelfNG media map '{mapPath}' contains an invalid book ID or mediaType. Use audiobook, ebook, or both. The source database was not changed.");
+                        $"BookshelfNG media map '{mapPath}' contains an invalid book ID or mediaType. Use audiobook, ebook, both, or both-unmonitored. The source database was not changed.");
                 }
 
                 if (!choices.TryAdd(entry.SourceBookId, choice))
@@ -172,7 +176,7 @@ namespace NzbDrone.Core.Datastore
         {
             return new InvalidDataException(
                 $"{count} BookshelfNG book(s) need an explicit media type before conversion. Review '{reviewPath}', " +
-                $"fill each mediaType with audiobook, ebook, or both, and save it as '{mapPath}'. The source database was not changed.");
+                $"fill each mediaType with audiobook, ebook, both, or both-unmonitored, and save it as '{mapPath}'. The source database was not changed.");
         }
 
         private static bool TryParseChoice(string value, out BookshelfMediaChoice choice)
@@ -188,6 +192,9 @@ namespace NzbDrone.Core.Datastore
                 case "both":
                     choice = BookshelfMediaChoice.Both;
                     return true;
+                case "both-unmonitored":
+                    choice = BookshelfMediaChoice.BothUnmonitored;
+                    return true;
                 default:
                     choice = default;
                     return false;
@@ -201,6 +208,7 @@ namespace NzbDrone.Core.Datastore
                 BookshelfMediaChoice.Audiobook => "audiobook",
                 BookshelfMediaChoice.Ebook => "ebook",
                 BookshelfMediaChoice.Both => "both",
+                BookshelfMediaChoice.BothUnmonitored => "both-unmonitored",
                 _ => throw new ArgumentOutOfRangeException(nameof(choice), choice, null)
             };
         }
@@ -247,7 +255,7 @@ namespace NzbDrone.Core.Datastore
             var document = new ReviewDocument
             {
                 Version = SupportedMapVersion,
-                Instructions = "Set mediaType to audiobook, ebook, or both for every entry, then save as the matching .bookshelf-media-map.json file.",
+                Instructions = "Provide a media map before conversion to choose formats. Without a map, unresolved entries are imported into both media catalogs and left unmonitored until reviewed. Set mediaType to audiobook or ebook for one format, both to monitor both formats, or both-unmonitored to preserve both without monitoring. Save the completed document as the matching .bookshelf-media-map.json file.",
                 Books = books.Select(book => new ResolutionEntry
                 {
                     SourceBookId = book.SourceBookId,

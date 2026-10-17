@@ -1,13 +1,13 @@
 # Move a BookshelfNG installation to ChaptarrNG
 
-> **Release status (2026-10-17).** Use the standard ChaptarrNG `v0.9.975` release or a
-> later stable version for the published BookshelfNG `0.4.21.70` release. That
+> **Release status (2026-10-17).** Use the standard ChaptarrNG `v0.9.976` release or a
+> later stable version for the published BookshelfNG `0.4.21.71` release. That
 > BookshelfNG release includes an optional source-side helper that creates a
 > full appdata archive before invoking ChaptarrNG's preview, apply, and
 > rollback commands; see the
 > [BookshelfNG operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md).
 > For an immutable Docker deployment, use
-> `ghcr.io/snapetech-org/chaptarrng:0.9.975`.
+> `ghcr.io/snapetech-org/chaptarrng:0.9.976`.
 > Conversion supports the exact migration-158 SQLite schema. Pinned images,
 > native packages, and updater channels need separate upgrade steps; database
 > conversion alone does not update an installation channel.
@@ -41,25 +41,46 @@ and leaves the source database untouched.
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.976 \
   dotnet /app/Chaptarr.dll -preview-bookshelf-migration -data=/config
 ```
 
 Some source records have no edition rows, so their media type cannot be
 determined from the database. A monitored mixed-format book can also have no
-selected edition. In either case preview stops before promotion and writes
-`readarr.db.bookshelf-media-review.json` beside the database. The file lists
-the affected source book IDs, titles, authors, and reason. On Unix it is
-created with owner-only permissions because it contains library metadata.
+selected edition. With no media map, preview and startup now preserve each
+unresolved book in both ChaptarrNG catalogs and leave both records unmonitored.
+This keeps the migration moving without starting speculative searches in the
+wrong format. It can create a temporary duplicate title across the ebook and
+audiobook catalogs; no files are assigned or moved for that book. The fallback
+also applies to a monitored mixed-format book with no selected edition: its
+existing editions and files remain, but neither format is monitored until the
+operator reviews it.
 
-Set every `mediaType` to `audiobook`, `ebook`, or `both`, then save the
-completed document as `readarr.db.bookshelf-media-map.json` beside
-`readarr.db`. For a book without editions, the choice creates the corresponding
-ChaptarrNG media record or records and preserves the source `Monitored` value.
-For a monitored mixed-format book without a selected edition, the choice
-controls which existing formats are monitored while preserving all source
-editions and files. Run preview again with the map in place. Normal startup
-uses the same map and converter, so no separate migration build is needed.
+The converter writes
+`readarr.db.bookshelf-media-review.json` beside the database and keeps it after
+automatic conversion. It lists the source book IDs, titles, authors, original
+monitoring state, reason, and the `both-unmonitored` fallback. On Unix it is
+created with owner-only permissions because it contains library metadata. Use
+the review file after startup to correct the media type and monitoring choice
+in ChaptarrNG. Automatic preservation prevents a conversion stop; it does not
+infer the book's true format.
+
+When one audiobook edition and one ebook edition are selected for the same
+BookshelfNG work, conversion preserves each selection on its matching
+ChaptarrNG record. If two or more editions of the same format are selected,
+conversion stops before promotion because ChaptarrNG has one selected-edition
+field per format record. Correct that selection in BookshelfNG and preview
+again; the source database remains available for another attempt.
+
+To choose formats during conversion, set every `mediaType` to `audiobook`,
+`ebook`, `both`, or `both-unmonitored`, then save the completed document as
+`readarr.db.bookshelf-media-map.json` beside `readarr.db`. For a book without
+editions, the map creates the corresponding ChaptarrNG media record or records.
+For a monitored mixed-format book without a selected edition, the map controls
+which existing formats are monitored while preserving all source editions and
+files. `both-unmonitored` retains both formats without starting searches. Run
+preview again with the map in place. Normal startup uses the same map and
+converter, so no separate migration build is needed.
 
 The map is tied to source book IDs and the current ambiguous-record set. If the
 database changes after review, preview rejects missing entries and stale
@@ -73,7 +94,7 @@ explicit apply command once:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.976 \
   dotnet /app/Chaptarr.dll -migrate-bookshelf -confirm-bookshelf-service-stopped -data=/config
 ```
 
@@ -111,7 +132,7 @@ BookshelfNG backup without changing either database:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.976 \
   dotnet /app/Chaptarr.dll -preview-bookshelf-restore \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
     -data=/config
@@ -122,7 +143,7 @@ After preview passes, apply the restore while all services remain stopped:
 ```sh
 docker run --rm \
   -v /host/path/to/bookshelfng-config:/config \
-  ghcr.io/snapetech-org/chaptarrng:0.9.975 \
+  ghcr.io/snapetech-org/chaptarrng:0.9.976 \
   dotnet /app/Chaptarr.dll -restore-bookshelf \
     -confirm-bookshelf-service-stopped \
     -bookshelf-backup=/config/readarr.db.bookshelfng-backup-YYYYMMDDTHHMMSSfffZ-ID.db \
@@ -213,10 +234,14 @@ with their runtime-derived RSS and search capabilities. The conversion logs
 and database copies were kept in a private VM scratch directory.
 
 The real database exposed 81 books whose media choice could not be derived
-from source relationships. The test map used explicit technical choices only
-to exercise the converter; those choices were not reviewed as correct library
-classification. A real migration must stop at preview and require the operator
-to choose `audiobook`, `ebook`, or `both` for each listed record.
+from source relationships. Earlier test maps used explicit technical choices
+only; those choices were not reviewed as correct library classification. The
+current automatic fallback keeps unresolved records in both catalogs without
+monitoring and retains a private review file. Operators still need to confirm
+the true format and monitoring intent for those records. A map can apply that
+review before conversion; otherwise correct the records after startup. The
+fallback removes the startup blocker, but it does not establish semantic
+parity for those books.
 
 This proves one populated migration-158 SQLite path on Linux/amd64. It does not
 prove older BookshelfNG schemas, PostgreSQL conversion, every provider or
@@ -289,7 +314,7 @@ databases can be migrated by normal ChaptarrNG startup or with the explicit
 preview/apply commands above. Both paths retain the BookshelfNG source backup;
 rollback is available while the original backup remains intact.
 
-The public ChaptarrNG `v0.9.975` release contains the converter and standalone
+The public ChaptarrNG `v0.9.976` release contains the converter and standalone
 archives. Current package and image-channel status is tracked in
 [`packaging/README.md`](../packaging/README.md). The migration bridge is
 disabled: existing BookshelfNG package IDs and mutable image aliases do not

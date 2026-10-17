@@ -412,13 +412,13 @@ namespace NzbDrone.Core.Datastore
                 state.MediaTypes.Add(mediaType);
                 if (GetBoolean(row, "Monitored"))
                 {
-                    if (state.MonitoredMediaType.HasValue)
+                    if (!state.MonitoredEditionIdsByMediaType.TryAdd(
+                            mediaType,
+                            NormalizeSourceId(GetString(row, "ForeignEditionId"), "edition")))
                     {
-                        throw new InvalidDataException($"BookshelfNG book {bookId} has more than one monitored edition; conversion stopped before promotion.");
+                        var format = mediaType == 1 ? "ebook" : "audiobook";
+                        throw new InvalidDataException($"BookshelfNG book {bookId} has more than one monitored {format} edition; conversion stopped before promotion.");
                     }
-
-                    state.MonitoredMediaType = mediaType;
-                    state.MonitoredEditionId = NormalizeSourceId(GetString(row, "ForeignEditionId"), "edition");
                 }
             }
 
@@ -460,15 +460,15 @@ namespace NzbDrone.Core.Datastore
                         throw new InvalidDataException($"BookshelfNG book {sourceId} has no edition and no explicit media mapping. The source database was not changed.");
                     }
 
-                    hasAudio = noEditionChoice is BookshelfMediaChoice.Audiobook or BookshelfMediaChoice.Both;
-                    hasEbook = noEditionChoice is BookshelfMediaChoice.Ebook or BookshelfMediaChoice.Both;
+                    hasAudio = noEditionChoice is BookshelfMediaChoice.Audiobook or BookshelfMediaChoice.Both or BookshelfMediaChoice.BothUnmonitored;
+                    hasEbook = noEditionChoice is BookshelfMediaChoice.Ebook or BookshelfMediaChoice.Both or BookshelfMediaChoice.BothUnmonitored;
                 }
 
                 var sourceMonitored = GetBoolean(row, "Monitored");
                 var monitoredMediaTypes = new HashSet<int>();
-                if (mediaState.MonitoredMediaType.HasValue)
+                if (mediaState.MonitoredEditionIdsByMediaType.Count > 0)
                 {
-                    monitoredMediaTypes.Add(mediaState.MonitoredMediaType.Value);
+                    monitoredMediaTypes.UnionWith(mediaState.MonitoredEditionIdsByMediaType.Keys);
                 }
                 else if (sourceMonitored)
                 {
@@ -532,7 +532,9 @@ namespace NzbDrone.Core.Datastore
                     values["Monitored"] = mediaMonitored;
                     values["AudiobookMonitored"] = mediaType == 0 && mediaMonitored;
                     values["EbookMonitored"] = mediaType == 1 && mediaMonitored;
-                    values["ForeignEditionId"] = mediaState.MonitoredMediaType == mediaType ? mediaState.MonitoredEditionId : null;
+                    values["ForeignEditionId"] = mediaState.MonitoredEditionIdsByMediaType.TryGetValue(mediaType, out var monitoredEditionId)
+                        ? monitoredEditionId
+                        : null;
                     values["BaseBookId"] = canonicalBookId;
                     values["AnyEditionOk"] = GetBoolean(row, "AnyEditionOk");
                     SetProviderColumns(values, "Book", canonicalBookId);
@@ -545,7 +547,7 @@ namespace NzbDrone.Core.Datastore
             }
 
             report.RecordTable("Books", sourceCount, 0, sourceCount, 0, 0,
-                "BookshelfNG books are split by the source editions' media types and linked to the preserved managed author ID");
+                $"BookshelfNG books are split by the source editions' media types and linked to the preserved managed author ID; {mediaChoices.Count(x => x.Value == BookshelfMediaChoice.BothUnmonitored)} unresolved books are kept in both catalogs without monitoring until reviewed");
             return result;
         }
 
@@ -1577,8 +1579,7 @@ namespace NzbDrone.Core.Datastore
         private sealed class BookMediaState
         {
             public HashSet<int> MediaTypes { get; } = new();
-            public int? MonitoredMediaType { get; set; }
-            public string MonitoredEditionId { get; set; }
+            public Dictionary<int, string> MonitoredEditionIdsByMediaType { get; } = new();
         }
 
         private sealed record EditionMap(int Id, int SourceBookId, int MediaType, int TargetBookId, string ProviderId);

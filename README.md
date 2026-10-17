@@ -28,17 +28,21 @@ For local MCP access, see the [SnapeTech MCP integration guide](docs/integration
 
 ### BookshelfNG migration status
 
-ChaptarrNG `v0.9.975` includes the migration and rollback tools. The BookshelfNG
+ChaptarrNG `v0.9.976` includes the migration and rollback tools. The BookshelfNG
 source helper creates an appdata archive before it runs them. ChaptarrNG also
 initializes new author format paths from configured defaults, a behavior
 released in `v0.9.974`; explicit roots and existing authors are left alone.
 Read the [migration guide](docs/MIGRATE_FROM_BOOKSHELFNG.md) before switching.
 
 Migration currently accepts BookshelfNG migration-158 SQLite databases.
-Ambiguous book formats require operator review. The helper does not copy
-external media/download folders, translate every external setting, or update
-pinned images and package channels. The legacy bridge remains disabled, and
-full feature parity and several package-channel upgrades are still unverified.
+Books with no recorded format are retained in both ChaptarrNG catalogs,
+unmonitored, with a private review file so the operator can classify them
+after startup. One monitored audiobook and one monitored ebook edition are
+preserved separately; multiple monitored editions of the same format still
+stop conversion safely. The helper does not copy external media/download
+folders, translate every external setting, or update pinned images and package
+channels. The legacy bridge remains disabled, and full feature parity and
+several package-channel upgrades are still unverified.
 See the [retirement status and channel matrix](docs/BOOKSHELFNG_RETIREMENT.md)
 for the current release and acceptance gates.
 
