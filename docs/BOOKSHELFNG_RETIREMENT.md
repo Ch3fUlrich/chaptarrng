@@ -1,7 +1,8 @@
 # BookshelfNG retirement status
 
-**Reviewed:** 2026-10-17. This page is the current handoff summary for moving
-BookshelfNG users to ChaptarrNG. The detailed feature inventory remains in the
+**Reviewed:** 2026-10-17 after the ChaptarrNG `v0.9.976` release. This page is
+the current handoff summary for moving BookshelfNG users to ChaptarrNG. The
+detailed feature inventory remains in the
 [BookshelfNG parity roadmap](https://github.com/snapetech-org/bookshelfng/blob/main/docs/maintainers/bookshelfng-parity-roadmap.md).
 
 ## Current releases
@@ -50,14 +51,14 @@ stopped, retain an independent backup, and follow the
 | Channel | Published ChaptarrNG state | BookshelfNG handoff state |
 | --- | --- | --- |
 | Docker / GHCR | `ghcr.io/snapetech-org/chaptarrng:0.9.976` is published. | Legacy BookshelfNG aliases have not been redirected. A mutable tag only affects a later pull/recreate; pinned tags and digests need an operator change. |
-| AUR | `chaptarrng-bin 0.9.976-1` is published. | `bookshelfng-bin 0.4.21.71-1` remains; the old identity has not been upgraded to the ChaptarrNG payload. |
-| Fedora COPR | The standard `slskdn/chaptarrng` `0.9.976-1` build succeeded. | The BookshelfNG bridge build was not triggered. |
-| Chocolatey | ChaptarrNG `0.9.976` publication returned HTTP 403; the public package remains `0.9.973`. | BookshelfNG `0.4.21.71` remains. The Windows upgrade smoke passed, but the migration package has not been published. |
+| AUR | `chaptarrng-bin 0.9.976-1` is published. | `bookshelfng-bin 0.4.21.71-1` remains on the BookshelfNG payload; the old identity has not been upgraded to ChaptarrNG. |
+| Fedora COPR | `chaptarrng 0.9.976-1.fc44` and `0.9.976-1.fc46` are published for x86_64. | The BookshelfNG bridge trigger was skipped. |
+| Chocolatey | The `0.9.976` package built and passed its upgrade smoke, but publication returned HTTP 403; the public ChaptarrNG package remains `0.9.973`. | BookshelfNG `0.4.21.70` remains. Its identity was not included because the bridge is disabled. |
 | Unraid | The ChaptarrNG template is maintained separately. | Existing BookshelfNG templates and containers still need an explicit image/template update. |
 | Other historical channels | ChaptarrNG publishes its standard release artifacts. | PPA, Flatpak, AppImage, Helm, standalone installers, third-party catalogs, pinned/offline installs, and manually managed services do not all have a tested identity-preserving bridge. |
 
 The compatibility package and image publishers are implemented behind the
-`CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` gate, which remains disabled. The
+`CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` gate, which is `false`. The
 scheduled BookshelfNG bridge workflow confirmed that it found a stable
 ChaptarrNG release but skipped publishing because the gate is off. Do not turn
 the gate on until the feature and channel acceptance items below are closed.
@@ -73,10 +74,12 @@ ChaptarrNG release exist. The remaining work is:
 
 1. Close each BookshelfNG feature row with behavioral and converted-data
    evidence, or record an explicit maintainer decision to retire that behavior.
-2. Validate old-identity AUR, COPR, Chocolatey, Helm, and container upgrades
-   through install, conversion, restart, backup retention, and rollback.
-3. Resolve the Chocolatey publisher authorization failure and verify every
-   package's published checksum or image digest against the tested artifact.
+2. Validate old-identity AUR, COPR, Chocolatey, Helm, container, and Unraid
+   upgrades through install, conversion, restart, backup retention, and
+   rollback.
+3. Resolve the Chocolatey HTTP 403 and independently verify the COPR build;
+   verify each published package checksum or image digest against the tested
+   artifact.
 4. Decide and document handoffs for historical channels that cannot be
    redirected. Preserve a manual migration path for pinned and offline installs.
 5. Run the final migration against representative operator data, review every

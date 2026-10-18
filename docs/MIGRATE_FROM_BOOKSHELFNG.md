@@ -62,8 +62,9 @@ automatic conversion. It lists the source book IDs, titles, authors, original
 monitoring state, reason, and the `both-unmonitored` fallback. On Unix it is
 created with owner-only permissions because it contains library metadata. Use
 the review file after startup to correct the media type and monitoring choice
-in ChaptarrNG. Automatic preservation prevents a conversion stop; it does not
-infer the book's true format.
+in ChaptarrNG. The normal startup log gives the review file path. Automatic
+preservation prevents a conversion stop; it does not infer the book's true
+format.
 
 When one audiobook edition and one ebook edition are selected for the same
 BookshelfNG work, conversion preserves each selection on its matching
@@ -207,15 +208,16 @@ published ChaptarrNG image still defaults to `8789` for fresh installs. If the
 old instance used a different port, preserve that port in both its container
 configuration and host mapping.
 
-## Verified populated-database test (2026-10-14)
+## Historical populated-database rehearsal (2026-10-14)
 
 The ordinary Linux/amd64 ChaptarrNG image was exercised against an isolated
 copy of a real BookshelfNG migration-158 SQLite database. Preview accounted
-for all 39 source tables and their rows, left the source database hash
-unchanged, and passed only after the explicit per-book media map was complete.
-The same standard image then completed explicit apply on one copy and normal
-first-start conversion on another. No compatibility image or build was used,
-and the live BookshelfNG service was not changed.
+for all 39 source tables and their rows and left the source database hash
+unchanged. At the time, that earlier candidate required a complete per-book
+media map before preview could pass. The same standard image then completed
+explicit apply on one copy and normal first-start conversion on another. No
+compatibility image or build was used, and the live BookshelfNG service was
+not changed.
 
 The applied database reached native migration v119. Its retained backup
 matched all 39 source table definitions and rows exactly; both databases
@@ -236,12 +238,12 @@ and database copies were kept in a private VM scratch directory.
 The real database exposed 81 books whose media choice could not be derived
 from source relationships. Earlier test maps used explicit technical choices
 only; those choices were not reviewed as correct library classification. The
-current automatic fallback keeps unresolved records in both catalogs without
-monitoring and retains a private review file. Operators still need to confirm
-the true format and monitoring intent for those records. A map can apply that
-review before conversion; otherwise correct the records after startup. The
-fallback removes the startup blocker, but it does not establish semantic
-parity for those books.
+published `v0.9.976` release instead keeps unresolved records in both catalogs
+without monitoring and retains a private review file. Operators still need to
+confirm the true format and monitoring intent for those records. A map can
+apply that review before conversion; otherwise correct the records after
+startup. The fallback removes the startup blocker, but it does not establish
+semantic parity for those books.
 
 This proves one populated migration-158 SQLite path on Linux/amd64. It does not
 prove older BookshelfNG schemas, PostgreSQL conversion, every provider or

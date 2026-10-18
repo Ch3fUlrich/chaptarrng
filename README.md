@@ -75,7 +75,7 @@ not be included in the latest published image yet.
 
 The [ChaptarrNG retirement matrix](docs/FORK_FEATURES.md#chaptarrng-retirement-blockers)
 defines the cumulative upstream gate: every BookshelfNG feature carried over
-and every ChaptarrNG feature introduced or maintained through `v0.9.975`
+and every ChaptarrNG feature introduced or maintained through `v0.9.976`
 blocks retirement as a whole and remains an individual acceptance gate.
 Carrying over a BookshelfNG capability adds to this set; it does not replace
 or reduce ChaptarrNG's own blockers.

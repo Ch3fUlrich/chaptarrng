@@ -6,7 +6,7 @@ Readarr. The fork was created on August 31, 2026 from the parent repository's
 `develop` branch at the
 [shared fork-base commit](https://github.com/Chaptarr/chaptarr/commit/423b1bba1d47657d24ddfbf9c5418892972a1229).
 This guide covers the published feature set through
-[`v0.9.975`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.975)
+[`v0.9.976`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.976)
 and the additional feature and maintenance work present in the current fork
 checkout. The source comparison below was refreshed on 2026-10-17; release and
 migration evidence is dated separately. The [changelog](../CHANGELOG.md) is
@@ -15,23 +15,24 @@ branch at
 [`e67374f`](https://github.com/Chaptarr/chaptarr/commit/e67374f), which is in
 ChaptarrNG `main`'s history.
 
-**Migration update (2026-10-17).** The published ChaptarrNG `v0.9.975` image
-includes the BookshelfNG converter and rollback commands, with ordinary startup
-conversion. The published image has passed preview, explicit apply, rollback
-after a post-migration write, ordinary startup, and the operator media-map
-review loop against synthetic migration-158 SQLite fixtures. `v0.9.974`
-includes automatic initialization of missing format-specific roots for new
-authors; it preserves explicit roots and does not alter existing authors or
-files. BookshelfNG `0.4.21.71` is tagged as the final source release and
-contains the optional issue #114 setting, but its GitHub release remains a
-draft while standalone archives are built; `0.4.21.70` is still the latest
-published BookshelfNG release. The published `.70` release includes the
-source-side appdata archive helper. See the
+**Migration update (2026-10-17).** ChaptarrNG `v0.9.976` is published with the
+BookshelfNG converter and rollback commands, ordinary startup conversion, and
+an unmonitored dual-catalog fallback for records whose format cannot be
+inferred. Release validation passed on Linux, macOS, Windows, and the
+PostgreSQL migration smoke. BookshelfNG `0.4.21.71` is published as the final
+source release; its issue #114 request is closed, and it includes the
+source-side appdata archive helper. ChaptarrNG `v0.9.974` and later also
+initialize missing format-specific roots for new authors; explicit roots and
+existing authors or files are left alone. See the
 [operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md)
 and [retirement status page](BOOKSHELFNG_RETIREMENT.md). Conversion still
 supports only migration-158 SQLite; older schemas and PostgreSQL remain
 unsupported, and successful database conversion does not complete feature
-parity or legacy-channel handoff.
+parity or legacy-channel handoff. The `v0.9.976` GitHub release, GHCR image,
+and ChaptarrNG AUR package are published. Its standard COPR trigger succeeded,
+but the package build was not independently verified. The Chocolatey package
+passed build and upgrade smoke validation but its publish was rejected with
+HTTP 403; the old package remains public at `0.9.973`.
 
 This guide groups behavior rather than listing every fix, dependency update,
 or upstream report. Some items need reproduction or depend on an external
@@ -43,26 +44,29 @@ resolved.
 > mean upstream issue/PR implementation is active or that the backlog is
 > resolved.
 
-At the 2026-10-17 source review, ChaptarrNG `main` was `c922fe79682e`
+The pinned source comparison below is a historical 2026-10-17 snapshot.
+ChaptarrNG `main` was `c922fe79682e`
 (`v0.9.975`) and upstream Chaptarr `develop` was
 `e67374f4b3fed01bbf08f18672add944062fcb49`. ChaptarrNG was 658 commits ahead,
 zero behind, with 1,671 changed paths. These counts describe source history,
-not feature parity. Upstream PR [#114](https://github.com/Chaptarr/chaptarr/pull/114),
+not feature parity. They predate the `v0.9.976` migration fallback and are not
+the current complete path count. Upstream PR [#114](https://github.com/Chaptarr/chaptarr/pull/114),
 which preserves media type during scoped book lookup, remains open. The broader
 upstream issue/PR audit remains incomplete.
 
 The BookshelfNG consolidation is in ChaptarrNG `main`; its standard image uses
 the same executable for fresh and migrated installs. BookshelfNG `main` is
 `a4b1146d34af`, and its audit and guarded release-bridge PRs #128 and #130 are
-merged. The BookshelfNG repository has no open pull requests; issues #114
-(new-author paths) and #144 (retirement) remain open. ChaptarrNG's own
+merged. BookshelfNG issue #114 (new-author paths) is now closed; issue #144
+(retirement) remains open. ChaptarrNG's upstream PR #114 is a separate issue
+and remains open. ChaptarrNG's own
 repository has no open issues or pull requests. The converter,
 metadata-profile preferences, and validation changes are historical merged
 work, not proof that BookshelfNG feature parity, package handoff, or upstream
 Chaptarr retirement is complete.
 
-The cumulative blocker set now includes the features released through
-`v0.9.975`: BookshelfNG migration and rollback, author-root backfill, managed
+The cumulative blocker set includes the features released through
+`v0.9.976`: BookshelfNG migration and rollback, author-root backfill, managed
 book-file downloads, recurring missing-book searches, Audible marketplace
 selection, BookLore BookDrop uploads, metadata edition/series preferences,
 import-list preview and history, new localization catalogs, paged full-library
@@ -399,8 +403,8 @@ or reduce ChaptarrNG's own released and maintained blockers.
 | Blocker set | Scope to preserve | Evidence required to close |
 | --- | --- | --- |
 | BookshelfNG capabilities carried into ChaptarrNG | Every capability and material enhancement in the BookshelfNG parity roadmap, including its settings, persisted data, identities, clients, and integrations | Demonstrate equivalent behavior on the supported upstream release, including converted data and existing client configurations; pass each row's acceptance checks. |
-| ChaptarrNG released and maintained features | Every capability ChaptarrNG introduced, materially extended, or maintains through `v0.9.975`, including the SeerrNG contract, Direct Download, full-backup encryption, migration tools, new operator workflows, security behavior, and fork-specific integrations | Show the behavior in a supported upstream release and validate the relevant APIs, security boundaries, operator workflows, and clients. |
-| Current upstream blocker and source inventory | At the 2026-10-17 review, ChaptarrNG `main` was `c922fe79682e`, 658 commits ahead of and zero behind Chaptarr `develop` at `e67374f4`; it had 1,671 changed paths. Chaptarr PR #114 remains open. BookshelfNG `main` was `a4b1146d34af`; PRs #128 and #130 are merged, while issues #114 and #144 remain open. | Preserve or replace every accepted capability and source change in a supported upstream release and pass its acceptance checks. The broader upstream issue/PR audit remains paused and incomplete; refresh this inventory before any retirement decision. |
+| ChaptarrNG released and maintained features | Every capability ChaptarrNG introduced, materially extended, or maintains through `v0.9.976`, including the SeerrNG contract, Direct Download, full-backup encryption, migration tools, new operator workflows, security behavior, and fork-specific integrations | Show the behavior in a supported upstream release and validate the relevant APIs, security boundaries, operator workflows, and clients. |
+| Current upstream blocker and source inventory | Historical 2026-10-17 snapshot: ChaptarrNG `main` was `c922fe79682e`, 658 commits ahead of and zero behind Chaptarr `develop` at `e67374f4`; it had 1,671 changed paths. Chaptarr PR #114 remains open. BookshelfNG `main` was `a4b1146d34af`; PRs #128 and #130 are merged. BookshelfNG issue #114 is now closed; issue #144 remains open. | Preserve or replace every accepted capability and source change in a supported upstream release and pass its acceptance checks. The broader upstream issue/PR audit remains paused and incomplete; refresh this inventory before any retirement decision. |
 | Remaining fork-only source changes | Every post-fork source change not already accounted for by the capability rows, including fixes, migrations, APIs, security, build, and platform behavior | Disposition every changed path as retained, ported, or replaced by a verified equivalent. A path count is not feature parity. |
 | Release and installation channels | Each ChaptarrNG release, image, package, updater, and supported upgrade path, plus any channel carrying a migrated BookshelfNG installation | Test the exact published upgrade, configuration/data migration, rollback, and client/update continuity for each channel. |
 
@@ -456,7 +460,7 @@ data-migration requirements pass against a supported upstream release.
 ## Release history
 
 The [changelog](../CHANGELOG.md) records the maintained release line through
-`v0.9.975`, including format-scoped requests, fork identity and Unraid
+`v0.9.976`, including format-scoped requests, fork identity and Unraid
 distribution, capability discovery, the restricted SeerrNG service key,
 encrypted full backups, and the Direct Download indexer/client with
 browser-assisted fallback. The `v0.9.969` container includes headless Chromium
@@ -472,7 +476,9 @@ large-screen startup work. `v0.9.971` fixed delay-profile reordering;
 `v0.9.972` rejects stale media maps; `v0.9.973` bounds nested brace-parser
 input in the frontend toolchain. `v0.9.974` initializes new authors' missing
 format-specific roots from configured defaults. `v0.9.975` publishes the
-current package handoff status. The changelog includes operator actions.
+package handoff changes; `v0.9.976` preserves unresolved BookshelfNG records
+in both catalogs without monitoring and writes a private review file. The
+changelog includes operator actions.
 
 <a id="chaptarrng-retirement-blockers"></a>
 
@@ -482,7 +488,7 @@ Retiring ChaptarrNG into upstream Chaptarr has a cumulative scope. It is a
 separate gate from retiring BookshelfNG into ChaptarrNG. Upstream must retain
 or replace the complete union of (1) every BookshelfNG capability carried into
 the consolidated product and (2) every ChaptarrNG feature introduced or
-maintained through `v0.9.975`. This union blocks ChaptarrNG retirement as a
+maintained through `v0.9.976`. This union blocks ChaptarrNG retirement as a
 whole, and every row below is an independent blocker. The broader upstream
 issue/PR implementation remains paused and incomplete. A matching feature
 name, a README claim, or similar code does not close a row; the supported
@@ -503,7 +509,7 @@ upstream release must pass behavioral, data, security, and packaging checks.
 | Release, package, and update channels | ChaptarrNG image at `ghcr.io/snapetech-org/chaptarrng`, Unraid identity, gated BookshelfNG aliases, and retired YunoHost publishing | BookshelfNG GHCR/Docker Hub tags, Unraid template, native installers, Linux package channels, Helm, and legacy update behavior | Preserve each retained channel or record an explicit maintainer decision to retire it; test historical installs, upgrades, package/image/service/data identities, and rollback. No single redirect reaches every installed copy. |
 | Localization | Twelve additional language catalogs, including Indonesian and Traditional Chinese, AudioBookShelf translations, locale metadata, English fallback, and locale-aware workflows | No separate BookshelfNG locale feature was identified; inherited keys remain in the source-path audit | Keep all supported strings, fallback behavior, and locale selection; complete native-speaker review and run translation-key and rendered-UI checks against the released upstream build. |
 | Data, database, and API compatibility | Existing ChaptarrNG databases, configuration, local IDs, SeerrNG links, migration-158 SQLite import/rollback, paged library API, and PostgreSQL TLS settings | BookshelfNG databases/configuration and their provider identities, local IDs, settings, histories, and files | Keep each source recoverable; preserve identities and references; prove rollback, upgrade, restart, TLS validation, and populated-database behavior. |
-| Complete fork history and retirement scope | ChaptarrNG `main` `c922fe79682e` at `v0.9.975` (658 commits ahead of upstream, zero behind, 1,671 changed paths); upstream `develop` `e67374f4`; open upstream PR #114 | BookshelfNG `main` `a4b1146d34af`; PRs #128 and #130 are merged, while issues #114 and #144 remain open | Regenerate exact source-to-upstream inventories for `main` and review current upstream issues and PRs before any ChaptarrNG-to-Chaptarr retirement. Retain, port, or prove equivalence for every behavior; this upstream retirement work is separate from closing the BookshelfNG product. |
+| Complete fork history and retirement scope | Historical ChaptarrNG `main` `c922fe79682e` at `v0.9.975` (658 commits ahead of upstream, zero behind, 1,671 changed paths); upstream `develop` `e67374f4`; open upstream PR #114 | Historical BookshelfNG `main` `a4b1146d34af`; PRs #128 and #130 are merged. BookshelfNG issue #114 is now closed; issue #144 remains open. | Regenerate exact source-to-upstream inventories for `main` and review current upstream issues and PRs before any ChaptarrNG-to-Chaptarr retirement. Retain, port, or prove equivalence for every behavior; this upstream retirement work is separate from closing the BookshelfNG product. |
 
 The data row has structural differences: BookshelfNG separates `Authors` and
 `AuthorMetadata`, and one source book may split into multiple media-specific

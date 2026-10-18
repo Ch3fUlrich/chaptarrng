@@ -1,10 +1,10 @@
 # Native package channels
 
-Status checked 2026-10-17 after the `v0.9.975` release. GitHub Release archives
+Status checked 2026-10-17 after the `v0.9.976` release. GitHub Release archives
 are the payload for native packages; the standard ChaptarrNG container is built
 separately from the same application source and migration code. Package recipes
-add service and filesystem integration. See the [ChaptarrNG v0.9.975
-release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.975)
+add service and filesystem integration. See the [ChaptarrNG v0.9.976
+release](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.976)
 for the published archives, checksums, and source RPMs.
 
 For current BookshelfNG migration and legacy-channel acceptance status, see
@@ -28,10 +28,10 @@ upgraded safely.
 
 | Channel | ChaptarrNG | BookshelfNG | Remaining check |
 | --- | --- | --- | --- |
-| AUR | `chaptarrng-bin` `0.9.975-1` is published | `bookshelfng-bin` `0.4.21.70-1` remains | Test an old-package upgrade through conversion and rollback |
-| COPR | `chaptarrng` `0.9.975-1` build succeeded | Legacy build not triggered | Test the old package identity in a Fedora upgrade before enabling its bridge |
-| Chocolatey | `0.9.975` push was rejected with HTTP 403; public ChaptarrNG remains `0.9.973` | `0.4.21.70` remains | Resolve publisher authorization, then publish and test package-manager rollback |
-| Docker | `ghcr.io/snapetech-org/chaptarrng:0.9.975` is published | Mutable legacy aliases unchanged | Verify write access and digest equality before enabling the bridge |
+| AUR | `chaptarrng-bin` `0.9.976-1` is published | `bookshelfng-bin` `0.4.21.71-1` remains on the BookshelfNG payload | Test an old-package upgrade through conversion and rollback |
+| COPR | `chaptarrng 0.9.976-1.fc44` and `0.9.976-1.fc46` are published for x86_64 | Legacy trigger skipped | Test the old package identity in a Fedora upgrade before enabling its bridge |
+| Chocolatey | `0.9.976` built and passed upgrade smoke, but its push returned HTTP 403; public ChaptarrNG remains `0.9.973` | `0.4.21.70` remains | Resolve feed authorization, publish `.976`, and test package-manager rollback |
+| Docker | `ghcr.io/snapetech-org/chaptarrng:0.9.976` is published | Mutable legacy aliases unchanged | Verify write access and digest equality before enabling the bridge |
 
 Core release validation passed on Linux, macOS, Windows, and PostgreSQL. The
 Windows Chocolatey build and upgrade smoke also passed: it installs the
@@ -40,19 +40,20 @@ checks service startup and automatic database conversion, confirms that the
 backup and data remain, and verifies uninstall preserves data. The candidate
 BookshelfNG package itself was not published.
 
-The `v0.9.975` release and standard image were published successfully. The
-overall package workflow ended with a failure because Chocolatey rejected the
-new package push with HTTP 403. The workflow used a nonempty
-`CHOCOLATEY_API_KEY`, so the remaining issue is feed authorization, package
-ownership, or moderation; the key value is not recorded here.
+The `v0.9.976` release and standard image were published successfully. The
+Chocolatey package built and passed its upgrade smoke, but Chocolatey rejected
+the publish with HTTP 403. The workflow reported publisher credentials as
+configured; the feed rejection still needs to be resolved before the package
+is available. No credential value is recorded here.
 
-The standard ChaptarrNG COPR build succeeded as `0.9.975-1` after the specs
-stopped requesting an empty debugsource package. The workflow generated source
-RPMs for both identities, but did not trigger the legacy BookshelfNG COPR
-project because the migration bridge gate is disabled. The ChaptarrNG AUR
-identity was published at `0.9.975-1`; the BookshelfNG AUR identity was not
-updated. The `CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` Actions variable remains unset, so
-old package IDs and image aliases do not redirect to ChaptarrNG.
+The release workflow validated source RPMs for both identities and triggered
+the standard ChaptarrNG COPR webhook for `0.9.976-1`. The `chaptarrng`
+packages are now visible in the Fedora 44 and Rawhide x86_64 repositories. The
+legacy BookshelfNG COPR trigger was skipped because the migration bridge is
+disabled. The ChaptarrNG AUR
+identity was published at `0.9.976-1`; the BookshelfNG AUR identity was not
+updated. The `CHAPTARRNG_MIGRATION_BRIDGE_ENABLED` Actions variable is `false`,
+so old package IDs and image aliases do not redirect to ChaptarrNG.
 
 ## Migration behavior and limits
 
@@ -60,9 +61,10 @@ The default ChaptarrNG app-data location differs from BookshelfNG's
 native-package locations. A legacy package recipe preserves the old location
 so the standard ChaptarrNG app can find `readarr.db` and run its migration.
 The converter accepts only BookshelfNG migration-158 SQLite databases. It
-previews every table, asks the operator to classify ambiguous books, retains
-the source backup, and supports validated rollback. Older schemas and
-PostgreSQL are not converted.
+previews every table, keeps records with unresolved formats in both catalogs
+without monitoring, writes a private review file, retains the source backup,
+and supports validated rollback. Older schemas and PostgreSQL are not
+converted.
 
 Docker Compose, Unraid, and other container users can change the image to
 `ghcr.io/snapetech-org/chaptarrng` and retain `/config`, media/download mounts,
@@ -82,7 +84,7 @@ retirement decision.
 - Test AUR, COPR, and Chocolatey old-identity upgrades in disposable systems.
   Preserve service settings and data paths, convert the migration-158 fixture,
   retain the source backup, and verify rollback without losing later writes.
-- Resolve Chocolatey 403 authorization, then confirm `0.9.975` publishes and
+- Resolve Chocolatey HTTP 403 authorization, then confirm `0.9.976` publishes and
   its public checksum matches the tested package.
 - Verify old GHCR/Docker Hub destinations, credentials, and per-platform
   manifest digests before changing any mutable image aliases.
