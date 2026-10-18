@@ -17,6 +17,7 @@ namespace NzbDrone.Core.Datastore.Migration.Framework
     public interface IMigrationController
     {
         void Migrate(string connectionString, MigrationContext migrationContext, DatabaseType databaseType);
+        void MigrateBookshelfSource(string connectionString);
         BookshelfDatabaseConversionResult MigrateBookshelf(
             string connectionString,
             MigrationContext migrationContext,
@@ -84,7 +85,61 @@ namespace NzbDrone.Core.Datastore.Migration.Framework
                 connectionString,
                 targetConnectionString => MigrateNative(targetConnectionString, migrationContext ?? new MigrationContext(MigrationType.Main), DatabaseType.SQLite),
                 (source, target, transaction) => BookshelfDatabaseImporter.Import(source, target, transaction, sourceDatabasePath),
-                previewOnly);
+                previewOnly,
+                MigrateBookshelfSource);
+        }
+
+        public void MigrateBookshelfSource(string connectionString)
+        {
+            if (DatabaseLineageGuard.Detect(connectionString, DatabaseType.SQLite) != DatabaseLineage.BookshelfNG)
+            {
+                throw new InvalidDataException("The database is not a supported BookshelfNG SQLite source. No database was changed.");
+            }
+
+            using (var source = new SqliteConnection(connectionString))
+            {
+                source.Open();
+                BookshelfDatabaseImporter.ValidateSourceBackup(source);
+            }
+
+            var serviceProvider = new ServiceCollection()
+                .AddLogging(b => b.AddNLog())
+                .AddFluentMigratorCore()
+                .Configure<RunnerOptions>(cfg => cfg.IncludeUntaggedMaintenances = true)
+                .ConfigureRunner(
+                    builder => builder
+                    .AddNzbDroneSQLite()
+                    .WithGlobalConnectionString(connectionString)
+                    .ScanIn(Assembly.GetExecutingAssembly()).For.All())
+                .Configure<TypeFilterOptions>(opt => opt.Namespace = "NzbDrone.Core.Datastore.BookshelfMigration")
+                .Configure<ProcessorOptions>(opt =>
+                {
+                    opt.PreviewOnly = false;
+                    opt.Timeout = TimeSpan.FromMinutes(5);
+                })
+                .Configure<SelectingProcessorAccessorOptions>(cfg => cfg.ProcessorId = "SQLite")
+                .Configure<SelectingGeneratorAccessorOptions>(cfg => cfg.GeneratorId = "SQLite")
+                .BuildServiceProvider();
+
+            using (var scope = serviceProvider.CreateScope())
+            {
+                var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+                MigrationContext.Current = new MigrationContext(MigrationType.Main);
+                try
+                {
+                    runner.MigrateUp();
+                }
+                catch (Exception exception)
+                {
+                    throw new InvalidDataException(
+                        "BookshelfNG source migrations failed on the disposable snapshot. The original database was not changed.",
+                        exception);
+                }
+                finally
+                {
+                    MigrationContext.Current = null;
+                }
+            }
         }
 
         private void MigrateNative(string connectionString, MigrationContext migrationContext, DatabaseType databaseType)

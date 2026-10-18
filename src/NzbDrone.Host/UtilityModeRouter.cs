@@ -159,10 +159,12 @@ namespace NzbDrone.Host
                                 "Restoring a BookshelfNG database requires -confirm-bookshelf-service-stopped. Stop every process using this data directory first.");
                         }
 
+                        var migrationController = new MigrationController(_logger, new NLogLoggerProvider());
                         var result = new BookshelfDatabaseConverter().Restore(
                             database.ConnectionString,
                             backupPath,
-                            previewOnly);
+                            previewOnly,
+                            migrationController.MigrateBookshelfSource);
                         Console.WriteLine(previewOnly
                             ? $"BookshelfNG rollback preview passed. The current ChaptarrNG database and source backup were not changed: {result.BookshelfBackupPath}"
                             : $"BookshelfNG database restored from: {result.BookshelfBackupPath}");

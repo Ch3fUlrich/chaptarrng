@@ -112,6 +112,98 @@ namespace Chaptarr.Core.Test.Datastore
         }
 
         [Test]
+        public void should_upgrade_an_older_bookshelf_snapshot_and_keep_the_original_schema_for_rollback()
+        {
+            DowngradeSourceToMigration22();
+            var migrationController = new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null);
+
+            var result = migrationController.MigrateBookshelf(
+                _sourceConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite,
+                previewOnly: false);
+
+            var backupPath = result.BackupPath;
+            Assert.Multiple(() =>
+            {
+                Assert.That(DatabaseLineageGuard.Detect(_sourceConnectionString, DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.Chaptarr));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (30, 31);"), Is.EqualTo(2));
+                Assert.That(QueryScalar<int>(backupPath, "SELECT MAX(Version) FROM VersionInfo;"), Is.EqualTo(22));
+                Assert.That(QueryRows(backupPath, "SELECT name FROM pragma_table_info('Authors');"), Does.Not.Contain("EbookPath"));
+                Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
+                Assert.That(QueryRows(_sourcePath, "PRAGMA foreign_key_check;"), Is.Empty);
+            });
+
+            var restored = new BookshelfDatabaseConverter().Restore(
+                _sourceConnectionString,
+                backupPath,
+                migrateBookshelfSource: migrationController.MigrateBookshelfSource);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(restored.PreviewOnly, Is.False);
+                Assert.That(DatabaseLineageGuard.Detect(_sourceConnectionString, DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.BookshelfNG));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT MAX(Version) FROM VersionInfo;"), Is.EqualTo(22));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT COUNT(*) FROM Books WHERE Id IN (30, 31);"), Is.EqualTo(1));
+                Assert.That(File.Exists(restored.ChaptarrBackupPath), Is.True);
+                Assert.That(QueryScalar<string>(_sourcePath, "PRAGMA integrity_check;"), Is.EqualTo("ok"));
+            });
+        }
+
+        [Test]
+        public void should_preview_older_schema_upgrade_without_modifying_the_source_or_leaving_staging_files()
+        {
+            DowngradeSourceToMigration22();
+            var sourceBefore = File.ReadAllBytes(_sourcePath);
+            var migrationController = new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null);
+
+            var result = migrationController.MigrateBookshelf(
+                _sourceConnectionString,
+                new MigrationContext(MigrationType.Main),
+                DatabaseType.SQLite,
+                previewOnly: true);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.PreviewOnly, Is.True);
+                Assert.That(result.BackupPath, Is.Null);
+                Assert.That(result.ImportReport.Tables.Count, Is.GreaterThan(0));
+                Assert.That(File.ReadAllBytes(_sourcePath), Is.EqualTo(sourceBefore));
+                Assert.That(QueryScalar<int>(_sourcePath, "SELECT MAX(Version) FROM VersionInfo;"), Is.EqualTo(22));
+                Assert.That(Directory.GetFiles(_directory, "*.bookshelf-migrate-*.db"), Is.Empty);
+                Assert.That(Directory.GetFiles(_directory, "*.chaptarr-stage-*.db"), Is.Empty);
+                Assert.That(Directory.GetFiles(_directory, "*.bookshelf-snapshot-*.db"), Is.Empty);
+            });
+        }
+
+        [Test]
+        public void should_reject_a_bookshelf_schema_newer_than_the_embedded_migration_chain()
+        {
+            using (var source = new SqliteConnection(_sourceConnectionString))
+            {
+                source.Open();
+                using var command = source.CreateCommand();
+                command.CommandText = "UPDATE VersionInfo SET Version = 159 WHERE Version = 158;";
+                Assert.That(command.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+
+            var before = File.ReadAllBytes(_sourcePath);
+            var exception = Assert.Throws<InvalidDataException>(() => new MigrationController(
+                LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
+                    _sourceConnectionString,
+                    new MigrationContext(MigrationType.Main),
+                    DatabaseType.SQLite));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exception.Message, Does.Contain("newer than the bundled migration chain"));
+                Assert.That(File.ReadAllBytes(_sourcePath), Is.EqualTo(before));
+                Assert.That(Directory.GetFiles(_directory, "*.bookshelfng-backup-*.db"), Is.Empty);
+                Assert.That(Directory.GetFiles(_directory, "*.bookshelf-migrate-*.db"), Is.Empty);
+            });
+        }
+
+        [Test]
         public void should_preview_bookshelf_rollback_without_changing_either_database()
         {
             new MigrationController(LogManager.GetLogger(nameof(BookshelfDatabaseImporterFixture)), null).Migrate(
@@ -694,6 +786,51 @@ namespace Chaptarr.Core.Test.Datastore
             command.Parameters.AddWithValue("$foreignId", $"hardcover:book-{id}");
             command.Parameters.AddWithValue("$slug", $"no-edition-{id}");
             command.Parameters.AddWithValue("$monitored", monitored ? 1 : 0);
+            command.ExecuteNonQuery();
+        }
+
+        private void DowngradeSourceToMigration22()
+        {
+            using var source = new SqliteConnection(_sourceConnectionString);
+            source.Open();
+            using var command = source.CreateCommand();
+            command.CommandText = @"
+                ALTER TABLE Authors DROP COLUMN EbookMetadataProfileId;
+                ALTER TABLE Authors DROP COLUMN AudiobookMetadataProfileId;
+                ALTER TABLE Authors DROP COLUMN EbookQualityProfileId;
+                ALTER TABLE Authors DROP COLUMN AudiobookQualityProfileId;
+                ALTER TABLE Authors DROP COLUMN EbookPath;
+                ALTER TABLE Authors DROP COLUMN AudiobookPath;
+                ALTER TABLE Editions DROP COLUMN Narrator;
+                ALTER TABLE MetadataProfiles DROP COLUMN PreferredSeries;
+                ALTER TABLE MetadataProfiles DROP COLUMN PreferredEditionTerms;
+                ALTER TABLE BookFiles DROP COLUMN LastRemoteSearchTime;
+                ALTER TABLE BookFiles DROP COLUMN IndexerFlags;
+                ALTER TABLE Blocklist DROP COLUMN IndexerFlags;
+                ALTER TABLE Books DROP COLUMN LastSearchTime;
+                ALTER TABLE Notifications DROP COLUMN OnAuthorAdded;
+                DROP TABLE NotificationStatus;
+                ALTER TABLE Commands DROP COLUMN Result;
+                ALTER TABLE DownloadClients DROP COLUMN Tags;
+                ALTER TABLE DownloadClients DROP COLUMN RemoveCompletedDownloads;
+                ALTER TABLE DownloadClients DROP COLUMN RemoveFailedDownloads;
+                ALTER TABLE NamingConfig DROP COLUMN ColonReplacementFormat;
+                ALTER TABLE Indexers DROP COLUMN DownloadClientId;
+                ALTER TABLE Notifications DROP COLUMN OnApplicationUpdate;
+                ALTER TABLE DelayProfiles DROP COLUMN BypassIfHighestQuality;
+                ALTER TABLE DelayProfiles DROP COLUMN BypassIfAboveCustomFormatScore;
+                ALTER TABLE DelayProfiles DROP COLUMN MinimumCustomFormatScore;
+                ALTER TABLE BookFiles DROP COLUMN OriginalFilePath;
+                ALTER TABLE QualityProfiles DROP COLUMN FormatItems;
+                ALTER TABLE QualityProfiles DROP COLUMN MinFormatScore;
+                ALTER TABLE QualityProfiles DROP COLUMN CutoffFormatScore;
+                ALTER TABLE ReleaseProfiles ADD COLUMN Preferred TEXT;
+                ALTER TABLE ReleaseProfiles ADD COLUMN IncludePreferredWhenRenaming INTEGER;
+                DROP TABLE CustomFormats;
+                ALTER TABLE Indexers DROP COLUMN Tags;
+                ALTER TABLE ImportListStatus DROP COLUMN LastInfoSync;
+                ALTER TABLE ImportListStatus ADD COLUMN LastSyncListInfo DATETIME;
+                DELETE FROM VersionInfo WHERE Version > 22;";
             command.ExecuteNonQuery();
         }
 

@@ -133,6 +133,31 @@ namespace NzbDrone.Core.Datastore
             }
         }
 
+        internal static int ValidateSourceBackup(SqliteConnection source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+
+            var tables = GetTables(source);
+            var unknown = tables.Except(SupportedSourceTables, StringComparer.Ordinal).OrderBy(x => x).ToArray();
+            if (unknown.Length > 0 || !tables.Contains("VersionInfo"))
+            {
+                throw new InvalidDataException(
+                    "BookshelfNG backup table set cannot be upgraded by the bundled migration chain (unknown: " +
+                    string.Join(", ", unknown) + "). The source database was not changed.");
+            }
+
+            using var command = source.CreateCommand();
+            command.CommandText = "SELECT COALESCE(MAX(Version), 0) FROM VersionInfo;";
+            var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            if (version < 0 || version > SupportedSourceMigration)
+            {
+                throw new InvalidDataException(
+                    $"BookshelfNG schema version {version} is newer than the bundled migration chain (latest {SupportedSourceMigration}). The source database was not changed.");
+            }
+
+            return version;
+        }
+
         private static void DeferForeignKeys(SqliteConnection target, SqliteTransaction transaction)
         {
             using var command = target.CreateCommand();

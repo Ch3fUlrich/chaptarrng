@@ -17,7 +17,8 @@ namespace NzbDrone.Core.Datastore
             string sourceConnectionString,
             Action<string> migrateNativeTarget,
             Func<SqliteConnection, SqliteConnection, SqliteTransaction, BookshelfDatabaseImportReport> importRows,
-            bool previewOnly = false)
+            bool previewOnly = false,
+            Action<string> migrateBookshelfSource = null)
         {
             if (migrateNativeTarget == null)
             {
@@ -52,6 +53,7 @@ namespace NzbDrone.Core.Datastore
             var suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
             var stagePath = sourcePath + ".chaptarr-stage-" + suffix + ".db";
             var snapshotPath = sourcePath + ".bookshelf-snapshot-" + suffix + ".db";
+            var migrationSourcePath = sourcePath + ".bookshelf-migrate-" + suffix + ".db";
             var backupPath = sourcePath + ".bookshelfng-backup-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ") + "-" + suffix + ".db";
             var lockPath = sourcePath + ".bookshelfng-conversion.lock";
             var promoted = false;
@@ -65,10 +67,22 @@ namespace NzbDrone.Core.Datastore
                 CreateConsistentSnapshot(sourcePath, snapshotPath, sourceBuilder);
                 ValidateDatabase(snapshotPath, expectedLineage: DatabaseLineage.BookshelfNG, checkForeignKeys: true);
 
+                // Keep the consistent snapshot as the untouched rollback source. Run
+                // Bookshelf's released migrations only on a separate disposable copy so
+                // old installations can reach the importer's current schema safely.
+                File.Copy(snapshotPath, migrationSourcePath);
+                var migrationSourceConnectionString = BuildConnectionString(sourceBuilder, migrationSourcePath, SqliteOpenMode.ReadWrite);
+                if (migrateBookshelfSource != null)
+                {
+                    migrateBookshelfSource(migrationSourceConnectionString);
+                    using var migratedSource = OpenConnection(migrationSourcePath, SqliteOpenMode.ReadOnly, sourceBuilder);
+                    BookshelfDatabaseImporter.ValidateSourceSchema(migratedSource);
+                }
+
                 var stageConnectionString = BuildConnectionString(sourceBuilder, stagePath, SqliteOpenMode.ReadWriteCreate);
                 migrateNativeTarget(stageConnectionString);
 
-                using (var source = OpenConnection(snapshotPath, SqliteOpenMode.ReadOnly, sourceBuilder))
+                using (var source = OpenConnection(migrationSourcePath, SqliteOpenMode.ReadOnly, sourceBuilder))
                 using (var target = OpenConnection(stagePath, SqliteOpenMode.ReadWrite, sourceBuilder))
                 {
                     if (DatabaseLineageGuard.Detect(target.ConnectionString, DatabaseType.SQLite) != DatabaseLineage.Chaptarr)
@@ -118,6 +132,8 @@ namespace NzbDrone.Core.Datastore
                     DeleteDatabaseFiles(stagePath);
                 }
 
+                DeleteDatabaseFiles(migrationSourcePath);
+
                 if (!backupRetained)
                 {
                     DeleteDatabaseFiles(snapshotPath);
@@ -132,7 +148,8 @@ namespace NzbDrone.Core.Datastore
         public BookshelfDatabaseRollbackResult Restore(
             string currentConnectionString,
             string bookshelfBackupPath,
-            bool previewOnly = false)
+            bool previewOnly = false,
+            Action<string> migrateBookshelfSource = null)
         {
             if (string.IsNullOrWhiteSpace(bookshelfBackupPath))
             {
@@ -184,10 +201,7 @@ namespace NzbDrone.Core.Datastore
 
             ValidateDatabase(currentPath, DatabaseLineage.Chaptarr, checkForeignKeys: true);
             ValidateDatabase(sourceBackupPath, DatabaseLineage.BookshelfNG, checkForeignKeys: true);
-            using (var bookshelfBackup = OpenConnection(sourceBackupPath, SqliteOpenMode.ReadOnly, currentBuilder))
-            {
-                BookshelfDatabaseImporter.ValidateSourceSchema(bookshelfBackup);
-            }
+            ValidateBookshelfBackup(sourceBackupPath, currentBuilder, migrateBookshelfSource);
 
             if (previewOnly)
             {
@@ -209,7 +223,7 @@ namespace NzbDrone.Core.Datastore
                 ValidateDatabase(stagePath, DatabaseLineage.BookshelfNG, checkForeignKeys: true);
                 using (var stagedBookshelf = OpenConnection(stagePath, SqliteOpenMode.ReadOnly, currentBuilder))
                 {
-                    BookshelfDatabaseImporter.ValidateSourceSchema(stagedBookshelf);
+                    BookshelfDatabaseImporter.ValidateSourceBackup(stagedBookshelf);
                 }
 
                 CheckpointDatabase(currentPath, currentBuilder);
@@ -225,7 +239,7 @@ namespace NzbDrone.Core.Datastore
                     File.Move(stagePath, currentPath);
                     ValidateDatabase(currentPath, DatabaseLineage.BookshelfNG, checkForeignKeys: true);
                     using var restoredBookshelf = OpenConnection(currentPath, SqliteOpenMode.ReadOnly, currentBuilder);
-                    BookshelfDatabaseImporter.ValidateSourceSchema(restoredBookshelf);
+                    BookshelfDatabaseImporter.ValidateSourceBackup(restoredBookshelf);
                 }
                 catch (Exception restoreFailure)
                 {
@@ -263,6 +277,41 @@ namespace NzbDrone.Core.Datastore
                 {
                     DeleteDatabaseFiles(stagePath);
                 }
+            }
+        }
+
+        private static void ValidateBookshelfBackup(
+            string sourceBackupPath,
+            SqliteConnectionStringBuilder connectionBuilder,
+            Action<string> migrateBookshelfSource)
+        {
+            using (var sourceBackup = OpenConnection(sourceBackupPath, SqliteOpenMode.ReadOnly, connectionBuilder))
+            {
+                var sourceVersion = BookshelfDatabaseImporter.ValidateSourceBackup(sourceBackup);
+                if (migrateBookshelfSource == null)
+                {
+                    BookshelfDatabaseImporter.ValidateSourceSchema(sourceBackup);
+                    return;
+                }
+
+                if (sourceVersion < 0)
+                {
+                    throw new InvalidDataException("BookshelfNG backup has no supported schema version. No database was changed.");
+                }
+            }
+
+            var validationPath = sourceBackupPath + ".validate-" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".db";
+            try
+            {
+                File.Copy(sourceBackupPath, validationPath);
+                var validationConnectionString = BuildConnectionString(connectionBuilder, validationPath, SqliteOpenMode.ReadWrite);
+                migrateBookshelfSource(validationConnectionString);
+                using var validatedSource = OpenConnection(validationPath, SqliteOpenMode.ReadOnly, connectionBuilder);
+                BookshelfDatabaseImporter.ValidateSourceSchema(validatedSource);
+            }
+            finally
+            {
+                DeleteDatabaseFiles(validationPath);
             }
         }
 

@@ -126,10 +126,12 @@ namespace NzbDrone.Core.Datastore
             {
                 var bookColumns = GetColumns(connection, databaseType, "Books");
                 if (authorColumns.Contains("AuthorMetadataId") &&
-                    authorColumns.Contains("EbookPath") &&
-                    authorColumns.Contains("AudiobookPath") &&
+                    bookColumns.Contains("AuthorMetadataId") &&
                     bookColumns.Contains("ForeignBookId"))
                 {
+                    // Format-specific paths were added after the original BookshelfNG
+                    // schema. Identify the Bookshelf lineage before those columns exist
+                    // so its own migrations can upgrade a disposable source snapshot.
                     return DatabaseLineage.BookshelfNG;
                 }
             }

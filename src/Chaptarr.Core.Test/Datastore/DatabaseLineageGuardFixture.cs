@@ -80,6 +80,19 @@ namespace Chaptarr.Core.Test.Datastore
         }
 
         [Test]
+        public void should_recognize_older_bookshelf_schema_before_format_specific_paths_exist()
+        {
+            Create(@"
+                CREATE TABLE AuthorMetadata (Id INTEGER PRIMARY KEY, ForeignAuthorId TEXT);
+                CREATE TABLE Authors (Id INTEGER PRIMARY KEY, CleanName TEXT, AuthorMetadataId INTEGER);
+                CREATE TABLE Books (Id INTEGER PRIMARY KEY, AuthorMetadataId INTEGER, ForeignBookId TEXT);
+                CREATE TABLE VersionInfo (Version INTEGER, AppliedOn TEXT, Description TEXT);
+                INSERT INTO VersionInfo VALUES (45, '2026-10-13T00:00:00', 'BookshelfNG source schema');");
+
+            Assert.That(DatabaseLineageGuard.Detect(ConnectionString, DatabaseType.SQLite), Is.EqualTo(DatabaseLineage.BookshelfNG));
+        }
+
+        [Test]
         public void should_accept_old_chaptarr_schema_without_new_monitoring_columns()
         {
             Create("CREATE TABLE Authors (Id INTEGER PRIMARY KEY, AudiobookRootFolderPath TEXT, EbookRootFolderPath TEXT);");
