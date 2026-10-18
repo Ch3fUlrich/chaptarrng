@@ -4,6 +4,26 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.976](https://github.com/snapetech-org/chaptarrng/compare/v0.9.975..v0.9.976) - 2026-10-18
+
+### User-facing changes
+
+#### Changed
+
+- **Migration:** BookshelfNG migration keeps format-unknown books in both ChaptarrNG catalogs, unmonitored, and writes a private review file. Startup logs show its path. Conversion can continue without speculative searches; operators can classify records before or after startup. One selected audiobook and ebook edition transfer separately. Same-format conflicts stop conversion. No media files move.
+  - **Action required:** Review the generated media review file and choose the correct format before enabling monitoring for unresolved books.
+
+### Bug Fixes
+- *(migration)* Report unresolved review path - ([387d94f](https://github.com/snapetech-org/chaptarrng/commit/387d94f1013b6f2a5082dec53a2b4ccb65d2e547))
+- *(migration)* Preserve unresolved Bookshelf records - ([3014c70](https://github.com/snapetech-org/chaptarrng/commit/3014c701a564a0a90e1feb0cfb3e280c404a81bf))
+
+### Documentation
+- *(migration)* Complete BookshelfNG handoff guidance - ([23fe1f0](https://github.com/snapetech-org/chaptarrng/commit/23fe1f0a986163f1507055e5e70145172422cff7))
+- *(migration)* Update v0.9.975 package handoff status - ([c922fe7](https://github.com/snapetech-org/chaptarrng/commit/c922fe79682e5c51ea259365546a707aec6419c7))
+
+### Testing
+- *(migration)* Assert per-format monitoring fields - ([b7916f4](https://github.com/snapetech-org/chaptarrng/commit/b7916f41f7ca5d9f2509d857404933e2b6c43fbe))
+
 ## [0.9.975](https://github.com/snapetech-org/chaptarrng/compare/v0.9.974..v0.9.975) - 2026-10-17
 
 ### User-facing changes
