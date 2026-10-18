@@ -15,7 +15,7 @@ branch at
 [`e67374f`](https://github.com/Chaptarr/chaptarr/commit/e67374f), which is in
 ChaptarrNG `main`'s history.
 
-**Migration update (2026-10-17).** ChaptarrNG `v0.9.976` is published with the
+**Migration update (2026-10-18).** ChaptarrNG `v0.9.976` is published with the
 BookshelfNG converter and rollback commands, ordinary startup conversion, and
 an unmonitored dual-catalog fallback for records whose format cannot be
 inferred. Release validation passed on Linux, macOS, Windows, and the
@@ -25,11 +25,16 @@ source-side appdata archive helper. ChaptarrNG `v0.9.974` and later also
 initialize missing format-specific roots for new authors; explicit roots and
 existing authors or files are left alone. See the
 [operator guide](https://github.com/snapetech-org/bookshelfng/blob/main/docs/migrate-from-bookshelfng-to-chaptarrng.md)
-and [retirement status page](BOOKSHELFNG_RETIREMENT.md). Conversion still
-supports only migration-158 SQLite; older schemas and PostgreSQL remain
-unsupported, and successful database conversion does not complete feature
-parity or legacy-channel handoff. The `v0.9.976` GitHub release, GHCR image,
-and ChaptarrNG AUR package are published. Its standard COPR trigger succeeded,
+and [retirement status page](BOOKSHELFNG_RETIREMENT.md). The `v0.9.976`
+release supports migration-158 SQLite. Current `main` embeds the BookshelfNG
+SQLite migration chain for recognized older schemas on a disposable copy; the
+change is pending publication in `v0.9.977`. A synthetic v22 fixture passes
+upgrade, conversion, rollback, non-mutating preview, and future-schema refusal.
+This does not establish real-data behavior for older schemas. PostgreSQL
+source conversion remains unsupported, and successful database conversion
+does not complete feature parity or legacy-channel handoff. The `v0.9.976`
+GitHub release, GHCR image, and ChaptarrNG AUR package are published. Its
+standard COPR trigger succeeded,
 but the package build was not independently verified. The Chocolatey package
 passed build and upgrade smoke validation but its publish was rejected with
 HTTP 403; the old package remains public at `0.9.973`.
@@ -425,7 +430,7 @@ fixes, migrations, build changes, or deletions.
 
 | Capability or change | Current ChaptarrNG scope | Evidence required before upstream retirement |
 | --- | --- | --- |
-| BookshelfNG conversion and rollback | Standard image preview, apply, automatic startup conversion, retained source backup, rollback, per-format monitored-edition preservation, and an unmonitored dual-catalog fallback with a private review file for unresolved migration-158 SQLite records | Preserve source rows, identities, settings, backup and rollback guarantees; validate review follow-up, supported schemas, real populated rollback, and each installation channel. |
+| BookshelfNG conversion and rollback | Standard image preview, apply, automatic startup conversion, retained source backup, rollback, per-format monitored-edition preservation, and an unmonitored dual-catalog fallback with a private review file; current `main` also embeds the SQLite upgrade chain through migration 158 | Publish the older-schema support; validate recognized historical schemas on real data, review follow-up, source rows, identities, settings, populated rollback, and each installation channel. |
 | RanobeDB light-novel search and metadata | Read-only catalog search, stored work/release IDs, request pacing, and source-content limits | Preserve catalog behavior, identity, rate limits, licensing boundaries, and failure handling. |
 | Audible marketplace selection | US, UK, France, Germany, Italy, Spain, Canada, Australia, India, Japan, and Brazil storefronts for search and ASIN lookup | Preserve marketplace configuration, defaults, language headers, and result identity. |
 | Metadata profile filters and edition ranking | Genre exclusions/autocomplete; ISBN/ASIN missing-value filters; weighted edition terms; preferred series; language-change refresh; and filename, tag, Calibre, and AudioBookShelf consumers | Preserve profile migration/serialization, ranking order, missing-evidence behavior, refresh semantics, series consumers, and manual-review boundaries. |
@@ -508,7 +513,7 @@ upstream release must pass behavioral, data, security, and packaging checks.
 | Library browsing, performance, and operator workflow | Server-paged views and full-library API paging with totals; large-library query and cache improvements; root-folder backfill; managed file downloads; mobile accessibility; per-folder progress; cancellation safeguards | Previewable media moves, bulk moves, and extra-file handling | Preserve page completeness and order, root containment, no-file-move backfill, bounded memory/query behavior, responsive workflows, cancellation, and progress on representative large libraries. |
 | Release, package, and update channels | ChaptarrNG image at `ghcr.io/snapetech-org/chaptarrng`, Unraid identity, gated BookshelfNG aliases, and retired YunoHost publishing | BookshelfNG GHCR/Docker Hub tags, Unraid template, native installers, Linux package channels, Helm, and legacy update behavior | Preserve each retained channel or record an explicit maintainer decision to retire it; test historical installs, upgrades, package/image/service/data identities, and rollback. No single redirect reaches every installed copy. |
 | Localization | Twelve additional language catalogs, including Indonesian and Traditional Chinese, AudioBookShelf translations, locale metadata, English fallback, and locale-aware workflows | No separate BookshelfNG locale feature was identified; inherited keys remain in the source-path audit | Keep all supported strings, fallback behavior, and locale selection; complete native-speaker review and run translation-key and rendered-UI checks against the released upstream build. |
-| Data, database, and API compatibility | Existing ChaptarrNG databases, configuration, local IDs, SeerrNG links, migration-158 SQLite import/rollback, paged library API, and PostgreSQL TLS settings | BookshelfNG databases/configuration and their provider identities, local IDs, settings, histories, and files | Keep each source recoverable; preserve identities and references; prove rollback, upgrade, restart, TLS validation, and populated-database behavior. |
+| Data, database, and API compatibility | Existing ChaptarrNG databases, configuration, local IDs, SeerrNG links, migration-158 SQLite import/rollback, older SQLite upgrade candidate, paged library API, and PostgreSQL TLS settings | BookshelfNG databases/configuration and their provider identities, local IDs, settings, histories, and files | Keep each source recoverable; preserve identities and references; prove older-schema rollback, upgrade, restart, TLS validation, and populated-database behavior. |
 | Complete fork history and retirement scope | Historical ChaptarrNG `main` `c922fe79682e` at `v0.9.975` (658 commits ahead of upstream, zero behind, 1,671 changed paths); upstream `develop` `e67374f4`; open upstream PR #114 | Historical BookshelfNG `main` `a4b1146d34af`; PRs #128 and #130 are merged. BookshelfNG issue #114 is now closed; issue #144 remains open. | Regenerate exact source-to-upstream inventories for `main` and review current upstream issues and PRs before any ChaptarrNG-to-Chaptarr retirement. Retain, port, or prove equivalence for every behavior; this upstream retirement work is separate from closing the BookshelfNG product. |
 
 The data row has structural differences: BookshelfNG separates `Authors` and
@@ -540,9 +545,11 @@ one author, one source book, two editions, two files, and two history rows.
 
 The converter is now publicly available in the standard image, beginning with
 [`v0.9.970`](https://github.com/snapetech-org/chaptarrng/releases/tag/v0.9.970).
-It supports migration-158 SQLite only. This evidence does not prove older
-schema or PostgreSQL conversion, real-populated rollback, every
-provider/settings/client contract, semantic feature parity, or compatibility
+The latest published `v0.9.976` supports migration-158 SQLite. Current `main`
+adds an embedded SQLite upgrade chain intended for `v0.9.977`; only a
+synthetic v22 fixture has exercised it so far. This evidence does not prove
+older-schema behavior on real data or PostgreSQL conversion, real-populated
+rollback, every provider/settings/client contract, semantic feature parity, or compatibility
 with every installation channel. Each capability and applicable upgrade,
 rollback, and redirect path remains an independent replacement gate.
 

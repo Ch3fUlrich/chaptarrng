@@ -1,6 +1,7 @@
 # Native package channels
 
-Status checked 2026-10-17 after the `v0.9.976` release. GitHub Release archives
+Status checked 2026-10-18. ChaptarrNG `v0.9.976` is the latest published
+release; the older-schema support in `main` is pending `v0.9.977`. GitHub Release archives
 are the payload for native packages; the standard ChaptarrNG container is built
 separately from the same application source and migration code. Package recipes
 add service and filesystem integration. See the [ChaptarrNG v0.9.976
@@ -60,11 +61,16 @@ so old package IDs and image aliases do not redirect to ChaptarrNG.
 The default ChaptarrNG app-data location differs from BookshelfNG's
 native-package locations. A legacy package recipe preserves the old location
 so the standard ChaptarrNG app can find `readarr.db` and run its migration.
-The converter accepts only BookshelfNG migration-158 SQLite databases. It
-previews every table, keeps records with unresolved formats in both catalogs
+The published `v0.9.976` converter accepts BookshelfNG migration-158 SQLite
+databases. The `main` candidate embeds the BookshelfNG SQLite migration chain
+and upgrades recognized source schemas on a disposable copy before conversion.
+The raw snapshot remains available for rollback. A synthetic v22 fixture
+passes upgrade, conversion, rollback, and non-mutating preview. Hosted CI,
+publication, and real old-schema data remain to be checked. Unknown or newer
+schemas, PostgreSQL sources, and two populated source databases fail closed.
+The importer keeps records with unresolved formats in both catalogs
 without monitoring, writes a private review file, retains the source backup,
-and supports validated rollback. Older schemas and PostgreSQL are not
-converted.
+and supports validated rollback.
 
 Docker Compose, Unraid, and other container users can change the image to
 `ghcr.io/snapetech-org/chaptarrng` and retain `/config`, media/download mounts,
