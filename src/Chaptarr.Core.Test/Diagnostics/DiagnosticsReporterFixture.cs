@@ -99,9 +99,14 @@ namespace Chaptarr.Core.Test.Diagnostics
         }
 
         [Test]
-        public async Task should_send_nothing_when_endpoint_is_not_https()
+        [TestCase("http://collector.example/v1/metrics")]
+        [TestCase("https://user:password@collector.example/v1/metrics")]
+        [TestCase("https://collector.example/v1/metrics?token=secret")]
+        [TestCase("https://collector.example/v1/metrics#fragment")]
+        [TestCase("https://collector.example/custom-endpoint")]
+        public async Task should_send_nothing_when_endpoint_is_invalid(string endpoint)
         {
-            SetValidEnvironment("http://collector.example/v1/metrics", "test-secret");
+            SetValidEnvironment(endpoint, "test-secret");
             var handler = new CapturingHandler();
             using var reporter = new DiagnosticsReporter(LogManager.GetLogger(nameof(DiagnosticsReporterFixture)), handler);
 
