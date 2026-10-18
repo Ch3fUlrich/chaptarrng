@@ -4,6 +4,27 @@ ChaptarrNG release notes highlight user-facing changes and operating guidance.
 Each release combines curated entries from release-notes/ with technical
 history grouped from conventional commits.
 
+## [0.9.977](https://github.com/snapetech-org/chaptarrng/compare/v0.9.976..v0.9.977) - 2026-10-18
+
+### User-facing changes
+
+#### Added
+
+- **Bookshelf:** ChaptarrNG now upgrades supported older BookshelfNG SQLite schemas on a temporary copy before conversion. The original database stays available for rollback, and preview leaves it unchanged. Newer schemas and PostgreSQL sources still fail closed.
+- **Diagnostics:** Operators can opt in to send aggregate counts for application starts, grabs, imports, and failed downloads to an HTTPS OpenTelemetry collector. Diagnostics stay disabled by default and never include book details or file paths.
+
+### Features
+- *(diagnostics)* Add opt-in aggregate diagnostics - ([ba1c7ab](https://github.com/snapetech-org/chaptarrng/commit/ba1c7ab312223473047af0ccd61393ba0d74fab0))
+- *(migration)* Upgrade older Bookshelf SQLite schemas - ([0b79087](https://github.com/snapetech-org/chaptarrng/commit/0b790871518e9da7e3063940e1156cadeed702ad))
+
+### Documentation
+- *(migration)* Update older Bookshelf schema handoff - ([23ba03a](https://github.com/snapetech-org/chaptarrng/commit/23ba03a70a06cbc770313e1c8bfa6e736e0c2976))
+- *(migration)* Refresh Bookshelf retirement status - ([3de609b](https://github.com/snapetech-org/chaptarrng/commit/3de609b931abab21555e741de3dd06eb9b1bbf38))
+
+### Testing
+- *(diagnostics)* Cover invalid collector endpoints - ([605c66e](https://github.com/snapetech-org/chaptarrng/commit/605c66ec00b535e98250f5a7d246f1aaf202d9de))
+- *(migration)* Cover Bookshelf profile conversion - ([21201d4](https://github.com/snapetech-org/chaptarrng/commit/21201d4f179376018529efb7332b5ac4a716a83b))
+
 ## [0.9.976](https://github.com/snapetech-org/chaptarrng/compare/v0.9.975..v0.9.976) - 2026-10-18
 
 ### User-facing changes
