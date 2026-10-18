@@ -25,6 +25,19 @@ accounts for every source-table row, checks SQLite integrity and foreign keys,
 retains the original database as a backup, and only then promotes the result.
 Unsupported schemas fail closed without changing the source.
 
+If BookshelfNG is older than `0.4.21.71`, update it to that final release and
+let BookshelfNG finish its own database upgrade before switching applications.
+Stop the service after it reaches an idle state, then run ChaptarrNG preview.
+Do not point ChaptarrNG at an older schema and expect it to perform the
+BookshelfNG upgrade itself. PostgreSQL BookshelfNG databases are not supported
+by this converter.
+
+Environment variables are outside the database conversion. Preserve the
+BookshelfNG diagnostics variables if that optional module was explicitly
+enabled; ChaptarrNG honors that choice only when the archived appdata also
+contains the old diagnostics module marker. See the
+[optional diagnostics guide](OPTIONAL_DIAGNOSTICS.md).
+
 The conversion reuses the existing data directory and `config.xml`, preserving
 the saved HTTP port, URL base, API key, and server settings. Keep the same media
 and download mounts and host/container port mappings. This preserves existing

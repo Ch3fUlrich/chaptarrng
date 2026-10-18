@@ -305,6 +305,10 @@ jobs:
         mkdir -p ./publish/Chaptarr/UI
         cp -a ./_output/UI/. ./publish/Chaptarr/UI/
         test -s ./publish/Chaptarr/UI/index.html
+
+    - name: Verify optional diagnostics module in artifact
+      shell: bash
+      run: test -s ./publish/Chaptarr/Chaptarr.Diagnostics.dll
     
     - name: Upload artifacts
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

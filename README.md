@@ -353,6 +353,7 @@ Note: the inherited assembly is named `Chaptarr.dll` on Linux/macOS and `Chaptar
 - [External library integrations](docs/EXTERNAL_LIBRARY_INTEGRATIONS.md): setup and synchronization boundaries for AudioBookShelf, Calibre, Grimmory, and Emby/Jellyfin
 - [MQTT Gateway](docs/MQTT_GATEWAY.md): broker settings, Home Assistant discovery, snapshots, events, and canonical webhook requests
 - [Prometheus metrics](docs/PROMETHEUS_METRICS.md): listener configuration, scrape setup, metric names, and network exposure
+- [Optional diagnostics](docs/OPTIONAL_DIAGNOSTICS.md): explicit opt-in, aggregate event counts, and privacy boundaries
 - [ImageSharp build-license guide](docs/development/imagesharp-license.md): why source builds need a Six Labors license, how to obtain one, and where to configure it
 - [Validation engine guide](docs/development/validation-engine.md): local and CI validation tasks, progress reporting, and receipt checks
 - [Changelog](CHANGELOG.md): release-by-release changes shipped by the fork
@@ -381,7 +382,7 @@ ChaptarrNG inherits the Readarr-derived operational model and security work from
 - Inbound security headers including HSTS, CSP, X-Frame-Options, X-Content-Type-Options, and Referrer-Policy
 - Image proxy target validation before fetching remote images
 - API responses redact provider secrets
-- No analytics or crash reporting is enabled
+- No analytics or crash reporting is enabled by default; [optional diagnostics](docs/OPTIONAL_DIAGNOSTICS.md) sends only operator-configured aggregate event counts
 - Optional passphrase-encrypted Quickstart Settings Backups
 - Optional authenticated encryption for full backup archives
 - Update binaries are verified by SHA256 before install
