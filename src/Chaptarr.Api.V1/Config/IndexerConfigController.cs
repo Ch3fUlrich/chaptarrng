@@ -25,6 +25,10 @@ namespace Chaptarr.Api.V1.Config
 
             SharedValidator.RuleFor(c => c.MissingBookSearchInterval)
                            .IsValidMissingBookSearchInterval();
+
+            SharedValidator.RuleFor(c => c.MissingSearchMaxRows).GreaterThanOrEqualTo(0);
+            SharedValidator.RuleFor(c => c.MissingSearchCooldownHours).GreaterThanOrEqualTo(0);
+            SharedValidator.RuleFor(c => c.MissingSearchMaxAttempts).GreaterThanOrEqualTo(0);
         }
 
         protected override IndexerConfigResource ToResource(IConfigService model)

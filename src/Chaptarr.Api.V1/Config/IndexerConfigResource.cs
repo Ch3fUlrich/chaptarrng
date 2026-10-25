@@ -10,6 +10,9 @@ namespace Chaptarr.Api.V1.Config
         public int Retention { get; set; }
         public int RssSyncInterval { get; set; }
         public int MissingBookSearchInterval { get; set; }
+        public int MissingSearchMaxRows { get; set; }
+        public int MissingSearchCooldownHours { get; set; }
+        public int MissingSearchMaxAttempts { get; set; }
     }
 
     public static class IndexerConfigResourceMapper
@@ -23,6 +26,9 @@ namespace Chaptarr.Api.V1.Config
                 Retention = model.Retention,
                 RssSyncInterval = model.RssSyncInterval,
                 MissingBookSearchInterval = model.MissingBookSearchInterval,
+                MissingSearchMaxRows = model.MissingSearchMaxRows,
+                MissingSearchCooldownHours = model.MissingSearchCooldownHours,
+                MissingSearchMaxAttempts = model.MissingSearchMaxAttempts,
             };
         }
     }
