@@ -22,6 +22,7 @@ namespace NzbDrone.Core.IndexerSearch
         private readonly IBookCutoffService _bookCutoffService;
         private readonly IQueueService _queueService;
         private readonly IProcessDownloadDecisions _processDownloadDecisions;
+        private readonly IScheduledMissingSearch _scheduledMissingSearch;
         private readonly Logger _logger;
 
         public BookSearchService(ISearchForReleases releaseSearchService,
@@ -29,8 +30,10 @@ namespace NzbDrone.Core.IndexerSearch
             IBookCutoffService bookCutoffService,
             IQueueService queueService,
             IProcessDownloadDecisions processDownloadDecisions,
-            Logger logger)
+            Logger logger,
+            IScheduledMissingSearch scheduledMissingSearch = null)
         {
+            _scheduledMissingSearch = scheduledMissingSearch;
             _releaseSearchService = releaseSearchService;
             _bookService = bookService;
             _bookCutoffService = bookCutoffService;
@@ -180,6 +183,14 @@ namespace NzbDrone.Core.IndexerSearch
         public void Execute(MissingBookSearchCommand message)
         {
             var requestedMediaType = ParseMediaType(message.MediaType);
+
+            // The interval-driven whole-library run is budget-gated, capped and rate-limited.
+            if (message.Trigger == CommandTrigger.Scheduled && !message.AuthorId.HasValue && _scheduledMissingSearch != null)
+            {
+                _scheduledMissingSearch.Run(requestedMediaType);
+                return;
+            }
+
             var targets = _bookService.GetMissingBookSearchTargets(requestedMediaType, message.AuthorId);
 
             var totalBooks = 0;

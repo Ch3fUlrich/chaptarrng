@@ -134,6 +134,27 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("MissingBookSearchInterval", value); }
         }
 
+        public int MissingSearchMaxRows
+        {
+            get { return GetValueInt("MissingSearchMaxRows", 50); }
+
+            set { SetValue("MissingSearchMaxRows", value); }
+        }
+
+        public int MissingSearchCooldownHours
+        {
+            get { return GetValueInt("MissingSearchCooldownHours", 24); }
+
+            set { SetValue("MissingSearchCooldownHours", value); }
+        }
+
+        public int MissingSearchMaxAttempts
+        {
+            get { return GetValueInt("MissingSearchMaxAttempts", 5); }
+
+            set { SetValue("MissingSearchMaxAttempts", value); }
+        }
+
         public int MaximumSize
         {
             get { return GetValueInt("MaximumSize", 0); }
