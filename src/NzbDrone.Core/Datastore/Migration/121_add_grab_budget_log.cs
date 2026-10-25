@@ -3,7 +3,7 @@ using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace NzbDrone.Core.Datastore.Migration
 {
-    [Migration(108)]
+    [Migration(121)]
     public class add_grab_budget_log : NzbDroneMigrationBase
     {
         protected override void MainDbUpgrade()
