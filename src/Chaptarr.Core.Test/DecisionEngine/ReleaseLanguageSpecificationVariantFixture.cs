@@ -16,9 +16,17 @@ namespace Chaptarr.Core.Test.DecisionEngine
     [TestFixture]
     public class ReleaseLanguageSpecificationVariantFixture
     {
+        private static bool AllowUnknown = true;
+
+        [SetUp]
+        public void ResetAllowUnknown()
+        {
+            AllowUnknown = true;
+        }
+
         private static ReleaseLanguageSpecification CreateSubject(params MetadataProfile[] profiles)
         {
-            return new ReleaseLanguageSpecification(new StubMetadataProfileService(profiles), LogManager.GetCurrentClassLogger());
+            return new ReleaseLanguageSpecification(new StubMetadataProfileService(profiles), LanguageGateConfig.Create(AllowUnknown), LogManager.GetCurrentClassLogger());
         }
 
         private static MetadataProfile BuildBothLanguageProfile()
@@ -101,6 +109,7 @@ namespace Chaptarr.Core.Test.DecisionEngine
         [Test]
         public void ReleaseLanguageSpecificationVariant_UnknownReleaseRejectedForExplicitRowLanguage()
         {
+            AllowUnknown = false;
             var profile = BuildBothLanguageProfile();
 
             var subject = CreateSubject(profile);
@@ -112,6 +121,60 @@ namespace Chaptarr.Core.Test.DecisionEngine
                 row: BuildVariantRow("dune_wanted_ebook_deu_101"));
 
             var decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria());
+
+            Assert.That(decision.Accepted, Is.False);
+        }
+
+        [Test]
+        public void ReleaseLanguageSpecificationVariant_UnknownReleaseAcceptedByDefaultForExplicitRowLanguage()
+        {
+            var subject = CreateSubject(BuildBothLanguageProfile());
+            var remoteBook = BuildRemoteBook(
+                "Frank.Herbert.Dune.2021.RETAiL.ePub.eBOOK-GRP",
+                profileId: 2,
+                bookTitle: "Dune",
+                authorName: "Frank Herbert",
+                row: BuildVariantRow("dune_wanted_ebook_deu_101"));
+
+            var decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria());
+
+            Assert.That(decision.Accepted, Is.True);
+        }
+
+        [Test]
+        public void ReleaseLanguageSpecificationVariant_KnownMismatchStillRejectedWhenUnknownAllowed()
+        {
+            var subject = CreateSubject(BuildBothLanguageProfile());
+            var remoteBook = BuildRemoteBook(
+                "Frank.Herbert.Dune.2021.ENGLiSH.RETAiL.ePub.eBOOK-GRP",
+                profileId: 2,
+                bookTitle: "Dune",
+                authorName: "Frank Herbert",
+                row: BuildVariantRow("dune_wanted_ebook_deu_101"));
+
+            var decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria());
+
+            Assert.That(decision.Accepted, Is.False);
+        }
+
+        [Test]
+        public void ReleaseLanguageSpecificationVariant_CriteriaLanguageUnknownReleaseAcceptedByDefault()
+        {
+            var subject = CreateSubject(BuildBothLanguageProfile());
+            var remoteBook = BuildRemoteBook(
+                "Frank.Herbert.Dune.2021.RETAiL.ePub.eBOOK-GRP",
+                profileId: 2,
+                bookTitle: "Dune",
+                authorName: "Frank Herbert",
+                row: BuildLegacyRow("dune"));
+
+            var decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria { Language = "deu" });
+
+            Assert.That(decision.Accepted, Is.True);
+
+            AllowUnknown = false;
+            subject = CreateSubject(BuildBothLanguageProfile());
+            decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria { Language = "deu" });
 
             Assert.That(decision.Accepted, Is.False);
         }

@@ -1265,7 +1265,7 @@ namespace NzbDrone.Core.Books
 
             return book.TitleSlug.IsNotNullOrWhiteSpace() &&
                    (book.TitleSlug.IndexOf("_copy_", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    book.TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0);
+                    Book.HasWantedSlug(book.TitleSlug));
         }
 
         private static List<Book> GetSyncParticipants(List<Book> workGroup)
@@ -2345,7 +2345,7 @@ namespace NzbDrone.Core.Books
                 language = selection.Language.CanonicalizeLanguage();
                 if (language.IsNullOrWhiteSpace())
                 {
-                    throw new WantedVersionNotFoundException($"Unknown language '{selection.Language}'");
+                    throw new WantedVersionNotFoundException($"Unknown language '{selection.Language}'", WantedVersionNotFoundReason.UnknownLanguage, bookId, mediaType.ToString(), selection.Language);
                 }
             }
 
@@ -2355,7 +2355,7 @@ namespace NzbDrone.Core.Books
                 selectedEdition = _editionService.GetEdition(selection.EditionId.Value);
                 if (selectedEdition == null)
                 {
-                    throw new WantedVersionNotFoundException($"Edition with ID {selection.EditionId} not found");
+                    throw new WantedVersionNotFoundException($"Edition with ID {selection.EditionId} not found", WantedVersionNotFoundReason.EditionNotFound, bookId, mediaType.ToString(), selection.Language);
                 }
 
                 if (selectedEdition.BookId != baseBook.Id)
@@ -2365,12 +2365,12 @@ namespace NzbDrone.Core.Books
 
                 if (IsKnownFormatMismatch(selectedEdition, mediaType))
                 {
-                    throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match media type {mediaType}");
+                    throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match media type {mediaType}", WantedVersionNotFoundReason.EditionMediaMismatch, bookId, mediaType.ToString(), selection.Language);
                 }
 
                 if (language.IsNotNullOrWhiteSpace() && !SameLanguage(selectedEdition.Language, language))
                 {
-                    throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match language '{selection.Language}'");
+                    throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match language '{selection.Language}'", WantedVersionNotFoundReason.EditionLanguageMismatch, bookId, mediaType.ToString(), selection.Language);
                 }
             }
             else
@@ -2386,7 +2386,7 @@ namespace NzbDrone.Core.Books
 
                 if (selectedEdition == null)
                 {
-                    throw new WantedVersionNotFoundException($"No {mediaType} edition of book {bookId} matches language '{selection.Language}', ISBN '{selection.Isbn}', ASIN '{selection.Asin}'");
+                    throw new WantedVersionNotFoundException($"No {mediaType} edition of book {bookId} matches language '{selection.Language}', ISBN '{selection.Isbn}', ASIN '{selection.Asin}'", WantedVersionNotFoundReason.NoEditionInLanguage, bookId, mediaType.ToString(), selection.Language);
                 }
             }
 
@@ -2466,7 +2466,7 @@ namespace NzbDrone.Core.Books
                 var existing = (_bookRepository.GetBooksByAuthorId(baseBook.AuthorId) ?? new List<Book>())
                     .Where(b => string.Equals(b.BaseBookId, baseBook.BaseBookId, StringComparison.OrdinalIgnoreCase))
                     .Where(b => b.Id != baseBook.Id && b.MediaType == mediaType)
-                    .Where(b => b.TitleSlug.IsNotNullOrWhiteSpace() && b.TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Where(b => Book.HasWantedSlug(b.TitleSlug))
                     .Where(b => string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(b.LanguageCode), rowLanguage, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(b => b.Id)
                     .FirstOrDefault();
@@ -2558,7 +2558,7 @@ namespace NzbDrone.Core.Books
                 return null;
             }
 
-            // If a matching wanted instance already exists, return it (don’t create duplicates).
+            // If a matching wanted instance already exists, return it (donât create duplicates).
             var selectedEditionKey = GetEditionKey(selectedEdition);
             if (baseBook.AuthorId > 0 && !string.IsNullOrWhiteSpace(selectedEditionKey))
             {
@@ -2624,7 +2624,7 @@ namespace NzbDrone.Core.Books
             var wantedBook = new Book
             {
                 // Copy metadata/provider IDs from base book so searches and matching stay grounded.
-                TitleSlug = isVariantRequest ? $"{baseSlug}_wanted_{mediaType.ToString().ToLowerInvariant()}_{rowLanguage ?? "und"}_{editionId}" : $"{baseSlug}_wanted_{editionId}",
+                TitleSlug = isVariantRequest ? Book.BuildWantedSlug(baseSlug, mediaType, rowLanguage, editionId) : $"{baseSlug}{Book.WantedSlugMarker}{editionId}",
                 Title = baseBook.Title,
                 CleanTitle = baseBook.CleanTitle,
                 Overview = baseBook.Overview,

@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.Books.Services;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Parser;
@@ -25,11 +26,13 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
         private static readonly Dictionary<string, string> TitleLanguageTailTokens = BuildTitleLanguageTailTokens();
 
         private readonly IMetadataProfileService _metadataProfileService;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
 
-        public ReleaseLanguageSpecification(IMetadataProfileService metadataProfileService, Logger logger)
+        public ReleaseLanguageSpecification(IMetadataProfileService metadataProfileService, IConfigService configService, Logger logger)
         {
             _metadataProfileService = metadataProfileService;
+            _configService = configService;
             _logger = logger;
         }
 
@@ -55,6 +58,12 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
                 if (detected.Count == 0)
                 {
+                    if (_configService.AllowUnknownReleaseLanguage)
+                    {
+                        _logger.Trace("[LANGUAGE_FILTER] No explicit language detected for '{0}', allowing for wanted version [{1}] (AllowUnknownReleaseLanguage)", release.Title, rowLanguage);
+                        return Decision.Accept();
+                    }
+
                     return Decision.RejectSoftFilter("Release language is unknown, but the wanted version requires [{0}]", "Language", rowLanguage);
                 }
 
@@ -207,24 +216,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return null;
             }
 
-            var book = books[0];
-
-            if (book?.TitleSlug == null ||
-                !book.TitleSlug.Contains("_wanted_", StringComparison.OrdinalIgnoreCase) ||
-                book.AddOptions?.AddType != BookAddType.Manual ||
-                !string.IsNullOrWhiteSpace(book.UnitKeyHash))
-            {
-                return null;
-            }
-
-            var language = book.Editions?.FirstOrDefault(e => e != null && e.Monitored)?.Language;
-
-            if (string.IsNullOrWhiteSpace(language))
-            {
-                language = book.LanguageCode;
-            }
-
-            return string.IsNullOrWhiteSpace(language) ? null : language.CanonicalizeLanguage();
+            return books[0]?.GetWantedVariantLanguage();
         }
 
         private static HashSet<string> GetDetectedReleaseLanguages(RemoteBook subject)
@@ -431,17 +423,17 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             map["deutsch"] = "deu";
             map["czech"] = "ces";
             map["cesky"] = "ces";
-            map["česky"] = "ces";
+            map["Äesky"] = "ces";
             map["spanish"] = "spa";
             map["espanol"] = "spa";
-            map["español"] = "spa";
+            map["espaÃ±ol"] = "spa";
             map["castellano"] = "spa";
             map["french"] = "fra";
             map["francais"] = "fra";
-            map["français"] = "fra";
+            map["franÃ§ais"] = "fra";
             map["portuguese"] = "por";
             map["portugues"] = "por";
-            map["português"] = "por";
+            map["portuguÃªs"] = "por";
             map["brazilian"] = "por";
 
             return map;

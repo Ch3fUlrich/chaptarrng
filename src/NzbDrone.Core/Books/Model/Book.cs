@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using Equ;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MetadataSource;
@@ -410,12 +411,44 @@ namespace NzbDrone.Core.Books
             throw new ArgumentException($"Unknown media type '{mediaType}'", nameof(mediaType));
         }
         // Helper methods for MediaType-aware monitoring
+        public const string WantedSlugMarker = "_wanted_";
+
+        // Single source of truth for the "_wanted_" slug heuristic (was copied in
+        // Book, BookService, ReleaseSearchService and ReleaseLanguageSpecification).
+        public static bool HasWantedSlug(string titleSlug)
+        {
+            return !string.IsNullOrWhiteSpace(titleSlug) &&
+                   titleSlug.IndexOf(WantedSlugMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        public static string BuildWantedSlug(string baseSlug, BookMediaType mediaType, string rowLanguage, int editionId)
+        {
+            return $"{baseSlug}{WantedSlugMarker}{mediaType.ToString().ToLowerInvariant()}_{rowLanguage ?? "und"}_{editionId}";
+        }
+
         public bool IsWantedVariantRow()
         {
-            return !string.IsNullOrWhiteSpace(TitleSlug) &&
-                   TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0 &&
+            return HasWantedSlug(TitleSlug) &&
                    AddOptions?.AddType == BookAddType.Manual &&
                    string.IsNullOrWhiteSpace(UnitKeyHash);
+        }
+
+        // Canonical row language of a wanted-variant row, or null for ordinary rows.
+        public string GetWantedVariantLanguage()
+        {
+            if (!IsWantedVariantRow())
+            {
+                return null;
+            }
+
+            var language = Editions?.FirstOrDefault(e => e != null && e.Monitored)?.Language;
+
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                language = LanguageCode;
+            }
+
+            return string.IsNullOrWhiteSpace(language) ? null : language.CanonicalizeLanguage();
         }
 
         public bool IsMonitored()
