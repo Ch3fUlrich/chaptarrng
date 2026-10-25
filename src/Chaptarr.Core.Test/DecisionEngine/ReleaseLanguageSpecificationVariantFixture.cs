@@ -216,6 +216,25 @@ namespace Chaptarr.Core.Test.DecisionEngine
             Assert.That(decision.Accepted, Is.True);
         }
 
+        // A release matched to several wanted-version rows is judged against the row the title match names.
+        [TestCase("Frank.Herbert.Dune.2021.GERMAN.RETAiL.ePub.eBOOK-GRP", true)]
+        [TestCase("Frank.Herbert.Dune.2021.FRENCH.RETAiL.ePub.eBOOK-GRP", false)]
+        public void ReleaseLanguageSpecificationVariant_MultipleMatchedRowsUseTheTitleMatchedRow(string title, bool accepted)
+        {
+            var subject = CreateSubject(BuildBothLanguageProfile());
+            var german = BuildVariantRow("dune_wanted_ebook_deu_101");
+            var french = BuildVariantRow("dune_wanted_ebook_fra_102");
+            french.Id = 102;
+            french.LanguageCode = "fra";
+            french.Editions[0].Language = "fra";
+
+            var remoteBook = BuildRemoteBook(title, profileId: 2, bookTitle: "Dune", authorName: "Frank Herbert", row: german);
+            remoteBook.Books = new List<Book> { german, french };
+            remoteBook.SearchCriteriaMatch.Book = german;
+
+            Assert.That(subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria()).Accepted, Is.EqualTo(accepted));
+        }
+
         // R2: the non-ASCII title tokens must survive source encoding and Unicode normalisation (NFC and NFD).
         [TestCase("\u010desky", "ces")]
         [TestCase("espa\u00f1ol", "spa")]

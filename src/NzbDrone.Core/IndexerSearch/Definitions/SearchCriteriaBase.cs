@@ -10,7 +10,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
     {
         private static readonly Regex NonWord = new Regex(@"[^\w`'’]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex BeginningThe = new Regex(@"^the\s", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly char[] UmlautChars = { 'ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß' };
+        private static readonly char[] UmlautChars = { '\u00e4', '\u00f6', '\u00fc', '\u00c4', '\u00d6', '\u00dc', '\u00df', '\u1e9e' };
 
         public virtual bool MonitoredBooksOnly { get; set; } = true;
         public virtual bool UserInvokedSearch { get; set; }
@@ -32,7 +32,15 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         /// <summary>Title query with German umlauts transliterated (ae/oe/ue/ss); null when the title has none.</summary>
         public static string GetTransliteratedQueryTitle(string title)
         {
-            if (string.IsNullOrWhiteSpace(title) || title.IndexOfAny(UmlautChars) < 0)
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return null;
+            }
+
+            // Decomposed (NFD) umlauts would slip past the precomposed checks below.
+            title = title.Normalize(System.Text.NormalizationForm.FormC);
+
+            if (title.IndexOfAny(UmlautChars) < 0)
             {
                 return null;
             }
@@ -69,6 +77,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
                                        .Replace("Ö", "Oe")
                                        .Replace("Ü", "Ue")
                                        .Replace("ß", "ss");
+                cleanTitle = cleanTitle.Replace("\u1e9e", "SS");
             }
 
             cleanTitle = cleanTitle.RemoveAccent();

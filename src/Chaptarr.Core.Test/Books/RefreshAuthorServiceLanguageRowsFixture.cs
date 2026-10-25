@@ -202,6 +202,8 @@ namespace Chaptarr.Core.Test.Books
             Assert.That(mergeIds, Does.Not.Contain(rowEn.Id), "the English language row must survive the refresh");
             Assert.That(mergeIds, Does.Not.Contain(rowDe.Id), "the German language row must survive the refresh");
             Assert.That(match.Item1 == null ? -1 : match.Item1.Id, Is.Not.EqualTo(rowDe.Id), "the German wanted variant must not absorb the English remote copy");
+            Assert.That(match.Item1, Is.Not.Null, "the English remote must be matched to an existing row, not added as a new one");
+            Assert.That(match.Item1.Id, Is.EqualTo(rowEn.Id));
         }
 
         [Test]

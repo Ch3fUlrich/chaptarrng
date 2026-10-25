@@ -5,7 +5,7 @@ import withInfiniteBooks from '../withInfiniteBooks';
 import BookIndexTable from './BookIndexTable';
 
 // Columns the server can't sort a paged list by.
-const unsortableColumnNames = new Set(['status', 'ratings']);
+const unsortableColumnNames = new Set(['status', 'ratings', 'availability']);
 
 function createMapStateToProps() {
   return createSelector(

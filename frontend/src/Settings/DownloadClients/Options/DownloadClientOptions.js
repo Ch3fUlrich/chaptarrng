@@ -104,6 +104,28 @@ function DownloadClientOptions(props) {
             </FieldSet>
 
             <FieldSet
+              legend={translate('AllowUnknownReleaseLanguage')}
+            >
+              <Form>
+                <FormGroup
+                  advancedSettings={advancedSettings}
+                  isAdvanced={true}
+                  size={sizes.MEDIUM}
+                >
+                  <FormLabel>{translate('AllowUnknownReleaseLanguage')}</FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.CHECK}
+                    name="allowUnknownReleaseLanguage"
+                    helpText={translate('AllowUnknownReleaseLanguageHelpText')}
+                    onChange={onInputChange}
+                    {...settings.allowUnknownReleaseLanguage}
+                  />
+                </FormGroup>
+              </Form>
+            </FieldSet>
+
+            <FieldSet
               legend={translate('GrabBudget')}
             >
               <Form>

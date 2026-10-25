@@ -117,5 +117,12 @@ namespace Chaptarr.Core.Test.IndexerSearch
             Assert.That(criteria.BookQuery, Is.EqualTo("Dune"));
             Assert.That(criteria.BookQueryTransliterated, Is.Null);
         }
+
+        [Test]
+        public void GetTransliteratedQueryTitle_handles_decomposed_umlauts_and_capital_sharp_s()
+        {
+            Assert.That(SearchCriteriaBase.GetTransliteratedQueryTitle("Gr\u00f6\u00dfe".Normalize(System.Text.NormalizationForm.FormD)), Is.EqualTo("Groesse"));
+            Assert.That(SearchCriteriaBase.GetTransliteratedQueryTitle("STRA\u1e9eE"), Is.EqualTo("STRASSE"));
+        }
     }
 }

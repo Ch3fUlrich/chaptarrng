@@ -50,7 +50,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return Decision.Accept();
             }
 
-            var rowLanguage = (searchCriteria as BookSearchCriteria)?.Language.CanonicalizeLanguage() ?? GetSingleWantedVariantLanguage(subject?.Books);
+            var rowLanguage = (searchCriteria as BookSearchCriteria)?.Language.CanonicalizeLanguage() ?? GetWantedVariantLanguage(subject);
 
             if (rowLanguage != null)
             {
@@ -209,14 +209,30 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             return mediaTypes.Count == 1 ? mediaTypes[0] : null;
         }
 
-        private static string GetSingleWantedVariantLanguage(List<Book> books)
+        // The row language the release is being grabbed for: the specific matched wanted-variant row when the
+        // title match names one, otherwise the single language shared by all matched rows (all of them variants).
+        private static string GetWantedVariantLanguage(RemoteBook subject)
         {
-            if (books == null || books.Count != 1)
+            var matched = subject?.SearchCriteriaMatch?.Book?.GetWantedVariantLanguage();
+            if (matched != null)
+            {
+                return matched;
+            }
+
+            var books = subject?.Books;
+            if (books == null || books.Count == 0)
             {
                 return null;
             }
 
-            return books[0]?.GetWantedVariantLanguage();
+            var languages = books.Select(b => b?.GetWantedVariantLanguage()).ToList();
+            if (languages.Any(l => l == null))
+            {
+                return null;
+            }
+
+            var distinct = languages.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            return distinct.Count == 1 ? distinct[0] : null;
         }
 
         private static HashSet<string> GetDetectedReleaseLanguages(RemoteBook subject)

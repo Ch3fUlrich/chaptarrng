@@ -1207,6 +1207,7 @@ namespace Chaptarr.Api.V1.Books
 
             var pagedBooks = _bookService.GetBooksPaged(offset, pageSize, sortKey, sortDirection, includeUnmonitored, normalizedMediaType, downloaded, monitored, missing, wanted);
             var statsByBookId = BuildBookStatisticsById(_authorStatisticsService.AuthorStatistics(normalizedMediaType));
+            HydrateFilesForAvailability(pagedBooks.Records.ToList(), statsByBookId);
 
             // Convert Book entities to BookResource
             var pagedResource = new PagedBookApiResource
@@ -1271,6 +1272,7 @@ namespace Chaptarr.Api.V1.Books
             var apiMediaType = MediaTypeParameterParser.ToApiValue(parsedMediaType);
             var authorStatistics = _authorStatisticsService.AuthorStatistics(distinctAuthorIds, apiMediaType);
             var statsByBookId = BuildBookStatisticsById(authorStatistics);
+            HydrateFilesForAvailability(books, statsByBookId);
 
             return MapToResource(books,
                 includeAuthor: false,

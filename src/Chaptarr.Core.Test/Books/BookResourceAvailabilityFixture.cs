@@ -57,5 +57,24 @@ namespace Chaptarr.Core.Test.Books
 
             Assert.That(resource.Availability, Is.Null);
         }
+
+        // The lean service paths hand out books with an empty, already-loaded file list; that is a real "no files"
+        // answer, so it must map to an explicit not-readable/not-listenable availability, not to unknown.
+        [Test]
+        public void should_report_no_availability_for_loaded_empty_file_list()
+        {
+            var book = new Book
+            {
+                MediaType = BookMediaType.Ebook,
+                Editions = new List<Edition> { new Edition { Monitored = true } },
+                BookFiles = new List<BookFile>()
+            };
+
+            var resource = book.ToResource(BookResourceMappingOptions.Lean());
+
+            Assert.That(resource.Availability, Is.Not.Null);
+            Assert.That(resource.Availability.CanRead, Is.False);
+            Assert.That(resource.Availability.CanListen, Is.False);
+        }
     }
 }
