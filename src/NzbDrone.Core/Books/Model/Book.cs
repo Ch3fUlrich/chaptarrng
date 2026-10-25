@@ -231,8 +231,9 @@ namespace NzbDrone.Core.Books
 
 	        public override void UseMetadataFrom(Book other)
 	        {
+	            var isWantedVariant = IsWantedVariantRow();
 		            ForeignEditionId = CleanProviderIdForCopy(other.ForeignEditionId, ForeignEditionId);
-	            if (!string.IsNullOrWhiteSpace(other.TitleSlug))
+	            if (!string.IsNullOrWhiteSpace(other.TitleSlug) && !isWantedVariant)
 	            {
 	                TitleSlug = other.TitleSlug;
 	            }
@@ -268,8 +269,12 @@ namespace NzbDrone.Core.Books
             SeriesLinks = other.SeriesLinks;
 
             // Additional metadata
-            LanguageCode = other.LanguageCode ?? LanguageCode;
-            LanguageName = other.LanguageName ?? LanguageName;
+            if (!isWantedVariant)
+            {
+                LanguageCode = other.LanguageCode ?? LanguageCode;
+                LanguageName = other.LanguageName ?? LanguageName;
+            }
+
             PublicationYear = other.PublicationYear ?? PublicationYear;
             Publisher = other.Publisher ?? Publisher;
             SeriesId = other.SeriesId ?? SeriesId;
@@ -405,6 +410,14 @@ namespace NzbDrone.Core.Books
             throw new ArgumentException($"Unknown media type '{mediaType}'", nameof(mediaType));
         }
         // Helper methods for MediaType-aware monitoring
+        public bool IsWantedVariantRow()
+        {
+            return !string.IsNullOrWhiteSpace(TitleSlug) &&
+                   TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   AddOptions?.AddType == BookAddType.Manual &&
+                   string.IsNullOrWhiteSpace(UnitKeyHash);
+        }
+
         public bool IsMonitored()
         {
             return MediaType == BookMediaType.Audiobook
