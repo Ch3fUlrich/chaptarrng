@@ -105,7 +105,7 @@ namespace Chaptarr.Core.Test.IndexerSearch
         {
             // every search grabs one; the run limit is 2
             _budget.Setup(b => b.CheckBudget(It.IsAny<int>(), It.IsAny<int>(), null))
-                .Returns((int grabbed, int queue, DateTime? now) => grabbed >= 2
+                .Returns((int grabbed, int queue, DateTime? now, int extraDaily) => grabbed >= 2
                     ? GrabBudgetResult.Block(GrabBudgetStopReason.MaxPerRunReached, "limit")
                     : GrabBudgetResult.Allow());
 
