@@ -2767,5 +2767,8 @@
   "WantedVersionsFanOutOnMonitorHelpText": "Monitoring an author (all books) also creates the wanted version rows of every monitored work",
   "RequestAllVersions": "Request All Versions",
   "MonitorAllEbooks": "All Ebooks",
-  "MonitorAllAudiobooks": "All Audiobooks"
+  "MonitorAllAudiobooks": "All Audiobooks",
+  "Works": "Works",
+  "WorksInfo": "One entry per title with all of its versions (ebook, audiobook, language variants). Green = file present, amber = wanted.",
+  "UnableToLoadWorks": "Unable to load works"
 }

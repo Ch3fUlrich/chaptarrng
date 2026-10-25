@@ -34,6 +34,7 @@ import AuthorDetailsHeaderConnector from './AuthorDetailsHeaderConnector';
 import AuthorDetailsSeasonConnector from './AuthorDetailsSeasonConnector';
 import AuthorDetailsSeriesConnector from './AuthorDetailsSeriesConnector';
 import AuthorDetailsControls from './AuthorDetailsControls';
+import AuthorWorks from './AuthorWorks';
 import SelectAuthorRootFolderModal from './SelectAuthorRootFolderModal';
 import styles from './AuthorDetails.css';
 
@@ -561,6 +562,13 @@ class AuthorDetails extends Component {
                       {translate('FilesTotal', [bookFileCount])}
                     </Tab>
 
+                    <Tab
+                      className={styles.tab}
+                      selectedClassName={styles.selectedTab}
+                    >
+                      {translate('Works')}
+                    </Tab>
+
                     {
                       selectedTabIndex === 3 &&
                         <div className={styles.filterIcon}>
@@ -642,6 +650,10 @@ class AuthorDetails extends Component {
                       selectedMediaType={selectedMediaType}
                       filterValue={filterValue}
                     />
+                  </TabPanel>
+
+                  <TabPanel>
+                    <AuthorWorks authorId={id} />
                   </TabPanel>
                 </Tabs>
             }
