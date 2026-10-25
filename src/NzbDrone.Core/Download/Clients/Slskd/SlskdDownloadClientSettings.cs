@@ -14,8 +14,8 @@ namespace NzbDrone.Core.Download.Clients.Slskd
             RuleFor(c => c.BaseUrl)
                 .Must(url => Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
                              (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) &&
-                             string.IsNullOrEmpty(uri.UserInfo))
-                .WithMessage("'slskd URL' must be an http:// or https:// URL without embedded credentials");
+                             string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment))
+                .WithMessage("'slskd URL' must be an http:// or https:// URL without credentials, query or fragment");
 
             RuleFor(c => c.DownloadDirectory).IsValidPath();
         }

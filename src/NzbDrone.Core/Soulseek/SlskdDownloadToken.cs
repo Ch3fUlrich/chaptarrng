@@ -17,7 +17,7 @@ namespace NzbDrone.Core.Soulseek
     public class SlskdDownloadToken
     {
         public const string Prefix = "slskd://soulseek/";
-        private const int MaxFiles = 500;
+        public const int MaxFiles = 500;
 
         public string Username { get; set; }
         public string Directory { get; set; }
@@ -60,6 +60,11 @@ namespace NzbDrone.Core.Soulseek
                 }
 
                 var separator = string.IsNullOrEmpty(payload.S) ? '\\' : payload.S[0];
+                if (separator != '\\' && separator != '/')
+                {
+                    return false;
+                }
+
                 var parsed = new SlskdDownloadToken { Username = payload.U, Directory = payload.D ?? string.Empty, Separator = separator };
 
                 foreach (var entry in payload.F)
@@ -69,11 +74,17 @@ namespace NzbDrone.Core.Soulseek
                         return false;
                     }
 
-                    var relative = ((JsonElement)entry[0]).GetString();
-                    var size = ((JsonElement)entry[1]).GetInt64();
+                    if (entry[0] is not JsonElement { ValueKind: JsonValueKind.String } name ||
+                        entry[1] is not JsonElement { ValueKind: JsonValueKind.Number } number ||
+                        !number.TryGetInt64(out var size))
+                    {
+                        return false;
+                    }
+
+                    var relative = name.GetString();
                     var filename = string.IsNullOrEmpty(parsed.Directory) ? relative : parsed.Directory + separator + relative;
 
-                    if (string.IsNullOrWhiteSpace(relative) || size <= 0 || HasTraversal(filename))
+                    if (string.IsNullOrWhiteSpace(relative) || size <= 0 || HasTraversal(filename) || HasTraversal(parsed.Directory))
                     {
                         return false;
                     }
@@ -90,9 +101,21 @@ namespace NzbDrone.Core.Soulseek
             }
         }
 
+        // True for anything that is not a plain relative-looking remote path: dot segments (also with trailing
+        // dots/spaces), control characters or a drive letter. Both separators are always checked.
         public static bool HasTraversal(string path)
         {
-            return path != null && path.Split('\\', '/').Any(segment => segment == "..");
+            if (path == null)
+            {
+                return false;
+            }
+
+            if (path.Any(char.IsControl) || (path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':'))
+            {
+                return true;
+            }
+
+            return path.Split('\\', '/').Any(segment => segment.Length > 0 && segment.Trim('.', ' ').Length == 0);
         }
 
         private static string Relative(SlskdDownloadToken token, string filename)

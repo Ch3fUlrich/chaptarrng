@@ -182,7 +182,11 @@ namespace NzbDrone.Core.Download.Clients.Slskd
                     failures.Add(new ValidationFailure(nameof(Settings.BaseUrl), $"slskd {version} is too old, 0.26.0 or newer is required (download batches)."));
                 }
 
-                if (state?.Server != null && !state.Server.IsLoggedIn)
+                if (state?.Server == null)
+                {
+                    failures.Add(new ValidationFailure(nameof(Settings.BaseUrl), "Unable to read the slskd application state; is this a slskd instance?"));
+                }
+                else if (!state.Server.IsLoggedIn)
                 {
                     failures.Add(new ValidationFailure(nameof(Settings.BaseUrl), $"slskd is reachable but not logged in to the Soulseek network (state: {state.Server.State})."));
                 }

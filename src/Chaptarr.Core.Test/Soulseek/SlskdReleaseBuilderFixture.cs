@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
@@ -30,6 +31,10 @@ namespace Chaptarr.Core.Test.Soulseek
                 "Frank Herbert - Dune [epub]"
             }));
             Assert.That(releases.Select(r => r.Guid).Distinct().Count(), Is.EqualTo(3));
+
+            // The sequel is offered but ranked last, and the remote file name is visible.
+            Assert.That(releases.Last().Origin, Does.EndWith("Dune Messiah.epub"));
+            Assert.That(releases.Take(2).Select(r => r.Origin), Has.All.Matches<string>(o => o.EndsWith("Dune.epub") || o.EndsWith("Dune.pdf")));
             Assert.That(releases.Select(r => r.Container), Is.All.AnyOf("epub", "pdf"));
             Assert.That(releases.Select(r => r.Source), Is.All.EqualTo("Soulseek"));
         }
@@ -104,7 +109,12 @@ namespace Chaptarr.Core.Test.Soulseek
             Assert.That(germanOnly.Select(r => r.Origin.Split(' ')[0]), Is.EqualTo(new[] { "peer_gamma" }));
 
             var noUnknown = SlskdReleaseBuilder.Build(responses, Jesus(), new SlskdIndexerSettings { Languages = "German, English", AllowUnknownLanguage = false, MinimumAudiobookSizeMB = 1, MinimumTitleMatchPercent = 100 });
+            Assert.That(noUnknown, Is.Not.Empty);
             Assert.That(noUnknown.All(r => r.Languages.Any()), Is.True);
+
+            // A configured but unknown language name must not silently turn into "accept everything".
+            var typo = SlskdReleaseBuilder.Build(responses, Jesus(), new SlskdIndexerSettings { Languages = "Germn", AllowUnknownLanguage = false });
+            Assert.That(typo, Is.Empty);
         }
 
         [Test]
@@ -121,6 +131,28 @@ namespace Chaptarr.Core.Test.Soulseek
             var releases = SlskdReleaseBuilder.Build(SlskdFixtures.Search("search-ebook.json").Responses, Dune(null), new SlskdIndexerSettings());
 
             Assert.That(releases, Is.Not.Empty);
+        }
+
+        [Test]
+        public void should_match_any_alternate_title()
+        {
+            var responses = SlskdFixtures.Search("search-audiobook.json").Responses;
+            var context = new SlskdSearchContext { Author = "Andreas Eschbach", Title = "Totally Different Name", AlternateTitles = new List<string> { "Das Jesus Video" }, MediaType = BookMediaType.Audiobook };
+
+            Assert.That(SlskdReleaseBuilder.Build(responses, context, new SlskdIndexerSettings()), Is.Not.Empty);
+            context.AlternateTitles.Clear();
+            Assert.That(SlskdReleaseBuilder.Build(responses, context, new SlskdIndexerSettings()), Is.Empty);
+        }
+
+        [Test]
+        public void should_not_offer_folders_the_token_cannot_carry()
+        {
+            var files = Enumerable.Range(1, SlskdDownloadToken.MaxFiles + 1)
+                .Select(i => new SlskdFile { Filename = $"@@s\\Eschbach\\Das Jesus Video\\{i:000}.mp3", Size = 1024 * 1024 })
+                .ToList();
+            var responses = new List<SlskdSearchResponse> { new() { Username = "peer_big", HasFreeUploadSlot = true, Files = files } };
+
+            Assert.That(SlskdReleaseBuilder.Build(responses, Jesus(), new SlskdIndexerSettings { MinimumAudiobookSizeMB = 1 }), Is.Empty);
         }
 
         [Test]
@@ -143,6 +175,35 @@ namespace Chaptarr.Core.Test.Soulseek
 
             token.Files[0].Filename = "@@share\\Books\\Author\\..\\..\\x.epub";
             Assert.That(SlskdDownloadToken.TryParse(SlskdDownloadToken.ToUrl(token), out _), Is.False);
+        }
+
+        [TestCase("@@s\\a\\.. \\x.epub")]
+        [TestCase("@@s/a/../x.epub")]
+        [TestCase("C:\\Windows\\x.epub")]
+        [TestCase("@@s\\a\\b\u0001.epub")]
+        public void should_reject_unsafe_remote_paths(string filename)
+        {
+            Assert.That(SlskdDownloadToken.HasTraversal(filename), Is.True);
+        }
+
+        [TestCase("@@s\\Dr. No.\\x.epub")]
+        [TestCase("@@s\\...And Justice\\x.epub")]
+        [TestCase("@@s/a b/c.epub")]
+        public void should_accept_ordinary_remote_paths(string filename)
+        {
+            Assert.That(SlskdDownloadToken.HasTraversal(filename), Is.False);
+        }
+
+        [Test]
+        public void should_reject_crafted_tokens_without_throwing()
+        {
+            string Encode(string json) => "slskd://soulseek/" + System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+            Assert.That(SlskdDownloadToken.TryParse(Encode("{\"U\":\"p\",\"D\":\"@@s\",\"S\":\"\\\\\",\"F\":[[\"a.epub\",99999999999999999999999]]}"), out _), Is.False);
+            Assert.That(SlskdDownloadToken.TryParse(Encode("{\"U\":\"p\",\"D\":\"@@s\",\"S\":\"|\",\"F\":[[\"a.epub\",5]]}"), out _), Is.False);
+            Assert.That(SlskdDownloadToken.TryParse(Encode("{\"U\":\"p\",\"D\":\"@@s\",\"S\":\"\\\\\",\"F\":[[1,5]]}"), out _), Is.False);
+            Assert.That(SlskdDownloadToken.TryParse(Encode("{\"U\":\"p\",\"D\":\"@@s\",\"S\":\"\\\\\",\"F\":[[\"a.epub\",5]]}"), out var ok), Is.True);
+            Assert.That(ok.Files.Single().Size, Is.EqualTo(5));
         }
     }
 }

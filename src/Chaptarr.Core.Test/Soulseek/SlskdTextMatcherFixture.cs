@@ -29,6 +29,24 @@ namespace Chaptarr.Core.Test.Soulseek
         }
 
         [Test]
+        public void should_not_count_substrings_as_token_matches()
+        {
+            Assert.That(SlskdTextMatcher.TitleMatchRatio("Stein", "Steinway\\Collection"), Is.EqualTo(0).Within(0.001));
+            Assert.That(SlskdTextMatcher.PathContainsAuthor("Anna Stein", "Music\\Steinway"), Is.False);
+        }
+
+        [TestCase("Dune", "Frank Herbert", "Dune", 0)]
+        [TestCase("Dune", "Frank Herbert", "Dune (1965) [retail] epub", 0)]
+        [TestCase("Dune", "Frank Herbert", "Frank Herbert - Dune", 0)]
+        [TestCase("Dune", "Frank Herbert", "Dune Messiah", 1)]
+        [TestCase("Dune", "Frank Herbert", "Dune Messiah Children of Dune", 2)]
+        [TestCase("Märchen", "Hans Müller", "Maerchen Hoerbuch Mueller 01", 0)]
+        public void should_count_extra_significant_words(string title, string author, string name, int expected)
+        {
+            Assert.That(SlskdTextMatcher.ExtraTokenCount(new[] { title }, author, name), Is.EqualTo(expected));
+        }
+
+        [Test]
         public void should_match_author_surname_in_any_spelling()
         {
             Assert.That(SlskdTextMatcher.Surname("J. R. R. Tolkien"), Is.EqualTo("tolkien"));
@@ -41,6 +59,9 @@ namespace Chaptarr.Core.Test.Soulseek
 
         [TestCase("Hörbücher\\Autor\\Titel [Deutsch]", "German")]
         [TestCase("Audio\\Autor\\Titel ungekuerzt", "German")]
+        [TestCase("Hörbücher\\Autor\\Titel", "German")]
+        [TestCase("hoerbuecher/autor/titel", "German")]
+        [TestCase("Hörbuch\\Autor\\Titel", "German")]
         [TestCase("Audio\\Autor\\Titel [DE]", "German")]
         [TestCase("Audio\\Author\\Title (English, unabridged)", "English")]
         [TestCase("Audio\\Author\\Title [EN]", "English")]

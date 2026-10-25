@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.Indexers.Soulseek
@@ -14,8 +15,11 @@ namespace NzbDrone.Core.Indexers.Soulseek
             RuleFor(c => c.BaseUrl)
                 .Must(url => Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
                              (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) &&
-                             string.IsNullOrEmpty(uri.UserInfo))
-                .WithMessage("'slskd URL' must be an http:// or https:// URL without embedded credentials");
+                             string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment))
+                .WithMessage("'slskd URL' must be an http:// or https:// URL without credentials, query or fragment");
+            RuleFor(c => c.Languages)
+                .Must(value => new SlskdIndexerSettings { Languages = value }.LanguageNames().All(name => Language.All.Any(l => l != null && string.Equals(l.Name, name, StringComparison.OrdinalIgnoreCase))))
+                .WithMessage("'Languages' contains a name that is not a known language (for example German, English)");
 
             RuleFor(c => c.SearchTimeoutSeconds).InclusiveBetween(5, 120);
             RuleFor(c => c.MaximumResults).InclusiveBetween(1, 100);
@@ -77,7 +81,7 @@ namespace NzbDrone.Core.Indexers.Soulseek
         [FieldDefinition(11, Type = FieldType.Checkbox, Label = "Allow Unknown Language", HelpText = "Keep releases whose language cannot be told from the remote path.", Advanced = true)]
         public bool AllowUnknownLanguage { get; set; }
 
-        [FieldDefinition(12, Type = FieldType.Number, Label = "Early Download Limit", Unit = "days", HelpText = "Time before release date Chaptarr will download from this indexer, empty is no limit", Advanced = true)]
+        // Soulseek files have no release date, so this has no effect and is not shown.
         public int? EarlyReleaseLimit { get; set; }
 
         public NzbDroneValidationResult Validate()

@@ -87,7 +87,20 @@ namespace Chaptarr.Core.Test.Soulseek
             return Task.FromResult(new SlskdSearch { Id = request.Id });
         }
 
-        public Task<SlskdSearch> GetSearchAsync(SlskdConnection connection, Guid id) => Task.FromResult(new SlskdSearch { Id = id, IsComplete = true });
+        public int IncompletePolls { get; set; }
+        public int Polls { get; set; }
+        public bool PollNotFound { get; set; }
+
+        public Task<SlskdSearch> GetSearchAsync(SlskdConnection connection, Guid id)
+        {
+            Polls++;
+            if (PollNotFound)
+            {
+                throw new SlskdApiException(404, "gone");
+            }
+
+            return Task.FromResult(new SlskdSearch { Id = id, IsComplete = Polls > IncompletePolls });
+        }
 
         public Task<List<SlskdSearchResponse>> GetSearchResponsesAsync(SlskdConnection connection, Guid id) => Task.FromResult(Result(Started.Last()).Responses);
 

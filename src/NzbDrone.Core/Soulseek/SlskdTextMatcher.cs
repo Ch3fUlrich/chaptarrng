@@ -21,7 +21,7 @@ namespace NzbDrone.Core.Soulseek
         };
 
         private static readonly Regex GermanMarkers = new(
-            @"(?<![\p{L}\p{N}])(deutsch|german|h(ö|oe|o)rbuch|ungek(ü|ue|u)rzt|gelesen\s+von)(?![\p{L}\p{N}])|[\[\(]de[\]\)]",
+            @"(?<![\p{L}\p{N}])(deutsch|german|hoerbue?ch(er)?|hoerspiel(e)?|ungekuerzt|gelesen\s+von)(?![\p{L}\p{N}])|[\[\(]de[\]\)]",
             RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private static readonly Regex EnglishMarkers = new(
@@ -110,20 +110,35 @@ namespace NzbDrone.Core.Soulseek
 
             var haystack = Tokens(path);
             var haystackForms = new HashSet<string>(haystack.SelectMany(Variants), StringComparer.Ordinal);
-            var joined = string.Join(" ", haystackForms);
             var matched = 0;
 
             foreach (var token in wanted)
             {
                 var variants = Variants(token);
-                if (variants.Any(variant => haystackForms.Contains(variant) ||
-                                            (variant.Length >= 5 && joined.Contains(variant, StringComparison.Ordinal))))
+                if (variants.Any(variant => haystackForms.Contains(variant)))
                 {
                     matched++;
                 }
             }
 
             return matched / (double)wanted.Count;
+        }
+
+        private static readonly HashSet<string> NoiseTokens = new(StringComparer.Ordinal)
+        {
+            "ebook", "ebooks", "epub", "mobi", "azw3", "pdf", "retail", "mp3", "m4b", "m4a", "flac", "ogg", "opus", "aac",
+            "audiobook", "audiobooks", "hoerbuch", "hoerbuecher", "deutsch", "german", "english", "unabridged", "ungekuerzt",
+            "de", "en", "cd", "disc", "disk", "part", "teil", "book", "buch", "complete", "kompl", "full", "isbn", "v"
+        };
+
+        // Number of significant words in a file/folder name that are neither part of the wanted title(s), the author,
+        // digits (years, volume numbers) nor format/language noise. "Dune Messiah" for "Dune" has one.
+        public static int ExtraTokenCount(IEnumerable<string> titles, string author, string name)
+        {
+            var known = new HashSet<string>(Tokens(string.Join(" ", titles ?? Array.Empty<string>()) + " " + author).SelectMany(Variants), StringComparer.Ordinal);
+            return Tokens(name)
+                .Where(token => token.Length > 1 && !token.All(char.IsDigit) && !StopWords.Contains(token))
+                .Count(token => !Variants(token).Any(variant => known.Contains(variant) || NoiseTokens.Contains(variant)));
         }
 
         // The last name token of an author ("J. R. R. Tolkien" -> "tolkien").
@@ -143,9 +158,8 @@ namespace NzbDrone.Core.Soulseek
                 return true;
             }
 
-            var haystack = Tokens(path).SelectMany(Variants).ToList();
-            return Variants(surname).Any(variant => haystack.Contains(variant) ||
-                                                   (variant.Length >= 5 && string.Join(" ", haystack).Contains(variant, StringComparison.Ordinal)));
+            var haystack = new HashSet<string>(Tokens(path).SelectMany(Variants), StringComparer.Ordinal);
+            return Variants(surname).Any(haystack.Contains);
         }
 
         // Language hint from the remote path. Null means unknown.
@@ -156,8 +170,10 @@ namespace NzbDrone.Core.Soulseek
                 return null;
             }
 
-            var german = GermanMarkers.IsMatch(path);
-            var english = EnglishMarkers.IsMatch(path);
+            // Markers are written in the digraph spelling; fold the path the same way (Hörbücher -> hoerbuecher).
+            var folded = Fold(path, true);
+            var german = GermanMarkers.IsMatch(folded);
+            var english = EnglishMarkers.IsMatch(folded);
 
             if (german && !english)
             {

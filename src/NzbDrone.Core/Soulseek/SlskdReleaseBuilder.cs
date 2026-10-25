@@ -14,6 +14,12 @@ namespace NzbDrone.Core.Soulseek
         public string Author { get; set; }
         public string Title { get; set; }
 
+        // Further names the book is searched/known under (search title override, main title); a path matching
+        // any of them counts. Title is always considered.
+        public List<string> AlternateTitles { get; set; } = new();
+
+        public IEnumerable<string> AllTitles => new[] { Title }.Concat(AlternateTitles ?? new List<string>()).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct();
+
         // null = both media types acceptable
         public BookMediaType? MediaType { get; set; }
     }
@@ -40,6 +46,7 @@ namespace NzbDrone.Core.Soulseek
         {
             var candidates = new List<Candidate>();
             var allowedLanguages = ResolveLanguages(settings);
+            var restrictLanguages = settings.LanguageNames().Count > 0;
 
             foreach (var response in responses ?? Enumerable.Empty<SlskdSearchResponse>())
             {
@@ -73,7 +80,7 @@ namespace NzbDrone.Core.Soulseek
                 {
                     foreach (var file in files.Where(f => EbookExtensions.Contains(f.Extension) && f.Size >= MinimumEbookBytes))
                     {
-                        AddCandidate(candidates, BuildEbook(response, file, context, settings), allowedLanguages, settings);
+                        AddCandidate(candidates, BuildEbook(response, file, context, settings), allowedLanguages, restrictLanguages, settings);
                     }
                 }
 
@@ -81,7 +88,7 @@ namespace NzbDrone.Core.Soulseek
                 {
                     foreach (var group in GroupAudioFolders(files.Where(f => AudioExtensions.Contains(f.Extension))))
                     {
-                        AddCandidate(candidates, BuildAudiobook(response, group.Key, group.ToList(), context, settings), allowedLanguages, settings);
+                        AddCandidate(candidates, BuildAudiobook(response, group.Key, group.ToList(), context, settings), allowedLanguages, restrictLanguages, settings);
                     }
                 }
             }
@@ -91,25 +98,26 @@ namespace NzbDrone.Core.Soulseek
 
         private static Candidate BuildEbook(SlskdSearchResponse response, RemoteFile file, SlskdSearchContext context, SlskdIndexerSettings settings)
         {
-            var ratio = SlskdTextMatcher.TitleMatchRatio(context.Title, file.Filename);
+            var ratio = BestRatio(context, file.Filename);
             if (!PassesMatch(ratio, context, file.Filename, settings))
             {
                 return null;
             }
 
-            var score = (ratio * 100) + (file.Extension == "epub" ? 5 : 0);
+            var stem = file.Name.Contains('.') ? file.Name.Substring(0, file.Name.LastIndexOf('.')) : file.Name;
+            var score = (ratio * 100) + (file.Extension == "epub" ? 5 : 0) - ExtraPenalty(context, stem);
             return Create(response, file.Directory, file.Separator, new List<RemoteFile> { file }, file.Extension, context, ratio, score, file.Filename);
         }
 
         private static Candidate BuildAudiobook(SlskdSearchResponse response, string directory, List<RemoteFile> files, SlskdSearchContext context, SlskdIndexerSettings settings)
         {
             var total = files.Sum(f => f.Size);
-            if (total < settings.MinimumAudiobookSizeMB * 1024L * 1024L)
+            if (total < settings.MinimumAudiobookSizeMB * 1024L * 1024L || files.Count > SlskdDownloadToken.MaxFiles)
             {
                 return null;
             }
 
-            var ratio = SlskdTextMatcher.TitleMatchRatio(context.Title, directory + " " + string.Join(" ", files.Select(f => f.Name)));
+            var ratio = BestRatio(context, directory + " " + string.Join(" ", files.Select(f => f.Name)));
             var hasAuthor = SlskdTextMatcher.PathContainsAuthor(context.Author, directory);
 
             // Album guard: many small tracks are music, not an audiobook, unless the author is named.
@@ -129,8 +137,20 @@ namespace NzbDrone.Core.Soulseek
                 container = "m4b";
             }
 
-            var score = (ratio * 100) + (container == "m4b" ? 10 : 0);
+            var score = (ratio * 100) + (container == "m4b" ? 10 : 0) - ExtraPenalty(context, LastSegment(directory, files[0].Separator));
             return Create(response, directory, files[0].Separator, files, container, context, ratio, score, directory);
+        }
+
+        private static double BestRatio(SlskdSearchContext context, string path)
+        {
+            return context.AllTitles.Select(title => SlskdTextMatcher.TitleMatchRatio(title, path)).DefaultIfEmpty(0).Max();
+        }
+
+        // Sequels and companions ("Dune Messiah" for "Dune") carry extra significant words: rank them below the
+        // exact match instead of treating them as equal (they stay visible, the decision engine decides).
+        private static double ExtraPenalty(SlskdSearchContext context, string name)
+        {
+            return 30 * Math.Min(SlskdTextMatcher.ExtraTokenCount(context.AllTitles, context.Author, name), 3);
         }
 
         private static bool PassesMatch(double ratio, SlskdSearchContext context, string path, SlskdIndexerSettings settings)
@@ -173,21 +193,21 @@ namespace NzbDrone.Core.Soulseek
                 DownloadUrl = SlskdDownloadToken.ToUrl(token),
                 Container = container,
                 Source = "Soulseek",
-                Origin = $"{response.Username} (free slot: {(response.HasFreeUploadSlot ? "yes" : "no")}, queue: {response.QueueLength}, {kbps} KB/s)",
+                Origin = $"{response.Username} (free slot: {(response.HasFreeUploadSlot ? "yes" : "no")}, queue: {response.QueueLength}, {kbps} KB/s) | {Shorten(LastSegment(languagePath, separator))}",
                 Languages = language == null ? new List<Language>() : new List<Language> { language }
             };
 
             return new Candidate { Release = release, Score = score, Language = language };
         }
 
-        private static void AddCandidate(List<Candidate> candidates, Candidate candidate, HashSet<Language> allowed, SlskdIndexerSettings settings)
+        private static void AddCandidate(List<Candidate> candidates, Candidate candidate, HashSet<Language> allowed, bool restrictLanguages, SlskdIndexerSettings settings)
         {
             if (candidate == null)
             {
                 return;
             }
 
-            if (candidate.Language == null ? !settings.AllowUnknownLanguage : allowed.Count > 0 && !allowed.Contains(candidate.Language))
+            if (candidate.Language == null ? !settings.AllowUnknownLanguage : restrictLanguages && !allowed.Contains(candidate.Language))
             {
                 return;
             }
@@ -242,6 +262,8 @@ namespace NzbDrone.Core.Soulseek
                     : directory;
             });
         }
+
+        private static string Shorten(string text) => text.Length <= 120 ? text : text.Substring(0, 120);
 
         private static string LastSegment(string path, char separator)
         {

@@ -94,7 +94,11 @@ namespace NzbDrone.Core.Indexers.Soulseek
             try
             {
                 var state = await _apiClient.GetApplicationAsync(Connection);
-                if (state?.Server != null && !state.Server.IsLoggedIn)
+                if (state?.Server == null)
+                {
+                    failures.Add(new ValidationFailure(nameof(Settings.BaseUrl), "Unable to read the slskd application state; is this a slskd instance?"));
+                }
+                else if (!state.Server.IsLoggedIn)
                 {
                     failures.Add(new ValidationFailure(nameof(Settings.BaseUrl), $"slskd is reachable but not logged in to the Soulseek network (state: {state.Server.State})."));
                 }
@@ -118,16 +122,35 @@ namespace NzbDrone.Core.Indexers.Soulseek
                 return Array.Empty<ReleaseInfo>();
             }
 
-            var releases = new List<ReleaseInfo>();
+            // All query spellings feed ONE build/cap pass so MaximumResults and the per-language guarantee hold overall.
+            var responses = new List<SlskdSearchResponse>();
             foreach (var searchText in BuildSearchTexts(query))
             {
-                releases.AddRange(await SearchOnceAsync(searchText, author, title, mediaType));
+                responses.AddRange(await SearchOnceAsync(searchText));
             }
 
-            return releases;
+            var context = new SlskdSearchContext { Author = author, Title = title, AlternateTitles = new List<string> { query }, MediaType = mediaType };
+            return SlskdReleaseBuilder.Build(MergeResponses(responses), context, Settings);
         }
 
-        private async Task<IList<ReleaseInfo>> SearchOnceAsync(string searchText, string author, string title, BookMediaType? mediaType)
+        private static IEnumerable<SlskdSearchResponse> MergeResponses(IEnumerable<SlskdSearchResponse> responses)
+        {
+            // The same peer answers both spellings: keep one response per user with the union of its files.
+            return responses.Where(r => r?.Username != null).GroupBy(r => r.Username, StringComparer.Ordinal).Select(group =>
+            {
+                var first = group.First();
+                return new SlskdSearchResponse
+                {
+                    Username = first.Username,
+                    HasFreeUploadSlot = group.Any(r => r.HasFreeUploadSlot),
+                    UploadSpeed = group.Max(r => r.UploadSpeed),
+                    QueueLength = group.Min(r => r.QueueLength),
+                    Files = group.SelectMany(r => r.Files ?? new List<SlskdFile>()).GroupBy(f => f.Filename, StringComparer.Ordinal).Select(g => g.First()).ToList()
+                };
+            });
+        }
+
+        private async Task<IList<SlskdSearchResponse>> SearchOnceAsync(string searchText)
         {
             var settings = Settings;
             var connection = Connection;
@@ -160,12 +183,12 @@ namespace NzbDrone.Core.Indexers.Soulseek
 
                 var responses = await _apiClient.GetSearchResponsesAsync(connection, id) ?? new List<SlskdSearchResponse>();
 
-                return SlskdReleaseBuilder.Build(responses, new SlskdSearchContext { Author = author, Title = title, MediaType = mediaType }, settings);
+                return responses;
             }
             catch (SlskdApiException ex) when (ex.StatusCode is 400 or 404 or 409 or 429)
             {
                 _logger.Warn("slskd search for '{0}' was not run: {1}", searchText, ex.Message);
-                return Array.Empty<ReleaseInfo>();
+                return Array.Empty<SlskdSearchResponse>();
             }
             finally
             {
