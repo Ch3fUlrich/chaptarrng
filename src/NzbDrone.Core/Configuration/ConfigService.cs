@@ -232,6 +232,34 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AllowUnknownReleaseLanguage", value); }
         }
 
+        public string WantedVersionLanguages
+        {
+            get { return GetValue("WantedVersionLanguages", string.Empty); }
+
+            set { SetValue("WantedVersionLanguages", value ?? string.Empty); }
+        }
+
+        public string WantedVersionEbookFormats
+        {
+            get { return GetValue("WantedVersionEbookFormats", string.Empty); }
+
+            set { SetValue("WantedVersionEbookFormats", value ?? string.Empty); }
+        }
+
+        public string WantedVersionAudiobookFormats
+        {
+            get { return GetValue("WantedVersionAudiobookFormats", string.Empty); }
+
+            set { SetValue("WantedVersionAudiobookFormats", value ?? string.Empty); }
+        }
+
+        public bool WantedVersionsFanOutOnMonitor
+        {
+            get { return GetValueBoolean("WantedVersionsFanOutOnMonitor", false); }
+
+            set { SetValue("WantedVersionsFanOutOnMonitor", value); }
+        }
+
         public bool CreateEmptyAuthorFolders
         {
             get { return GetValueBoolean("CreateEmptyAuthorFolders", false); }

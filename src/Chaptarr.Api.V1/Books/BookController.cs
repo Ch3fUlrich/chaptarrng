@@ -1021,6 +1021,41 @@ namespace Chaptarr.Api.V1.Books
             return book.IsMonitored();
         }
 
+        // One entry per work of the author, with every row (ebook, audiobook, language variants, historical
+        // duplicates) listed as a version of that work.
+        [HttpGet("works")]
+        public ActionResult<List<WorkGroupResource>> GetWorks([FromQuery] int authorId)
+        {
+            if (authorId <= 0)
+            {
+                return BadRequest("authorId is required");
+            }
+
+            var books = _bookService.GetBooksByAuthor(authorId) ?? new List<Book>();
+            var withFiles = (_mediaFileService?.GetFilesByBooks(books.Select(b => b.Id).ToList()) ?? new List<NzbDrone.Core.MediaFiles.BookFile>())
+                .Where(file => file?.Edition != null)
+                .Select(file => file.Edition.BookId)
+                .ToHashSet();
+
+            return WorkGrouping.Group(books, withFiles)
+                .Select(group => new WorkGroupResource
+                {
+                    WorkKey = group.WorkKey,
+                    Title = group.Title,
+                    Versions = group.Versions.Select(v => new WorkVersionResource
+                    {
+                        BookId = v.BookId,
+                        Title = v.Title,
+                        MediaType = ToMediaTypeName(v.MediaType),
+                        Language = v.Language,
+                        IsVariant = v.IsVariant,
+                        Monitored = v.Monitored,
+                        HasFiles = v.HasFiles
+                    }).ToList()
+                })
+                .ToList();
+        }
+
         [HttpGet("{bookId:int}/siblings")]
         public ActionResult<BookSiblingDeleteInfoResource> GetBookSiblings(int bookId)
         {
@@ -2237,6 +2272,36 @@ namespace Chaptarr.Api.V1.Books
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // Fan one work out into every wanted (medium x language) version row (config/wantedversions).
+        [HttpPost("{id}/versions/request")]
+        public ActionResult<List<WantedVersionCellResult>> RequestAllVersions(int id, [FromServices] IWantedVersionService wantedVersionService, [FromQuery] bool searchForNewBook = false)
+        {
+            if (_bookService.GetBook(id) == null)
+            {
+                return NotFound();
+            }
+
+            if (!wantedVersionService.GetWantedLanguages().Any())
+            {
+                return UnprocessableEntity(new { reason = "no_wanted_languages", message = "Configure wanted languages under Settings > Versions first" });
+            }
+
+            var cells = wantedVersionService.RequestAllVersions(id);
+            var created = cells.Where(c => c.Status == "created" && c.BookId.HasValue).Select(c => c.BookId.Value).ToList();
+
+            foreach (var bookId in cells.Where(c => c.BookId.HasValue).Select(c => c.BookId.Value).Distinct())
+            {
+                BroadcastResourceChange(ModelAction.Updated, bookId);
+            }
+
+            if (searchForNewBook && created.Any())
+            {
+                _commandQueueManager.Push(new BookSearchCommand(created));
+            }
+
+            return cells;
         }
 
         [NonAction]

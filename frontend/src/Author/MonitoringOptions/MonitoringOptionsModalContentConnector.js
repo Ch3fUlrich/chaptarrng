@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { updateBookMonitor } from 'Store/Actions/authorActions';
+import { resolveMonitorScope } from 'Utilities/Author/monitorScope';
 import MonitoringOptionsModalContent from './MonitoringOptionsModalContent';
 
 function createMapStateToProps() {
@@ -38,10 +39,12 @@ class MonitoringOptionsModalContentConnector extends Component {
   }
 
   onSavePress = ({ monitor }) => {
+    const scope = resolveMonitorScope(monitor, this.props.mediaType);
+
     this.props.dispatchUpdateMonitoringOptions({
       id: this.props.authorId,
-      monitor,
-      mediaType: this.props.mediaType
+      monitor: scope.monitor,
+      mediaType: scope.mediaType
     });
   };
 

@@ -1,0 +1,36 @@
+.work {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borderColor);
+}
+
+.title {
+  flex: 0 0 280px;
+  font-weight: bold;
+}
+
+.versions {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.version,
+.versionWanted,
+.versionHave {
+  padding: 2px 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.versionWanted {
+  border-color: var(--warningColor);
+}
+
+.versionHave {
+  border-color: var(--successColor);
+}
