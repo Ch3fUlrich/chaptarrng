@@ -267,7 +267,7 @@ namespace Chaptarr.Core.Test.Notifications
                 transport.AddRoute(url => url.EndsWith("/files/upload/bookdrop"), request =>
                 {
                     uploads++;
-                    throw new HttpException(request, null);
+                    throw new HttpException(request, null, "connection refused");
                 });
 
                 var ex = Assert.Throws<AggregateException>(() => Create(transport, TimeSpan.Zero).UploadFiles(Settings, new[] { a, b }));
