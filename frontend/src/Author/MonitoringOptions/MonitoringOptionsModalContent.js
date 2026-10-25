@@ -107,6 +107,7 @@ class MonitoringOptionsModalContent extends Component {
                 name="monitor"
                 value={monitor}
                 includeNoChange={true}
+                includeMediaScopes={true}
                 onChange={this.onInputChange}
               />
             </FormGroup>
