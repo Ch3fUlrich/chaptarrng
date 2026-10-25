@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NLog;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
@@ -213,6 +214,37 @@ namespace Chaptarr.Core.Test.DecisionEngine
             var decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria());
 
             Assert.That(decision.Accepted, Is.True);
+        }
+
+        // R2: the non-ASCII title tokens must survive source encoding and Unicode normalisation (NFC and NFD).
+        [TestCase("\u010desky", "ces")]
+        [TestCase("espa\u00f1ol", "spa")]
+        [TestCase("fran\u00e7ais", "fra")]
+        [TestCase("portugu\u00eas", "por")]
+        public void ReleaseLanguageSpecificationVariant_DetectsNonAsciiTitleLanguageTokens(string token, string expectedCode)
+        {
+            AllowUnknown = false;
+            var subject = CreateSubject(BuildBothLanguageProfile());
+
+            foreach (var form in new[] { token, token.Normalize(System.Text.NormalizationForm.FormD) })
+            {
+                var remoteBook = BuildRemoteBook(
+                    $"Frank.Herbert.Dune.2021.{form}.RETAiL.ePub.eBOOK-GRP",
+                    profileId: 2,
+                    bookTitle: "Dune",
+                    authorName: "Frank Herbert",
+                    row: BuildVariantRow("dune_wanted_ebook_deu_101"));
+
+                var decision = subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria());
+
+                Assert.That(decision.Accepted, Is.False);
+                Assert.That(decision.Reason, Does.Contain("[" + expectedCode + "]"), "token was not detected as a language: " + ascii(form));
+            }
+        }
+
+        private static string ascii(string value)
+        {
+            return string.Concat(value.Select(c => c < 128 ? c.ToString() : "\\u" + ((int)c).ToString("x4")));
         }
 
         private static RemoteBook BuildRemoteBook(string title, int profileId, string bookTitle = "1984", string authorName = "George Orwell", List<Language> languages = null, Quality quality = null, BookMediaType mediaType = BookMediaType.Ebook, Book row = null)

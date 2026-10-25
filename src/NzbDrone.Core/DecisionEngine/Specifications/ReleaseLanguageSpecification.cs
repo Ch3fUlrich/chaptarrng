@@ -258,6 +258,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 yield break;
             }
 
+            // Indexers send decomposed (NFD) accents as often as composed ones; the token map is composed (NFC).
+            title = title.Normalize(System.Text.NormalizationForm.FormC);
+
             var tokens = TokenRegex.Matches(Parser.Parser.CleanReleaseTitleForParsing(title))
                 .Select(m => m.Value?.Trim().ToLowerInvariant())
                 .Where(t => !string.IsNullOrWhiteSpace(t))
@@ -423,17 +426,17 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             map["deutsch"] = "deu";
             map["czech"] = "ces";
             map["cesky"] = "ces";
-            map["Äesky"] = "ces";
+            map["česky"] = "ces";
             map["spanish"] = "spa";
             map["espanol"] = "spa";
-            map["espaÃ±ol"] = "spa";
+            map["español"] = "spa";
             map["castellano"] = "spa";
             map["french"] = "fra";
             map["francais"] = "fra";
-            map["franÃ§ais"] = "fra";
+            map["français"] = "fra";
             map["portuguese"] = "por";
             map["portugues"] = "por";
-            map["portuguÃªs"] = "por";
+            map["português"] = "por";
             map["brazilian"] = "por";
 
             return map;
