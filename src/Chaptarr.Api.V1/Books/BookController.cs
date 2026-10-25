@@ -1021,6 +1021,41 @@ namespace Chaptarr.Api.V1.Books
             return book.IsMonitored();
         }
 
+        // One entry per work of the author, with every row (ebook, audiobook, language variants, historical
+        // duplicates) listed as a version of that work.
+        [HttpGet("works")]
+        public ActionResult<List<WorkGroupResource>> GetWorks([FromQuery] int authorId)
+        {
+            if (authorId <= 0)
+            {
+                return BadRequest("authorId is required");
+            }
+
+            var books = _bookService.GetBooksByAuthor(authorId) ?? new List<Book>();
+            var withFiles = (_mediaFileService?.GetFilesByBooks(books.Select(b => b.Id).ToList()) ?? new List<NzbDrone.Core.MediaFiles.BookFile>())
+                .Where(file => file?.Edition != null)
+                .Select(file => file.Edition.BookId)
+                .ToHashSet();
+
+            return WorkGrouping.Group(books, withFiles)
+                .Select(group => new WorkGroupResource
+                {
+                    WorkKey = group.WorkKey,
+                    Title = group.Title,
+                    Versions = group.Versions.Select(v => new WorkVersionResource
+                    {
+                        BookId = v.BookId,
+                        Title = v.Title,
+                        MediaType = ToMediaTypeName(v.MediaType),
+                        Language = v.Language,
+                        IsVariant = v.IsVariant,
+                        Monitored = v.Monitored,
+                        HasFiles = v.HasFiles
+                    }).ToList()
+                })
+                .ToList();
+        }
+
         [HttpGet("{bookId:int}/siblings")]
         public ActionResult<BookSiblingDeleteInfoResource> GetBookSiblings(int bookId)
         {
