@@ -56,7 +56,8 @@ namespace Chaptarr.Core.Test.DecisionEngine
         [TestCase("The Witcher", "The Witcher - 001 - Hexen gibt es doch", true)]
         [TestCase("Diary of a Wimpy Kid", "Diary of a Wimpy Kid - 001 - Hexen gibt es doch", true)]
         [TestCase("Babylon 5", "Babylon 5 - 001 - Hexen gibt es doch", true)]
-        [TestCase("Babylon 5", "Babylon 5 - Hexen gibt es doch", false)]
+        // a series name with its own trailing number plus a bare title is still the series-prefixed title, not an episode mismatch
+        [TestCase("Babylon 5", "Babylon 5 - Hexen gibt es doch", true)]
         public void leading_series_episode_uses_raw_series_tokens(string seriesName, string releaseTitle, bool expectedAccepted)
         {
             var targetBook = new Book { Title = "Hexen gibt es doch", SeriesName = seriesName, SeriesPosition = "1", MediaType = BookMediaType.Audiobook };
