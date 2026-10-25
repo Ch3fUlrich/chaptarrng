@@ -56,7 +56,22 @@ namespace Chaptarr.Core.Test.Books
         {
             Assert.That(Row("dune").GetWantedVariantLanguage(), Is.Null);
             Assert.That(Row("dune_wanted_ebook_deu_1", addType: BookAddType.Automatic).GetWantedVariantLanguage(), Is.Null);
-            Assert.That(Row("dune_wanted_ebook_deu_1", unitKeyHash: "abc").GetWantedVariantLanguage(), Is.Null);
+        }
+
+        // R5: an import may stamp UnitKeyHash on a filed variant; it must stay a variant (and keep its language).
+        [Test]
+        public void IsWantedVariantRow_survives_unit_key_hash_stamp()
+        {
+            var row = Row("dune_wanted_ebook_deu_1", unitKeyHash: "abc");
+
+            Assert.That(row.IsWantedVariantRow(), Is.True);
+            Assert.That(row.GetWantedVariantLanguage(), Is.EqualTo("deu"));
+        }
+
+        [Test]
+        public void GetWantedVariantLanguage_prefers_stamped_row_language_over_monitored_edition()
+        {
+            Assert.That(Row("dune_wanted_ebook_deu_1", editionLanguage: "eng", rowLanguage: "deu").GetWantedVariantLanguage(), Is.EqualTo("deu"));
         }
     }
 }

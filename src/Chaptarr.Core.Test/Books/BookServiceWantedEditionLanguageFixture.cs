@@ -92,6 +92,7 @@ namespace Chaptarr.Core.Test.Books
 
         private sealed class InMemoryEditionService : IEditionService
         {
+            public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType) => throw new NotImplementedException();
             private readonly Dictionary<int, List<Edition>> _editionsByBookId = new Dictionary<int, List<Edition>>();
             private int _nextId = 1000;
 
@@ -197,6 +198,7 @@ namespace Chaptarr.Core.Test.Books
             public List<Book> GetBooksByAuthorId(int authorId) => _booksById.Values.Where(b => b.AuthorId == authorId).ToList();
             public List<Book> GetBooks(int authorId) => GetBooksByAuthorId(authorId);
 
+            public IEnumerable<Book> FindExisting(IEnumerable<int> ids) => Get(ids);
             public IEnumerable<Book> All() => _booksById.Values.ToList();
             public int Count() => _booksById.Count;
             public Book Find(int id) => Get(id);
@@ -207,7 +209,7 @@ namespace Chaptarr.Core.Test.Books
             public void Delete(int id) => throw new NotImplementedException();
             public void InsertMany(IList<Book> model) => throw new NotImplementedException();
             public void InsertMany(IList<Book> model, IDbConnection connection, IDbTransaction transaction) => throw new NotImplementedException();
-            public void UpdateMany(IList<Book> model) => throw new NotImplementedException();
+            public void UpdateMany(IList<Book> model) { foreach (var b in model) { Upsert(b); } }
             public void SetFields(IList<Book> models, params System.Linq.Expressions.Expression<Func<Book, object>>[] properties) => throw new NotImplementedException();
             public void DeleteMany(List<Book> model) => throw new NotImplementedException();
             public void DeleteMany(IEnumerable<int> ids) => throw new NotImplementedException();
@@ -629,6 +631,156 @@ namespace Chaptarr.Core.Test.Books
 
             var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
             Assert.That(insertedRows, Is.EqualTo(1));
+        }
+
+        private static BookService BuildSut(InMemoryBookRepository repo, InMemoryEditionService editions, Author author)
+        {
+            return new BookService(
+                repo,
+                editions,
+                new StubEventAggregator(),
+                new StubAuthorService(author),
+                new StubMediaFileService(),
+                rootFolderService: null,
+                seriesBookLinkRepository: null,
+                multiCopySeriesService: new StubMultiCopySeriesService(),
+                logger: LogManager.GetCurrentClassLogger());
+        }
+
+        private static Book WorkRow(int id, BookMediaType media, bool monitored, params Edition[] editions)
+        {
+            return new Book
+            {
+                Id = id,
+                AuthorId = 1,
+                Title = "Test Book",
+                TitleSlug = media == BookMediaType.Ebook ? "test-book" : "test-book-audio",
+                MediaType = media,
+                EbookMonitored = media == BookMediaType.Ebook && monitored,
+                AudiobookMonitored = media == BookMediaType.Audiobook && monitored,
+                Monitored = monitored,
+                HardcoverBookId = "hc:1",
+                BaseBookId = "hc:1",
+                Editions = editions.ToList()
+            };
+        }
+
+        // R1: the cell equal to the base row's own (media, language) version must not create a duplicate row.
+        [Test]
+        public void AddWantedEdition_RequestEqualToBaseRowVersion_ReturnsBaseRowWithoutDuplicate()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var eng = new Edition { Id = 101, BookId = 20, ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var deu = new Edition { Id = 102, BookId = 20, ForeignEditionId = "ger-1", ReadingFormatId = 3, Monitored = false, Language = "deu" };
+            var baseBook = WorkRow(20, BookMediaType.Ebook, true, eng, deu);
+            var editions = new InMemoryEditionService();
+            editions.Seed(20, eng, deu);
+            var repo = new InMemoryBookRepository(baseBook);
+
+            var result = BuildSut(repo, editions, author).AddWantedEdition(20, new WantedEditionSelection { Language = "eng", MediaType = BookMediaType.Ebook });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Created, Is.False);
+                Assert.That(result.Book.Id, Is.EqualTo(20));
+                Assert.That(repo.All().Count(b => b.BaseBookId == "hc:1"), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public void AddWantedEdition_RequestEqualToUnmonitoredBaseRowVersion_MonitorsItAndReportsCreated()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var eng = new Edition { Id = 101, BookId = 20, ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var baseBook = WorkRow(20, BookMediaType.Ebook, false, eng);
+            var editions = new InMemoryEditionService();
+            editions.Seed(20, eng);
+            var repo = new InMemoryBookRepository(baseBook);
+
+            var result = BuildSut(repo, editions, author).AddWantedEdition(20, new WantedEditionSelection { Language = "eng", MediaType = BookMediaType.Ebook });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Book.Id, Is.EqualTo(20));
+                Assert.That(result.Created, Is.True);
+                Assert.That(repo.Get(20).EbookMonitored, Is.True);
+                Assert.That(repo.All().Count(b => b.BaseBookId == "hc:1"), Is.EqualTo(1));
+            });
+        }
+
+        // R1 + R3: an ordinary sibling row of the other media already is this version.
+        [Test]
+        public void AddWantedEdition_AudiobookRequestEqualToOrdinarySiblingRow_ReturnsSiblingWithoutDuplicate()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var ebookEng = new Edition { Id = 101, BookId = 20, ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var audioEng = new Edition { Id = 201, BookId = 21, ForeignEditionId = "a-eng-1", ReadingFormatId = 2, Monitored = true, Language = "eng" };
+            var ebook = WorkRow(20, BookMediaType.Ebook, true, ebookEng);
+            var audio = WorkRow(21, BookMediaType.Audiobook, true, audioEng);
+            var editions = new InMemoryEditionService();
+            editions.Seed(20, ebookEng);
+            editions.Seed(21, audioEng);
+            var repo = new InMemoryBookRepository(ebook, audio);
+
+            var result = BuildSut(repo, editions, author).AddWantedEdition(20, new WantedEditionSelection { Language = "eng", MediaType = BookMediaType.Audiobook });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Created, Is.False);
+                Assert.That(result.Book.Id, Is.EqualTo(21));
+                Assert.That(repo.All().Count(b => b.BaseBookId == "hc:1"), Is.EqualTo(2));
+            });
+        }
+
+        // R3: the requested edition lives on the sibling row of the other media.
+        [Test]
+        public void AddWantedEdition_CrossMediaRequest_FindsEditionOnSiblingRow()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var ebookEng = new Edition { Id = 101, BookId = 20, ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var audioEng = new Edition { Id = 201, BookId = 21, ForeignEditionId = "a-eng-1", ReadingFormatId = 2, Monitored = true, Language = "eng" };
+            var audioDeu = new Edition { Id = 202, BookId = 21, ForeignEditionId = "a-deu-1", ReadingFormatId = 2, Monitored = false, Language = "deu" };
+            var ebook = WorkRow(20, BookMediaType.Ebook, true, ebookEng);
+            var audio = WorkRow(21, BookMediaType.Audiobook, true, audioEng, audioDeu);
+            var editions = new InMemoryEditionService();
+            editions.Seed(20, ebookEng);
+            editions.Seed(21, audioEng, audioDeu);
+            var repo = new InMemoryBookRepository(ebook, audio);
+
+            var result = BuildSut(repo, editions, author).AddWantedEdition(20, new WantedEditionSelection { Language = "deu", MediaType = BookMediaType.Audiobook });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Created, Is.True);
+                Assert.That(result.Book.MediaType, Is.EqualTo(BookMediaType.Audiobook));
+                Assert.That(result.Book.LanguageCode, Is.EqualTo("deu"));
+                Assert.That(result.Book.TitleSlug, Does.Contain("_wanted_audiobook_deu_"));
+                Assert.That(repo.All().Count(b => b.BaseBookId == "hc:1"), Is.EqualTo(3));
+            });
+        }
+
+        // R5: a language variant row only carries editions of its own language.
+        [Test]
+        public void AddWantedEdition_Language_ClonesOnlySameLanguageEditions()
+        {
+            var author = new Author { Id = 1, Name = "Test Author" };
+            var eng = new Edition { Id = 101, BookId = 20, ForeignEditionId = "eng-1", ReadingFormatId = 3, Monitored = true, Language = "eng" };
+            var deu = new Edition { Id = 102, BookId = 20, ForeignEditionId = "ger-1", ReadingFormatId = 3, Monitored = false, Language = "deu" };
+            var deu2 = new Edition { Id = 103, BookId = 20, ForeignEditionId = "ger-2", ReadingFormatId = 3, Monitored = false, Language = "deu" };
+            var baseBook = WorkRow(20, BookMediaType.Ebook, true, eng, deu, deu2);
+            var editions = new InMemoryEditionService();
+            editions.Seed(20, eng, deu, deu2);
+            var repo = new InMemoryBookRepository(baseBook);
+
+            var result = BuildSut(repo, editions, author).AddWantedEdition(20, new WantedEditionSelection { Language = "deu", MediaType = BookMediaType.Ebook });
+
+            var cloned = editions.GetEditionsByBook(result.Book.Id);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Created, Is.True);
+                Assert.That(cloned, Is.Not.Empty);
+                Assert.That(cloned.Select(e => e.Language).Distinct(), Is.EqualTo(new[] { "deu" }));
+            });
         }
     }
 }

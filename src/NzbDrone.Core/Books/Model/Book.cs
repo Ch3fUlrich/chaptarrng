@@ -430,9 +430,11 @@ namespace NzbDrone.Core.Books
 
         public bool IsWantedVariantRow()
         {
+            // Identity is the slug marker plus a Manual add. A same-language import may later stamp
+            // UnitKeyHash on the row; that must not turn the row into an ordinary one (language gate,
+            // refresh freeze and sync skip would silently stop applying).
             return HasWantedSlug(TitleSlug) &&
-                   AddOptions?.AddType == BookAddType.Manual &&
-                   string.IsNullOrWhiteSpace(UnitKeyHash);
+                   AddOptions?.AddType == BookAddType.Manual;
         }
 
         // Canonical row language of a wanted-variant row, or null for ordinary rows.
@@ -443,11 +445,12 @@ namespace NzbDrone.Core.Books
                 return null;
             }
 
-            var language = Editions?.FirstOrDefault(e => e != null && e.Monitored)?.Language;
+            // The language stamped at creation is authoritative; the monitored edition is a fallback only.
+            var language = LanguageCode;
 
             if (string.IsNullOrWhiteSpace(language))
             {
-                language = LanguageCode;
+                language = Editions?.FirstOrDefault(e => e != null && e.Monitored)?.Language;
             }
 
             return string.IsNullOrWhiteSpace(language) ? null : language.CanonicalizeLanguage();

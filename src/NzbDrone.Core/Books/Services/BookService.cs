@@ -2815,6 +2815,7 @@ namespace NzbDrone.Core.Books
             }
 
             Edition selectedEdition;
+            var sourceBook = baseBook;
             if ((selection.EditionId ?? 0) > 0)
             {
                 selectedEdition = _editionService.GetEdition(selection.EditionId.Value);
@@ -2840,7 +2841,9 @@ namespace NzbDrone.Core.Books
             }
             else
             {
-                selectedEdition = (_editionService.GetEditionsByBook(baseBook.Id) ?? new List<Edition>())
+                Edition FindEdition(int rowId)
+                {
+                    return (_editionService.GetEditionsByBook(rowId) ?? new List<Edition>())
                     .Where(e => IsWantedFormatEdition(e, mediaType))
                     .Where(e => language == null || SameLanguage(e.Language, language))
                     .Where(e => selection.Isbn.IsNullOrWhiteSpace() || SameIsbn(e.Isbn13, selection.Isbn) || SameIsbn(e.Isbn10, selection.Isbn))
@@ -2848,6 +2851,30 @@ namespace NzbDrone.Core.Books
                     .OrderByDescending(e => e.Monitored)
                     .ThenBy(e => e.Id)
                     .FirstOrDefault();
+                }
+
+                selectedEdition = FindEdition(baseBook.Id);
+
+                // Ebook and audiobook are separate rows of one work: when the requested version is not among this
+                // row's editions (e.g. an audiobook request against the ebook row), look at the ordinary sibling
+                // rows of the work and use the one that owns the edition as the source row.
+                if (selectedEdition == null && baseBook.BaseBookId.IsNotNullOrWhiteSpace())
+                {
+                    var siblings = (_bookRepository.GetBooksByAuthorId(baseBook.AuthorId) ?? new List<Book>())
+                        .Where(b => b.Id != baseBook.Id && !b.IsWantedVariantRow())
+                        .Where(b => string.Equals(b.BaseBookId, baseBook.BaseBookId, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(b => b.Id);
+
+                    foreach (var sibling in siblings)
+                    {
+                        selectedEdition = FindEdition(sibling.Id);
+                        if (selectedEdition != null)
+                        {
+                            sourceBook = sibling;
+                            break;
+                        }
+                    }
+                }
 
                 if (selectedEdition == null)
                 {
@@ -2856,7 +2883,7 @@ namespace NzbDrone.Core.Books
             }
 
             var rowLanguage = language ?? Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language);
-            return AddWantedEditionForEdition(baseBook, selectedEdition, mediaType, rowLanguage, isVariantRequest, selection.AsNewVariant);
+            return AddWantedEditionForEdition(sourceBook, selectedEdition, mediaType, rowLanguage, isVariantRequest, selection.AsNewVariant);
         }
 
         private static bool IsWantedFormatEdition(Edition edition, BookMediaType mediaType)
@@ -2923,22 +2950,92 @@ namespace NzbDrone.Core.Books
             return AddWantedEditionForEdition(baseBook, selectedEdition, baseBook.MediaType, Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language), asNewVariant, asNewVariant).Book;
         }
 
+        // Any row of the same work (base row, ordinary sibling or earlier wanted variant) that already
+        // represents this (media, language) version. Without the base row and ordinary siblings a request for the
+        // version the base row already is would create a duplicate row, a duplicate search and a duplicate grab.
+        private Book FindExistingWantedVersion(Book baseBook, BookMediaType mediaType, string rowLanguage)
+        {
+            var rows = (_bookRepository.GetBooksByAuthorId(baseBook.AuthorId) ?? new List<Book>())
+                .Where(b => string.Equals(b.BaseBookId, baseBook.BaseBookId, StringComparison.OrdinalIgnoreCase))
+                .Where(b => b.MediaType == mediaType)
+                .OrderBy(b => b.Id)
+                .ToList();
+
+            if (!rows.Any(b => b.Id == baseBook.Id) && baseBook.MediaType == mediaType)
+            {
+                rows.Insert(0, baseBook);
+            }
+
+            var ordinaryRowIds = rows.Where(b => !b.IsWantedVariantRow() && b.Id > 0).Select(b => b.Id).ToList();
+            var ordinaryEditions = ordinaryRowIds.Any()
+                ? (_editionService.GetEditionsByBook(ordinaryRowIds) ?? new List<Edition>())
+                : new List<Edition>();
+
+            foreach (var row in rows)
+            {
+                string language;
+                if (row.IsWantedVariantRow())
+                {
+                    language = row.GetWantedVariantLanguage();
+                }
+                else
+                {
+                    var editions = ordinaryEditions.Where(e => e.BookId == row.Id).ToList();
+                    if (!editions.Any() && row.Id == baseBook.Id)
+                    {
+                        editions = (baseBook.Editions ?? new List<Edition>()).ToList();
+                    }
+
+                    language = Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(
+                        editions.FirstOrDefault(e => e.Monitored)?.Language ?? row.LanguageCode);
+                }
+
+                if (language != null && string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(language), rowLanguage, StringComparison.OrdinalIgnoreCase))
+                {
+                    return row;
+                }
+            }
+
+            return null;
+        }
+
+        // An ordinary row that is already this version only needs to be wanted for the requested media; earlier wanted
+        // variant rows are returned untouched (the user may have unmonitored them on purpose).
+        private WantedEditionResult EnsureExistingVersionWanted(Book existing, BookMediaType mediaType)
+        {
+            var wantedForMedia = mediaType == BookMediaType.Audiobook ? existing.AudiobookMonitored : existing.EbookMonitored;
+
+            if (existing.IsWantedVariantRow() || wantedForMedia)
+            {
+                return new WantedEditionResult { Book = existing, Created = false };
+            }
+
+            if (mediaType == BookMediaType.Audiobook)
+            {
+                existing.AudiobookMonitored = true;
+            }
+            else
+            {
+                existing.EbookMonitored = true;
+            }
+
+            existing.Monitored = true;
+            UpdateBook(existing);
+
+            // Newly wanted: the caller should search for it, exactly as for a freshly created row.
+            return new WantedEditionResult { Book = GetBook(existing.Id), Created = true };
+        }
+
         private WantedEditionResult AddWantedEditionForEdition(Book baseBook, Edition selectedEdition, BookMediaType mediaType, string rowLanguage, bool isVariantRequest, bool asNewVariant)
         {
             var editionId = selectedEdition.Id;
             if (isVariantRequest && !asNewVariant && baseBook.BaseBookId.IsNotNullOrWhiteSpace())
             {
-                var existing = (_bookRepository.GetBooksByAuthorId(baseBook.AuthorId) ?? new List<Book>())
-                    .Where(b => string.Equals(b.BaseBookId, baseBook.BaseBookId, StringComparison.OrdinalIgnoreCase))
-                    .Where(b => b.Id != baseBook.Id && b.MediaType == mediaType)
-                    .Where(b => Book.HasWantedSlug(b.TitleSlug))
-                    .Where(b => string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(b.LanguageCode), rowLanguage, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(b => b.Id)
-                    .FirstOrDefault();
+                var existing = FindExistingWantedVersion(baseBook, mediaType, rowLanguage);
 
                 if (existing != null)
                 {
-                    return new WantedEditionResult { Book = existing, Created = false };
+                    return EnsureExistingVersionWanted(existing, mediaType);
                 }
             }
 
@@ -3023,14 +3120,14 @@ namespace NzbDrone.Core.Books
                 return null;
             }
 
-            // If a matching wanted instance already exists, return it (donât create duplicates).
+            // If a matching wanted instance already exists, return it (don’t create duplicates).
             var selectedEditionKey = GetEditionKey(selectedEdition);
             var selectedNarratorKeys = GetEditionNarratorKeys(selectedEdition);
             if (baseBook.AuthorId > 0 && (!string.IsNullOrWhiteSpace(selectedEditionKey) || selectedNarratorKeys.Count > 0))
             {
                 var authorBooks = _bookRepository.GetBooksByAuthorId(baseBook.AuthorId);
                 var wantedCandidates = authorBooks
-                    .Where(b => !isVariantRequest && b.MediaType == mediaType)
+                    .Where(b => (!isVariantRequest || asNewVariant) && b.MediaType == mediaType)
                     .Where(b => b.AddOptions?.AddType == BookAddType.Manual)
                     .Where(b => IsSameProviderBackedBook(baseBook, b))
                     .ToList();
@@ -3095,7 +3192,7 @@ namespace NzbDrone.Core.Books
                 if (basePinned != null &&
                     HaveSameNarration(basePinned, selectedEdition))
                 {
-                    return GetBook(baseBook.Id);
+                    return new WantedEditionResult { Book = GetBook(baseBook.Id), Created = false };
                 }
             }
 
@@ -3149,7 +3246,7 @@ namespace NzbDrone.Core.Books
 
             var sourceEditions = baseBook.Editions ?? _editionService.GetEditionsByBook(baseBook.Id);
             var clonedEditions = sourceEditions
-                .Where(e => e.Id == editionId || IsWantedFormatEdition(e, mediaType))
+                .Where(e => e.Id == editionId || (IsWantedFormatEdition(e, mediaType) && (rowLanguage == null || SameLanguage(e.Language, rowLanguage))))
                 .Select(e =>
                 {
                     var isSelected = e.Id == editionId;
