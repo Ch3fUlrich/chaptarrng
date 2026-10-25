@@ -55,7 +55,9 @@ namespace NzbDrone.Core.Indexers.Soulseek
         {
             var mediaType = SearchMediaTypeHelper.GetRequestedMediaType(searchCriteria);
             var title = searchCriteria?.BookTitle;
-            var query = searchCriteria?.SearchTitleOverride ?? searchCriteria?.BookQuery ?? title;
+
+            // Not BookQuery: that strips diacritics, and the umlaut spellings are searched here.
+            var query = BookSearchCriteria.GetMainSearchTitle(searchCriteria?.SearchTitleOverride ?? title, searchCriteria?.Author?.Name);
 
             return CleanupReleases(await SearchAsync(searchCriteria?.Author?.Name, title, query, mediaType)).ToList();
         }
