@@ -21,6 +21,7 @@ const AddNewItemConnector = lazy(() => import('Search/AddNewItemConnector'));
 const ConversionSettingsConnector = lazy(() => import('Settings/Conversion/ConversionSettingsConnector'));
 const CustomFormatSettingsConnector = lazy(() => import('Settings/CustomFormats/CustomFormatSettingsConnector'));
 const DevelopmentSettingsConnector = lazy(() => import('Settings/Development/DevelopmentSettingsConnector'));
+const VersionsSettings = lazy(() => import('Settings/Versions/VersionsSettings'));
 const DownloadClientSettingsConnector = lazy(() => import('Settings/DownloadClients/DownloadClientSettingsConnector'));
 const GeneralSettingsConnector = lazy(() => import('Settings/General/GeneralSettingsConnector'));
 const ImportListSettingsConnector = lazy(() => import('Settings/ImportLists/ImportListSettingsConnector'));
@@ -216,6 +217,11 @@ function AppRoutes(props) {
           <Route
             path="/settings/indexers"
             component={IndexerSettingsConnector}
+          />
+
+          <Route
+            path="/settings/versions"
+            component={VersionsSettings}
           />
 
           <Route

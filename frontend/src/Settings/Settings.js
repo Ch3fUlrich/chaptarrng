@@ -49,6 +49,17 @@ function Settings() {
 
         <Link
           className={styles.link}
+          to="/settings/versions"
+        >
+          {translate('Versions')}
+        </Link>
+
+        <div className={styles.summary}>
+          {translate('VersionsSettingsSummary')}
+        </div>
+
+        <Link
+          className={styles.link}
           to="/settings/customformats"
         >
           {translate('CustomFormats')}

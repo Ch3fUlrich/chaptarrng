@@ -7,6 +7,7 @@ import customFormatSpecifications from './Settings/customFormatSpecifications';
 import delayProfiles from './Settings/delayProfiles';
 import development from './Settings/development';
 import downloadClientOptions from './Settings/downloadClientOptions';
+import wantedVersions from './Settings/wantedVersions';
 import downloadClients from './Settings/downloadClients';
 import general from './Settings/general';
 import hardcoverConfig from './Settings/hardcoverConfig';
@@ -37,6 +38,7 @@ export * from './Settings/customFormats';
 export * from './Settings/delayProfiles';
 export * from './Settings/downloadClients';
 export * from './Settings/downloadClientOptions';
+export * from './Settings/wantedVersions';
 export * from './Settings/general';
 export * from './Settings/hardcoverConfig';
 export * from './Settings/importLists';
@@ -78,6 +80,7 @@ export const defaultState = {
   delayProfiles: delayProfiles.defaultState,
   downloadClients: downloadClients.defaultState,
   downloadClientOptions: downloadClientOptions.defaultState,
+  wantedVersions: wantedVersions.defaultState,
   general: general.defaultState,
   hardcoverConfig: hardcoverConfig.defaultState,
   indexerFlags: indexerFlags.defaultState,
@@ -127,6 +130,7 @@ export const actionHandlers = handleThunks({
   ...delayProfiles.actionHandlers,
   ...downloadClients.actionHandlers,
   ...downloadClientOptions.actionHandlers,
+  ...wantedVersions.actionHandlers,
   ...general.actionHandlers,
   ...hardcoverConfig.actionHandlers,
   ...indexerFlags.actionHandlers,
@@ -167,6 +171,7 @@ export const reducers = createHandleActions({
   ...delayProfiles.reducers,
   ...downloadClients.reducers,
   ...downloadClientOptions.reducers,
+  ...wantedVersions.reducers,
   ...general.reducers,
   ...hardcoverConfig.reducers,
   ...indexerFlags.reducers,
