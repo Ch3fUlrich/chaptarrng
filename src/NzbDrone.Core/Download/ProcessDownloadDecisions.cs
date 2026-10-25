@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NLog;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download.Clients;
+using NzbDrone.Core.Download.GrabBudget;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Queue;
 
 namespace NzbDrone.Core.Download
 {
@@ -23,20 +26,37 @@ namespace NzbDrone.Core.Download
         private readonly IPrioritizeDownloadDecision _prioritizeDownloadDecision;
         private readonly IPendingReleaseService _pendingReleaseService;
         private readonly Logger _logger;
+        private readonly IConfigService _configService;
+        private readonly IGrabBudgetService _grabBudgetService;
+        private readonly IQueueService _queueService;
+        private readonly IIndexerStatusService _indexerStatusService;
+
+        public GrabBudgetResult GrabBudgetResult { get; private set; } = GrabBudgetResult.Allow();
 
         public ProcessDownloadDecisions(IDownloadService downloadService,
                                         IPrioritizeDownloadDecision prioritizeDownloadDecision,
                                         IPendingReleaseService pendingReleaseService,
-                                        Logger logger)
+                                        Logger logger,
+                                        IConfigService configService = null,
+                                        IGrabBudgetService grabBudgetService = null,
+                                        IQueueService queueService = null,
+                                        IIndexerStatusService indexerStatusService = null)
         {
             _downloadService = downloadService;
             _prioritizeDownloadDecision = prioritizeDownloadDecision;
             _pendingReleaseService = pendingReleaseService;
             _logger = logger;
+            _configService = configService;
+            _grabBudgetService = grabBudgetService;
+            _queueService = queueService;
+            _indexerStatusService = indexerStatusService;
         }
 
         public async Task<ProcessedDecisions> ProcessDecisions(List<DownloadDecision> decisions)
         {
+            GrabBudgetResult = GrabBudgetResult.Allow();
+            var runStartedAt = DateTime.UtcNow;
+
             var qualifiedReports = GetQualifiedReports(decisions);
             var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(qualifiedReports);
             var grabbed = new List<DownloadDecision>();
@@ -48,36 +68,140 @@ namespace NzbDrone.Core.Download
             var usenetFailed = false;
             var torrentFailed = false;
 
-            foreach (var report in prioritizedDecisions)
+            var budgetEnabled = IsGrabBudgetEnabled();
+            var queueSnapshot = budgetEnabled ? GetActiveQueueCount() : 0;
+            var maxConsecutiveFailures = _configService?.GrabBudgetMaxConsecutiveFailures ?? 3;
+            var consecutiveFailures = 0;
+            var skippedCount = 0;
+            var failedCount = 0;
+            var indexerCooldownSkipped = false;
+            var cooldownIndexerIds = budgetEnabled ? GetCooldownIndexerIds() : new HashSet<int>();
+
+            var isDryRun = budgetEnabled && (_configService?.GrabBudgetDryRun ?? false);
+            var wouldGrabCount = 0;
+            var wouldGrabbed = isDryRun ? new List<DownloadDecision>() : null;
+            var detailsLines = isDryRun ? new List<string>() : null;
+
+            for (var index = 0; index < prioritizedDecisions.Count; index++)
             {
+                var report = prioritizedDecisions[index];
                 var downloadProtocol = report.RemoteBook.Release.DownloadProtocol;
 
                 //Skip if already grabbed
-                if (IsBookProcessed(grabbed, report))
+                if (IsBookProcessed(isDryRun ? wouldGrabbed : grabbed, report))
                 {
                     continue;
                 }
 
                 if (report.TemporarilyRejected)
                 {
-                    PreparePending(pendingAddQueue, grabbed, pending, report, PendingReleaseReason.Delay);
+                    if (!isDryRun)
+                    {
+                        PreparePending(pendingAddQueue, grabbed, pending, report, PendingReleaseReason.Delay);
+                    }
                     continue;
                 }
 
                 if ((downloadProtocol == DownloadProtocol.Usenet && usenetFailed) ||
                     (downloadProtocol == DownloadProtocol.Torrent && torrentFailed))
                 {
-                    PreparePending(pendingAddQueue, grabbed, pending, report, PendingReleaseReason.DownloadClientUnavailable);
+                    if (!isDryRun)
+                    {
+                        PreparePending(pendingAddQueue, grabbed, pending, report, PendingReleaseReason.DownloadClientUnavailable);
+                    }
+                    continue;
+                }
+
+                if (budgetEnabled)
+                {
+                    var effectiveGrabbedCount = isDryRun ? wouldGrabCount : grabbed.Count;
+                    var budget = _grabBudgetService.CheckBudget(effectiveGrabbedCount, queueSnapshot + effectiveGrabbedCount);
+
+                    if (!budget.Allowed)
+                    {
+                        if (GrabBudgetResult.StopReason == GrabBudgetStopReason.None)
+                        {
+                            GrabBudgetResult = budget;
+                        }
+
+                        if (isDryRun)
+                        {
+                            skippedCount++;
+                            if (detailsLines.Count < 50)
+                            {
+                                detailsLines.Add($"[skipped: {budget.StopReason}] {report.RemoteBook?.Release?.Title}");
+                            }
+                            continue;
+                        }
+                        else
+                        {
+                            _logger.Info("Grab budget exhausted ({0}): {1} Leaving {2} of {3} prioritized decision(s) un-grabbed.",
+                                budget.StopReason,
+                                budget.Reason,
+                                prioritizedDecisions.Count - index,
+                                prioritizedDecisions.Count);
+                            skippedCount += prioritizedDecisions.Count - index;
+                            break;
+                        }
+                    }
+
+                    if (cooldownIndexerIds.Contains(report.RemoteBook?.Release?.IndexerId ?? 0))
+                    {
+                        skippedCount++;
+                        indexerCooldownSkipped = true;
+                        _logger.Debug("Skipping grab from Indexer {0} due to indexer cooldown.", report.RemoteBook?.Release?.IndexerId);
+
+                        if (isDryRun)
+                        {
+                            if (detailsLines.Count < 50)
+                            {
+                                detailsLines.Add($"[skipped: {GrabBudgetStopReason.IndexerCooldown}] {report.RemoteBook?.Release?.Title}");
+                            }
+                        }
+
+                        continue;
+                    }
+                }
+
+                if (isDryRun)
+                {
+                    wouldGrabCount++;
+                    wouldGrabbed.Add(report);
+
+                    var authorId = report.RemoteBook?.Author?.Id ?? 0;
+                    var bookIds = string.Join(",", report.RemoteBook?.Books?.Select(b => b.Id) ?? Enumerable.Empty<int>());
+                    var runLimit = _configService?.GrabBudgetMaxPerRun ?? 0;
+
+                    _logger.Info("[dry-run] would grab '{0}' (author {1}/book {2}, {3} of {4})",
+                        report.RemoteBook?.Release?.Title,
+                        authorId,
+                        bookIds,
+                        wouldGrabCount,
+                        runLimit);
+
+                    if (detailsLines.Count < 50)
+                    {
+                        detailsLines.Add($"[would grab] {report.RemoteBook?.Release?.Title}");
+                    }
+
                     continue;
                 }
 
                 var result = await ProcessDecisionInternal(report);
+                var stopRun = false;
 
                 switch (result)
                 {
                     case ProcessedDecisionResult.Grabbed:
                         {
                             grabbed.Add(report);
+                            consecutiveFailures = 0;
+
+                            if (budgetEnabled)
+                            {
+                                _grabBudgetService.RecordGrab();
+                            }
+
                             break;
                         }
 
@@ -95,6 +219,8 @@ namespace NzbDrone.Core.Download
 
                     case ProcessedDecisionResult.Failed:
                         {
+                            failedCount++;
+                            consecutiveFailures++;
                             PreparePending(pendingAddQueue, grabbed, pending, report, PendingReleaseReason.DownloadClientUnavailable);
 
                             if (downloadProtocol == DownloadProtocol.Usenet)
@@ -106,14 +232,41 @@ namespace NzbDrone.Core.Download
                                 torrentFailed = true;
                             }
 
+                            if (budgetEnabled && maxConsecutiveFailures > 0 && consecutiveFailures >= maxConsecutiveFailures)
+                            {
+                                GrabBudgetResult = GrabBudgetResult.Block(
+                                    GrabBudgetStopReason.ConsecutiveFailures,
+                                    $"Grab budget stopped: {consecutiveFailures} consecutive grab failure(s).");
+                                _logger.Warn("Grab budget stopped ({0}): {1} Leaving {2} of {3} prioritized decision(s) un-grabbed.",
+                                    GrabBudgetResult.StopReason,
+                                    GrabBudgetResult.Reason,
+                                    prioritizedDecisions.Count - index - 1,
+                                    prioritizedDecisions.Count);
+                                stopRun = true;
+                            }
+
                             break;
                         }
 
                     case ProcessedDecisionResult.Skipped:
                         {
+                            skippedCount++;
                             break;
                         }
                 }
+
+                if (stopRun)
+                {
+                    skippedCount += prioritizedDecisions.Count - 1 - index;
+                    break;
+                }
+            }
+
+            if (budgetEnabled && indexerCooldownSkipped && GrabBudgetResult.StopReason == GrabBudgetStopReason.None)
+            {
+                GrabBudgetResult = GrabBudgetResult.Block(
+                    GrabBudgetStopReason.IndexerCooldown,
+                    "One or more releases were skipped due to indexer cooldown.");
             }
 
             if (pendingAddQueue.Any())
@@ -121,11 +274,19 @@ namespace NzbDrone.Core.Download
                 _pendingReleaseService.AddMany(pendingAddQueue);
             }
 
+            if (budgetEnabled && decisions != null && decisions.Any())
+            {
+                var details = isDryRun && detailsLines != null ? string.Join("\n", detailsLines) : null;
+                _grabBudgetService.RecordBatch(isDryRun ? wouldGrabCount : grabbed.Count, skippedCount, failedCount, GrabBudgetResult.StopReason, runStartedAt, details);
+            }
+
             return new ProcessedDecisions(grabbed, pending, rejected);
         }
 
         public async Task<ProcessedDecisionResult> ProcessDecision(DownloadDecision decision, int? downloadClientId)
         {
+            GrabBudgetResult = GrabBudgetResult.Allow();
+
             if (decision == null)
             {
                 return ProcessedDecisionResult.Skipped;
@@ -143,6 +304,19 @@ namespace NzbDrone.Core.Download
                 return ProcessedDecisionResult.Pending;
             }
 
+            if (IsGrabBudgetEnabled() && _configService.GrabBudgetApplyToInteractive)
+            {
+                var budget = _grabBudgetService.CheckBudget(0, GetActiveQueueCount());
+
+                if (!budget.Allowed)
+                {
+                    GrabBudgetResult = budget;
+                    _logger.Info("Grab budget exhausted ({0}): {1} Skipping interactive grab.", budget.StopReason, budget.Reason);
+
+                    return ProcessedDecisionResult.Skipped;
+                }
+            }
+
             var result = await ProcessDecisionInternal(decision, downloadClientId);
 
             if (result == ProcessedDecisionResult.Pending)
@@ -152,6 +326,10 @@ namespace NzbDrone.Core.Download
             else if (result == ProcessedDecisionResult.Failed)
             {
                 _pendingReleaseService.Add(decision, PendingReleaseReason.DownloadClientUnavailable);
+            }
+            else if (result == ProcessedDecisionResult.Grabbed && IsGrabBudgetEnabled() && _configService.GrabBudgetApplyToInteractive)
+            {
+                _grabBudgetService.RecordGrab();
             }
 
             return result;
@@ -166,6 +344,47 @@ namespace NzbDrone.Core.Download
         {
             // Process both approved and temporarily rejected
             return (decision.Approved || decision.TemporarilyRejected) && decision.RemoteBook.Books.Any();
+        }
+
+        private bool IsGrabBudgetEnabled()
+        {
+            return _configService != null &&
+                   _grabBudgetService != null &&
+                   _configService.GrabBudgetEnabled;
+        }
+
+        private HashSet<int> GetCooldownIndexerIds()
+        {
+            if (_indexerStatusService == null)
+            {
+                return new HashSet<int>();
+            }
+
+            try
+            {
+                // GetBlockedProviders only returns providers that are currently disabled (backed off).
+                return (_indexerStatusService.GetBlockedProviders() ?? new List<IndexerStatus>())
+                    .Select(p => p.ProviderId)
+                    .ToHashSet();
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to check indexer status for grab budget.");
+                return new HashSet<int>();
+            }
+        }
+
+        private int GetActiveQueueCount()
+        {
+            try
+            {
+                return _queueService?.GetQueue()?.Count ?? 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to read active queue for grab budget; ignoring queue ceiling.");
+                return 0;
+            }
         }
 
         private bool IsBookProcessed(List<DownloadDecision> decisions, DownloadDecision report)

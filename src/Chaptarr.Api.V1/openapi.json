@@ -4686,6 +4686,47 @@
         }
       }
     },
+    "/api/v1/grabbudget/batch": {
+      "get": {
+        "tags": [
+          "GrabBudget"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrabBudgetBatchResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/grabbudget/status": {
+      "get": {
+        "tags": [
+          "GrabBudget"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrabBudgetStatusResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -14579,6 +14620,31 @@
           },
           "autoRedownloadFailedFromInteractiveSearch": {
             "type": "boolean"
+          },
+          "grabBudgetEnabled": {
+            "type": "boolean"
+          },
+          "grabBudgetMaxPerRun": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetMaxPerDay": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetMaxActiveQueue": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetApplyToInteractive": {
+            "type": "boolean"
+          },
+          "grabBudgetMaxConsecutiveFailures": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grabBudgetDryRun": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -14993,6 +15059,72 @@
           "bookReleaseDate"
         ],
         "type": "string"
+      },
+      "GrabBudgetBatchResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grabbed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stopReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GrabBudgetStatusResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "grabsInLastDay": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPerDay": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPerRun": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxActiveQueue": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
       },
       "HardcoverConfigResource": {
         "type": "object",

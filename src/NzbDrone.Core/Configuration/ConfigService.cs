@@ -168,6 +168,55 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoRedownloadFailedFromInteractiveSearch", value); }
         }
 
+        public bool GrabBudgetEnabled
+        {
+            get { return GetValueBoolean("GrabBudgetEnabled", false); }
+
+            set { SetValue("GrabBudgetEnabled", value); }
+        }
+
+        public int GrabBudgetMaxPerRun
+        {
+            get { return GetValueInt("GrabBudgetMaxPerRun", 5); }
+
+            set { SetValue("GrabBudgetMaxPerRun", value); }
+        }
+
+        public int GrabBudgetMaxPerDay
+        {
+            get { return GetValueInt("GrabBudgetMaxPerDay", 25); }
+
+            set { SetValue("GrabBudgetMaxPerDay", value); }
+        }
+
+        public int GrabBudgetMaxActiveQueue
+        {
+            get { return GetValueInt("GrabBudgetMaxActiveQueue", 0); }
+
+            set { SetValue("GrabBudgetMaxActiveQueue", value); }
+        }
+
+        public bool GrabBudgetApplyToInteractive
+        {
+            get { return GetValueBoolean("GrabBudgetApplyToInteractive", false); }
+
+            set { SetValue("GrabBudgetApplyToInteractive", value); }
+        }
+
+        public int GrabBudgetMaxConsecutiveFailures
+        {
+            get { return GetValueInt("GrabBudgetMaxConsecutiveFailures", 3); }
+
+            set { SetValue("GrabBudgetMaxConsecutiveFailures", value); }
+        }
+
+        public bool GrabBudgetDryRun
+        {
+            get { return GetValueBoolean("GrabBudgetDryRun", false); }
+
+            set { SetValue("GrabBudgetDryRun", value); }
+        }
+
         public bool CreateEmptyAuthorFolders
         {
             get { return GetValueBoolean("CreateEmptyAuthorFolders", false); }
