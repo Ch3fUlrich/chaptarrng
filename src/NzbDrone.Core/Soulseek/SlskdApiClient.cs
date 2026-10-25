@@ -15,6 +15,10 @@ namespace NzbDrone.Core.Soulseek
         Task<List<SlskdSearchResponse>> GetSearchResponsesAsync(SlskdConnection connection, Guid id);
         Task DeleteSearchAsync(SlskdConnection connection, Guid id);
         Task<SlskdApplicationState> GetApplicationAsync(SlskdConnection connection);
+        Task<SlskdBatchResponse> EnqueueBatchAsync(SlskdConnection connection, SlskdBatchRequest request);
+        Task<SlskdBatch> GetBatchAsync(SlskdConnection connection, Guid id);
+        Task<List<SlskdUserTransfers>> GetDownloadsAsync(SlskdConnection connection);
+        Task CancelDownloadAsync(SlskdConnection connection, string username, Guid transferId, bool remove);
     }
 
     public class SlskdApiClient : ISlskdApiClient
@@ -61,6 +65,39 @@ namespace NzbDrone.Core.Soulseek
         public Task<SlskdApplicationState> GetApplicationAsync(SlskdConnection connection)
         {
             return SendAsync<SlskdApplicationState>(connection, HttpMethod.Get, "application");
+        }
+
+        public Task<SlskdBatchResponse> EnqueueBatchAsync(SlskdConnection connection, SlskdBatchRequest request)
+        {
+            return SendAsync<SlskdBatchResponse>(connection, HttpMethod.Post, "transfers/downloads/batches", JsonSerializer.Serialize(request, JsonOptions));
+        }
+
+        public async Task<SlskdBatch> GetBatchAsync(SlskdConnection connection, Guid id)
+        {
+            try
+            {
+                return await SendAsync<SlskdBatch>(connection, HttpMethod.Get, $"transfers/downloads/batches/{id}");
+            }
+            catch (SlskdApiException ex) when (ex.StatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+        }
+
+        public async Task<List<SlskdUserTransfers>> GetDownloadsAsync(SlskdConnection connection)
+        {
+            return await SendAsync<List<SlskdUserTransfers>>(connection, HttpMethod.Get, "transfers/downloads") ?? new List<SlskdUserTransfers>();
+        }
+
+        public async Task CancelDownloadAsync(SlskdConnection connection, string username, Guid transferId, bool remove)
+        {
+            try
+            {
+                await SendAsync<object>(connection, HttpMethod.Delete, $"transfers/downloads/{Uri.EscapeDataString(username)}/{transferId}?remove={(remove ? "true" : "false")}");
+            }
+            catch (SlskdApiException ex) when (ex.StatusCode == (int)HttpStatusCode.NotFound)
+            {
+            }
         }
 
         internal async Task<T> SendAsync<T>(SlskdConnection connection, HttpMethod method, string resource, string body = null)

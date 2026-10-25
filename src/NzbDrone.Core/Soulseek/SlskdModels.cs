@@ -54,6 +54,76 @@ namespace NzbDrone.Core.Soulseek
         public bool IsLocked { get; set; }
     }
 
+    public class SlskdBatchFile
+    {
+        public string Filename { get; set; }
+        public long Size { get; set; }
+    }
+
+    public class SlskdBatchOptions
+    {
+        public string Destination { get; set; }
+        public string ExternalId { get; set; }
+    }
+
+    public class SlskdBatchRequest
+    {
+        public string Id { get; set; }
+        public string Username { get; set; }
+        public List<SlskdBatchFile> Files { get; set; } = new();
+        public SlskdBatchOptions Options { get; set; } = new();
+    }
+
+    public class SlskdBatchFailure
+    {
+        public string Filename { get; set; }
+        public string Message { get; set; }
+    }
+
+    public class SlskdBatch
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; }
+        public SlskdBatchOptions Options { get; set; }
+        public List<SlskdTransfer> Transfers { get; set; }
+    }
+
+    public class SlskdBatchResponse
+    {
+        public SlskdBatch Batch { get; set; }
+        public List<SlskdBatchFailure> Failures { get; set; } = new();
+    }
+
+    public class SlskdTransfer
+    {
+        public Guid Id { get; set; }
+        public Guid? BatchId { get; set; }
+        public string Username { get; set; }
+        public string Filename { get; set; }
+        public long Size { get; set; }
+
+        // Soulseek.NET flags rendered as text, for example "Completed, Succeeded"
+        public string State { get; set; }
+        public string StateDescription { get; set; }
+        public long BytesTransferred { get; set; }
+        public double AverageSpeed { get; set; }
+        public int? PlaceInQueue { get; set; }
+        public string Exception { get; set; }
+        public bool Removed { get; set; }
+    }
+
+    public class SlskdDirectoryTransfers
+    {
+        public string Directory { get; set; }
+        public List<SlskdTransfer> Files { get; set; } = new();
+    }
+
+    public class SlskdUserTransfers
+    {
+        public string Username { get; set; }
+        public List<SlskdDirectoryTransfers> Directories { get; set; } = new();
+    }
+
     public class SlskdApplicationState
     {
         public SlskdVersionState Version { get; set; }

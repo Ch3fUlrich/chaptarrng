@@ -1,0 +1,30 @@
+{
+ "batch": {
+  "id": "22222222-2222-4222-8222-222222222222",
+  "username": "peer_two",
+  "direction": "Download",
+  "options": {
+   "destination": "chaptarr-22222222222242228222222222222222",
+   "externalId": "chaptarr|5|Frank Herbert - Dune [epub]"
+  },
+  "transfers": [
+   {
+    "id": "b0000000-0000-4000-8000-000000000001",
+    "batchId": "22222222-2222-4222-8222-222222222222",
+    "username": "peer_two",
+    "direction": "Download",
+    "filename": "@@x\\Book\\Dune.epub",
+    "size": 1200000,
+    "state": "Completed, Succeeded",
+    "stateDescription": "Completed, Succeeded",
+    "bytesTransferred": 1200000,
+    "averageSpeed": 0.0,
+    "placeInQueue": null,
+    "exception": null,
+    "removed": false,
+    "attempts": 0
+   }
+  ]
+ },
+ "failures": []
+}

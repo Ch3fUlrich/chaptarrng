@@ -83,5 +83,52 @@ namespace Chaptarr.Core.Test.Soulseek
 
             await client.DeleteSearchAsync(_connection, Guid.NewGuid());
         }
+
+        [Test]
+        public async Task should_post_batches_and_read_failures()
+        {
+            var http = new FakeSlskdHttpClient { Handler = _ => (HttpStatusCode.MultiStatus, SlskdFixtures.Load("enqueue-partial.json")) };
+            var client = new SlskdApiClient(http);
+            var request = new SlskdBatchRequest { Id = Guid.NewGuid().ToString(), Username = "peer_two", Options = new SlskdBatchOptions { Destination = "chaptarr-x", ExternalId = "chaptarr|5|t" } };
+            request.Files.Add(new SlskdBatchFile { Filename = "@@x\\Book\\Dune.epub", Size = 10 });
+
+            var response = await client.EnqueueBatchAsync(_connection, request);
+
+            var sent = http.Requests.Single();
+            Assert.That(sent.Url.FullUri, Is.EqualTo("http://slskd.example:5030/api/v0/transfers/downloads/batches"));
+            using var body = JsonDocument.Parse(sent.ContentData);
+            Assert.That(body.RootElement.GetProperty("options").GetProperty("destination").GetString(), Is.EqualTo("chaptarr-x"));
+            Assert.That(body.RootElement.GetProperty("files")[0].GetProperty("size").GetInt64(), Is.EqualTo(10));
+            Assert.That(response.Failures.Single().Message, Is.EqualTo("File not shared"));
+        }
+
+        [Test]
+        public async Task should_return_null_for_unknown_batch_and_escape_usernames_when_cancelling()
+        {
+            var http = new FakeSlskdHttpClient { Handler = _ => (HttpStatusCode.NotFound, string.Empty) };
+            var client = new SlskdApiClient(http);
+
+            Assert.That(await client.GetBatchAsync(_connection, Guid.NewGuid()), Is.Null);
+
+            var id = Guid.NewGuid();
+            await client.CancelDownloadAsync(_connection, "peer name/with?odd#chars", id, true);
+            var url = http.Requests.Last().Url.FullUri;
+            Assert.That(url, Does.Contain("/transfers/downloads/peer%20name%2Fwith%3Fodd%23chars/" + id));
+            Assert.That(url, Does.EndWith("?remove=true"));
+            Assert.That(http.Requests.Last().Method, Is.EqualTo(System.Net.Http.HttpMethod.Delete));
+        }
+
+        [Test]
+        public async Task should_read_download_listing_grouped_by_user_and_directory()
+        {
+            var http = new FakeSlskdHttpClient { Handler = _ => (HttpStatusCode.OK, SlskdFixtures.Load("downloads.json")) };
+
+            var users = await new SlskdApiClient(http).GetDownloadsAsync(_connection);
+
+            Assert.That(users.Select(u => u.Username), Is.EquivalentTo(new[] { "peer_one", "peer_two", "peer_three" }));
+            var transfers = users.SelectMany(u => u.Directories).SelectMany(d => d.Files).ToList();
+            Assert.That(transfers.First(t => t.State == "InProgress").BatchId, Is.Not.Null);
+            Assert.That(transfers.Count(t => t.Removed), Is.EqualTo(1));
+        }
     }
 }

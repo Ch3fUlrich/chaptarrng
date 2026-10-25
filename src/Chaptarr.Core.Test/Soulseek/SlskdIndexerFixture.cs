@@ -15,47 +15,15 @@ namespace Chaptarr.Core.Test.Soulseek
     [TestFixture]
     public class SlskdIndexerFixture
     {
-        private sealed class FakeApi : ISlskdApiClient
-        {
-            public List<SlskdSearchRequest> Started { get; } = new();
-            public List<Guid> Deleted { get; } = new();
-            public Func<SlskdSearchRequest, SlskdSearch> Result { get; set; } = _ => SlskdFixtures.Search("search-ebook.json");
-            public Exception StartError { get; set; }
-            public SlskdApplicationState State { get; set; }
-
-            public Task<SlskdSearch> StartSearchAsync(SlskdConnection connection, SlskdSearchRequest request)
-            {
-                if (StartError != null)
-                {
-                    throw StartError;
-                }
-
-                Started.Add(request);
-                return Task.FromResult(new SlskdSearch { Id = request.Id });
-            }
-
-            public Task<SlskdSearch> GetSearchAsync(SlskdConnection connection, Guid id) => Task.FromResult(new SlskdSearch { Id = id, IsComplete = true });
-
-            public Task<List<SlskdSearchResponse>> GetSearchResponsesAsync(SlskdConnection connection, Guid id) => Task.FromResult(Result(Started.Last()).Responses);
-
-            public Task DeleteSearchAsync(SlskdConnection connection, Guid id)
-            {
-                Deleted.Add(id);
-                return Task.CompletedTask;
-            }
-
-            public Task<SlskdApplicationState> GetApplicationAsync(SlskdConnection connection) => Task.FromResult(State);
-        }
-
         [SetUp]
         public void SetUp()
         {
             SlskdIndexer.PollInterval = TimeSpan.FromMilliseconds(1);
         }
 
-        private static (SlskdIndexer Indexer, FakeApi Api) Build()
+        private static (SlskdIndexer Indexer, FakeSlskdApi Api) Build()
         {
-            var api = new FakeApi();
+            var api = new FakeSlskdApi();
             var indexer = new SlskdIndexer(api, null, null, null, LogManager.CreateNullLogger())
             {
                 Definition = new IndexerDefinition
