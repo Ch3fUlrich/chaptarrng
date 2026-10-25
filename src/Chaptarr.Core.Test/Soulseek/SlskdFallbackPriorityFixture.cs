@@ -6,6 +6,8 @@ using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Indexers.Soulseek;
+using NzbDrone.Core.Soulseek;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Delay;
 using NzbDrone.Core.Qualities;
@@ -62,24 +64,40 @@ namespace Chaptarr.Core.Test.Soulseek
         }
 
         [Test]
-        public void lower_slskd_indexer_priority_still_ranks_usenet_first_when_no_protocol_is_preferred()
+        public void protocol_preference_outranks_indexer_priority()
         {
-            var usenet = Decision(DownloadProtocol.Usenet, 25, 1_000);
-            var soulseek = Decision(DownloadProtocol.Soulseek, 50, 5_000_000);
+            // Usenet preferred, slskd given the "best" indexer priority: Usenet must still win.
+            var usenet = Decision(DownloadProtocol.Usenet, 50, 1_000);
+            var soulseek = Decision(DownloadProtocol.Soulseek, 1, 5_000_000);
 
-            var ordered = new[] { soulseek, usenet }.OrderByDescending(d => d, Comparer(DownloadProtocol.Torrent)).ToList();
+            var ordered = new[] { soulseek, usenet }.OrderByDescending(d => d, Comparer(DownloadProtocol.Usenet)).ToList();
 
             Assert.That(ordered.First(), Is.SameAs(usenet));
         }
 
         [Test]
-        public void soulseek_is_chosen_when_it_is_the_only_candidate()
+        public void indexer_priority_decides_when_the_preferred_protocol_is_not_a_candidate()
         {
+            var usenet = Decision(DownloadProtocol.Usenet, 25, 1_000);
             var soulseek = Decision(DownloadProtocol.Soulseek, 50, 5_000_000);
+            var preferTorrent = Comparer(DownloadProtocol.Torrent);
 
-            var ordered = new[] { soulseek }.OrderByDescending(d => d, Comparer(DownloadProtocol.Usenet)).ToList();
+            Assert.That(new[] { soulseek, usenet }.OrderByDescending(d => d, preferTorrent).First(), Is.SameAs(usenet));
 
-            Assert.That(ordered.Single(), Is.SameAs(soulseek));
+            // Flip the priorities: now the slskd release wins, so priority (not a hidden protocol rule) decides.
+            var usenetLow = Decision(DownloadProtocol.Usenet, 50, 1_000);
+            var soulseekHigh = Decision(DownloadProtocol.Soulseek, 1, 5_000_000);
+            Assert.That(new[] { usenetLow, soulseekHigh }.OrderByDescending(d => d, preferTorrent).First(), Is.SameAs(soulseekHigh));
+        }
+
+        [Test]
+        public void soulseek_releases_are_stamped_with_the_search_time_so_the_delay_gate_has_an_age()
+        {
+            var responses = SlskdFixtures.Search("search-ebook.json").Responses;
+            var releases = SlskdReleaseBuilder.Build(responses, new SlskdSearchContext { Author = "Frank Herbert", Title = "Dune", MediaType = BookMediaType.Ebook }, new SlskdIndexerSettings());
+
+            Assert.That(releases, Is.Not.Empty);
+            Assert.That(releases.Select(r => r.AgeMinutes), Has.All.LessThan(1));
         }
 
         [TestCase(0, 0, 0)]

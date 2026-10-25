@@ -137,8 +137,9 @@ download dir exists and readable).
 
 ## Fallback behaviour (slice 3)
 
-Chaptarr already ranks competing releases by (title match, format, profile,
-**protocol preference**, **indexer priority**, size, ...). With the delay profile
+Chaptarr already ranks competing releases by (title match, native category, format,
+profile preference, then **protocol preference**, then **indexer priority**, size, ...);
+the order is pinned by `SlskdFallbackPriorityFixture`. With the delay profile
 `PreferredProtocol = Usenet` (or torrent) every acceptable Usenet release outranks
 every Soulseek release, so Soulseek is only grabbed when no Usenet release passes
 the decision engine. Without a preferred protocol the **indexer priority** decides
@@ -149,8 +150,12 @@ Soulseek releases and uses them. Interactive search shows both.
 One gap needed code: the delay profile. A Usenet delay (for example 60 minutes)
 parks Usenet releases as "pending", and a Soulseek release with no delay would then
 be grabbed first, which inverts the fallback. `DelayProfile.GetProtocolDelay` now
-returns `max(UsenetDelay, TorrentDelay)` for Soulseek, so it never overtakes a delayed
-Usenet or torrent release. Soulseek has no delay setting of its own.
+returns `max(UsenetDelay, TorrentDelay)` for Soulseek, so a Soulseek release never
+becomes available before a Usenet/torrent release of comparable age whose delay has not
+expired (delays are per release: expiry is publish time plus delay, and Soulseek
+releases are stamped with the search time as publish time). A Usenet release published
+well after the Soulseek one can still be pending when the Soulseek one is released.
+Soulseek has no delay setting of its own.
 
 No "fallback only after N empty searches" option is added because the priority and
 protocol-preference mechanisms express the requirement. The remaining cost (one
@@ -163,8 +168,9 @@ Tests: `SlskdFallbackPriorityFixture` (comparer ordering, delay).
 
 ### Operator recipe
 
-1. Settings > Profiles > Delay: preferred protocol Usenet (and leave the Usenet delay
-   at 0, or accept that slskd waits as long as it).
+1. Settings > Profiles > Delay: preferred protocol Usenet. slskd waits
+   `max(UsenetDelay, TorrentDelay)`, so any non-zero torrent delay also delays slskd;
+   leave both at 0 if Soulseek should be tried immediately.
 2. Settings > Indexers: add "Soulseek (slskd)": URL, API key, priority 50, keep
    Languages (for example German, English) and the free-slot/queue/speed filters to
    taste. Test must show slskd logged in to Soulseek.
