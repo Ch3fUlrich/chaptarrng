@@ -17,6 +17,9 @@ namespace NzbDrone.Core.Notifications.BookLore
     public interface IBookLoreProxy
     {
         ValidationFailure Test(BookLoreSettings settings);
+
+        /// <summary>Uploads the files; throws <see cref="AggregateException"/> for ANY failure (login or upload) after
+        /// every file was attempted, so the caller's notification status records it. Source files are never touched.</summary>
         void UploadFiles(BookLoreSettings settings, IEnumerable<string> filePaths);
     }
 
@@ -62,18 +65,31 @@ namespace NzbDrone.Core.Notifications.BookLore
                 return;
             }
 
-            var accessToken = GetAccessToken(settings);
+            string accessToken;
+            try
+            {
+                accessToken = GetAccessToken(settings);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "BookLore login failed; skipping {0} upload(s)", paths.Count);
+                throw new AggregateException("BookLore login failed; nothing was uploaded.", ex);
+            }
 
             // One bad file must not stop the remaining uploads. Failures are
             // collected and thrown together so the notification status (and the
             // health check) still records the failure.
             var failures = new List<Exception>();
 
+            // After one file failed twice the server is evidently down: later files get a single attempt without
+            // a delay, so a failing BookLore cannot stall the import thread for (files x RetryDelay).
+            var retriesAllowed = true;
+
             foreach (var path in paths)
             {
                 try
                 {
-                    UploadWithRetry(settings, accessToken, path);
+                    UploadWithRetry(settings, ref accessToken, path, ref retriesAllowed);
                 }
                 catch (Exception ex)
                 {
@@ -88,30 +104,63 @@ namespace NzbDrone.Core.Notifications.BookLore
             }
         }
 
-        private void UploadWithRetry(BookLoreSettings settings, string accessToken, string path)
+        private void UploadWithRetry(BookLoreSettings settings, ref string accessToken, string path, ref bool retriesAllowed)
         {
             try
             {
                 UploadFile(settings, accessToken, path);
+                return;
             }
-            catch (Exception ex) when (IsRetryableUploadFailure(ex))
+            catch (Exception ex) when (retriesAllowed && IsRetryableUploadFailure(ex))
             {
                 _logger.Warn("BookLore upload of {0} failed ({1}); retrying once", Path.GetFileName(path), ex.Message);
-                Thread.Sleep(RetryDelay);
+
+                if (IsUnauthorized(ex))
+                {
+                    // The token expired during a long batch: log in again and use the new token for the rest.
+                    accessToken = GetAccessToken(settings);
+                }
+                else if (RetryDelay > TimeSpan.Zero)
+                {
+                    Thread.Sleep(RetryDelay);
+                }
+            }
+
+            try
+            {
                 UploadFile(settings, accessToken, path);
+            }
+            catch
+            {
+                retriesAllowed = false;
+                throw;
             }
         }
 
-        public static TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(2);
+        /// <summary>Pause before the single retry of a failed upload.</summary>
+        public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(2);
+
+        private static bool IsUnauthorized(Exception ex)
+        {
+            return ex is HttpException httpException && httpException.Response?.StatusCode == HttpStatusCode.Unauthorized;
+        }
 
         private static bool IsRetryableUploadFailure(Exception ex)
         {
             if (ex is HttpException httpException)
             {
-                return (int)httpException.Response.StatusCode >= 500;
+                // Response can be null for connection-level failures; those are transient too.
+                return httpException.Response == null ||
+                       (int)httpException.Response.StatusCode >= 500 ||
+                       httpException.Response.StatusCode == HttpStatusCode.Unauthorized;
             }
 
-            return ex is WebException || ex is IOException && !(ex is FileNotFoundException) || ex is TimeoutException;
+            if (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                return false;
+            }
+
+            return ex is WebException || ex is IOException || ex is TimeoutException;
         }
 
         private string GetAccessToken(BookLoreSettings settings)
@@ -142,7 +191,7 @@ namespace NzbDrone.Core.Notifications.BookLore
                 // logins in one second. Its unique-token constraint rejects the
                 // second login with HTTP 400, so retry once after the token
                 // timestamp has advanced.
-                _logger.Warn("BookLore returned HTTP {0} during login; retrying once", (int)ex.Response.StatusCode);
+                _logger.Warn("BookLore returned HTTP {0} during login; retrying once", (int?)ex.Response?.StatusCode);
                 Thread.Sleep(TimeSpan.FromMilliseconds(1100));
                 response = _httpClient.Execute(request);
             }
@@ -159,6 +208,11 @@ namespace NzbDrone.Core.Notifications.BookLore
 
         private static bool IsCredentialRejection(HttpException exception)
         {
+            if (exception.Response == null)
+            {
+                return false;
+            }
+
             if (exception.Response.StatusCode == HttpStatusCode.Unauthorized || exception.Response.StatusCode == HttpStatusCode.Forbidden)
             {
                 return true;
@@ -170,6 +224,11 @@ namespace NzbDrone.Core.Notifications.BookLore
 
         private static bool IsTransientLoginFailure(HttpException exception)
         {
+            if (exception.Response == null)
+            {
+                return true;
+            }
+
             if ((int)exception.Response.StatusCode >= 500)
             {
                 return true;

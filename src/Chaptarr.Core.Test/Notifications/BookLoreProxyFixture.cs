@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Chaptarr.Core.Test.Indexers;
@@ -142,7 +143,6 @@ namespace Chaptarr.Core.Test.Notifications
         [Test]
         public void should_continue_after_failed_file_retry_once_and_report_failure()
         {
-            BookLoreProxy.RetryDelay = TimeSpan.Zero;
             var good = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
             var bad = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
             File.WriteAllText(good, "good-content");
@@ -167,7 +167,7 @@ namespace Chaptarr.Core.Test.Notifications
                     return new HttpResponse(request, new HttpHeader(), string.Empty, HttpStatusCode.OK);
                 });
 
-                Assert.Throws<AggregateException>(() => Create(transport).UploadFiles(Settings, new[] { bad, good }));
+                Assert.Throws<AggregateException>(() => Create(transport, TimeSpan.Zero).UploadFiles(Settings, new[] { bad, good }));
 
                 Assert.Multiple(() =>
                 {
@@ -188,14 +188,123 @@ namespace Chaptarr.Core.Test.Notifications
         public void should_not_retry_missing_file()
         {
             var transport = new DirectDownloadTestHttp();
-            transport.AddRoute(_ => true, request =>
+            var uploadRequests = 0;
+            transport.AddRoute(url => url.EndsWith("/auth/login"), request =>
                 Task.FromResult(new HttpResponse(request, new HttpHeader(), "{\"accessToken\":\"test-token\"}")));
+            transport.AddRoute(url => url.EndsWith("/files/upload/bookdrop"), request =>
+            {
+                uploadRequests++;
+                return Task.FromResult(new HttpResponse(request, new HttpHeader(), string.Empty, HttpStatusCode.OK));
+            });
 
-            Assert.Throws<AggregateException>(() => Create(transport).UploadFiles(Settings, new[] { "/nonexistent/booklore-missing.epub" }));
-            Assert.That(transport.RequestedUrls.Count, Is.EqualTo(1));
+            var ex = Assert.Throws<AggregateException>(() => Create(transport, TimeSpan.Zero).UploadFiles(Settings, new[] { "/nonexistent/booklore-missing.epub" }));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ex.InnerExceptions.Single(), Is.InstanceOf<FileNotFoundException>());
+                Assert.That(uploadRequests, Is.EqualTo(0));
+                Assert.That(transport.RequestedUrls.Count, Is.EqualTo(1));
+            });
         }
 
-        private static BookLoreProxy Create(DirectDownloadTestHttp transport) =>
-            new(transport.CreateClient(), LogManager.GetCurrentClassLogger());
+        [Test]
+        public void should_relogin_once_when_the_token_expires_mid_batch()
+        {
+            var first = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            var second = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            File.WriteAllText(first, "first-content");
+            File.WriteAllText(second, "second-content");
+            try
+            {
+                var transport = new DirectDownloadTestHttp();
+                var logins = 0;
+                var tokensSeen = new System.Collections.Generic.List<string>();
+                transport.AddRoute(url => url.EndsWith("/auth/login"), request =>
+                {
+                    logins++;
+                    return Task.FromResult(new HttpResponse(request, new HttpHeader(), $"{{\"accessToken\":\"token-{logins}\"}}"));
+                });
+                transport.AddRoute(url => url.EndsWith("/files/upload/bookdrop"), request =>
+                {
+                    var token = request.Headers.GetSingleValue("Authorization");
+                    tokensSeen.Add(token);
+                    if (token == "Bearer token-1" && tokensSeen.Count == 1)
+                    {
+                        throw new HttpException(request, new HttpResponse(request, new HttpHeader(), "expired", HttpStatusCode.Unauthorized));
+                    }
+
+                    return Task.FromResult(new HttpResponse(request, new HttpHeader(), string.Empty, HttpStatusCode.OK));
+                });
+
+                Create(transport, TimeSpan.Zero).UploadFiles(Settings, new[] { first, second });
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(logins, Is.EqualTo(2));
+                    Assert.That(tokensSeen, Is.EqualTo(new[] { "Bearer token-1", "Bearer token-2", "Bearer token-2" }));
+                });
+            }
+            finally
+            {
+                File.Delete(first);
+                File.Delete(second);
+            }
+        }
+
+        [Test]
+        public void should_retry_connection_failure_without_response_and_stop_retrying_after_a_second_failure()
+        {
+            var a = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            var b = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            File.WriteAllText(a, "a-content");
+            File.WriteAllText(b, "b-content");
+            try
+            {
+                var transport = new DirectDownloadTestHttp();
+                var uploads = 0;
+                transport.AddRoute(url => url.EndsWith("/auth/login"), request =>
+                    Task.FromResult(new HttpResponse(request, new HttpHeader(), "{\"accessToken\":\"test-token\"}")));
+                transport.AddRoute(url => url.EndsWith("/files/upload/bookdrop"), request =>
+                {
+                    uploads++;
+                    throw new HttpException(request, null);
+                });
+
+                var ex = Assert.Throws<AggregateException>(() => Create(transport, TimeSpan.Zero).UploadFiles(Settings, new[] { a, b }));
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(uploads, Is.EqualTo(3), "first file: attempt + one retry; second file: single attempt");
+                    Assert.That(ex.InnerExceptions, Has.Count.EqualTo(2));
+                });
+            }
+            finally
+            {
+                File.Delete(a);
+                File.Delete(b);
+            }
+        }
+
+        [Test]
+        public void should_report_login_failure_as_aggregate_exception()
+        {
+            var transport = new DirectDownloadTestHttp();
+            transport.AddRoute(_ => true, request =>
+                throw new HttpException(request, new HttpResponse(request, new HttpHeader(), "no", HttpStatusCode.Unauthorized)));
+
+            var path = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            File.WriteAllText(path, "x");
+            try
+            {
+                Assert.Throws<AggregateException>(() => Create(transport, TimeSpan.Zero).UploadFiles(Settings, new[] { path }));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        private static BookLoreProxy Create(DirectDownloadTestHttp transport, TimeSpan? retryDelay = null) =>
+            new(transport.CreateClient(), LogManager.GetCurrentClassLogger()) { RetryDelay = retryDelay ?? TimeSpan.Zero };
     }
 }
