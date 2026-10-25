@@ -16,6 +16,16 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
     [TestFixture]
     public class BookUnitDestinationServiceLanguageGuardFixture
     {
+        public class NullDiskProvider : System.Reflection.DispatchProxy
+        {
+            protected override object Invoke(System.Reflection.MethodInfo targetMethod, object[] args)
+            {
+                return targetMethod.ReturnType.IsValueType && targetMethod.ReturnType != typeof(void)
+                    ? Activator.CreateInstance(targetMethod.ReturnType)
+                    : null;
+            }
+        }
+
         private sealed class StubMainDatabase : IMainDatabase
         {
             public IDbConnection OpenConnection()
@@ -159,7 +169,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
             public List<Book> GetAuthorBooksWithFiles(Author author) => throw new NotImplementedException();
             public List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null) => throw new NotImplementedException();
             public List<Book> GetBooksByBaseId(string baseBookId) => throw new NotImplementedException();
-            public Book AddWantedEdition(int bookId, int editionId) => throw new NotImplementedException();
+            public Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false) => throw new NotImplementedException();
             public bool ShouldSearchForMediaType(Book book, string mediaType) => throw new NotImplementedException();
             public List<Book> GetMonitoredBooksForAuthor(int authorId, string mediaType) => throw new NotImplementedException();
             public BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null) => throw new NotImplementedException();
@@ -168,6 +178,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
 
         private sealed class InMemoryEditionService : IEditionService
         {
+            public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType) => throw new NotImplementedException();
             private readonly Dictionary<int, Edition> _editionsById = new Dictionary<int, Edition>();
             private readonly Dictionary<int, List<Edition>> _editionsByBookId = new Dictionary<int, List<Edition>>();
             private int _nextId = 2000;
@@ -294,6 +305,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                 bookService: bookService,
                 editionService: editionService,
                 mainDatabase: new StubMainDatabase(),
+                diskProvider: System.Reflection.DispatchProxy.Create<NzbDrone.Common.Disk.IDiskProvider, NullDiskProvider>(),
                 logger: logger);
 
             var unitKey = unitDestination.BuildRootUnitKeyWithExtension(
@@ -337,6 +349,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
                 bookService: bookService,
                 editionService: editionService,
                 mainDatabase: new StubMainDatabase(),
+                diskProvider: System.Reflection.DispatchProxy.Create<NzbDrone.Common.Disk.IDiskProvider, NullDiskProvider>(),
                 logger: logger);
 
             var unitKey = unitDestination.BuildRootUnitKeyWithExtension(

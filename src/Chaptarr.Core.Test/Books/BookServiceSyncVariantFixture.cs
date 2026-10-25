@@ -92,6 +92,7 @@ namespace Chaptarr.Core.Test.Books
 
         private sealed class InMemoryEditionService : IEditionService
         {
+            public List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType) => throw new NotImplementedException();
             private readonly Dictionary<int, List<Edition>> _editionsByBookId = new Dictionary<int, List<Edition>>();
             private int _nextId = 1000;
 

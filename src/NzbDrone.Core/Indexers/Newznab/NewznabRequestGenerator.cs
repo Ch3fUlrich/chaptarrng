@@ -208,7 +208,6 @@ namespace NzbDrone.Core.Indexers.Newznab
                                 $"&q={NewsnabifyTitle(searchCriteria.SeriesPositionQuery)}"));
                         }
                     }
-                    }
                 }
             }
 

@@ -22,7 +22,7 @@ namespace Chaptarr.Core.Test.IndexerTests
 
         private NewznabRequestGenerator CreateNewznabGenerator()
         {
-            return new NewznabRequestGenerator(new TestCapabilitiesProvider())
+            return new NewznabRequestGenerator(new TestCapabilitiesProvider(), NLog.LogManager.GetCurrentClassLogger(), "test")
             {
                 Settings = new NewznabSettings
                 {
@@ -37,7 +37,7 @@ namespace Chaptarr.Core.Test.IndexerTests
 
         private TorznabRequestGenerator CreateTorznabGenerator()
         {
-            return new TorznabRequestGenerator(new TestCapabilitiesProvider())
+            return new TorznabRequestGenerator(new TestCapabilitiesProvider(), NLog.LogManager.GetCurrentClassLogger(), "test")
             {
                 Settings = new NewznabSettings
                 {

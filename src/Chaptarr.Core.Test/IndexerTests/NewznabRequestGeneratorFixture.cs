@@ -24,7 +24,7 @@ namespace Chaptarr.Core.Test.IndexerTests
 
         private NewznabRequestGenerator CreateGenerator(int maxPages = 1)
         {
-            return new NewznabRequestGenerator(new TestCapabilitiesProvider())
+            return new NewznabRequestGenerator(new TestCapabilitiesProvider(), NLog.LogManager.GetCurrentClassLogger(), "test")
             {
                 Settings = new NewznabSettings
                 {
@@ -268,7 +268,7 @@ namespace Chaptarr.Core.Test.IndexerTests
         [Test]
         public void torznab_request_generator_should_also_support_umlaut_transliteration()
         {
-            var generator = new TorznabRequestGenerator(new TestCapabilitiesProvider())
+            var generator = new TorznabRequestGenerator(new TestCapabilitiesProvider(), NLog.LogManager.GetCurrentClassLogger(), "test")
             {
                 Settings = new NewznabSettings
                 {
