@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Books
     {
         List<string> GetWantedLanguages();
         List<string> GetWantedFormats(BookMediaType mediaType);
-        List<WantedVersionCellResult> RequestAllVersions(int bookId);
+        List<WantedVersionCellResult> RequestAllVersions(int bookId, BookMediaType? onlyMediaType = null);
     }
 
     public class WantedVersionService : IWantedVersionService
@@ -63,13 +63,18 @@ namespace NzbDrone.Core.Books
         // One work -> every wanted (medium x language) variant row, monitored. Cells with no matching
         // edition are reported (reason code) rather than failing the whole request; rerunning is idempotent
         // because AddWantedEdition returns the existing row of a cell.
-        public List<WantedVersionCellResult> RequestAllVersions(int bookId)
+        public List<WantedVersionCellResult> RequestAllVersions(int bookId, BookMediaType? onlyMediaType = null)
         {
             var results = new List<WantedVersionCellResult>();
             var languages = GetWantedLanguages();
 
             foreach (var mediaType in new[] { BookMediaType.Ebook, BookMediaType.Audiobook })
             {
+                if (onlyMediaType.HasValue && onlyMediaType.Value != mediaType)
+                {
+                    continue;
+                }
+
                 foreach (var language in languages)
                 {
                     var cell = new WantedVersionCellResult { MediaType = mediaType.ToString().ToLowerInvariant(), Language = language };

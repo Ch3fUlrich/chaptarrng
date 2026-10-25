@@ -20,7 +20,7 @@ namespace Chaptarr.Core.Test.Books
             {
                 if (targetMethod.Name.StartsWith("get_") && Values.TryGetValue(targetMethod.Name.Substring(4), out var v))
                 {
-                    return v;
+                    return targetMethod.ReturnType == typeof(bool) ? bool.Parse(v) : v;
                 }
 
                 throw new NotImplementedException(targetMethod.Name);

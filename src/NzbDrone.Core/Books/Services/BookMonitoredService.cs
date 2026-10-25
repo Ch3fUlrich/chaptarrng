@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Instrumentation;
 using NLog;
+using NzbDrone.Core.Configuration;
 
 namespace NzbDrone.Core.Books
 {
@@ -15,12 +16,21 @@ namespace NzbDrone.Core.Books
     {
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
+        private readonly IWantedVersionService _wantedVersionService;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
 
         public BookMonitoredService(IAuthorService authorService, IBookService bookService, Logger logger)
+            : this(authorService, bookService, null, null, logger)
+        {
+        }
+
+        public BookMonitoredService(IAuthorService authorService, IBookService bookService, IWantedVersionService wantedVersionService, IConfigService configService, Logger logger)
         {
             _authorService = authorService;
             _bookService = bookService;
+            _wantedVersionService = wantedVersionService;
+            _configService = configService;
             _logger = logger;
         }
 
@@ -124,9 +134,38 @@ namespace NzbDrone.Core.Books
                 // Persist the monitoring decision as one batch while retaining each
                 // BookEditedEvent and the existing monitoring synchronization rules.
                 _bookService.UpdateManyWithLifecycle(books);
+
+                if (monitoringOptions.Monitor == MonitorTypes.All && !monitoredBooks.Any())
+                {
+                    FanOutWantedVersions(books, monitoringOptions.MediaType);
+                }
             }
 
             _authorService.UpdateAuthor(author);
+        }
+
+        // Opt-in (Settings > Versions): one work -> all wanted language x medium rows. Variant rows are
+        // skipped as sources and each work (BaseBookId) is requested once.
+        private void FanOutWantedVersions(List<Book> books, BookMediaType? mediaType)
+        {
+            if (_wantedVersionService == null || _configService == null || !_configService.WantedVersionsFanOutOnMonitor ||
+                !_wantedVersionService.GetWantedLanguages().Any())
+            {
+                return;
+            }
+
+            var sources = books
+                .Where(b => !b.IsWantedVariantRow() && (b.AudiobookMonitored || b.EbookMonitored))
+                .GroupBy(b => string.IsNullOrWhiteSpace(b.BaseBookId) ? "row:" + b.Id : b.BaseBookId)
+                .Select(g => g.OrderBy(b => b.Id).First())
+                .ToList();
+
+            foreach (var source in sources)
+            {
+                _wantedVersionService.RequestAllVersions(source.Id, mediaType);
+            }
+
+            _logger.Info("Requested wanted versions for {0} monitored work(s)", sources.Count);
         }
 
         private void ToggleBooksMonitoredState(IEnumerable<Book> books, bool monitored)
