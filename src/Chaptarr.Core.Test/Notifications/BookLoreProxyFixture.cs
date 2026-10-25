@@ -139,6 +139,62 @@ namespace Chaptarr.Core.Test.Notifications
             Assert.That(Create(transport).Test(Settings), Is.Not.Null);
         }
 
+        [Test]
+        public void should_continue_after_failed_file_retry_once_and_report_failure()
+        {
+            BookLoreProxy.RetryDelay = TimeSpan.Zero;
+            var good = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            var bad = Path.Combine(Path.GetTempPath(), $"booklore-{Guid.NewGuid():N}.epub");
+            File.WriteAllText(good, "good-content");
+            File.WriteAllText(bad, "bad-content");
+            try
+            {
+                var transport = new DirectDownloadTestHttp();
+                var badAttempts = 0;
+                var goodUploads = 0;
+                transport.AddRoute(url => url.EndsWith("/auth/login"), request =>
+                    Task.FromResult(new HttpResponse(request, new HttpHeader(), "{\"accessToken\":\"test-token\"}")));
+                transport.AddRoute(url => url.EndsWith("/files/upload/bookdrop"), async request =>
+                {
+                    var body = await request.Content.ReadAsStringAsync();
+                    if (body.Contains("bad-content"))
+                    {
+                        badAttempts++;
+                        throw new HttpException(request, new HttpResponse(request, new HttpHeader(), "boom", HttpStatusCode.BadGateway));
+                    }
+
+                    goodUploads++;
+                    return new HttpResponse(request, new HttpHeader(), string.Empty, HttpStatusCode.OK);
+                });
+
+                Assert.Throws<AggregateException>(() => Create(transport).UploadFiles(Settings, new[] { bad, good }));
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(badAttempts, Is.EqualTo(2));
+                    Assert.That(goodUploads, Is.EqualTo(1));
+                    Assert.That(File.Exists(bad), Is.True);
+                    Assert.That(File.Exists(good), Is.True);
+                });
+            }
+            finally
+            {
+                File.Delete(good);
+                File.Delete(bad);
+            }
+        }
+
+        [Test]
+        public void should_not_retry_missing_file()
+        {
+            var transport = new DirectDownloadTestHttp();
+            transport.AddRoute(_ => true, request =>
+                Task.FromResult(new HttpResponse(request, new HttpHeader(), "{\"accessToken\":\"test-token\"}")));
+
+            Assert.Throws<AggregateException>(() => Create(transport).UploadFiles(Settings, new[] { "/nonexistent/booklore-missing.epub" }));
+            Assert.That(transport.RequestedUrls.Count, Is.EqualTo(1));
+        }
+
         private static BookLoreProxy Create(DirectDownloadTestHttp transport) =>
             new(transport.CreateClient(), LogManager.GetCurrentClassLogger());
     }

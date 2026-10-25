@@ -18,7 +18,12 @@ namespace NzbDrone.Core.Notifications.BookLore
 
         public override void OnReleaseImport(BookDownloadMessage message)
         {
-            _bookLoreProxy.UploadFiles(Settings, message.BookFiles?.Select(bookFile => bookFile.Path) ?? Enumerable.Empty<string>());
+            // BookLore only handles ebooks; audiobook imports are ignored.
+            var ebookPaths = message.BookFiles?
+                .Where(bookFile => string.Equals(bookFile.MediaType, "ebook", System.StringComparison.OrdinalIgnoreCase))
+                .Select(bookFile => bookFile.Path) ?? Enumerable.Empty<string>();
+
+            _bookLoreProxy.UploadFiles(Settings, ebookPaths);
         }
 
         public override string Name => "BookLore";

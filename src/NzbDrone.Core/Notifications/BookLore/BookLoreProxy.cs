@@ -64,10 +64,54 @@ namespace NzbDrone.Core.Notifications.BookLore
 
             var accessToken = GetAccessToken(settings);
 
+            // One bad file must not stop the remaining uploads. Failures are
+            // collected and thrown together so the notification status (and the
+            // health check) still records the failure.
+            var failures = new List<Exception>();
+
             foreach (var path in paths)
+            {
+                try
+                {
+                    UploadWithRetry(settings, accessToken, path);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn(ex, "BookLore upload failed for {0}", Path.GetFileName(path));
+                    failures.Add(ex);
+                }
+            }
+
+            if (failures.Count > 0)
+            {
+                throw new AggregateException($"BookLore upload failed for {failures.Count} of {paths.Count} file(s).", failures);
+            }
+        }
+
+        private void UploadWithRetry(BookLoreSettings settings, string accessToken, string path)
+        {
+            try
             {
                 UploadFile(settings, accessToken, path);
             }
+            catch (Exception ex) when (IsRetryableUploadFailure(ex))
+            {
+                _logger.Warn("BookLore upload of {0} failed ({1}); retrying once", Path.GetFileName(path), ex.Message);
+                Thread.Sleep(RetryDelay);
+                UploadFile(settings, accessToken, path);
+            }
+        }
+
+        public static TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(2);
+
+        private static bool IsRetryableUploadFailure(Exception ex)
+        {
+            if (ex is HttpException httpException)
+            {
+                return (int)httpException.Response.StatusCode >= 500;
+            }
+
+            return ex is WebException || ex is IOException && !(ex is FileNotFoundException) || ex is TimeoutException;
         }
 
         private string GetAccessToken(BookLoreSettings settings)
