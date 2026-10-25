@@ -141,14 +141,35 @@ Chaptarr already ranks competing releases by (title match, format, profile,
 **protocol preference**, **indexer priority**, size, ...). With the delay profile
 `PreferredProtocol = Usenet` (or torrent) every acceptable Usenet release outranks
 every Soulseek release, so Soulseek is only grabbed when no Usenet release passes
-the decision engine; set the slskd indexer's priority to 50 (higher number = lower
-preference) to make this explicit. When a Usenet grab later fails and is
-blocklisted, the next search finds only Soulseek releases and uses them. No extra
-"fallback only after N empty searches" option is added because the priority
-mechanism expresses it; the remaining cost (a slskd search runs on every search of
-a wanted book) is bounded by `SearchTimeoutSeconds` and the single-search
-semaphore. Interactive search still shows both.
+the decision engine. Without a preferred protocol the **indexer priority** decides
+(lower number wins): give the slskd indexer priority 50 against the default 25.
+When a Usenet grab later fails and is blocklisted, the next search finds only
+Soulseek releases and uses them. Interactive search shows both.
 
-Operator recipe: Settings > Profiles > Delay: preferred protocol Usenet; Indexers:
-add "Soulseek (slskd)" with priority 50, "Enable RSS" off; Download Clients: add
-"slskd" (protocol Soulseek).
+One gap needed code: the delay profile. A Usenet delay (for example 60 minutes)
+parks Usenet releases as "pending", and a Soulseek release with no delay would then
+be grabbed first, which inverts the fallback. `DelayProfile.GetProtocolDelay` now
+returns `max(UsenetDelay, TorrentDelay)` for Soulseek, so it never overtakes a delayed
+Usenet or torrent release. Soulseek has no delay setting of its own.
+
+No "fallback only after N empty searches" option is added because the priority and
+protocol-preference mechanisms express the requirement. The remaining cost (one
+slskd search per search of a wanted book, about `SearchTimeoutSeconds`, serialised
+by a semaphore because slskd accepts one search at a time) is bounded; keep the
+slskd indexer out of RSS (it has no RSS) and lower `SearchTimeoutSeconds` if
+searches feel slow.
+
+Tests: `SlskdFallbackPriorityFixture` (comparer ordering, delay).
+
+### Operator recipe
+
+1. Settings > Profiles > Delay: preferred protocol Usenet (and leave the Usenet delay
+   at 0, or accept that slskd waits as long as it).
+2. Settings > Indexers: add "Soulseek (slskd)": URL, API key, priority 50, keep
+   Languages (for example German, English) and the free-slot/queue/speed filters to
+   taste. Test must show slskd logged in to Soulseek.
+3. Settings > Download Clients: add "slskd": same URL and key, Download Directory =
+   slskd's download directory as Chaptarr sees it (read access; write access if
+   completed downloads should be removed after import).
+4. slskd 0.26.0 or newer; no change to slskd's own download settings is needed (the
+   destination folder is set per batch).
