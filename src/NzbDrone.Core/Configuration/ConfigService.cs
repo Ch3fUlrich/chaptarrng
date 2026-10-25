@@ -227,7 +227,7 @@ namespace NzbDrone.Core.Configuration
 
         public bool AllowUnknownReleaseLanguage
         {
-            get { return GetValueBoolean("AllowUnknownReleaseLanguage", true); }
+            get { return GetValueBoolean("AllowUnknownReleaseLanguage", false); }
 
             set { SetValue("AllowUnknownReleaseLanguage", value); }
         }
