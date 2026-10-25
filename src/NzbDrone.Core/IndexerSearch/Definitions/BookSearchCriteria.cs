@@ -15,6 +15,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         public int BookYear { get; set; }
         public string BookIsbn { get; set; }
         public string Disambiguation { get; set; }
+        public string Language { get; set; }
 
         // Title-only query: most indexers accept author/title separately or combine them themselves.
         // Search the main title section; the matcher still validates against the monitored edition title.

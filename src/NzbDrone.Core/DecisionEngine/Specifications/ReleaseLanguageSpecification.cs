@@ -47,6 +47,25 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return Decision.Accept();
             }
 
+            var rowLanguage = (searchCriteria as BookSearchCriteria)?.Language.CanonicalizeLanguage() ?? GetSingleWantedVariantLanguage(subject?.Books);
+
+            if (rowLanguage != null)
+            {
+                var detected = GetDetectedReleaseLanguages(subject);
+
+                if (detected.Count == 0)
+                {
+                    return Decision.RejectSoftFilter("Release language is unknown, but the wanted version requires [{0}]", "Language", rowLanguage);
+                }
+
+                if (!detected.Contains(rowLanguage))
+                {
+                    return Decision.RejectSoftFilter("Release language [{0}] does not match the wanted version language [{1}]", "Language", string.Join(", ", detected), rowLanguage);
+                }
+
+                return Decision.Accept();
+            }
+
             var mediaType = ResolveMediaType(subject, searchCriteria);
             if (!mediaType.HasValue)
             {
@@ -179,6 +198,33 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 .ToList();
 
             return mediaTypes.Count == 1 ? mediaTypes[0] : null;
+        }
+
+        private static string GetSingleWantedVariantLanguage(List<Book> books)
+        {
+            if (books == null || books.Count != 1)
+            {
+                return null;
+            }
+
+            var book = books[0];
+
+            if (book?.TitleSlug == null ||
+                !book.TitleSlug.Contains("_wanted_", StringComparison.OrdinalIgnoreCase) ||
+                book.AddOptions?.AddType != BookAddType.Manual ||
+                !string.IsNullOrWhiteSpace(book.UnitKeyHash))
+            {
+                return null;
+            }
+
+            var language = book.Editions?.FirstOrDefault(e => e != null && e.Monitored)?.Language;
+
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                language = book.LanguageCode;
+            }
+
+            return string.IsNullOrWhiteSpace(language) ? null : language.CanonicalizeLanguage();
         }
 
         private static HashSet<string> GetDetectedReleaseLanguages(RemoteBook subject)

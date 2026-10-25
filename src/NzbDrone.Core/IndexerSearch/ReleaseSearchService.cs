@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch.Definitions;
@@ -25,6 +26,26 @@ namespace NzbDrone.Core.IndexerSearch
 
     public class ReleaseSearchService : ISearchForReleases
     {
+        private static string GetWantedVariantLanguage(Book book)
+        {
+            if (book?.TitleSlug == null ||
+                !book.TitleSlug.Contains("_wanted_", StringComparison.OrdinalIgnoreCase) ||
+                book.AddOptions?.AddType != BookAddType.Manual ||
+                !string.IsNullOrWhiteSpace(book.UnitKeyHash))
+            {
+                return null;
+            }
+
+            var language = book.Editions?.FirstOrDefault(e => e != null && e.Monitored)?.Language;
+
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                language = book.LanguageCode;
+            }
+
+            return string.IsNullOrWhiteSpace(language) ? null : language.CanonicalizeLanguage();
+        }
+
         private readonly IIndexerFactory _indexerFactory;
         private readonly IBookService _bookService;
         private readonly IAuthorService _authorService;
@@ -134,6 +155,7 @@ namespace NzbDrone.Core.IndexerSearch
                 .FirstOrDefault();
 
             searchSpec.BookTitle = GetSearchBookTitle(book, selectedEdition) ?? string.Empty;
+            searchSpec.Language = GetWantedVariantLanguage(book);
 
             // searchSpec.BookIsbn = book.Isbn13;
             if (book.ReleaseDate.HasValue)
