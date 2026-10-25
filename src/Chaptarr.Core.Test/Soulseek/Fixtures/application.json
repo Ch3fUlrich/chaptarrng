@@ -1,0 +1,10 @@
+{
+ "version": {
+  "current": "0.26.2.0",
+  "full": "0.26.2.0"
+ },
+ "server": {
+  "state": "Connected, LoggedIn",
+  "address": "server.example"
+ }
+}

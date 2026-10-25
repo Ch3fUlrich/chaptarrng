@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Indexers;
@@ -29,6 +30,10 @@ namespace NzbDrone.Core.Profiles.Delay
                 DownloadProtocol.Torrent => TorrentDelay,
                 DownloadProtocol.Usenet => UsenetDelay,
                 DownloadProtocol.Direct => 0,
+
+                // Soulseek is a fallback source: it must never be grabbed ahead of a Usenet/torrent
+                // release that is still waiting out its delay, so it waits at least as long as they do.
+                DownloadProtocol.Soulseek => Math.Max(UsenetDelay, TorrentDelay),
                 _ => 0
             };
         }

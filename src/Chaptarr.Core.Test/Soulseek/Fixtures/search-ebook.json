@@ -1,0 +1,97 @@
+{
+ "id": "3f2b7a40-6c1d-4e0a-9d52-0a1b2c3d4e5f",
+ "searchText": "dune",
+ "state": "Completed, TimedOut",
+ "isComplete": true,
+ "responseCount": 3,
+ "fileCount": 7,
+ "lockedFileCount": 0,
+ "token": 1,
+ "responses": [
+  {
+   "username": "peer_alpha",
+   "hasFreeUploadSlot": true,
+   "uploadSpeed": 2097152,
+   "queueLength": 0,
+   "fileCount": 4,
+   "files": [
+    {
+     "filename": "@@share\\Books\\Frank Herbert\\Dune.epub",
+     "size": 1200000,
+     "extension": "epub",
+     "isLocked": false
+    },
+    {
+     "filename": "@@share\\Books\\Frank Herbert\\Dune.pdf",
+     "size": 9000000,
+     "extension": "pdf",
+     "isLocked": false
+    },
+    {
+     "filename": "@@share\\Books\\Frank Herbert\\Dune Messiah.epub",
+     "size": 900000,
+     "extension": "epub",
+     "isLocked": false
+    },
+    {
+     "filename": "@@share\\Books\\Frank Herbert\\cover.jpg",
+     "size": 50000,
+     "extension": "jpg",
+     "isLocked": false
+    }
+   ],
+   "lockedFiles": [],
+   "lockedFileCount": 0,
+   "token": 1
+  },
+  {
+   "username": "peer_beta",
+   "hasFreeUploadSlot": false,
+   "uploadSpeed": 51200,
+   "queueLength": 120,
+   "fileCount": 2,
+   "files": [
+    {
+     "filename": "@@share/ebooks/Herbert, Frank - Dune (1965).mobi",
+     "size": 800000,
+     "extension": "mobi",
+     "isLocked": false
+    },
+    {
+     "filename": "@@share/ebooks/Dune.epub",
+     "size": 5000,
+     "extension": "epub",
+     "isLocked": false
+    }
+   ],
+   "lockedFiles": [],
+   "lockedFileCount": 0,
+   "token": 1
+  },
+  {
+   "username": "peer_delta",
+   "hasFreeUploadSlot": true,
+   "uploadSpeed": 1048576,
+   "queueLength": 2,
+   "fileCount": 1,
+   "files": [
+    {
+     "filename": "@@music\\Albums\\Dune Soundtrack\\01 Track.mp3",
+     "size": 5242880,
+     "extension": "mp3",
+     "isLocked": false
+    }
+   ],
+   "lockedFiles": [
+    {
+     "filename": "@@music\\x\\Frank Herbert - Dune.epub",
+     "size": 1000000,
+     "extension": "epub",
+     "isLocked": true
+    }
+   ],
+   "lockedFileCount": 1,
+   "token": 1
+  }
+ ]
+}

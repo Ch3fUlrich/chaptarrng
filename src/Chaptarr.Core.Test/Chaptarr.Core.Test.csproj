@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Datastore/Fixtures/BookshelfNG.Schema.158.sql" />
+    <EmbeddedResource Include="Soulseek/Fixtures/*.json" />
   </ItemGroup>
 
   <ItemGroup>
