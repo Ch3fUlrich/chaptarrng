@@ -12,6 +12,7 @@ using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Converters;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.GrabBudget;
+using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Extras.Metadata;
@@ -226,6 +227,7 @@ namespace NzbDrone.Core.Datastore
 
             Mapper.Entity<GrabBudgetLog>("GrabBudgetLog").RegisterModel();
             Mapper.Entity<GrabBudgetBatch>("GrabBudgetBatch").RegisterModel();
+            Mapper.Entity<MissingSearchAttempt>("MissingSearchAttempt").RegisterModel();
 
             Mapper.Entity<RemotePathMapping>("RemotePathMappings").RegisterModel();
             Mapper.Entity<Tag>("Tags").RegisterModel();

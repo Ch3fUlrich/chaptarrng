@@ -124,6 +124,61 @@ function IndexerOptions(props) {
                 {...settings.missingBookSearchInterval}
               />
             </FormGroup>
+
+            <FormGroup
+              advancedSettings={advancedSettings}
+              isAdvanced={true}
+            >
+              <FormLabel>
+                {translate('MissingSearchMaxRows')}
+              </FormLabel>
+
+              <FormInputGroup
+                type={inputTypes.NUMBER}
+                name="missingSearchMaxRows"
+                min={0}
+                helpText={translate('MissingSearchMaxRowsHelpText')}
+                onChange={onInputChange}
+                {...settings.missingSearchMaxRows}
+              />
+            </FormGroup>
+
+            <FormGroup
+              advancedSettings={advancedSettings}
+              isAdvanced={true}
+            >
+              <FormLabel>
+                {translate('MissingSearchCooldownHours')}
+              </FormLabel>
+
+              <FormInputGroup
+                type={inputTypes.NUMBER}
+                name="missingSearchCooldownHours"
+                min={0}
+                unit="hours"
+                helpText={translate('MissingSearchCooldownHoursHelpText')}
+                onChange={onInputChange}
+                {...settings.missingSearchCooldownHours}
+              />
+            </FormGroup>
+
+            <FormGroup
+              advancedSettings={advancedSettings}
+              isAdvanced={true}
+            >
+              <FormLabel>
+                {translate('MissingSearchMaxAttempts')}
+              </FormLabel>
+
+              <FormInputGroup
+                type={inputTypes.NUMBER}
+                name="missingSearchMaxAttempts"
+                min={0}
+                helpText={translate('MissingSearchMaxAttemptsHelpText')}
+                onChange={onInputChange}
+                {...settings.missingSearchMaxAttempts}
+              />
+            </FormGroup>
           </Form>
       }
     </FieldSet>
