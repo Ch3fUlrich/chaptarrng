@@ -107,6 +107,7 @@ class BookIndexRow extends Component {
       added,
       statistics,
       genres,
+      availability,
       grabbed,
       ratings,
       tags,
@@ -289,6 +290,42 @@ class BookIndexRow extends Component {
               );
             }
 
+            if (name === 'availability') {
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  {[
+                    availability?.canRead ? translate('Read') : null,
+                    availability?.canListen ? translate('Listen') : null
+                  ].filter(Boolean).join(' / ')}
+                </VirtualTableRowCell>
+              );
+            }
+
+            if (name === 'fileFormats') {
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  {(availability?.fileFormats ?? []).join(', ')}
+                </VirtualTableRowCell>
+              );
+            }
+
+            if (name === 'languages') {
+              return (
+                <VirtualTableRowCell
+                  key={name}
+                  className={styles[name]}
+                >
+                  {(availability?.languages ?? []).join(', ')}
+                </VirtualTableRowCell>
+              );
+            }
+
             if (name === 'path') {
               return (
                 <VirtualTableRowCell
@@ -443,6 +480,7 @@ BookIndexRow.propTypes = {
   added: PropTypes.string,
   statistics: PropTypes.object.isRequired,
   genres: PropTypes.arrayOf(PropTypes.string).isRequired,
+  availability: PropTypes.object,
   grabbed: PropTypes.bool,
   ratings: PropTypes.object.isRequired,
   tags: PropTypes.arrayOf(PropTypes.number).isRequired,

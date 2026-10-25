@@ -160,6 +160,7 @@ class BookDetailsHeader extends Component {
       mediaType,
       narrator,
       durationMinutes,
+      availability,
       releaseDate,
       ratings,
       images,
@@ -273,6 +274,18 @@ class BookDetailsHeader extends Component {
                   mediaType !== 'audiobook' && !!pageCount &&
                     <span className={styles.duration}>
                       {`${pageCount} pages`}
+                    </span>
+                }
+
+                {
+                  !!availability && (availability.canRead || availability.canListen) &&
+                    <span className={styles.duration}>
+                      {[
+                        availability.canRead ? translate('Read') : null,
+                        availability.canListen ? translate('Listen') : null
+                      ].filter(Boolean).join(' / ')}
+                      {availability.fileFormats?.length > 0 && ` (${availability.fileFormats.join(', ')})`}
+                      {availability.languages?.length > 0 && ` · ${availability.languages.join(', ')}`}
                     </span>
                 }
 
@@ -422,6 +435,7 @@ BookDetailsHeader.propTypes = {
   mediaType: PropTypes.string,
   narrator: PropTypes.string,
   durationMinutes: PropTypes.number,
+  availability: PropTypes.object,
   shortDateFormat: PropTypes.string.isRequired,
   isSaving: PropTypes.bool.isRequired,
   author: PropTypes.object,
