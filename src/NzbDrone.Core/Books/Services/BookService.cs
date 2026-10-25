@@ -7,6 +7,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Datastore;
@@ -75,6 +76,7 @@ namespace NzbDrone.Core.Books
             List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null);
             List<Book> GetBooksByBaseId(string baseBookId);
             Book AddWantedEdition(int bookId, int editionId);
+            WantedEditionResult AddWantedEdition(int bookId, WantedEditionSelection selection) { throw new NotImplementedException(); }
             bool ShouldSearchForMediaType(Book book, string mediaType);
             BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored = false, string mediaType = null, bool? downloaded = null);
             BookBucketResource GetBookBuckets(string sortKey, string sortDirection, bool includeUnmonitored, string mediaType, bool? downloaded, bool? monitored, bool? missing = null, bool? wanted = null) => GetBookBuckets(sortKey, sortDirection, includeUnmonitored, mediaType, downloaded);
@@ -1262,7 +1264,8 @@ namespace NzbDrone.Core.Books
             }
 
             return book.TitleSlug.IsNotNullOrWhiteSpace() &&
-                   book.TitleSlug.IndexOf("_copy_", StringComparison.OrdinalIgnoreCase) >= 0;
+                   (book.TitleSlug.IndexOf("_copy_", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    book.TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private static List<Book> GetSyncParticipants(List<Book> workGroup)
@@ -2320,17 +2323,120 @@ namespace NzbDrone.Core.Books
                 .ToList();
         }
 
-        public Book AddWantedEdition(int bookId, int editionId)
+        public WantedEditionResult AddWantedEdition(int bookId, WantedEditionSelection selection)
         {
+            if (selection == null ||
+                ((selection.EditionId ?? 0) <= 0 && selection.Language.IsNullOrWhiteSpace() && selection.Isbn.IsNullOrWhiteSpace() && selection.Asin.IsNullOrWhiteSpace()))
+            {
+                throw new ArgumentException("EditionId, Language, Isbn or Asin is required");
+            }
+
             var baseBook = GetBook(bookId);
             if (baseBook == null)
             {
                 throw new ArgumentException($"Book with ID {bookId} not found");
             }
 
-            if (baseBook.MediaType != BookMediaType.Audiobook)
+            var mediaType = selection.MediaType ?? baseBook.MediaType;
+            var isVariantRequest = selection.Language.IsNotNullOrWhiteSpace() || selection.Isbn.IsNotNullOrWhiteSpace() || selection.Asin.IsNotNullOrWhiteSpace() || mediaType != baseBook.MediaType || selection.AsNewVariant;
+            string language = null;
+            if (selection.Language.IsNotNullOrWhiteSpace())
             {
-                throw new InvalidOperationException("Wanted narrator editions can only be created for audiobook books");
+                language = selection.Language.CanonicalizeLanguage();
+                if (language.IsNullOrWhiteSpace())
+                {
+                    throw new WantedVersionNotFoundException($"Unknown language '{selection.Language}'");
+                }
+            }
+
+            Edition selectedEdition;
+            if ((selection.EditionId ?? 0) > 0)
+            {
+                selectedEdition = _editionService.GetEdition(selection.EditionId.Value);
+                if (selectedEdition == null)
+                {
+                    throw new WantedVersionNotFoundException($"Edition with ID {selection.EditionId} not found");
+                }
+
+                if (selectedEdition.BookId != baseBook.Id)
+                {
+                    throw new InvalidOperationException($"Edition {selection.EditionId} does not belong to book {bookId}");
+                }
+
+                if (IsKnownFormatMismatch(selectedEdition, mediaType))
+                {
+                    throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match media type {mediaType}");
+                }
+
+                if (language.IsNotNullOrWhiteSpace() && !SameLanguage(selectedEdition.Language, language))
+                {
+                    throw new WantedVersionNotFoundException($"Edition {selection.EditionId} does not match language '{selection.Language}'");
+                }
+            }
+            else
+            {
+                selectedEdition = (_editionService.GetEditionsByBook(baseBook.Id) ?? new List<Edition>())
+                    .Where(e => IsWantedFormatEdition(e, mediaType))
+                    .Where(e => language == null || SameLanguage(e.Language, language))
+                    .Where(e => selection.Isbn.IsNullOrWhiteSpace() || SameIsbn(e.Isbn13, selection.Isbn) || SameIsbn(e.Isbn10, selection.Isbn))
+                    .Where(e => selection.Asin.IsNullOrWhiteSpace() || string.Equals(e.Asin, selection.Asin.Trim(), StringComparison.OrdinalIgnoreCase) || (e.Asins ?? new List<string>()).Any(a => string.Equals(a, selection.Asin.Trim(), StringComparison.OrdinalIgnoreCase)))
+                    .OrderByDescending(e => e.Monitored)
+                    .ThenBy(e => e.Id)
+                    .FirstOrDefault();
+
+                if (selectedEdition == null)
+                {
+                    throw new WantedVersionNotFoundException($"No {mediaType} edition of book {bookId} matches language '{selection.Language}', ISBN '{selection.Isbn}', ASIN '{selection.Asin}'");
+                }
+            }
+
+            var rowLanguage = language ?? Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language);
+            return AddWantedEditionForEdition(baseBook, selectedEdition, mediaType, rowLanguage, isVariantRequest, selection.AsNewVariant);
+        }
+
+        private static bool IsWantedFormatEdition(Edition edition, BookMediaType mediaType)
+        {
+            return mediaType == BookMediaType.Audiobook ? edition?.ReadingFormatId == 2 : edition != null && edition.ReadingFormatId != 2;
+        }
+
+        private static bool IsKnownFormatMismatch(Edition edition, BookMediaType mediaType)
+        {
+            return edition?.ReadingFormatId != null && !IsWantedFormatEdition(edition, mediaType);
+        }
+
+        private static bool SameLanguage(string editionLanguage, string canonical)
+        {
+            return string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(editionLanguage), canonical, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool SameIsbn(string isbn, string requested)
+        {
+            return isbn.IsNotNullOrWhiteSpace() && string.Equals(isbn.Replace("-", "").Replace(" ", ""), requested.Replace("-", "").Replace(" ", ""), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string LanguageNameOrNull(string code)
+        {
+            if (code.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            try
+            {
+                return NzbDrone.Core.Parser.IsoLanguages.Find(code)?.EnglishName;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public Book AddWantedEdition(int bookId, int editionId)
+        {
+            var baseBook = GetBook(bookId);
+            if (baseBook == null)
+            {
+                throw new ArgumentException($"Book with ID {bookId} not found");
             }
 
             var selectedEdition = _editionService.GetEdition(editionId);
@@ -2344,9 +2450,36 @@ namespace NzbDrone.Core.Books
                 throw new InvalidOperationException($"Edition {editionId} does not belong to book {bookId}");
             }
 
+            if (IsKnownFormatMismatch(selectedEdition, baseBook.MediaType))
+            {
+                throw new InvalidOperationException($"Edition {editionId} does not match media type {baseBook.MediaType}");
+            }
+
+            return AddWantedEditionForEdition(baseBook, selectedEdition, baseBook.MediaType, Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(selectedEdition.Language), false, false).Book;
+        }
+
+        private WantedEditionResult AddWantedEditionForEdition(Book baseBook, Edition selectedEdition, BookMediaType mediaType, string rowLanguage, bool isVariantRequest, bool asNewVariant)
+        {
+            var editionId = selectedEdition.Id;
+            if (isVariantRequest && !asNewVariant && baseBook.BaseBookId.IsNotNullOrWhiteSpace())
+            {
+                var existing = (_bookRepository.GetBooksByAuthorId(baseBook.AuthorId) ?? new List<Book>())
+                    .Where(b => string.Equals(b.BaseBookId, baseBook.BaseBookId, StringComparison.OrdinalIgnoreCase))
+                    .Where(b => b.Id != baseBook.Id && b.MediaType == mediaType)
+                    .Where(b => b.TitleSlug.IsNotNullOrWhiteSpace() && b.TitleSlug.IndexOf("_wanted_", StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Where(b => string.Equals(Services.EditionMetadataProfileFilter.NormalizeLanguageBucket(b.LanguageCode), rowLanguage, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(b => b.Id)
+                    .FirstOrDefault();
+
+                if (existing != null)
+                {
+                    return new WantedEditionResult { Book = existing, Created = false };
+                }
+            }
+
             // If this book has no files, it is already a "missing" instance; just pin the selected edition here.
             var existingFiles = _mediaFileService.GetFilesByBook(baseBook.Id);
-            if (!existingFiles.Any())
+            if (!isVariantRequest && !existingFiles.Any())
             {
                 var editions = _editionService.GetEditionsByBook(baseBook.Id);
 
@@ -2365,14 +2498,14 @@ namespace NzbDrone.Core.Books
                 }
 
                 baseBook.AnyEditionOk = false;
-                baseBook.AudiobookMonitored = true;
-                baseBook.EbookMonitored = false;
+                baseBook.AudiobookMonitored = mediaType == BookMediaType.Audiobook;
+                baseBook.EbookMonitored = mediaType == BookMediaType.Ebook;
                 baseBook.Monitored = true;
 
                 UpdateBook(baseBook);
                 _editionService.UpdateMany(editions);
 
-                return GetBook(baseBook.Id);
+                return new WantedEditionResult { Book = GetBook(baseBook.Id), Created = true };
             }
 
             static string GetEditionKey(Edition e)
@@ -2431,7 +2564,7 @@ namespace NzbDrone.Core.Books
             {
                 var authorBooks = _bookRepository.GetBooksByAuthorId(baseBook.AuthorId);
                 var wantedCandidates = authorBooks
-                    .Where(b => b.MediaType == BookMediaType.Audiobook)
+                    .Where(b => !isVariantRequest && b.MediaType == mediaType)
                     .Where(b => b.AddOptions?.AddType == BookAddType.Manual)
                     .Where(b => IsSameProviderBackedBook(baseBook, b))
                     .ToList();
@@ -2459,10 +2592,10 @@ namespace NzbDrone.Core.Books
 
                         if (string.Equals(candidateKey, selectedEditionKey, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (!candidate.AudiobookMonitored)
+                            if (!candidate.IsMonitored())
                             {
-                                candidate.AudiobookMonitored = true;
-                                candidate.EbookMonitored = false;
+                                candidate.AudiobookMonitored = mediaType == BookMediaType.Audiobook;
+                                candidate.EbookMonitored = mediaType == BookMediaType.Ebook;
                                 candidate.Monitored = true;
                                 candidate.AnyEditionOk = false;
                                 candidate.AddOptions ??= new AddBookOptions();
@@ -2470,7 +2603,7 @@ namespace NzbDrone.Core.Books
                                 UpdateBook(candidate);
                             }
 
-                            return GetBook(candidate.Id);
+                            return new WantedEditionResult { Book = GetBook(candidate.Id), Created = false };
                         }
                     }
                 }
@@ -2491,7 +2624,7 @@ namespace NzbDrone.Core.Books
             var wantedBook = new Book
             {
                 // Copy metadata/provider IDs from base book so searches and matching stay grounded.
-                TitleSlug = $"{baseSlug}_wanted_{editionId}",
+                TitleSlug = isVariantRequest ? $"{baseSlug}_wanted_{mediaType.ToString().ToLowerInvariant()}_{rowLanguage ?? "und"}_{editionId}" : $"{baseSlug}_wanted_{editionId}",
                 Title = baseBook.Title,
                 CleanTitle = baseBook.CleanTitle,
                 Overview = baseBook.Overview,
@@ -2501,10 +2634,12 @@ namespace NzbDrone.Core.Books
                 HardcoverBookId = baseBook.HardcoverBookId,
                 GoodreadsWorkId = baseBook.GoodreadsWorkId,
                 OpenLibraryWorkId = baseBook.OpenLibraryWorkId,
+                LanguageCode = rowLanguage,
+                LanguageName = LanguageNameOrNull(rowLanguage) ?? selectedEdition.Language,
 
-                MediaType = BookMediaType.Audiobook,
-                AudiobookMonitored = true,
-                EbookMonitored = false,
+                MediaType = mediaType,
+                AudiobookMonitored = mediaType == BookMediaType.Audiobook,
+                EbookMonitored = mediaType == BookMediaType.Ebook,
                 Monitored = true,
                 AnyEditionOk = false,
                 Added = DateTime.UtcNow,
@@ -2522,13 +2657,9 @@ namespace NzbDrone.Core.Books
 
             BookEditionIdentity.ClearBookLevelEditionIdentity(wantedBook);
 
-                // Clone audiobook editions so matching can still discriminate and manual edition protection can work.
-                // Audiobook is defined strictly as ReadingFormatId == 2 (no string heuristics).
-                bool IsAudiobookEdition(Edition e) => e?.ReadingFormatId == 2;
-
             var sourceEditions = baseBook.Editions ?? _editionService.GetEditionsByBook(baseBook.Id);
             var clonedEditions = sourceEditions
-                .Where(e => e.Id == editionId || IsAudiobookEdition(e))
+                .Where(e => e.Id == editionId || IsWantedFormatEdition(e, mediaType))
                 .Select(e =>
                 {
                     var isSelected = e.Id == editionId;
@@ -2588,7 +2719,7 @@ namespace NzbDrone.Core.Books
 
             if (!clonedEditions.Any())
             {
-                throw new InvalidOperationException("No audiobook editions were available to create a wanted narrator variant");
+                throw new InvalidOperationException($"No {mediaType} editions were available to create a wanted variant");
             }
 
             wantedBook.Editions = clonedEditions;
@@ -2617,7 +2748,7 @@ namespace NzbDrone.Core.Books
                 _logger.Warn(ex, "Failed to pin wanted edition for wanted book {0}", wantedBook.Id);
             }
 
-            return GetBook(wantedBook.Id);
+            return new WantedEditionResult { Book = GetBook(wantedBook.Id), Created = true };
         }
 
         private Edition SelectMonitoredEditionForInsert(IEnumerable<Edition> editions, BookMediaType mediaType)

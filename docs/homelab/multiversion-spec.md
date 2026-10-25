@@ -196,7 +196,7 @@ be caught). Keep our edits inside those same regions.
 |---|---|---|
 | Variant row title/slug scheme | `<base>_wanted_<media>_<lang>_<editionId>` | deterministic idempotency key; today `_wanted_<editionId>` (BookService.cs:2494) |
 | Does bundleStatus count unmonitored wanted rows? | yes — a variant row that exists counts in n whether monitored or not, and is missing when it has no file (§4) | monitored-only is a SQL artifact (AuthorStatisticsRepository.cs:102, :110-114), not the wanted-set definition; lane 5 computes over rows that exist |
-| Language code format | ISO 639-1 canonicalized, matched via `CanonicalizeLanguage` used by profile CSV | aligns row language with AllowedLanguages filter (EditionMetadataProfileFilter.cs:114-150) |
+| Language code format | ISO 639-2 as produced by `CanonicalizeLanguage` (src/NzbDrone.Core/Books/Calibre/Extensions.cs:68), the same function the AllowedLanguages profile filter uses | aligns row language with AllowedLanguages filter (EditionMetadataProfileFilter.cs:114-150) |
 | Which exception type maps to 422? | default: 422 via a new dedicated exception caught in BookController.cs:2028-2035; lane 2 may instead return 400 if it prefers no new mapping | nothing in src/Chaptarr.Api.V1 emits 422 today (`grep -rn "422\|UnprocessableEntity"` → 0 hits), so there is no precedent to follow (§3) |
 | No edition of requested language exists | 422, no row created | ledger must fix source metadata, not half-create |
 | Zero wanted versions | status `none`, excluded from bundle rollup — means **no rows exist**, distinct from "rows exist, none filed" (§4) | absence ≠ missing |

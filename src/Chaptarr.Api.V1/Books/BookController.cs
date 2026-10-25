@@ -2004,27 +2004,60 @@ namespace Chaptarr.Api.V1.Books
         [HttpPost("{id}/editions/wanted")]
         public ActionResult<BookResource> AddWantedEdition(int id, [FromBody] AddWantedEditionRequest request)
         {
-            if (request == null || request.EditionId <= 0)
+            if (request == null || (request.EditionId <= 0 && string.IsNullOrWhiteSpace(request.Language) && string.IsNullOrWhiteSpace(request.Isbn) && string.IsNullOrWhiteSpace(request.Asin)))
             {
-                return BadRequest("EditionId is required");
+                return BadRequest("EditionId, Language, Isbn or Asin is required");
             }
 
-	            try
-	            {
-	                var wantedBook = _bookService.AddWantedEdition(id, request.EditionId);
-	                EnsureBookCover(wantedBook.Id, "wantedEdition");
+            BookMediaType? parsedMediaType = null;
+            if (!string.IsNullOrWhiteSpace(request.MediaType))
+            {
+                if (request.MediaType.Equals("audiobook", StringComparison.OrdinalIgnoreCase))
+                {
+                    parsedMediaType = BookMediaType.Audiobook;
+                }
+                else if (request.MediaType.Equals("ebook", StringComparison.OrdinalIgnoreCase))
+                {
+                    parsedMediaType = BookMediaType.Ebook;
+                }
+                else
+                {
+                    return BadRequest("MediaType must be audiobook or ebook");
+                }
+            }
 
-	                if (request.SearchForNewBook)
-	                {
-	                    _commandQueueManager.Push(new BookSearchCommand(new List<int> { wantedBook.Id }));
-	                }
+            var selection = new WantedEditionSelection
+            {
+                EditionId = request.EditionId > 0 ? request.EditionId : (int?)null,
+                Language = request.Language,
+                Isbn = request.Isbn,
+                Asin = request.Asin,
+                MediaType = parsedMediaType,
+                AsNewVariant = request.AsNewVariant
+            };
 
-	                // Ensure the UI updates immediately without requiring a full page refresh.
-	                // SignalR's book handler treats "updated" as upsert (adds if missing).
-	                BroadcastResourceChange(ModelAction.Updated, wantedBook.Id);
+            try
+            {
+                var result = _bookService.AddWantedEdition(id, selection);
+                EnsureBookCover(result.Book.Id, "wantedEdition");
 
-	                return MapToResource(_bookService.GetBook(wantedBook.Id), true);
-	            }
+                if (request.SearchForNewBook && result.Created)
+                {
+                    _commandQueueManager.Push(new BookSearchCommand(new List<int> { result.Book.Id }));
+                }
+
+                // Ensure the UI updates immediately without requiring a full page refresh.
+                // SignalR's book handler treats "updated" as upsert (adds if missing).
+                BroadcastResourceChange(ModelAction.Updated, result.Book.Id);
+
+                var resource = MapToResource(_bookService.GetBook(result.Book.Id), true);
+                resource.WantedVersion = result.Created ? "created" : "existing";
+                return resource;
+            }
+            catch (WantedVersionNotFoundException ex)
+            {
+                return UnprocessableEntity(ex.Message);
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
