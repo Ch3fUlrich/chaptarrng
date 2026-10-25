@@ -225,6 +225,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("GrabBudgetDryRun", value); }
         }
 
+        public bool AllowUnknownReleaseLanguage
+        {
+            get { return GetValueBoolean("AllowUnknownReleaseLanguage", true); }
+
+            set { SetValue("AllowUnknownReleaseLanguage", value); }
+        }
+
         public bool CreateEmptyAuthorFolders
         {
             get { return GetValueBoolean("CreateEmptyAuthorFolders", false); }

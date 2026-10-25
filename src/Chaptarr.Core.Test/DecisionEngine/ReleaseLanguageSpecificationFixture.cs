@@ -16,9 +16,17 @@ namespace Chaptarr.Core.Test.DecisionEngine
     [TestFixture]
     public class ReleaseLanguageSpecificationFixture
     {
+        private static bool AllowUnknown = true;
+
+        [SetUp]
+        public void ResetAllowUnknown()
+        {
+            AllowUnknown = true;
+        }
+
         private static ReleaseLanguageSpecification CreateSubject(params MetadataProfile[] profiles)
         {
-            return new ReleaseLanguageSpecification(new StubMetadataProfileService(profiles), LogManager.GetCurrentClassLogger());
+            return new ReleaseLanguageSpecification(new StubMetadataProfileService(profiles), LanguageGateConfig.Create(AllowUnknown), LogManager.GetCurrentClassLogger());
         }
 
         [Test]

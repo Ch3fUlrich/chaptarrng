@@ -30,6 +30,9 @@ namespace NzbDrone.Core.Configuration
         int GrabBudgetMaxConsecutiveFailures { get; set; }
         bool GrabBudgetDryRun { get; set; }
 
+        // Per-row language gate: let releases with no detectable language through for explicit-language rows.
+        bool AllowUnknownReleaseLanguage { get; set; }
+
         //Media Management
         bool AutoUnmonitorPreviouslyDownloadedBooks { get; set; }
         string RecycleBin { get; set; }

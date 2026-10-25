@@ -18,6 +18,7 @@ namespace Chaptarr.Api.V1.Config
         public bool GrabBudgetApplyToInteractive { get; set; }
         public int GrabBudgetMaxConsecutiveFailures { get; set; }
         public bool GrabBudgetDryRun { get; set; }
+        public bool AllowUnknownReleaseLanguage { get; set; }
     }
 
     public static class DownloadClientConfigResourceMapper
@@ -38,7 +39,8 @@ namespace Chaptarr.Api.V1.Config
                 GrabBudgetMaxActiveQueue = model.GrabBudgetMaxActiveQueue,
                 GrabBudgetApplyToInteractive = model.GrabBudgetApplyToInteractive,
                 GrabBudgetMaxConsecutiveFailures = model.GrabBudgetMaxConsecutiveFailures,
-                GrabBudgetDryRun = model.GrabBudgetDryRun
+                GrabBudgetDryRun = model.GrabBudgetDryRun,
+                AllowUnknownReleaseLanguage = model.AllowUnknownReleaseLanguage
             };
         }
     }

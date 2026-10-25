@@ -2217,7 +2217,15 @@ namespace Chaptarr.Api.V1.Books
             }
             catch (WantedVersionNotFoundException ex)
             {
-                return UnprocessableEntity(ex.Message);
+                // Structured body so a caller (the acquire bridge) can log WHY there is no such version.
+                return UnprocessableEntity(new
+                {
+                    reason = ex.Reason,
+                    message = ex.Message,
+                    bookId = ex.BookId ?? id,
+                    mediaType = ex.MediaType,
+                    language = ex.Language
+                });
             }
             catch (ArgumentException ex)
             {

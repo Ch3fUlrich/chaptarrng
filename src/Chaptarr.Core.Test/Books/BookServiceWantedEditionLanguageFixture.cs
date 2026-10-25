@@ -575,8 +575,10 @@ namespace Chaptarr.Core.Test.Books
 
             var selection = new WantedEditionSelection { Language = "zz-notalanguage", MediaType = BookMediaType.Ebook };
 
-            Assert.Throws<WantedVersionNotFoundException>(() => sut.AddWantedEdition(baseBook.Id, selection));
-            
+            var ex = Assert.Throws<WantedVersionNotFoundException>(() => sut.AddWantedEdition(baseBook.Id, selection));
+            Assert.That(ex.Reason, Is.EqualTo(WantedVersionNotFoundReason.UnknownLanguage));
+            Assert.That(ex.Language, Is.EqualTo("zz-notalanguage"));
+
             var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
             Assert.That(insertedRows, Is.EqualTo(1));
         }
@@ -618,8 +620,13 @@ namespace Chaptarr.Core.Test.Books
 
             var selection = new WantedEditionSelection { Language = "fr", MediaType = BookMediaType.Ebook };
 
-            Assert.Throws<WantedVersionNotFoundException>(() => sut.AddWantedEdition(baseBook.Id, selection));
-            
+            var ex = Assert.Throws<WantedVersionNotFoundException>(() => sut.AddWantedEdition(baseBook.Id, selection));
+            Assert.That(ex.Reason, Is.EqualTo(WantedVersionNotFoundReason.NoEditionInLanguage));
+            Assert.That(ex.BookId, Is.EqualTo(baseBook.Id));
+            Assert.That(ex.MediaType, Is.EqualTo("Ebook"));
+            Assert.That(ex.Language, Is.EqualTo("fr"));
+            Assert.That(ex.Message, Does.Contain("language 'fr'"));
+
             var insertedRows = repo.All().Count(b => b.BaseBookId == "hc:1");
             Assert.That(insertedRows, Is.EqualTo(1));
         }
