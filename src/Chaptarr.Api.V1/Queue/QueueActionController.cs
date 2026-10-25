@@ -3,7 +3,11 @@ using Chaptarr.Http;
 using Chaptarr.Http.REST;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.GrabBudget;
 using NzbDrone.Core.Download.Pending;
+using NzbDrone.Core.Exceptions;
+using NzbDrone.Core.Queue;
+using HttpStatusCode = System.Net.HttpStatusCode;
 
 namespace Chaptarr.Api.V1.Queue
 {
@@ -12,12 +16,31 @@ namespace Chaptarr.Api.V1.Queue
     {
         private readonly IPendingReleaseService _pendingReleaseService;
         private readonly IDownloadService _downloadService;
+        private readonly IGrabBudgetService _grabBudgetService;
+        private readonly IQueueService _queueService;
 
         public QueueActionController(IPendingReleaseService pendingReleaseService,
-                                     IDownloadService downloadService)
+                                     IDownloadService downloadService,
+                                     IGrabBudgetService grabBudgetService = null,
+                                     IQueueService queueService = null)
         {
             _pendingReleaseService = pendingReleaseService;
             _downloadService = downloadService;
+            _grabBudgetService = grabBudgetService;
+            _queueService = queueService;
+        }
+
+        // Manual grab of a pending release: same interactive budget rule as the release grab endpoint.
+        private async Task GrabPending(NzbDrone.Core.Parser.Model.RemoteBook remoteBook)
+        {
+            var budget = _grabBudgetService?.CheckInteractive(_queueService?.GetQueue()?.Count ?? 0);
+            if (budget != null && !budget.Allowed)
+            {
+                throw new NzbDroneClientException(HttpStatusCode.TooManyRequests, budget.Reason);
+            }
+
+            await _downloadService.DownloadReport(remoteBook, null);
+            _grabBudgetService?.RecordInteractiveGrab();
         }
 
         [HttpPost("grab/{id:int}")]
@@ -30,7 +53,7 @@ namespace Chaptarr.Api.V1.Queue
                 throw new NotFoundException();
             }
 
-            await _downloadService.DownloadReport(pendingRelease.RemoteBook, null);
+            await GrabPending(pendingRelease.RemoteBook);
 
             return new { };
         }
@@ -48,7 +71,7 @@ namespace Chaptarr.Api.V1.Queue
                     throw new NotFoundException();
                 }
 
-                await _downloadService.DownloadReport(pendingRelease.RemoteBook, null);
+                await GrabPending(pendingRelease.RemoteBook);
             }
 
             return new { };

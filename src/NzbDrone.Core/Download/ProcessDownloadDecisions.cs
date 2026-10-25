@@ -118,7 +118,7 @@ namespace NzbDrone.Core.Download
                 if (budgetEnabled)
                 {
                     var effectiveGrabbedCount = isDryRun ? wouldGrabCount : grabbed.Count;
-                    var budget = _grabBudgetService.CheckBudget(effectiveGrabbedCount, queueSnapshot + effectiveGrabbedCount);
+                    var budget = _grabBudgetService.CheckBudget(effectiveGrabbedCount, queueSnapshot + effectiveGrabbedCount, additionalDailyGrabs: isDryRun ? wouldGrabCount : 0);
 
                     if (!budget.Allowed)
                     {
@@ -309,14 +309,16 @@ namespace NzbDrone.Core.Download
                 return ProcessedDecisionResult.Pending;
             }
 
-            if (IsGrabBudgetEnabled() && _configService.GrabBudgetApplyToInteractive)
+            // Single-release path used by the indexer release push: unattended ingest, so the budget always applies
+            // (GrabBudgetApplyToInteractive only governs the UI grab endpoints).
+            if (IsGrabBudgetEnabled())
             {
                 var budget = _grabBudgetService.CheckBudget(0, GetActiveQueueCount());
 
                 if (!budget.Allowed)
                 {
                     GrabBudgetResult = budget;
-                    _logger.Info("Grab budget exhausted ({0}): {1} Skipping interactive grab.", budget.StopReason, budget.Reason);
+                    _logger.Info("Grab budget exhausted ({0}): {1} Skipping pushed release.", budget.StopReason, budget.Reason);
 
                     return ProcessedDecisionResult.Skipped;
                 }
@@ -332,7 +334,7 @@ namespace NzbDrone.Core.Download
             {
                 _pendingReleaseService.Add(decision, PendingReleaseReason.DownloadClientUnavailable);
             }
-            else if (result == ProcessedDecisionResult.Grabbed && IsGrabBudgetEnabled() && _configService.GrabBudgetApplyToInteractive)
+            else if (result == ProcessedDecisionResult.Grabbed && IsGrabBudgetEnabled())
             {
                 _grabBudgetService.RecordGrab();
             }

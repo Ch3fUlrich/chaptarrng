@@ -53,6 +53,26 @@ namespace Chaptarr.Core.Test.DecisionEngine
             }
         }
 
+        [TestCase("The Witcher", "The Witcher - 001 - Hexen gibt es doch", true)]
+        [TestCase("Diary of a Wimpy Kid", "Diary of a Wimpy Kid - 001 - Hexen gibt es doch", true)]
+        [TestCase("Babylon 5", "Babylon 5 - 001 - Hexen gibt es doch", true)]
+        [TestCase("Babylon 5", "Babylon 5 - Hexen gibt es doch", false)]
+        public void leading_series_episode_uses_raw_series_tokens(string seriesName, string releaseTitle, bool expectedAccepted)
+        {
+            var targetBook = new Book { Title = "Hexen gibt es doch", SeriesName = seriesName, SeriesPosition = "1", MediaType = BookMediaType.Audiobook };
+            var criteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Elfie Donnelly" },
+                Books = new List<Book> { targetBook },
+                InteractiveSearch = true
+            };
+            var remoteBook = new RemoteBook { Release = new ReleaseInfo { Title = releaseTitle, Author = "", PublishDate = DateTime.UtcNow } };
+
+            var decision = new ReleaseTitleMatchSpecification(LogManager.GetCurrentClassLogger()).IsSatisfiedBy(remoteBook, criteria);
+
+            Assert.That(decision.Accepted, Is.EqualTo(expectedAccepted), decision.Reason);
+        }
+
         [Test]
         public void should_treat_series_author_as_positive_identity_evidence()
         {

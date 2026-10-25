@@ -216,12 +216,29 @@ namespace Chaptarr.Core.Test.DecisionEngine
             Assert.That(decision.Accepted, Is.True);
         }
 
-        // A release matched to several wanted-version rows is judged against the row the title match names.
+        // A release matched to several wanted-version rows is judged against the row the title match names (not books[0]).
+        // The profile allows fra, so only the matched-row rule can reject the French release.
         [TestCase("Frank.Herbert.Dune.2021.GERMAN.RETAiL.ePub.eBOOK-GRP", true)]
         [TestCase("Frank.Herbert.Dune.2021.FRENCH.RETAiL.ePub.eBOOK-GRP", false)]
         public void ReleaseLanguageSpecificationVariant_MultipleMatchedRowsUseTheTitleMatchedRow(string title, bool accepted)
         {
-            var subject = CreateSubject(BuildBothLanguageProfile());
+            var (remoteBook, subject) = BuildTwoRows(title, isMatch: true);
+
+            Assert.That(subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria()).Accepted, Is.EqualTo(accepted));
+        }
+
+        // A failed best-effort match names no row, so it must not drive the permanent language gate.
+        [Test]
+        public void ReleaseLanguageSpecificationVariant_UnconfirmedMatchRowIsIgnored()
+        {
+            var (remoteBook, subject) = BuildTwoRows("Frank.Herbert.Dune.2021.FRENCH.RETAiL.ePub.eBOOK-GRP", isMatch: false);
+
+            Assert.That(subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria()).Accepted, Is.True);
+        }
+
+        private (RemoteBook, ReleaseLanguageSpecification) BuildTwoRows(string title, bool isMatch)
+        {
+            var subject = CreateSubject(new MetadataProfile { Id = 2, Name = "Variant Ebook Default", AllowedLanguages = "eng, deu, fra" });
             var german = BuildVariantRow("dune_wanted_ebook_deu_101");
             var french = BuildVariantRow("dune_wanted_ebook_fra_102");
             french.Id = 102;
@@ -229,10 +246,11 @@ namespace Chaptarr.Core.Test.DecisionEngine
             french.Editions[0].Language = "fra";
 
             var remoteBook = BuildRemoteBook(title, profileId: 2, bookTitle: "Dune", authorName: "Frank Herbert", row: german);
-            remoteBook.Books = new List<Book> { german, french };
+            remoteBook.Books = new List<Book> { french, german };
             remoteBook.SearchCriteriaMatch.Book = german;
+            remoteBook.SearchCriteriaMatch.IsMatch = isMatch;
 
-            Assert.That(subject.IsSatisfiedBy(remoteBook, new BookSearchCriteria()).Accepted, Is.EqualTo(accepted));
+            return (remoteBook, subject);
         }
 
         // R2: the non-ASCII title tokens must survive source encoding and Unicode normalisation (NFC and NFD).

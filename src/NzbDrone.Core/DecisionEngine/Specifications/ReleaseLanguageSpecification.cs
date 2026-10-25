@@ -213,7 +213,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
         // title match names one, otherwise the single language shared by all matched rows (all of them variants).
         private static string GetWantedVariantLanguage(RemoteBook subject)
         {
-            var matched = subject?.SearchCriteriaMatch?.Book?.GetWantedVariantLanguage();
+            // Only a confirmed match names a row; a failed best-effort match carries a candidate that proves nothing.
+            var match = subject?.SearchCriteriaMatch;
+            var matched = match?.IsMatch == true ? match.Book?.GetWantedVariantLanguage() : null;
             if (matched != null)
             {
                 return matched;

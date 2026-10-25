@@ -10,7 +10,7 @@ namespace NzbDrone.Core.Download.GrabBudget
         int GrabsInLastDay(DateTime utcNow);
         void RecordGrab(DateTime? grabbedAt = null);
         void Prune(DateTime? utcNow = null);
-        GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null);
+        GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null, int additionalDailyGrabs = 0);
         void RecordBatch(int grabbed, int skipped, int failed, GrabBudgetStopReason stopReason, DateTime? startedAt = null, string details = null);
         void RecordBatch(GrabBudgetBatch batch);
         void PruneBatches(DateTime? utcNow = null);
@@ -65,7 +65,8 @@ namespace NzbDrone.Core.Download.GrabBudget
             _repository.DeleteBefore(now - RollingWindow);
         }
 
-        public GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null)
+        // additionalDailyGrabs: grabs of this run that are not persisted yet (dry run counts its would-grabs here).
+        public GrabBudgetResult CheckBudget(int grabbedThisRun, int activeQueueCount, DateTime? utcNow = null, int additionalDailyGrabs = 0)
         {
             if (!_configService.GrabBudgetEnabled)
             {
@@ -84,7 +85,7 @@ namespace NzbDrone.Core.Download.GrabBudget
                     $"Grab budget per-run limit reached ({grabbedThisRun}/{maxPerRun}).");
             }
 
-            if (maxPerDay > 0 && GrabsInLastDay(now) >= maxPerDay)
+            if (maxPerDay > 0 && GrabsInLastDay(now) + additionalDailyGrabs >= maxPerDay)
             {
                 return GrabBudgetResult.Block(
                     GrabBudgetStopReason.MaxPerDayReached,

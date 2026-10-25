@@ -83,7 +83,7 @@ namespace NzbDrone.Core.Indexers.Newznab
                     requestedMediaType.Value.ToString().ToLowerInvariant());
             }
 
-            var mainTitle = BookSearchCriteria.GetMainSearchTitle(searchCriteria.BookTitle, searchCriteria.Author?.Name);
+            var mainTitle = BookSearchCriteria.GetMainSearchTitle(searchCriteria.EffectiveSearchTitle, searchCriteria.Author?.Name);
             var hasBookTitle = !string.IsNullOrWhiteSpace(mainTitle);
 
             // BookQuery throws on an empty title, so only evaluate the queries when there is one.
@@ -315,7 +315,7 @@ namespace NzbDrone.Core.Indexers.Newznab
                 return false;
             }
 
-            var mainTitle = BookSearchCriteria.GetMainSearchTitle(searchCriteria.BookTitle, searchCriteria.Author?.Name);
+            var mainTitle = BookSearchCriteria.GetMainSearchTitle(searchCriteria.EffectiveSearchTitle, searchCriteria.Author?.Name);
             if (string.IsNullOrWhiteSpace(mainTitle))
             {
                 return false;

@@ -15,6 +15,9 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
 
         public string BookTitle { get; set; }
         public string SearchTitleOverride { get; set; }
+
+        /// <summary>The title every query derives from: the alternate-title override when it has text, otherwise the book title.</summary>
+        public string EffectiveSearchTitle => string.IsNullOrWhiteSpace(SearchTitleOverride) ? BookTitle : SearchTitleOverride;
         public int BookYear { get; set; }
         public string BookIsbn { get; set; }
         public string Disambiguation { get; set; }
@@ -25,9 +28,9 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         // Including the author here can double-apply author terms (hurting recall) and breaks book-search endpoints
         // that expect a clean title (e.g., Newznab's t=book&author=...&title=...).
         /// <summary>Main-title search query: the book title with any author prefix and parenthetical series removed, reduced to a compact query.</summary>
-        public string BookQuery => GetQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
+        public string BookQuery => GetQueryTitle(GetMainSearchTitle(EffectiveSearchTitle, Author?.Name));
         /// <summary>Title query with German umlauts transliterated (ae/oe/ue/ss); null when the title has none.</summary>
-        public string BookQueryTransliterated => GetTransliteratedQueryTitle(GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name));
+        public string BookQueryTransliterated => GetTransliteratedQueryTitle(GetMainSearchTitle(EffectiveSearchTitle, Author?.Name));
 
         // Audible-style titles end in a series position ("..., Book 4") that release names almost never
         // carry. Null when the title has no such suffix, so callers can skip the extra search tier.
@@ -35,7 +38,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         {
             get
             {
-                var mainTitle = GetMainSearchTitle(SearchTitleOverride ?? BookTitle, Author?.Name)?.Trim();
+                var mainTitle = GetMainSearchTitle(EffectiveSearchTitle, Author?.Name)?.Trim();
                 if (string.IsNullOrWhiteSpace(mainTitle))
                 {
                     return null;
@@ -52,9 +55,9 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
             }
         }
 
-        /// <summary>Series name from the first book in the search, or null when no book has a series.</summary>
+        /// <summary>Series name of the FIRST book in the search (later books are ignored), or null when it has none.</summary>
         public string SeriesName => Books?.FirstOrDefault()?.SeriesName;
-        /// <summary>Series position from the first book in the search, or null when no book has a position.</summary>
+        /// <summary>Series position of the FIRST book in the search (later books are ignored), or null when it has none.</summary>
         public string SeriesPosition => Books?.FirstOrDefault()?.SeriesPosition;
 
         /// <summary>Series name reduced to a compact search query, or null when the series name is missing.</summary>
@@ -70,7 +73,7 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
                     return null;
                 }
 
-                var mainTitle = GetMainSearchTitle(BookTitle, Author?.Name);
+                var mainTitle = GetMainSearchTitle(EffectiveSearchTitle, Author?.Name);
                 if (string.IsNullOrWhiteSpace(mainTitle))
                 {
                     return null;

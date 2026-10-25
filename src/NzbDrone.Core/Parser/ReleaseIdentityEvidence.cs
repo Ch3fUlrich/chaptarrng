@@ -106,7 +106,9 @@ namespace NzbDrone.Core.Parser
             }
 
             var releaseTokens = ReleaseTitleMatchScorer.Tokenize(cleanedReleaseTitle);
-            var seriesTokens = GetMeaningfulSeriesTokens(ReleaseTitleMatchScorer.Tokenize(targetBook.SeriesName));
+            // Raw (unfiltered) series tokens: the release prefix is compared token-for-token, so connector words
+            // ("The", "of", "and") and series-internal numbers must stay on both sides of the alignment.
+            var seriesTokens = ReleaseTitleMatchScorer.Tokenize(targetBook.SeriesName);
             if (releaseTokens.Count == 0 || seriesTokens.Count == 0 || releaseTokens.Count <= seriesTokens.Count)
             {
                 return false;
@@ -118,16 +120,6 @@ namespace NzbDrone.Core.Parser
             }
 
             var nextIndex = seriesTokens.Count;
-            if (releaseTokens[nextIndex] == "-")
-            {
-                nextIndex++;
-            }
-
-            if (nextIndex >= releaseTokens.Count)
-            {
-                return false;
-            }
-
             var episodeToken = releaseTokens[nextIndex];
             if (IsPureNumberToken(episodeToken))
             {

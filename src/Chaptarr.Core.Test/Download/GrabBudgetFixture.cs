@@ -118,7 +118,7 @@ namespace Chaptarr.Core.Test.Download
         }
 
         [Test]
-        public async Task interactive_grab_exempt_by_default_when_daily_limit_reached()
+        public async Task pushed_release_blocked_at_daily_limit_even_when_interactive_not_applied()
         {
             var repo = InMemoryGrabBudgetLogRepository.Create();
 
@@ -136,14 +136,14 @@ namespace Chaptarr.Core.Test.Download
 
             Assert.Multiple(() =>
             {
-                Assert.That(result, Is.EqualTo(ProcessedDecisionResult.Grabbed));
-                Assert.That(downloads.Downloaded, Has.Count.EqualTo(1));
+                Assert.That(result, Is.EqualTo(ProcessedDecisionResult.Skipped));
+                Assert.That(downloads.Downloaded, Is.Empty);
                 Assert.That(repo.Store, Has.Count.EqualTo(25));
             });
         }
 
         [Test]
-        public async Task interactive_grab_blocked_when_applied_and_daily_limit_reached()
+        public async Task pushed_release_blocked_at_daily_limit_when_interactive_applied()
         {
             var repo = InMemoryGrabBudgetLogRepository.Create();
 
@@ -206,7 +206,7 @@ namespace Chaptarr.Core.Test.Download
         }
 
         [Test]
-        public async Task interactive_grab_exempt_by_default_does_not_add_repo_rows()
+        public async Task pushed_release_is_recorded_even_when_interactive_not_applied()
         {
             var repo = InMemoryGrabBudgetLogRepository.Create();
             var config = GrabBudgetConfigProxy.Create(enabled: true, maxPerRun: 5, maxPerDay: 25, applyToInteractive: false);
@@ -220,7 +220,7 @@ namespace Chaptarr.Core.Test.Download
             {
                 Assert.That(result, Is.EqualTo(ProcessedDecisionResult.Grabbed));
                 Assert.That(downloads.Downloaded, Has.Count.EqualTo(1));
-                Assert.That(repo.Store, Is.Empty);
+                Assert.That(repo.Store, Has.Count.EqualTo(1));
             });
         }
 

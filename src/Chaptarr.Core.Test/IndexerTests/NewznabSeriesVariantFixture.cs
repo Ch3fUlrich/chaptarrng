@@ -561,5 +561,55 @@ namespace Chaptarr.Core.Test.IndexerTests
             Assert.That(urls[0], Does.Contain("title=Hexe%20Hilda%20Zauber%20im%20Garten"));
             Assert.That(urls[2], Does.Contain("q=Hexe%20Hilda%20Zauber%20im%20Garten"));
         }
+
+        [TestCase("")]
+        [TestCase("   ")]
+        public void blank_title_override_falls_back_to_book_title(string overrideTitle)
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "Zauber im Garten",
+                SearchTitleOverride = overrideTitle,
+                Books = new List<Book> { new Book { SeriesName = "Hexe Hilda", SeriesPosition = "1" } }
+            };
+
+            Assert.That(searchCriteria.EffectiveSearchTitle, Is.EqualTo("Zauber im Garten"));
+            Assert.DoesNotThrow(() => generator.GetSearchRequests(searchCriteria));
+            Assert.That(searchCriteria.SeriesTitleQuery, Does.Contain("Zauber"));
+        }
+
+        [Test]
+        public void populated_title_override_without_book_title_still_builds_every_tier()
+        {
+            var generator = CreateNewznabGenerator();
+            var searchCriteria = new BookSearchCriteria
+            {
+                Author = new Author { Name = "Mara Lindqvist" },
+                BookTitle = "",
+                SearchTitleOverride = "Zauber im Garten",
+                Books = new List<Book> { new Book { SeriesName = "Hexe Hilda", SeriesPosition = "1" } }
+            };
+
+            var chain = generator.GetSearchRequests(searchCriteria);
+            var urls = chain.GetTier(0).SelectMany(s => s.Select(r => r.HttpRequest.Url.FullUri)).ToList();
+
+            Assert.That(urls, Is.Not.Empty);
+            Assert.That(searchCriteria.SeriesTitleQuery, Does.Contain("Zauber"));
+        }
+
+        [Test]
+        public void series_comes_from_the_first_book_only()
+        {
+            var searchCriteria = new BookSearchCriteria
+            {
+                BookTitle = "X",
+                Books = new List<Book> { new Book(), new Book { SeriesName = "Later", SeriesPosition = "2" } }
+            };
+
+            Assert.That(searchCriteria.SeriesName, Is.Null);
+            Assert.That(searchCriteria.SeriesPositionQuery, Is.Null);
+        }
     }
 }
