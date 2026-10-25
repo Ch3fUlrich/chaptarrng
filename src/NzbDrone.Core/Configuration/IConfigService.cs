@@ -33,6 +33,13 @@ namespace NzbDrone.Core.Configuration
         // Per-row language gate: let releases with no detectable language through for explicit-language rows.
         bool AllowUnknownReleaseLanguage { get; set; }
 
+        // Wanted versions: requesting a work fans out into every language x medium cell below.
+        // CSV values; empty format list = any format accepted for that medium.
+        string WantedVersionLanguages { get; set; }
+        string WantedVersionEbookFormats { get; set; }
+        string WantedVersionAudiobookFormats { get; set; }
+        bool WantedVersionsFanOutOnMonitor { get; set; }
+
         //Media Management
         bool AutoUnmonitorPreviouslyDownloadedBooks { get; set; }
         string RecycleBin { get; set; }

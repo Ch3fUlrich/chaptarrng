@@ -2239,6 +2239,36 @@ namespace Chaptarr.Api.V1.Books
             }
         }
 
+        // Fan one work out into every wanted (medium x language) version row (config/wantedversions).
+        [HttpPost("{id}/versions/request")]
+        public ActionResult<List<WantedVersionCellResult>> RequestAllVersions(int id, [FromServices] IWantedVersionService wantedVersionService, [FromQuery] bool searchForNewBook = false)
+        {
+            if (_bookService.GetBook(id) == null)
+            {
+                return NotFound();
+            }
+
+            if (!wantedVersionService.GetWantedLanguages().Any())
+            {
+                return UnprocessableEntity(new { reason = "no_wanted_languages", message = "Configure wanted languages under Settings > Versions first" });
+            }
+
+            var cells = wantedVersionService.RequestAllVersions(id);
+            var created = cells.Where(c => c.Status == "created" && c.BookId.HasValue).Select(c => c.BookId.Value).ToList();
+
+            foreach (var bookId in cells.Where(c => c.BookId.HasValue).Select(c => c.BookId.Value).Distinct())
+            {
+                BroadcastResourceChange(ModelAction.Updated, bookId);
+            }
+
+            if (searchForNewBook && created.Any())
+            {
+                _commandQueueManager.Push(new BookSearchCommand(created));
+            }
+
+            return cells;
+        }
+
         [NonAction]
         public void Handle(BookGrabbedEvent message)
         {
