@@ -15,6 +15,10 @@ namespace NzbDrone.Core.Download.GrabBudget
         void RecordBatch(GrabBudgetBatch batch);
         void PruneBatches(DateTime? utcNow = null);
         List<GrabBudgetBatch> GetLatestBatches(int count = 20);
+        GrabBudgetResult CheckInteractive(int activeQueueCount, DateTime? utcNow = null);
+        void RecordInteractiveGrab(DateTime? grabbedAt = null);
+        void SetEnabled(bool enabled);
+        void SetDryRun(bool dryRun);
     }
 
     public class GrabBudgetService : IGrabBudgetService
@@ -141,6 +145,36 @@ namespace NzbDrone.Core.Download.GrabBudget
         public List<GrabBudgetBatch> GetLatestBatches(int count = 20)
         {
             return _batchRepository?.Latest(count) ?? new List<GrabBudgetBatch>();
+        }
+
+        // Interactive (UI) grabs only count against the budget when the operator opted in.
+        public GrabBudgetResult CheckInteractive(int activeQueueCount, DateTime? utcNow = null)
+        {
+            if (!_configService.GrabBudgetEnabled || !_configService.GrabBudgetApplyToInteractive)
+            {
+                return GrabBudgetResult.Allow();
+            }
+
+            return CheckBudget(0, activeQueueCount, utcNow);
+        }
+
+        public void RecordInteractiveGrab(DateTime? grabbedAt = null)
+        {
+            if (_configService.GrabBudgetEnabled && _configService.GrabBudgetApplyToInteractive)
+            {
+                RecordGrab(grabbedAt);
+            }
+        }
+
+        // Explicit single-field switches: unlike a full config PUT they cannot reset any other budget setting.
+        public void SetEnabled(bool enabled)
+        {
+            _configService.GrabBudgetEnabled = enabled;
+        }
+
+        public void SetDryRun(bool dryRun)
+        {
+            _configService.GrabBudgetDryRun = dryRun;
         }
     }
 }

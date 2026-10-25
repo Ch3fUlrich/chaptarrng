@@ -32,6 +32,7 @@ namespace NzbDrone.Core.Download
         private readonly IQueueService _queueService;
         private readonly IIndexerStatusService _indexerStatusService;
 
+        // Result of the most recently completed call; diagnostic only. Decisions inside a call use a local copy.
         public GrabBudgetResult GrabBudgetResult { get; private set; } = GrabBudgetResult.Allow();
 
         public ProcessDownloadDecisions(IDownloadService downloadService,
@@ -55,7 +56,8 @@ namespace NzbDrone.Core.Download
 
         public async Task<ProcessedDecisions> ProcessDecisions(List<DownloadDecision> decisions)
         {
-            GrabBudgetResult = GrabBudgetResult.Allow();
+            // Run-local: this class is a singleton and RSS sync and search commands call it concurrently.
+            var budgetResult = GrabBudgetResult.Allow();
             var runStartedAt = DateTime.UtcNow;
 
             var qualifiedReports = GetQualifiedReports(decisions);
@@ -120,9 +122,9 @@ namespace NzbDrone.Core.Download
 
                     if (!budget.Allowed)
                     {
-                        if (GrabBudgetResult.StopReason == GrabBudgetStopReason.None)
+                        if (budgetResult.StopReason == GrabBudgetStopReason.None)
                         {
-                            GrabBudgetResult = budget;
+                            budgetResult = budget;
                         }
 
                         if (isDryRun)
@@ -235,12 +237,12 @@ namespace NzbDrone.Core.Download
 
                             if (budgetEnabled && maxConsecutiveFailures > 0 && consecutiveFailures >= maxConsecutiveFailures)
                             {
-                                GrabBudgetResult = GrabBudgetResult.Block(
+                                budgetResult = GrabBudgetResult.Block(
                                     GrabBudgetStopReason.ConsecutiveFailures,
                                     $"Grab budget stopped: {consecutiveFailures} consecutive grab failure(s).");
                                 _logger.Warn("Grab budget stopped ({0}): {1} Leaving {2} of {3} prioritized decision(s) un-grabbed.",
-                                    GrabBudgetResult.StopReason,
-                                    GrabBudgetResult.Reason,
+                                    budgetResult.StopReason,
+                                    budgetResult.Reason,
                                     prioritizedDecisions.Count - index - 1,
                                     prioritizedDecisions.Count);
                                 stopRun = true;
@@ -263,9 +265,9 @@ namespace NzbDrone.Core.Download
                 }
             }
 
-            if (budgetEnabled && indexerCooldownSkipped && GrabBudgetResult.StopReason == GrabBudgetStopReason.None)
+            if (budgetEnabled && indexerCooldownSkipped && budgetResult.StopReason == GrabBudgetStopReason.None)
             {
-                GrabBudgetResult = GrabBudgetResult.Block(
+                budgetResult = GrabBudgetResult.Block(
                     GrabBudgetStopReason.IndexerCooldown,
                     "One or more releases were skipped due to indexer cooldown.");
             }
@@ -278,8 +280,10 @@ namespace NzbDrone.Core.Download
             if (budgetEnabled && decisions != null && decisions.Any())
             {
                 var details = isDryRun && detailsLines != null ? string.Join("\n", detailsLines) : null;
-                _grabBudgetService.RecordBatch(isDryRun ? wouldGrabCount : grabbed.Count, skippedCount, failedCount, GrabBudgetResult.StopReason, runStartedAt, details);
+                _grabBudgetService.RecordBatch(isDryRun ? wouldGrabCount : grabbed.Count, skippedCount, failedCount, budgetResult.StopReason, runStartedAt, details);
             }
+
+            GrabBudgetResult = budgetResult;
 
             return new ProcessedDecisions(grabbed, pending, rejected);
         }

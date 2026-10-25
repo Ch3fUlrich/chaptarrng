@@ -655,6 +655,137 @@ namespace Chaptarr.Core.Test.Download
             });
         }
 
+        // R8: ProcessDownloadDecisions is a singleton; overlapping runs must not see each other's stop reason.
+        [Test]
+        public async Task overlapping_runs_record_their_own_stop_reason_in_batch_rows()
+        {
+            var repo = InMemoryGrabBudgetLogRepository.Create();
+            var batchRepo = InMemoryGrabBudgetBatchRepository.Create();
+            var config = GrabBudgetConfigProxy.Create(enabled: true, maxPerRun: 1, maxPerDay: 50);
+            var gate = new GatedDownloadService();
+            var subject = BuildSubject(repo, config, Now, out _, out _, downloadService: gate, batchRepo: batchRepo);
+
+            // Run A grabs its only decision but stays inside the download until released.
+            var runA = subject.ProcessDecisions(BuildDecisions(1, BookMediaType.Audiobook, Quality.MP3, startId: 31000));
+            await gate.FirstCallStarted.Task;
+
+            // Run B overlaps, grabs one and hits the per-run limit while A is still in flight.
+            gate.ReleaseImmediately = true;
+            await subject.ProcessDecisions(BuildDecisions(2, BookMediaType.Audiobook, Quality.MP3, startId: 32000));
+
+            gate.Release.SetResult(true);
+            await runA;
+
+            var batches = batchRepo.Store.OrderBy(b => b.Id).ToList();
+            Assert.Multiple(() =>
+            {
+                Assert.That(batches, Has.Count.EqualTo(2));
+                Assert.That(batches.Single(b => b.Grabbed == 1 && b.Skipped == 1).StopReason, Is.EqualTo(GrabBudgetStopReason.MaxPerRunReached));
+                Assert.That(batches.Single(b => b.Skipped == 0).StopReason, Is.EqualTo(GrabBudgetStopReason.None));
+            });
+        }
+
+        // R9: interactive grabs from the UI are counted and limited only when the operator opted in.
+        [Test]
+        public void check_interactive_is_exempt_unless_apply_to_interactive()
+        {
+            var repo = InMemoryGrabBudgetLogRepository.Create();
+            foreach (var i in Enumerable.Range(0, 25))
+            {
+                repo.Store.Add(new GrabBudgetLog { Id = i + 1, GrabbedAt = Now.AddHours(-1) });
+            }
+
+            var exempt = NewBudgetService(repo, GrabBudgetConfigProxy.Create(enabled: true, maxPerDay: 25, applyToInteractive: false));
+            var applied = NewBudgetService(repo, GrabBudgetConfigProxy.Create(enabled: true, maxPerDay: 25, applyToInteractive: true));
+            var disabled = NewBudgetService(repo, GrabBudgetConfigProxy.Create(enabled: false, maxPerDay: 25, applyToInteractive: true));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exempt.CheckInteractive(0, Now).Allowed, Is.True);
+                Assert.That(disabled.CheckInteractive(0, Now).Allowed, Is.True);
+                Assert.That(applied.CheckInteractive(0, Now).Allowed, Is.False);
+                Assert.That(applied.CheckInteractive(0, Now).StopReason, Is.EqualTo(GrabBudgetStopReason.MaxPerDayReached));
+            });
+        }
+
+        [Test]
+        public void record_interactive_grab_is_logged_only_when_applied()
+        {
+            var repoExempt = InMemoryGrabBudgetLogRepository.Create();
+            var repoApplied = InMemoryGrabBudgetLogRepository.Create();
+
+            NewBudgetService(repoExempt, GrabBudgetConfigProxy.Create(enabled: true, applyToInteractive: false)).RecordInteractiveGrab();
+            NewBudgetService(repoApplied, GrabBudgetConfigProxy.Create(enabled: true, applyToInteractive: true)).RecordInteractiveGrab();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(repoExempt.Store, Is.Empty);
+                Assert.That(repoApplied.Store, Has.Count.EqualTo(1));
+            });
+        }
+
+        // R4: the budget has an explicit off switch that changes nothing else.
+        [Test]
+        public void set_enabled_switches_the_budget_off_and_keeps_every_limit()
+        {
+            var config = GrabBudgetConfigProxy.Create(enabled: true, maxPerRun: 2, maxPerDay: 40, maxActiveQueue: 7, applyToInteractive: true, dryRun: true);
+            var service = NewBudgetService(InMemoryGrabBudgetLogRepository.Create(), config);
+
+            service.SetEnabled(false);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(config.GrabBudgetEnabled, Is.False);
+                Assert.That(config.GrabBudgetMaxPerRun, Is.EqualTo(2));
+                Assert.That(config.GrabBudgetMaxPerDay, Is.EqualTo(40));
+                Assert.That(config.GrabBudgetMaxActiveQueue, Is.EqualTo(7));
+                Assert.That(config.GrabBudgetApplyToInteractive, Is.True);
+                Assert.That(config.GrabBudgetDryRun, Is.True);
+                Assert.That(service.CheckBudget(99, 99, Now).Allowed, Is.True);
+            });
+
+            service.SetEnabled(true);
+            service.SetDryRun(false);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(config.GrabBudgetEnabled, Is.True);
+                Assert.That(config.GrabBudgetDryRun, Is.False);
+            });
+        }
+
+        [Test]
+        public void budget_is_off_when_nothing_has_turned_it_on()
+        {
+            var config = GrabBudgetConfigProxy.Create();
+
+            Assert.That(config.GrabBudgetEnabled, Is.False);
+            Assert.That(NewBudgetService(InMemoryGrabBudgetLogRepository.Create(), config).CheckBudget(1000, 1000, Now).Allowed, Is.True);
+        }
+
+        private static GrabBudgetService NewBudgetService(InMemoryGrabBudgetLogRepository repo, IConfigService config)
+        {
+            return new GrabBudgetService((IGrabBudgetLogRepository)(object)repo, config, new FixedGrabBudgetClock(Now), LogManager.GetLogger("GrabBudgetFixture"));
+        }
+
+        private sealed class GatedDownloadService : IDownloadService
+        {
+            private int _calls;
+
+            public TaskCompletionSource<bool> FirstCallStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public TaskCompletionSource<bool> Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public bool ReleaseImmediately { get; set; }
+
+            public async Task DownloadReport(RemoteBook remoteBook, int? downloadClientId)
+            {
+                if (System.Threading.Interlocked.Increment(ref _calls) == 1)
+                {
+                    FirstCallStarted.SetResult(true);
+                    await Release.Task;
+                }
+            }
+        }
+
         private sealed class RecordingDownloadService : IDownloadService
         {
             public List<RemoteBook> Downloaded { get; } = new();

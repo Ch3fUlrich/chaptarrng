@@ -89,6 +89,8 @@ namespace Chaptarr.Core.Test.Indexers
                 parsingService: null,
                 indexerFactory: null,
                 cacheManager: cacheManager,
+                grabBudgetService: null,
+                queueService: null,
                 logger: LogManager.GetLogger(nameof(ReleaseControllerDownloadRejectionFixture)));
 
             var context = new DefaultHttpContext();

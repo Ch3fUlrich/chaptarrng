@@ -13,11 +13,13 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
+using NzbDrone.Core.Download.GrabBudget;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Queue;
 using NzbDrone.Core.Validation;
 using HttpStatusCode = System.Net.HttpStatusCode;
 
@@ -35,6 +37,8 @@ namespace Chaptarr.Api.V1.Indexers
         private readonly IBookService _bookService;
         private readonly IParsingService _parsingService;
         private readonly IIndexerFactory _indexerFactory;
+        private readonly IGrabBudgetService _grabBudgetService;
+        private readonly IQueueService _queueService;
         private readonly Logger _logger;
 
         private readonly ICached<DownloadDecision> _downloadDecisionCache;
@@ -49,6 +53,8 @@ namespace Chaptarr.Api.V1.Indexers
                              IParsingService parsingService,
                              IIndexerFactory indexerFactory,
                              ICacheManager cacheManager,
+                             IGrabBudgetService grabBudgetService,
+                             IQueueService queueService,
                              Logger logger)
         {
             _rssFetcherAndParser = rssFetcherAndParser;
@@ -60,6 +66,8 @@ namespace Chaptarr.Api.V1.Indexers
             _bookService = bookService;
             _parsingService = parsingService;
             _indexerFactory = indexerFactory;
+            _grabBudgetService = grabBudgetService;
+            _queueService = queueService;
             _logger = logger;
 
             PostValidator.RuleFor(s => s.IndexerId).ValidId();
@@ -137,7 +145,14 @@ namespace Chaptarr.Api.V1.Indexers
                     throw new NzbDroneClientException(HttpStatusCode.NotFound, "Unable to parse books in the release");
                 }
 
+                var interactiveBudget = _grabBudgetService?.CheckInteractive(_queueService?.GetQueue()?.Count ?? 0);
+                if (interactiveBudget != null && !interactiveBudget.Allowed)
+                {
+                    throw new NzbDroneClientException(HttpStatusCode.TooManyRequests, interactiveBudget.Reason);
+                }
+
                 await _downloadService.DownloadReport(remoteBook, release.DownloadClientId);
+                _grabBudgetService?.RecordInteractiveGrab();
             }
             catch (DownloadClientRejectedReleaseException ex)
             {
