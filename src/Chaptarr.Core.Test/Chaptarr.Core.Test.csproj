@@ -25,5 +25,10 @@
     <ProjectReference Include="..\Chaptarr.Diagnostics\Chaptarr.Diagnostics.csproj" />
     <ProjectReference Include="..\Chaptarr.Api.V1\Chaptarr.Api.V1.csproj" />
     <ProjectReference Include="..\NzbDrone.Windows\Chaptarr.Windows.csproj" />
+    <!-- Composition/ContainerServiceRegistrationFixture builds the container the host builds:
+         Bootstrap.ASSEMBLIES lives in Chaptarr.Host, and AssemblyLoader.Load also loads
+         Chaptarr.Mono (non-Windows) or Chaptarr.Windows (Windows) by file name. -->
+    <ProjectReference Include="..\NzbDrone.Host\Chaptarr.Host.csproj" />
+    <ProjectReference Include="..\NzbDrone.Mono\Chaptarr.Mono.csproj" />
   </ItemGroup>
 </Project>

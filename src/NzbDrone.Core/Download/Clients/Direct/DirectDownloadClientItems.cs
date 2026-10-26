@@ -124,7 +124,13 @@ namespace NzbDrone.Core.Download.Clients.Direct
             _diskProvider.DeleteFolder(path, false);
         }
 
-        private sealed class NoopRemotePathMappingService : IRemotePathMappingService
+        // A struct (not a class) on purpose: AutoAddServices scans Bootstrap.ASSEMBLIES with
+        // DryIoc RegisterMany and registers every class implementing a service interface, so
+        // a nested class stub was registered as a second IRemotePathMappingService and, with
+        // DryIoc's SelectLastRegisteredFactory, shadowed RemotePathMappingService in the whole
+        // app (GET /api/v1/remotepathmapping returned [], writes were dropped). Value types are
+        // invisible to the scan; this stub is only ever passed directly to the base ctor below.
+        private readonly struct NoopRemotePathMappingService : IRemotePathMappingService
         {
             public List<RemotePathMapping> All() => new();
             public RemotePathMapping Add(RemotePathMapping mapping) => mapping;
