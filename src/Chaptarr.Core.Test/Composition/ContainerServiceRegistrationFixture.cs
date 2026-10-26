@@ -41,10 +41,10 @@ namespace Chaptarr.Core.Test.Composition
         [SetUp]
         public void Setup()
         {
-            _dbPath = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"container_rpm_{Guid.NewGuid():N}.db");
+            _dbPath = Path.Combine(Path.GetTempPath(), $"container_rpm_{Guid.NewGuid():N}.db");
             _connectionString = new SqliteConnectionStringBuilder { DataSource = _dbPath, Pooling = false }.ToString();
 
-            _localDir = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"container_rpm_local_{Guid.NewGuid():N}");
+            _localDir = Path.Combine(Path.GetTempPath(), $"container_rpm_local_{Guid.NewGuid():N}");
             Directory.CreateDirectory(_localDir);
 
             var logger = LogManager.GetLogger(nameof(ContainerServiceRegistrationFixture));
@@ -71,7 +71,7 @@ namespace Chaptarr.Core.Test.Composition
 
             if (Directory.Exists(_localDir))
             {
-                Directory.Delete(_localDir);
+                Directory.Delete(_localDir, true);
             }
         }
 
