@@ -183,7 +183,23 @@ namespace Chaptarr.Core.Test.Download
             }
         }
 
+        public class ImportHandoffProxy : DispatchProxy
+        {
+            public Func<MethodInfo, object[], object> Handler { get; set; }
+
+            protected override object Invoke(MethodInfo targetMethod, object[] args) => Handler(targetMethod, args);
+        }
+
+        private static T CreateHandoffProxy<T>(Func<MethodInfo, object[], object> handler) where T : class
+        {
+            var proxy = DispatchProxy.Create<T, ImportHandoffProxy>();
+            ((ImportHandoffProxy)(object)proxy).Handler = handler;
+            return proxy;
+        }
+
         [TestCase(1, "sabhost", "sabhost", "")]
+        [TestCase(1, "sabhost", "sabhost", "/Author, Name - Title.epub")]
+        [TestCase(1, "sabhost", "sabhost", "/Author, Name - Title.pdf")]
         [TestCase(5, "sabhost", "sabhost", "/")]
         [TestCase(1, "SABHOST", "sabhost", "/")]
         [TestCase(5, "sabhost", "SABHOST", "")]
@@ -212,8 +228,8 @@ namespace Chaptarr.Core.Test.Download
                 {
                     Items = new List<SabnzbdHistoryItem>
                     {
-                        new() { Id = "SABnzbd_nzo_1", Title = "Example Book", Category = "audiobooks", Status = SabnzbdDownloadStatus.Completed,
-                            Storage = "/remote/usenet/completed/audiobooks/Example Book" + trailingSlash }
+                        new() { Id = "SABnzbd_nzo_1", Title = "Author,.Name.-.Title", Category = "audiobooks", Status = SabnzbdDownloadStatus.Completed,
+                            Storage = "/remote/usenet/completed/audiobooks/Author,.Name.-.Title" + trailingSlash }
                     }
                 }
             };
@@ -224,7 +240,43 @@ namespace Chaptarr.Core.Test.Download
 
             var item = client.GetItems().Single();
 
-            Assert.That(item.OutputPath.FullPath.TrimEnd('/'), Is.EqualTo("/downloads/audiobooks/Example Book"));
+            Assert.That(item.OutputPath.FullPath.TrimEnd('/'), Is.EqualTo("/downloads/audiobooks/Author,.Name.-.Title"));
+
+            string importedPath = null;
+            var provider = CreateHandoffProxy<IProvideDownloadClient>((method, args) => client);
+            var importer = CreateHandoffProxy<NzbDrone.Core.MediaFiles.IDownloadedBooksImportService>((method, args) =>
+            {
+                Assert.That(method.Name, Is.EqualTo("ProcessPath"));
+                importedPath = (string)args[0];
+                return new List<NzbDrone.Core.MediaFiles.BookImport.ImportResult>();
+            });
+            var history = CreateHandoffProxy<NzbDrone.Core.History.IHistoryService>((method, args) => new List<NzbDrone.Core.History.EntityHistory>());
+            string incompleteOutputPath = null;
+            var events = CreateHandoffProxy<NzbDrone.Core.Messaging.Events.IEventAggregator>((method, args) =>
+            {
+                if (args[0] is NzbDrone.Core.MediaFiles.Events.BookImportIncompleteEvent incomplete)
+                {
+                    // DownloadHistoryService uses this DownloadItem path as SourceTitle.
+                    incompleteOutputPath = incomplete.TrackedDownload.DownloadItem.OutputPath.ToString();
+                }
+
+                return null;
+            });
+            var resolver = CreateHandoffProxy<IDownloadImportModeResolver>((method, args) => args[0]);
+            var completed = new CompletedDownloadService(events, history, new ProvideImportItemService(provider), importer,
+                resolver, null, NoopFailedDownloadService.Instance, LogManager.GetCurrentClassLogger(), NoopDownloadClientFileSnapshotService.Instance);
+            var tracked = new NzbDrone.Core.Download.TrackedDownloads.TrackedDownload
+            {
+                DownloadItem = item,
+                DownloadClient = clientId,
+                State = NzbDrone.Core.Download.TrackedDownloads.TrackedDownloadState.ImportPending
+            };
+
+            completed.Import(tracked);
+
+            Assert.That(importedPath, Is.EqualTo(item.OutputPath.FullPath));
+            Assert.That(importedPath, Does.StartWith("/downloads/").And.Not.Contain("/remote/"));
+            Assert.That(incompleteOutputPath, Is.EqualTo(importedPath));
         }
     }
 }
