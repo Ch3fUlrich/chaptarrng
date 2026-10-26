@@ -97,6 +97,13 @@ namespace NzbDrone.Core.Download
 
         public void Import(TrackedDownload trackedDownload)
         {
+            // ImportPending can outlive the client's completed state (for example after
+            // a requeue). Recheck before resolving paths or restoring file snapshots.
+            if (trackedDownload.DownloadItem.Status != DownloadItemStatus.Completed)
+            {
+                return;
+            }
+
             SetImportItem(trackedDownload);
             trackedDownload.ClearStatus();
 

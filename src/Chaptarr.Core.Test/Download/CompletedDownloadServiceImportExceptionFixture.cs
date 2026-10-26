@@ -104,6 +104,38 @@ namespace Chaptarr.Core.Test.Download
             }
         }
 
+        [TestCase(DownloadItemStatus.Queued)]
+        [TestCase(DownloadItemStatus.Downloading)]
+        public void should_not_resolve_or_import_non_completed_sab_item(DownloadItemStatus status)
+        {
+            var trackedDownload = new TrackedDownload
+            {
+                DownloadItem = new DownloadClientItem
+                {
+                    DownloadId = "SABnzbd_nzo_1",
+                    Title = "Author - Title",
+                    Status = status,
+                    DownloadClientInfo = new DownloadClientItemClientInfo { Id = 1, Name = "SABnzbd", Protocol = DownloadProtocol.Usenet }
+                },
+                State = TrackedDownloadState.ImportPending
+            };
+            var subject = new CompletedDownloadService(
+                new RecordingEventAggregator(),
+                null,
+                DispatchProxy.Create<IProvideImportItemService, ThrowingProxy<IProvideImportItemService>>(),
+                null,
+                null,
+                null,
+                NoopFailedDownloadService.Instance,
+                LogManager.GetCurrentClassLogger(),
+                NoopDownloadClientFileSnapshotService.Instance);
+
+            Assert.DoesNotThrow(() => subject.Import(trackedDownload));
+            Assert.That(trackedDownload.ImportItem, Is.Null);
+            Assert.That(trackedDownload.DownloadItem.OutputPath.IsEmpty, Is.True);
+            Assert.That(trackedDownload.State, Is.EqualTo(TrackedDownloadState.ImportPending));
+        }
+
         [Test, Platform(Exclude = "Win", Reason = "Test uses Unix paths")]
         public void should_block_import_and_publish_incomplete_event_when_import_throws()
         {

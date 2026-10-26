@@ -165,6 +165,7 @@ namespace Chaptarr.Core.Test.Download
                     State = TrackedDownloadState.ImportPending,
                     DownloadItem = new DownloadClientItem
                     {
+                        Status = DownloadItemStatus.Completed,
                         DownloadId = "learn-my-lesson",
                         Title = "Learn My Lesson, epub, please...thanks - Learn My Lesson.mobi",
                         OutputPath = new OsPath("/downloads/learn-my-lesson")

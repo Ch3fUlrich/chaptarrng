@@ -123,6 +123,45 @@ namespace Chaptarr.Core.Test.Download
             return DispatchProxy.Create<IConfigService, ConfigServiceProxy>();
         }
 
+        [TestCase(SabnzbdDownloadStatus.Queued, DownloadItemStatus.Queued)]
+        [TestCase(SabnzbdDownloadStatus.Downloading, DownloadItemStatus.Downloading)]
+        public void should_not_synthesize_output_path_for_queue_item_without_storage(SabnzbdDownloadStatus status, DownloadItemStatus expected)
+        {
+            var repository = DispatchProxy.Create<IRemotePathMappingRepository, MappingRepositoryProxy>();
+            ((MappingRepositoryProxy)(object)repository).Mappings = new List<RemotePathMapping>
+            {
+                new() { DownloadClientId = 0, Host = "sabhost", RemotePath = "/remote/usenet/completed/", LocalPath = "/downloads/" }
+            };
+            var definition = new DownloadClientDefinition
+            {
+                Id = 1,
+                Name = "SABnzbd",
+                Settings = new SabnzbdSettings { Host = "sabhost", AudiobookCategory = "audiobooks", EbookCategory = "ebooks" }
+            };
+            var clientRepository = DispatchProxy.Create<IDownloadClientRepository, MappingRepositoryProxy>();
+            ((MappingRepositoryProxy)(object)clientRepository).Clients = new List<DownloadClientDefinition> { definition };
+            var mappings = new RemotePathMappingService(clientRepository, repository, null, new CacheManager(), LogManager.GetCurrentClassLogger());
+            var proxy = new TestSabnzbdProxy
+            {
+                Queue = new SabnzbdQueue
+                {
+                    Items = new List<SabnzbdQueueItem>
+                    {
+                        new() { Id = "SABnzbd_nzo_1", Title = "Author - Title", Category = "audiobooks", Status = status }
+                    }
+                }
+            };
+            var client = new Sabnzbd(proxy, null, CreateConfigService(), null, mappings, null, LogManager.GetCurrentClassLogger())
+            {
+                Definition = definition
+            };
+
+            var item = client.GetItems().Single();
+
+            Assert.That(item.Status, Is.EqualTo(expected));
+            Assert.That(item.OutputPath.IsEmpty, Is.True);
+        }
+
         private class MappingRepositoryProxy : DispatchProxy
         {
             public List<RemotePathMapping> Mappings { get; set; }

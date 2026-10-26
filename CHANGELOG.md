@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Recheck download completion at the import entry point before resolving paths or restoring snapshots, so a pending import cannot process a queued or downloading item.
 - Match all-client remote path mappings when the mapping host includes a port but the download client stores its host and port separately (or vice versa).
 
 ChaptarrNG release notes highlight user-facing changes and operating guidance.
