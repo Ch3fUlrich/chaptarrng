@@ -5,6 +5,7 @@ using System.Reflection;
 using NLog;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Common.Cache;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients;
@@ -120,6 +121,71 @@ namespace Chaptarr.Core.Test.Download
         private static IConfigService CreateConfigService()
         {
             return DispatchProxy.Create<IConfigService, ConfigServiceProxy>();
+        }
+
+        private class MappingRepositoryProxy : DispatchProxy
+        {
+            public List<RemotePathMapping> Mappings { get; set; }
+            public List<DownloadClientDefinition> Clients { get; set; }
+
+            protected override object Invoke(MethodInfo targetMethod, object[] args)
+            {
+                if (targetMethod.Name == "All")
+                {
+                    return Mappings;
+                }
+
+                if (targetMethod.Name == "Find")
+                {
+                    return Clients.SingleOrDefault(c => c.Id == (int)args[0]);
+                }
+
+                throw new NotImplementedException(targetMethod.Name);
+            }
+        }
+
+        [TestCase(1, "sabhost", "sabhost", "")]
+        [TestCase(5, "sabhost", "sabhost", "/")]
+        [TestCase(1, "SABHOST", "sabhost", "/")]
+        [TestCase(5, "sabhost", "SABHOST", "")]
+        [TestCase(1, "sabhost:8080", "sabhost", "/")]
+        [TestCase(5, "sabhost", "sabhost:8080", "/")]
+        public void should_map_completed_history_with_all_client_host_mappings(int clientId, string clientHost, string mappingHost, string trailingSlash)
+        {
+            var clients = Enumerable.Range(1, 5).Select(id => new DownloadClientDefinition
+            {
+                Id = id,
+                Name = "SABnzbd",
+                Settings = new SabnzbdSettings { Host = clientHost, AudiobookCategory = "audiobooks", EbookCategory = "ebooks" }
+            }).ToList();
+            var repository = DispatchProxy.Create<IRemotePathMappingRepository, MappingRepositoryProxy>();
+            ((MappingRepositoryProxy)(object)repository).Mappings = new List<RemotePathMapping>
+            {
+                new() { Id = 1, DownloadClientId = 0, Host = mappingHost, RemotePath = "/remote/usenet/completed/", LocalPath = "/downloads/" },
+                new() { Id = 2, DownloadClientId = 0, Host = mappingHost, RemotePath = "/remote/usenet/other-test/", LocalPath = "/test/" }
+            };
+            var clientRepository = DispatchProxy.Create<IDownloadClientRepository, MappingRepositoryProxy>();
+            ((MappingRepositoryProxy)(object)clientRepository).Clients = clients;
+            var mappings = new RemotePathMappingService(clientRepository, repository, null, new CacheManager(), LogManager.GetCurrentClassLogger());
+            var proxy = new TestSabnzbdProxy
+            {
+                History = new SabnzbdHistory
+                {
+                    Items = new List<SabnzbdHistoryItem>
+                    {
+                        new() { Id = "SABnzbd_nzo_1", Title = "Example Book", Category = "audiobooks", Status = SabnzbdDownloadStatus.Completed,
+                            Storage = "/remote/usenet/completed/audiobooks/Example Book" + trailingSlash }
+                    }
+                }
+            };
+            var client = new Sabnzbd(proxy, null, CreateConfigService(), null, mappings, null, LogManager.GetCurrentClassLogger())
+            {
+                Definition = clients.Single(c => c.Id == clientId)
+            };
+
+            var item = client.GetItems().Single();
+
+            Assert.That(item.OutputPath.FullPath.TrimEnd('/'), Is.EqualTo("/downloads/audiobooks/Example Book"));
         }
     }
 }

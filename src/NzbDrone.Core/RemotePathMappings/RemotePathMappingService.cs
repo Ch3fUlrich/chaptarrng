@@ -348,11 +348,17 @@ namespace NzbDrone.Core.RemotePathMappings
             var hostMappings = mappings.Where(m =>
                 m.DownloadClientId == 0 &&
                 host.IsNotNullOrWhiteSpace() &&
-                host.Equals(m.Host, StringComparison.InvariantCultureIgnoreCase));
+                string.Equals(NormalizeHost(host), NormalizeHost(m.Host), StringComparison.InvariantCultureIgnoreCase));
 
             return clientMappings
                 .OrderByDescending(m => new OsPath(pathSelector(m)).FullPath.Length)
                 .Concat(hostMappings.OrderByDescending(m => new OsPath(pathSelector(m)).FullPath.Length));
+        }
+
+        private static string NormalizeHost(string host)
+        {
+            // Legacy host mappings may include a port, while client settings store it separately.
+            return Uri.TryCreate("http://" + host, UriKind.Absolute, out var uri) ? uri.Host : host;
         }
 
         public void Handle(ProviderDeletedEvent<IDownloadClient> message)
