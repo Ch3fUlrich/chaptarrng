@@ -410,6 +410,12 @@ namespace NzbDrone.Core.Parser
 
                 Logger.TraceSafe("Parsing string '{0}'", title);
 
+                var illustrated = IllustratedBookParser.Parse(title);
+                if (illustrated != null)
+                {
+                    return illustrated;
+                }
+
                 var releaseTitle = CleanReleaseTitleForParsing(title);
 
                 var simpleTitle = SimpleTitleRegex.Replace(releaseTitle);

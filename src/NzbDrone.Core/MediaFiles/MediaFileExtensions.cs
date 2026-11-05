@@ -32,6 +32,9 @@ namespace NzbDrone.Core.MediaFiles
                 { ".azw3", Quality.AZW3 },
                 { ".azw", Quality.AZW3 },
                 { ".pdf", Quality.PDF },
+                { ".cbz", Quality.CBZ },
+                { ".cbr", Quality.CBR },
+                { ".cb7", Quality.CB7 },
             };
 
             _audioExtensions = new Dictionary<string, Quality>(StringComparer.OrdinalIgnoreCase)

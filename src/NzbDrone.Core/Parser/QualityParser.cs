@@ -30,7 +30,7 @@ namespace NzbDrone.Core.Parser
         private static readonly Regex RealRegex = new(@"\b(?<real>REAL)\b",
                                                                 RegexOptions.Compiled);
 
-        private static readonly Regex CodecRegex = new(@"\b(?:(?<PDF>PDF)|(?<MOBI>MOBI)|(?<EPUB>EPUB)|(?<AZW3>AZW3?)|(?<MP1>MPEG Version \d(.5)? Audio, Layer 1|MP1)|(?<MP2>MPEG Version \d(.5)? Audio, Layer 2|MP2)|(?<MP3VBR>MP3.*VBR|MPEG Version \d(.5)? Audio, Layer 3 vbr)|(?<MP3CBR>MP3|MPEG Version \d(.5)? Audio, Layer 3)|(?<FLAC>flac)|(?<WAVPACK>wavpack|wv)|(?<ALAC>alac)|(?<WMA>WMA\d?)|(?<WAV>WAV|PCM)|(?<AAC>M4A|M4P|M4B|AAC|mp4a|MPEG-4 Audio(?!.*alac))|(?<OGG>OGG|OGA|Vorbis))\b|(?<APE>monkey's audio|[\[|\(].*\bape\b.*[\]|\)])|(?<OPUS>Opus Version \d(.5)? Audio|[\[|\(].*\bopus\b.*[\]|\)])",
+        private static readonly Regex CodecRegex = new(@"\b(?:(?<CBZ>CBZ)|(?<CBR>CBR)|(?<CB7>CB7)|(?<PDF>PDF)|(?<MOBI>MOBI)|(?<EPUB>EPUB)|(?<AZW3>AZW3?)|(?<MP1>MPEG Version \d(.5)? Audio, Layer 1|MP1)|(?<MP2>MPEG Version \d(.5)? Audio, Layer 2|MP2)|(?<MP3VBR>MP3.*VBR|MPEG Version \d(.5)? Audio, Layer 3 vbr)|(?<MP3CBR>MP3|MPEG Version \d(.5)? Audio, Layer 3)|(?<FLAC>flac)|(?<WAVPACK>wavpack|wv)|(?<ALAC>alac)|(?<WMA>WMA\d?)|(?<WAV>WAV|PCM)|(?<AAC>M4A|M4P|M4B|AAC|mp4a|MPEG-4 Audio(?!.*alac))|(?<OGG>OGG|OGA|Vorbis))\b|(?<APE>monkey's audio|[\[|\(].*\bape\b.*[\]|\)])|(?<OPUS>Opus Version \d(.5)? Audio|[\[|\(].*\bopus\b.*[\]|\)])",
                                                              RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // Structural helpers for DetectTitleFormats. All language-neutral by design: delimiters,
@@ -377,6 +377,12 @@ namespace NzbDrone.Core.Parser
         {
             switch (codec)
             {
+                case Codec.CBZ:
+                    return Quality.CBZ;
+                case Codec.CBR:
+                    return Quality.CBR;
+                case Codec.CB7:
+                    return Quality.CB7;
                 case Codec.PDF:
                     return Quality.PDF;
                 case Codec.EPUB:
@@ -426,6 +432,21 @@ namespace NzbDrone.Core.Parser
 
         private static Codec CodecFromMatch(Match match)
         {
+            if (match.Groups["CBZ"].Success)
+            {
+                return Codec.CBZ;
+            }
+
+            if (match.Groups["CBR"].Success)
+            {
+                return Codec.CBR;
+            }
+
+            if (match.Groups["CB7"].Success)
+            {
+                return Codec.CB7;
+            }
+
             if (match.Groups["PDF"].Success)
             {
                 return Codec.PDF;
@@ -518,6 +539,12 @@ namespace NzbDrone.Core.Parser
         {
             switch (codec)
             {
+                case Codec.CBZ:
+                    return Quality.CBZ;
+                case Codec.CBR:
+                    return Quality.CBR;
+                case Codec.CB7:
+                    return Quality.CB7;
                 case Codec.PDF:
                     return Quality.PDF;
                 case Codec.EPUB:
@@ -594,6 +621,9 @@ namespace NzbDrone.Core.Parser
         EPUB,
         MOBI,
         AZW3,
+        CBZ,
+        CBR,
+        CB7,
         Unknown
     }
 }

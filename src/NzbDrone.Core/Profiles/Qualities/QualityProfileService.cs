@@ -449,7 +449,10 @@ namespace NzbDrone.Core.Profiles.Qualities
                 Quality.PDF,
                 Quality.MOBI,
                 Quality.EPUB,
-                Quality.AZW3
+                Quality.AZW3,
+                Quality.CBZ,
+                Quality.CBR,
+                Quality.CB7
             };
 
             return GetDefaultProfile("eBook", null, textQualities);
