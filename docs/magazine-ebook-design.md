@@ -27,9 +27,19 @@ scope. Names-only inventory parity does not establish full import parity.
 ## D-4157 validation and limits
 
 The names-only 2026-11-06 handoff uses synthetic names in
-`IllustratedRealSampleFixture.cs`: 20 comics, 20 manga, 20 magazines.
-`IllustratedLibraryListing.List` preserves each filename and its operator-provided
-library type; this is an inventory, not inferred genre or metadata identification.
+`IllustratedSyntheticSampleFixture.cs`: 20 comics, 20 manga, 20 magazines.
+The route selects type from an exact, case-insensitive comics/manga/magazines root leaf or subdirectory name; otherwise it uses the filename rule:
+extensionless bundles select manga, PDFs magazines, and other supported text containers
+comics. This is a names-only convention, not inferred genre or catalog identification.
+Roots do not persist an illustrated type. The response contains `entries` and
+`missingIssues`; repeated `expectedIssues=Series|Issue` query values supply the expected
+set, compared with the returned entries (so capped listings can report unscanned issues).
+`limit` defaults to 1000, accepts 1–10000, and the walk scans at most 10000 nodes.
+Entries are ordered before applying the response limit. Missing-issue inference is
+suppressed when the response limit, scan budget, or unreadable directories make the
+inventory partial; an empty missing list in that case is not proof of completeness.
+Registered roots are canonicalized through symlinks; nested symlinks and dot-directories
+are skipped, and unreadable directories leave a partial listing.
 The two-series test uses the synthetic Quills Beyond Copper and Lanterns Beyond Quartz paths
 and production expected-minus-owned computation, including a deliberately missing issue.
 No live host or NFS was contacted.

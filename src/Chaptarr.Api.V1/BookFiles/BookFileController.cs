@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Threading;
 using Chaptarr.Api.V1.MediaTypes;
 using Chaptarr.Http;
 using Chaptarr.Http.REST;
@@ -20,7 +21,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Http.REST.Attributes;
 using NzbDrone.SignalR;
-using BadRequestException = NzbDrone.Core.Exceptions.BadRequestException;
+using BadRequestException = Chaptarr.Http.REST.BadRequestException;
 using HttpStatusCode = System.Net.HttpStatusCode;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation;
@@ -254,7 +255,7 @@ namespace Chaptarr.Api.V1.BookFiles
             var realFile = ResolveRealPath(fullPath);
 
             if (realRoot == null || realFile == null ||
-                !realFile.StartsWith(realRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+                !IsUnderRoot(realFile, realRoot) ||
                 !new FileInfo(realFile).Exists)
             {
                 _logger.Warn("Refusing to serve book file {0}: resolved path is outside its root folder", id);
@@ -303,14 +304,27 @@ namespace Chaptarr.Api.V1.BookFiles
 
         private bool IsInsideRootFolder(string fullPath)
         {
-            return _rootFolderService?.GetBestRootFolder(fullPath) != null;
+            var root = _rootFolderService?.GetBestRootFolder(fullPath);
+            if (root == null) return false;
+            try
+            {
+                return IsUnderRoot(fullPath, CanonicalPath(root.Path));
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return false;
+            }
         }
 
         [HttpGet]
-        public List<BookFileResource> GetBookFiles(int? authorId, [FromQuery] List<int> bookFileIds, [FromQuery(Name = "bookId")] List<int> bookIds, bool? unmapped, string mediaType = null)
+        public List<BookFileResource> GetBookFiles(int? authorId, [FromQuery] List<int> bookFileIds, [FromQuery(Name = "bookId")] List<int> bookIds, bool? unmapped, string mediaType = null, string rootFolderPath = null)
         {
             _logger.DebugSafe($"[BOOKFILE-API] GetBookFiles called - authorId: {authorId}, bookIds: [{string.Join(",", bookIds)}], bookFileIds: [{string.Join(",", bookFileIds)}], unmapped: {unmapped}, mediaType: {mediaType}");
             var normalizedMediaType = MediaTypeParameterParser.NormalizeOptional(mediaType);
+            if (!string.IsNullOrWhiteSpace(rootFolderPath) && unmapped != true)
+            {
+                throw new BadRequestException("rootFolderPath requires unmapped=true");
+            }
             
             if (!authorId.HasValue && !bookFileIds.Any() && !bookIds.Any() && !unmapped.HasValue)
             {
@@ -319,10 +333,11 @@ namespace Chaptarr.Api.V1.BookFiles
 
             if (unmapped.HasValue && unmapped.Value)
             {
+                var root = string.IsNullOrWhiteSpace(rootFolderPath) ? null : RegisteredRoot(rootFolderPath);
                 var files = normalizedMediaType == null
                     ? _mediaFileService.GetUnmappedFiles()
                     : _mediaFileService.GetUnmappedFiles(normalizedMediaType);
-                return MapUnmappedResources(files);
+                return MapUnmappedResources(files.Where(file => root == null || IsUnderRoot(file.Path, root)).ToList());
             }
 
             if (authorId.HasValue && !bookIds.Any())
@@ -359,6 +374,147 @@ namespace Chaptarr.Api.V1.BookFiles
                 var bookFiles = _mediaFileService.Get(bookFileIds);
                 return bookFiles.ConvertAll(e => MapToResource(e));
             }
+        }
+
+        // Type selects a names-only classification, not persisted catalog metadata.
+        [HttpGet("illustrated")]
+        public NzbDrone.Core.Parser.IllustratedLibraryListing.Inventory GetIllustrated(string rootFolderPath, string type, int limit = 1000, CancellationToken cancellationToken = default, [FromQuery] string[] expectedIssues = null)
+        {
+            rootFolderPath = RegisteredRoot(rootFolderPath);
+            if (limit < 1 || limit > 10000 || (type != "comics" && type != "manga" && type != "magazines"))
+            {
+                throw new BadRequestException("A registered rootFolderPath and type comics, manga or magazines are required");
+            }
+
+            var expected = (expectedIssues ?? Array.Empty<string>()).Select(value => value.Split('|')).ToArray();
+            if (expected.Any(parts => parts.Length != 2 || parts.Any(string.IsNullOrWhiteSpace))) throw new BadRequestException("expectedIssues must contain Series|Issue values");
+            var complete = true;
+            var matches = InventoryFiles(rootFolderPath, cancellationToken, () => complete = false)
+                .Where(path => MediaFileExtensions.TextExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase) ||
+                    NzbDrone.Core.Parser.IllustratedLibraryListing.IsExtensionlessBundle(path))
+                .Where(path => NzbDrone.Core.Parser.IllustratedLibraryListing.Classify(Path.Combine(Path.GetFileName(rootFolderPath), Path.GetRelativePath(rootFolderPath, path))) == type)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToList();
+            complete &= matches.Count <= limit;
+            var entries = matches.Take(limit)
+                .Select(path => NzbDrone.Core.Parser.IllustratedLibraryListing.List(Path.GetRelativePath(rootFolderPath, path), type)).ToList();
+            var missing = NzbDrone.Core.Parser.IllustratedLibraryListing.MissingIssues(expected.Where(_ => complete).Select(parts => (parts[0], parts[1])), entries.Where(entry => entry.Series != null && entry.Issue != null).Select(entry => (entry.Series, entry.Issue)));
+            return new NzbDrone.Core.Parser.IllustratedLibraryListing.Inventory(entries, missing.Select(issue => new NzbDrone.Core.Parser.IllustratedLibraryListing.IssueIdentity(issue.Series, issue.Issue)).ToList());
+        }
+
+        private IEnumerable<string> InventoryFiles(string root, CancellationToken cancellationToken, Action markPartial)
+        {
+            var pending = new Stack<string>();
+            pending.Push(root);
+            var budget = 10000;
+            while (pending.Count > 0 && budget > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                IEnumerator<FileSystemInfo> iterator;
+                try
+                {
+                    iterator = new DirectoryInfo(pending.Pop()).EnumerateFileSystemInfos("*", new EnumerationOptions
+                    {
+                        AttributesToSkip = FileAttributes.ReparsePoint,
+                        IgnoreInaccessible = false
+                    }).GetEnumerator();
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    _logger.Warn(ex, "Skipping unreadable inventory directory");
+                    markPartial();
+                    continue;
+                }
+
+                using (iterator)
+                {
+                    while (budget-- > 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        FileSystemInfo entry;
+                        try
+                        {
+                            if (!iterator.MoveNext()) break;
+                            entry = iterator.Current;
+                            if ((entry.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                            if ((entry.Attributes & FileAttributes.Directory) != 0)
+                            {
+                                if (!entry.Name.StartsWith(".", StringComparison.Ordinal)) pending.Push(entry.FullName);
+                                continue;
+                            }
+                        }
+                        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                        {
+                            _logger.Warn(ex, "Skipping unreadable inventory directory");
+                            markPartial();
+                            break;
+                        }
+
+                        yield return entry.FullName;
+                    }
+                }
+            }
+
+            if (budget <= 0)
+            {
+                markPartial();
+                _logger.Warn("Illustrated inventory scan capped at 10000 entries; listing may be partial");
+            }
+        }
+
+        private static StringComparison PathComparison => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        private string RegisteredRoot(string path)
+        {
+            string full;
+            try
+            {
+                full = CanonicalPath(path);
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw new BadRequestException("Invalid rootFolderPath");
+            }
+
+            foreach (var root in _rootFolderService.All())
+            {
+                try
+                {
+                    if (string.Equals(CanonicalPath(root.Path), full, PathComparison)) return full;
+                }
+                catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    _logger.Warn(ex, "Skipping invalid registered inventory root");
+                }
+            }
+
+            throw new BadRequestException("A registered rootFolderPath is required");
+        }
+
+        private static bool IsUnderRoot(string path, string root)
+        {
+            try
+            {
+                return CanonicalPath(path).StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, PathComparison);
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        private static string CanonicalPath(string path)
+        {
+            var full = Path.GetFullPath(path);
+            var current = Path.GetPathRoot(full);
+            foreach (var part in full.Substring(current.Length).Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, part);
+                var info = new DirectoryInfo(current);
+                if (info.LinkTarget != null) current = info.ResolveLinkTarget(true).FullName;
+            }
+
+            return Path.TrimEndingDirectorySeparator(current);
         }
 
         [RestPutById]

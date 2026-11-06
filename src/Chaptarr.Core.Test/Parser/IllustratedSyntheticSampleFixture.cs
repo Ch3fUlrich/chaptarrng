@@ -5,7 +5,7 @@ using NzbDrone.Core.Parser;
 namespace NzbDrone.Core.Test.Parser
 {
     [TestFixture]
-    public class IllustratedRealSampleFixture
+    public class IllustratedSyntheticSampleFixture
     {
         [TestCase("comics", "(Velqor's Glass Voyage 01) Loom Of Cinder-Moth 031 (1987) (digital)/(Velqor's Glass Voyage 01) Loom Of Cinder-Moth 031 (1987) (digital).cbr")]
         [TestCase("comics", "(Velqor's Glass Voyage 04) Loom Of Cinder-Moth 032 (1987) (digital)/(Velqor's Glass Voyage 04) Loom Of Cinder-Moth 032 (1987) (digital).cbr")]
@@ -67,7 +67,7 @@ namespace NzbDrone.Core.Test.Parser
         [TestCase("magazines", "Copper.And.Quartz.Lenscraft.For.Novices.No.22.2025.HYBRID.MAGAZINE.eBook-73Q8/Copper.And.Quartz.Lenscraft.For.Novices.No.22.2025.HYBRID.MAGAZINE.eBook-73Q8.pdf")]
         [TestCase("magazines", "Copper.And.Quartz.Lenscraft.For.Novices.No.23.2026.HYBRID.MAGAZINE.eBook-73Q8/Copper.And.Quartz.Lenscraft.For.Novices.No.23.2026.HYBRID.MAGAZINE.eBook-73Q8.pdf")]
         [TestCase("magazines", "Quelnavor Ledgerwheel (USA) - 03.08.2020.pdf/Quelnavor Ledgerwheel (USA) - 03.08.2020.pdf")]
-        public void lists_real_sample_name_and_library_type(string type, string path)
+        public void lists_synthetic_sample_name_and_library_type(string type, string path)
         {
             var entry = IllustratedLibraryListing.List(path, type);
             Assert.That(entry.Name, Is.EqualTo(path.Split('/').Last()));
@@ -76,7 +76,7 @@ namespace NzbDrone.Core.Test.Parser
 
         [TestCase("Quills Beyond Copper", "163", "164")]
         [TestCase("Lanterns Beyond Quartz", "33", "98")]
-        public void real_series_parity_uses_production_gap_detection(string series, string first, string second)
+        public void synthetic_series_parity_uses_production_gap_detection(string series, string first, string second)
         {
             var paths = series == "Quills Beyond Copper"
                 ? new[] { "Quills Beyond Copper - Issue 163/Quills Beyond Copper - Issue 163.pdf", "Quills Beyond Copper - Issue 164/Quills_Beyond_Copper_-_Issue_164.pdf" }
@@ -135,7 +135,7 @@ namespace NzbDrone.Core.Test.Parser
         [TestCase("47QX.ZUP_Quelvo R. Zelvin Omnivaria Plorvex v01-05", "manga", "Extensionless bundle: no individual media file or issue identity supplied")]
         [TestCase("Copper Weavers Guild Sector 282 - Quorlune - QL-07liners-web.pdf", "magazines", "No unambiguous numbered magazine identity; catalog metadata required")]
         [TestCase("Copper Orchard - Velnor Quillian Zorveth {supplement to the July 2001 issue of Quartz And Vellum}.pdf", "magazines", "No unambiguous numbered magazine identity; catalog metadata required")]
-        public void real_sample_limitations_are_explicit(string name, string type, string limitation)
+        public void synthetic_sample_limitations_are_explicit(string name, string type, string limitation)
         {
             var entry = IllustratedLibraryListing.List(name, type);
             Assert.That(entry.Series, Is.Null);

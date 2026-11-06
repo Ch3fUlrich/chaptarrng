@@ -2178,6 +2178,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "rootFolderPath",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Registered canonical root only; requires unmapped=true, otherwise 400."
           }
         ],
         "responses": {
@@ -12404,6 +12413,116 @@
           }
         }
       }
+    },
+    "/api/v1/bookfile/illustrated": {
+      "get": {
+        "tags": [
+          "BookFile"
+        ],
+        "summary": "Bounded names-only inventory. Type selects a comics/manga/magazines directory component, otherwise bundles are manga, PDFs magazines, other text containers comics; not catalog metadata.",
+        "parameters": [
+          {
+            "name": "rootFolderPath",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required registered root, canonicalized through symlink aliases; trailing separators accepted. Case follows the host OS."
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "comics",
+                "manga",
+                "magazines"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1000
+            }
+          },
+          {
+            "name": "expectedIssues",
+            "in": "query",
+            "description": "Repeat Series|Issue values. Missing issues are relative to the returned, possibly capped listing.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inventory (not metadata identification)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "series": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "issue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "limitation": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "missingIssues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "series": {
+                            "type": "string"
+                          },
+                          "issue": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid type or unregistered root"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14390,7 +14509,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": { }
+              "additionalProperties": {}
             },
             "nullable": true
           }
@@ -21049,10 +21168,10 @@
   },
   "security": [
     {
-      "X-Api-Key": [ ]
+      "X-Api-Key": []
     },
     {
-      "apikey": [ ]
+      "apikey": []
     }
   ],
   "tags": [
