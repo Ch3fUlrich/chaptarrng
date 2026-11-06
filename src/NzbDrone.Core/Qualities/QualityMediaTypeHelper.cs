@@ -136,7 +136,10 @@ namespace NzbDrone.Core.Qualities
             return quality == Quality.PDF ||
                    quality == Quality.MOBI ||
                    quality == Quality.EPUB ||
-                   quality == Quality.AZW3;
+                   quality == Quality.AZW3 ||
+                   quality == Quality.CBZ ||
+                   quality == Quality.CBR ||
+                   quality == Quality.CB7;
         }
 
         public static bool IsEbookFileQuality(Quality quality)

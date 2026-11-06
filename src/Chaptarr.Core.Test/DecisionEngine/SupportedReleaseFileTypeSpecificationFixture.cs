@@ -16,8 +16,6 @@ namespace Chaptarr.Core.Test.DecisionEngine
             return new SupportedReleaseFileTypeSpecification(LogManager.GetCurrentClassLogger());
         }
 
-        [TestCase("cbr")]
-        [TestCase("cbz")]
         [TestCase("djvu")]
         [TestCase("mkv")]
         public void should_reject_known_unsupported_indexer_file_types(string fileType)
@@ -43,7 +41,7 @@ namespace Chaptarr.Core.Test.DecisionEngine
         }
 
         [Test]
-        public void should_reject_sons_of_ares_cbr_before_download()
+        public void should_accept_sons_of_ares_cbr_before_download()
         {
             var remoteBook = BuildRemoteBook(
                 "cbr",
@@ -51,14 +49,12 @@ namespace Chaptarr.Core.Test.DecisionEngine
 
             var decision = CreateSubject().IsSatisfiedBy(remoteBook, null);
 
-            Assert.That(decision.Accepted, Is.False);
-            Assert.That(decision.Reason, Is.EqualTo("Unsupported file type: cbr"));
+            Assert.That(decision.Accepted, Is.True);
         }
 
         [TestCase("The Hitchhiker's Guide to the Galaxy 2005 1080p BluRay x264.mkv", "mkv")]
         [TestCase("Example Release.avi", "avi")]
         [TestCase("Example Release.webm", "webm")]
-        [TestCase("Free.Comic.Book.Day.2025.cbz-xpost", "cbz")]
         [TestCase("10.HTML_and_CSS_overview", "html")]
         public void should_reject_known_unsupported_title_file_extensions_when_indexer_file_type_is_missing(string title, string fileType)
         {
@@ -95,6 +91,9 @@ namespace Chaptarr.Core.Test.DecisionEngine
         }
 
         [TestCase("epub")]
+        [TestCase("cbz")]
+        [TestCase("cbr")]
+        [TestCase("cb7")]
         [TestCase("azw3")]
         [TestCase("pdf")]
         [TestCase("m4b")]
@@ -119,6 +118,26 @@ namespace Chaptarr.Core.Test.DecisionEngine
             var decision = CreateSubject().IsSatisfiedBy(BuildRemoteBook(null, title), null);
 
             Assert.That(decision.Accepted, Is.True);
+        }
+
+        [Test]
+        public void should_accept_comic_title_extension_when_indexer_file_type_is_missing()
+        {
+            var decision = CreateSubject().IsSatisfiedBy(BuildRemoteBook(null, "Free.Comic.Book.Day.2025.cbz-xpost"), null);
+
+            Assert.That(decision.Accepted, Is.True);
+        }
+
+        [TestCase("cbz")]
+        [TestCase("cbr")]
+        [TestCase("cb7")]
+        public void should_reject_illustrated_file_type_for_ordinary_audiobook_request(string fileType)
+        {
+            var decision = CreateSubject().IsSatisfiedBy(BuildRemoteBook(fileType), BuildCriteria(BookMediaType.Audiobook));
+
+            Assert.That(decision.Accepted, Is.False);
+            Assert.That(decision.CanBypass, Is.False);
+            Assert.That(decision.Reason, Is.EqualTo($"File type {fileType} is not compatible with audiobook request"));
         }
 
         [Test]
@@ -224,7 +243,7 @@ namespace Chaptarr.Core.Test.DecisionEngine
         }
 
         [Test]
-        public void should_not_treat_known_unsupported_file_type_as_ebook_media_type_hint()
+        public void should_treat_illustrated_file_type_as_ebook_media_type_hint()
         {
             var mediaType = QualityMediaTypeHelper.DetectMediaType(
                 Quality.Unknown,
@@ -233,6 +252,16 @@ namespace Chaptarr.Core.Test.DecisionEngine
                     Title = "Red Rising: Sons of Ares Vol. 2: Wrath",
                     FileType = "cbr"
                 });
+
+            Assert.That(mediaType, Is.EqualTo(BookMediaType.Ebook));
+        }
+
+        [TestCase("djvu")]
+        [TestCase("mkv")]
+        public void should_not_treat_known_unsupported_file_type_as_ebook_media_type_hint(string fileType)
+        {
+            var mediaType = QualityMediaTypeHelper.DetectMediaType(Quality.Unknown,
+                new TorrentInfo { Title = "Example ordinary book", FileType = fileType });
 
             Assert.That(mediaType, Is.Null);
         }
