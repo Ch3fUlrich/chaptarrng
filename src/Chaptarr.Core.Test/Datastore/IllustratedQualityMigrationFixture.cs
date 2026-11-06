@@ -13,10 +13,10 @@ namespace Chaptarr.Core.Test.Datastore
     [TestFixture]
     public class IllustratedQualityMigrationFixture
     {
-        [TestCase(6, "Other", 14)]
-        [TestCase(7, "CB7", 99)]
-        [TestCase(5, "Other", 13)]
-        public void conflicting_reserved_quality_rolls_back(int quality, string title, int weight)
+        [TestCase(6, "Other")]
+        [TestCase(7, "Other")]
+        [TestCase(5, "Other")]
+        public void conflicting_reserved_quality_rolls_back(int quality, string title)
         {
             var path = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"illustrated_conflict_{Guid.NewGuid():N}.db");
             var cs = $"Data Source={path};Pooling=False";
@@ -28,17 +28,18 @@ namespace Chaptarr.Core.Test.Datastore
                     WITH RECURSIVE v(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM v WHERE n<123)
                     INSERT INTO VersionInfo SELECT n, CURRENT_TIMESTAMP, 'baseline' FROM v;
                     CREATE TABLE Authors (Id INTEGER PRIMARY KEY, AudiobookRootFolderPath TEXT, EbookRootFolderPath TEXT);
-                    CREATE TABLE QualityDefinitions (Quality INTEGER, Title TEXT, Weight INTEGER, MinSize REAL, MaxSize REAL);
+                    CREATE TABLE QualityDefinitions (Quality INTEGER, Title TEXT, MinSize REAL, MaxSize REAL);
                     CREATE TABLE QualityProfiles (Id INTEGER PRIMARY KEY, ProfileType INTEGER, Items TEXT, Cutoff INTEGER);
                     INSERT INTO QualityProfiles VALUES (1,2,'[]',3);");
-                db.Execute("INSERT INTO QualityDefinitions VALUES (@quality,@title,@weight,12,34)", new { quality, title, weight });
+                db.Execute("INSERT INTO QualityDefinitions VALUES (@quality,@title,12,34)", new { quality, title });
                 var error = Assert.Catch<Exception>(() =>
                     new MigrationController(LogManager.GetLogger(nameof(IllustratedQualityMigrationFixture)), null)
                         .Migrate(cs, new MigrationContext(MigrationType.Main, 124), DatabaseType.SQLite));
                 Assert.That(error.ToString(), Does.Contain($"Quality id {quality} conflicts"));
                 Assert.That(db.QuerySingle<int>("SELECT COUNT(*) FROM QualityDefinitions"), Is.EqualTo(1));
                 Assert.That(db.QuerySingle<string>("SELECT Title FROM QualityDefinitions"), Is.EqualTo(title));
-                Assert.That(db.QuerySingle<int>("SELECT Weight FROM QualityDefinitions"), Is.EqualTo(weight));
+                Assert.That(db.QuerySingle<double>("SELECT MinSize FROM QualityDefinitions"), Is.EqualTo(12));
+                Assert.That(db.QuerySingle<double>("SELECT MaxSize FROM QualityDefinitions"), Is.EqualTo(34));
                 Assert.That(db.QuerySingle<string>("SELECT Items FROM QualityProfiles"), Is.EqualTo("[]"));
                 Assert.That(db.QuerySingle<int>("SELECT COUNT(*) FROM VersionInfo WHERE Version=124"), Is.Zero);
             }
@@ -62,7 +63,7 @@ namespace Chaptarr.Core.Test.Datastore
                         WITH RECURSIVE v(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM v WHERE n<123)
                         INSERT INTO VersionInfo SELECT n, CURRENT_TIMESTAMP, 'baseline' FROM v;
                         CREATE TABLE Authors (Id INTEGER PRIMARY KEY, AudiobookRootFolderPath TEXT, EbookRootFolderPath TEXT);
-                        CREATE TABLE QualityDefinitions (Quality INTEGER, Title TEXT, Weight INTEGER, MinSize REAL, MaxSize REAL);
+                        CREATE TABLE QualityDefinitions (Quality INTEGER, Title TEXT, MinSize REAL, MaxSize REAL);
                         CREATE TABLE QualityProfiles (Id INTEGER PRIMARY KEY, ProfileType INTEGER, Items TEXT, Cutoff INTEGER);
                         INSERT INTO QualityProfiles VALUES (1,2,'[{""name"":""custom"",""items"":[{""quality"":5,""allowed"":true}]},{""quality"":""bad""},null,3]',3);
                         INSERT INTO QualityProfiles VALUES (2,2,'invalid',4);
@@ -86,7 +87,10 @@ namespace Chaptarr.Core.Test.Datastore
                 Assert.That(result.QuerySingle<string>("SELECT Items FROM QualityProfiles WHERE Id=3"), Is.Null);
                 Assert.That(result.QuerySingle<string>("SELECT Items FROM QualityProfiles WHERE Id=4"), Is.EqualTo("[]"));
                 Assert.That(result.QuerySingle<string>("SELECT Items FROM QualityProfiles WHERE Id=5"), Is.EqualTo("[ {\"quality\":5}, {\"quality\":6}, {\"quality\":7} ]"));
-                Assert.That(result.QuerySingle<int>("SELECT COUNT(*) FROM QualityDefinitions WHERE Quality BETWEEN 5 AND 7 AND Weight=Quality+8"), Is.EqualTo(3));
+                Assert.That(result.QuerySingle<int>("SELECT COUNT(*) FROM QualityDefinitions WHERE Quality BETWEEN 5 AND 7 AND MinSize=0 AND MaxSize IS NULL"), Is.EqualTo(3));
+                Assert.That(result.QuerySingle<string>("SELECT Title FROM QualityDefinitions WHERE Quality=5"), Is.EqualTo("CBZ"));
+                Assert.That(result.QuerySingle<string>("SELECT Title FROM QualityDefinitions WHERE Quality=6"), Is.EqualTo("CBR"));
+                Assert.That(result.QuerySingle<string>("SELECT Title FROM QualityDefinitions WHERE Quality=7"), Is.EqualTo("CB7"));
             }
             finally
             {
