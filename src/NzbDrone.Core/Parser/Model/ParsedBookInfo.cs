@@ -8,6 +8,7 @@ namespace NzbDrone.Core.Parser.Model
     {
         public string BookTitle { get; set; }
         public string SeriesTitle { get; set; }
+        public string IssueIdentifier { get; set; }
         public string SeriesPosition { get; set; }
         public string ChapterNumber { get; set; }
         public string AuthorName { get; set; }

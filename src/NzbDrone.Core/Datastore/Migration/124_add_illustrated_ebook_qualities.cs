@@ -1,3 +1,5 @@
+using System;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Dapper;
 using FluentMigrator;
@@ -12,31 +14,50 @@ namespace NzbDrone.Core.Datastore.Migration
         {
             Execute.WithConnection((connection, transaction) =>
             {
-                foreach (var definition in NzbDrone.Core.Qualities.Quality.DefaultQualityDefinitions)
+                foreach (var definition in new[] { new { Quality = 5, Title = "CBZ", Weight = 13 }, new { Quality = 6, Title = "CBR", Weight = 14 }, new { Quality = 7, Title = "CB7", Weight = 15 } })
                 {
-                    if (definition.Quality.Id < 5 || definition.Quality.Id > 7)
+                    if (connection.ExecuteScalar<int>(@"SELECT COUNT(*) FROM ""QualityDefinitions"" WHERE ""Quality"" = @Quality AND (""Title"" IS NULL OR ""Title"" <> @Title OR ""Weight"" IS NULL OR ""Weight"" <> @Weight)", definition, transaction) != 0)
                     {
-                        continue;
+                        throw new InvalidOperationException($"Quality id {definition.Quality} conflicts with migration 124.");
                     }
 
                     connection.Execute(@"INSERT INTO ""QualityDefinitions"" (""Quality"", ""Title"", ""Weight"", ""MinSize"", ""MaxSize"")
                         SELECT @Quality, @Title, @Weight, 0, NULL WHERE NOT EXISTS
                         (SELECT 1 FROM ""QualityDefinitions"" WHERE ""Quality"" = @Quality)",
-                        new { Quality = definition.Quality.Id, Title = definition.Quality.Name, definition.Weight }, transaction);
+                        definition, transaction);
                 }
 
                 foreach (var row in connection.Query<ProfileRow>(@"SELECT ""Id"", ""Items"" FROM ""QualityProfiles"" WHERE ""ProfileType"" = 2", transaction: transaction))
                 {
-                    var items = JsonNode.Parse(row.Items).AsArray();
+                    JsonArray items;
+                    try
+                    {
+                        items = row.Items == null ? null : JsonNode.Parse(row.Items) as JsonArray;
+                    }
+                    catch (JsonException)
+                    {
+                        continue;
+                    }
+
+                    if (items == null)
+                    {
+                        continue;
+                    }
+
+                    var changed = false;
                     for (var id = 5; id <= 7; id++)
                     {
                         if (!ContainsQuality(items, id))
                         {
-                            items.Add(new JsonObject { ["quality"] = id, ["allowed"] = true });
+                            items.Add(new JsonObject { ["quality"] = id, ["allowed"] = false });
+                            changed = true;
                         }
                     }
 
-                    connection.Execute(@"UPDATE ""QualityProfiles"" SET ""Items"" = @Items WHERE ""Id"" = @Id", new { row.Id, Items = items.ToJsonString() }, transaction);
+                    if (changed)
+                    {
+                        connection.Execute(@"UPDATE ""QualityProfiles"" SET ""Items"" = @Items WHERE ""Id"" = @Id", new { row.Id, Items = items.ToJsonString() }, transaction);
+                    }
                 }
             });
         }
@@ -45,7 +66,7 @@ namespace NzbDrone.Core.Datastore.Migration
         {
             foreach (var item in items)
             {
-                if (item?["quality"]?.GetValue<int>() == id || (item?["items"] is JsonArray children && ContainsQuality(children, id)))
+                if (item is JsonObject obj && ((obj["quality"] is JsonValue value && value.TryGetValue<int>(out var quality) && quality == id) || (obj["items"] is JsonArray children && ContainsQuality(children, id))))
                 {
                     return true;
                 }
