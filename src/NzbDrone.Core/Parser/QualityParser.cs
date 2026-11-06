@@ -30,7 +30,7 @@ namespace NzbDrone.Core.Parser
         private static readonly Regex RealRegex = new(@"\b(?<real>REAL)\b",
                                                                 RegexOptions.Compiled);
 
-        private static readonly Regex CodecRegex = new(@"\b(?:(?<CBZ>CBZ)|(?<CBR>CBR)|(?<CB7>CB7)|(?<PDF>PDF)|(?<MOBI>MOBI)|(?<EPUB>EPUB)|(?<AZW3>AZW3?)|(?<MP1>MPEG Version \d(.5)? Audio, Layer 1|MP1)|(?<MP2>MPEG Version \d(.5)? Audio, Layer 2|MP2)|(?<MP3VBR>MP3.*VBR|MPEG Version \d(.5)? Audio, Layer 3 vbr)|(?<MP3CBR>MP3|MPEG Version \d(.5)? Audio, Layer 3)|(?<FLAC>flac)|(?<WAVPACK>wavpack|wv)|(?<ALAC>alac)|(?<WMA>WMA\d?)|(?<WAV>WAV|PCM)|(?<AAC>M4A|M4P|M4B|AAC|mp4a|MPEG-4 Audio(?!.*alac))|(?<OGG>OGG|OGA|Vorbis))\b|(?<APE>monkey's audio|[\[|\(].*\bape\b.*[\]|\)])|(?<OPUS>Opus Version \d(.5)? Audio|[\[|\(].*\bopus\b.*[\]|\)])",
+        private static readonly Regex CodecRegex = new(@"\b(?:(?<CBZ>CBZ)(?=\]?\s*$)|(?<CBR>CBR)(?=\]?\s*$)|(?<CB7>CB7)(?=\]?\s*$)|(?<PDF>PDF)|(?<MOBI>MOBI)|(?<EPUB>EPUB)|(?<AZW3>AZW3?)|(?<MP1>MPEG Version \d(.5)? Audio, Layer 1|MP1)|(?<MP2>MPEG Version \d(.5)? Audio, Layer 2|MP2)|(?<MP3VBR>MP3.*VBR|MPEG Version \d(.5)? Audio, Layer 3 vbr)|(?<MP3CBR>MP3|MPEG Version \d(.5)? Audio, Layer 3)|(?<FLAC>flac)|(?<WAVPACK>wavpack|wv)|(?<ALAC>alac)|(?<WMA>WMA\d?)|(?<WAV>WAV|PCM)|(?<AAC>M4A|M4P|M4B|AAC|mp4a|MPEG-4 Audio(?!.*alac))|(?<OGG>OGG|OGA|Vorbis))\b|(?<APE>monkey's audio|[\[|\(].*\bape\b.*[\]|\)])|(?<OPUS>Opus Version \d(.5)? Audio|[\[|\(].*\bopus\b.*[\]|\)])",
                                                              RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // Structural helpers for DetectTitleFormats. All language-neutral by design: delimiters,
@@ -418,6 +418,12 @@ namespace NzbDrone.Core.Parser
             if (name.IsNullOrWhiteSpace())
             {
                 return Codec.Unknown;
+            }
+
+            var archive = Regex.Match(name, @"(?:\.|\s+\[?)(CBZ|CBR|CB7)\]?$", RegexOptions.IgnoreCase);
+            if (archive.Success)
+            {
+                return Enum.Parse<Codec>(archive.Groups[1].Value.ToUpperInvariant());
             }
 
             var match = CodecRegex.Match(name);

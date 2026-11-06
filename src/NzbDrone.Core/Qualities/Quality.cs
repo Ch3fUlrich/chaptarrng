@@ -119,11 +119,11 @@ namespace NzbDrone.Core.Qualities
                 new QualityDefinition(Quality.EPUB)         { Weight = 11,  GroupWeight = 11,  MinSize = 0, MaxSize = 350 },
                 new QualityDefinition(Quality.AZW3)         { Weight = 12,  GroupWeight = 12,  MinSize = 0, MaxSize = 350 },
 
-                // Audio formats (ascending weight = ascending default preference)
                 new QualityDefinition(Quality.CBZ)          { Weight = 13, GroupWeight = 13, MinSize = 0, MaxSize = null },
                 new QualityDefinition(Quality.CBR)          { Weight = 14, GroupWeight = 14, MinSize = 0, MaxSize = null },
                 new QualityDefinition(Quality.CB7)          { Weight = 15, GroupWeight = 15, MinSize = 0, MaxSize = null },
 
+                // Audio formats (ascending weight = ascending default preference)
                 new QualityDefinition(Quality.UnknownAudio) { Weight = 50,  GroupWeight = 50,  MinSize = 0, MaxSize = 350 },
                 new QualityDefinition(Quality.FLAC)         { Weight = 100, GroupWeight = 100, MinSize = 0, MaxSize = null },
                 new QualityDefinition(Quality.MP3)          { Weight = 105, GroupWeight = 105, MinSize = 0, MaxSize = 350 },

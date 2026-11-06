@@ -33,7 +33,7 @@ namespace NzbDrone.Core.Test.Parser
             var parsed = NzbDrone.Core.Parser.Parser.ParseBookTitle(path);
             Assert.That(parsed, Is.Not.Null);
             Assert.That(parsed.SeriesTitle, Is.EqualTo(series));
-            Assert.That(parsed.SeriesPosition, Is.EqualTo(position));
+            Assert.That(parsed.IssueIdentifier ?? parsed.SeriesPosition, Is.EqualTo(position));
             Assert.That(parsed.Quality.Quality.Name, Is.EqualTo(extension.ToUpperInvariant()));
             Assert.That(QualityMediaTypeHelper.GetKnownMediaType(parsed.Quality.Quality), Is.EqualTo(BookMediaType.Ebook));
             Assert.That(MediaFileExtensions.TextExtensions.Contains("." + extension), Is.True);
@@ -63,8 +63,8 @@ namespace NzbDrone.Core.Test.Parser
             var expected = new[] { ("Synthetic Science", "2026-01-01"), ("Synthetic Science", "2026-02-01"), ("Synthetisches Wissen", "2026-01-01"), ("Synthetisches Wissen", "2026-02-01") };
             var owned = expected.Where(issue => issue != ("Synthetic Science", "2026-02-01"))
                 .Select(issue => NzbDrone.Core.Parser.Parser.ParseBookTitle($"/books/magazines/en/{issue.Item1} {issue.Item2}.cbz"))
-                .Select(parsed => (parsed.SeriesTitle, parsed.SeriesPosition));
-            Assert.That(expected.Except(owned), Is.EqualTo(new[] { ("Synthetic Science", "2026-02-01") }));
+                .Select(parsed => (parsed.SeriesTitle, parsed.IssueIdentifier));
+            Assert.That(NzbDrone.Core.Parser.IllustratedLibraryListing.MissingIssues(expected, owned), Is.EqualTo(new[] { ("Synthetic Science", "2026-02-01") }));
         }
     }
 }
