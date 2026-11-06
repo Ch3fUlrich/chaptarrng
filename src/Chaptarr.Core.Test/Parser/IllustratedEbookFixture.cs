@@ -48,6 +48,15 @@ namespace NzbDrone.Core.Test.Parser
             Assert.That(NzbDrone.Core.Parser.QualityParser.ParseQuality($"Synthetic Series v03 [{format}]").Quality.Name, Is.EqualTo(format));
         }
 
+        [TestCase("Author - Ordinary Book 12.pdf")]
+        [TestCase("Author - Ordinary Book 12.epub")]
+        [TestCase("Author - Ordinary Book 12.mobi")]
+        [TestCase("Author - Ordinary Book 12.azw3")]
+        public void ordinary_ebook_does_not_use_illustrated_parser(string title)
+        {
+            Assert.That(NzbDrone.Core.Parser.IllustratedBookParser.Parse(title), Is.Null);
+        }
+
         [Test]
         public void dated_magazine_parity_detects_gap_per_series()
         {

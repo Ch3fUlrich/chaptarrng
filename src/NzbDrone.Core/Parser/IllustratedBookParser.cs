@@ -14,7 +14,8 @@ namespace NzbDrone.Core.Parser
         public static ParsedBookInfo Parse(string title)
         {
             var quality = QualityParser.ParseQuality(title);
-            if (!QualityMediaTypeHelper.IsEbookQuality(quality.Quality))
+            // Do not intercept ordinary numbered ebook titles in the author parser.
+            if (quality.Quality != Quality.CBZ && quality.Quality != Quality.CBR && quality.Quality != Quality.CB7)
             {
                 return null;
             }
