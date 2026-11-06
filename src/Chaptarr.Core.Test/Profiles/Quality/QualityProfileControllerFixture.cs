@@ -193,7 +193,10 @@ namespace Chaptarr.Core.Test.Profiles.Quality
                 CoreQuality.PDF.Id,
                 CoreQuality.MOBI.Id,
                 CoreQuality.EPUB.Id,
-                CoreQuality.AZW3.Id
+                CoreQuality.AZW3.Id,
+                CoreQuality.CBZ.Id,
+                CoreQuality.CBR.Id,
+                CoreQuality.CB7.Id
             }));
             Assert.That(AllowedQualityIds(resource), Is.EquivalentTo(new[]
             {
@@ -207,7 +210,10 @@ namespace Chaptarr.Core.Test.Profiles.Quality
                 CoreQuality.PDF.Id,
                 CoreQuality.MOBI.Id,
                 CoreQuality.EPUB.Id,
-                CoreQuality.AZW3.Id
+                CoreQuality.AZW3.Id,
+                CoreQuality.CBZ.Id,
+                CoreQuality.CBR.Id,
+                CoreQuality.CB7.Id
             }));
         }
 

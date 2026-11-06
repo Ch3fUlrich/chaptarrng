@@ -26,11 +26,19 @@ scope. Real-library parity remains pending: all fixture paths are synthetic.
 
 ## Validation status
 
-Implementation is incomplete/unverified. Local .NET 10.0.400 restore succeeded;
-the test-project build under `systemd-run --user --scope -p MemoryMax=4G` failed
-because ImageSharp 4.1.3 requires a Six Labors license. No secret paths were
-accessed and no license check was bypassed. The 64 new cases have not run.
+Validated locally on 2026-11-06 using the authorized inline build license.
+The affected files were IllustratedEbookFixture.cs, ParserTitleParsingFixture.cs,
+QualityParserTitleFormatEvidenceFixture.cs, MediaFileExtensionsFixture.cs and
+QualityProfileControllerFixture.cs. Result: 131 passed, zero failed/skipped.
+The illustrated parser now leaves ordinary PDF/EPUB/MOBI/AZW3 titles to the
+existing parser. Schema assertions include the three new archive qualities.
+
 The 60 synthetic cases cover parsing/classification/container acceptance, not
-the full metadata identification/import service. Migration 124 still needs a
-database integration test (including grouped profile JSON and preservation of
-custom settings). Do not deploy or claim end-to-end library parity from this patch.
+sandbox library listing or the full metadata identification/import service.
+No real-library sample list was supplied in this run; obtain it through L1,
+never by contacting a live service or NFS. CH-COMICS-SUPPORT is NOT done.
+The two-series magazine test demonstrates synthetic set parity only; it does
+not establish real-library parity. Migration 124 still needs a database
+integration test (including grouped profile JSON and preservation of custom
+settings). L1-managed review seats remain pending. Do not deploy or claim
+end-to-end library parity from this patch.
