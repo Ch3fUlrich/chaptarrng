@@ -420,7 +420,7 @@ namespace NzbDrone.Core.Parser
                 return Codec.Unknown;
             }
 
-            var archive = Regex.Match(name, @"(?:\.|\s+\[?)(CBZ|CBR|CB7)\]?$", RegexOptions.IgnoreCase);
+            var archive = Regex.Match(name, @"(?:\.|\s+[\[(]?)(CBZ|CBR|CB7)[\])]?(?:\s*[\[(][^\])]*[\])])*\s*$", RegexOptions.IgnoreCase);
             if (archive.Success)
             {
                 return Enum.Parse<Codec>(archive.Groups[1].Value.ToUpperInvariant());

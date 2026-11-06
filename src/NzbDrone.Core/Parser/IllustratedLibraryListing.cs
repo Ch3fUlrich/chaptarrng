@@ -29,7 +29,7 @@ namespace NzbDrone.Core.Parser
             var numbered = Regex.Match(normalized, @"^(?<series>.+?)[ -]+(?:Issue|No)\s+(?<issue>\d+)\b", RegexOptions.IgnoreCase);
             return new Entry(name, libraryType,
                 numbered.Success ? numbered.Groups["series"].Value.Trim() : null,
-                numbered.Success ? numbered.Groups["issue"].Value.TrimStart('0') : null,
+                numbered.Success ? NormalizeIssue(numbered.Groups["issue"].Value) : null,
                 numbered.Success || libraryType != "magazines" ? null : "No unambiguous numbered magazine identity; catalog metadata required");
         }
 
@@ -37,7 +37,18 @@ namespace NzbDrone.Core.Parser
             IEnumerable<(string Series, string Issue)> expected,
             IEnumerable<(string Series, string Issue)> owned)
         {
-            return expected.Except(owned).ToList();
+            return expected.Select(issue => (issue.Series, NormalizeIssue(issue.Issue)))
+                .Except(owned.Select(issue => (issue.Series, NormalizeIssue(issue.Issue)))).ToList();
+        }
+
+        public static string NormalizeIssue(string issue)
+        {
+            if (issue == null)
+            {
+                return null;
+            }
+
+            return Regex.Replace(issue, @"\d+", match => match.Value.TrimStart('0') is var value && value.Length > 0 ? value : "0");
         }
     }
 }

@@ -36,6 +36,7 @@ namespace NzbDrone.Core.Test.Parser
             Assert.That(parsed.IssueIdentifier ?? parsed.SeriesPosition, Is.EqualTo(position));
             Assert.That(parsed.Quality.Quality.Name, Is.EqualTo(extension.ToUpperInvariant()));
             Assert.That(QualityMediaTypeHelper.GetKnownMediaType(parsed.Quality.Quality), Is.EqualTo(BookMediaType.Ebook));
+            Assert.That(QualityMediaTypeHelper.IsEbookFileQuality(parsed.Quality.Quality), Is.True);
             Assert.That(MediaFileExtensions.TextExtensions.Contains("." + extension), Is.True);
             Assert.That(MediaFileExtensions.IsSingleFileBookContainer("." + extension), Is.True);
         }
@@ -46,6 +47,14 @@ namespace NzbDrone.Core.Test.Parser
         public void release_title_quality(string format)
         {
             Assert.That(NzbDrone.Core.Parser.QualityParser.ParseQuality($"Synthetic Series v03 [{format}]").Quality.Name, Is.EqualTo(format));
+            foreach (var suffix in new[] { $"[{format}] [Digital]", $"({format})", $"({format}) (Digital)" })
+            {
+                var parsed = NzbDrone.Core.Parser.IllustratedBookParser.Parse($"Synthetic Series v03 (2019) {suffix}");
+                Assert.That(parsed, Is.Not.Null);
+                Assert.That(parsed.SeriesTitle, Is.EqualTo("Synthetic Series"));
+                Assert.That(parsed.SeriesPosition, Is.EqualTo("3"));
+                Assert.That(parsed.Quality.Quality.Name, Is.EqualTo(format));
+            }
         }
 
         [TestCase("Author - Ordinary Book 12.pdf")]

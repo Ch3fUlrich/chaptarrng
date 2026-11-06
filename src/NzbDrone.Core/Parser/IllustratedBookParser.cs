@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using NzbDrone.Core.Parser.Model;
@@ -9,7 +11,7 @@ namespace NzbDrone.Core.Parser
     public static class IllustratedBookParser
     {
         private static readonly Regex Numbered = new(@"^(?<series>.+?)\s+(?:(?:v|vol\.?|band)\s*|#)?(?<number>\d+)(?:\s+Ch\.?\s*(?<chapter>\d+))?(?:\s*\((?<year>\d{4})\))?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex Dated = new(@"^(?<series>.+?)\s+(?<date>\d{4}-(?:\d{2}-\d{2}|\d+))$", RegexOptions.Compiled);
+        private static readonly Regex Dated = new(@"^(?<series>.+?)\s+(?<date>\d{4}-(?:\d{2}-\d{2}|\d{3}))$", RegexOptions.Compiled);
 
         public static ParsedBookInfo Parse(string title)
         {
@@ -21,16 +23,26 @@ namespace NzbDrone.Core.Parser
             }
 
             var name = Path.GetFileName(title);
-            name = Regex.Replace(name, @"(?:\.(?:cbz|cbr|cb7|pdf)|\s+\[?(?:CBZ|CBR|CB7|PDF)\]?)$", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"(?:\.(?:cbz|cbr|cb7)|\s+[\[(]?(?:CBZ|CBR|CB7)[\])]?(?:\s*[\[(][^\])]*[\])])*)$", "", RegexOptions.IgnoreCase);
             var dated = Dated.Match(name);
             var numbered = Numbered.Match(name);
+            if (!dated.Success && Regex.IsMatch(name, @"\s\d{4}-\d+(?:-\d+)?$"))
+            {
+                return null;
+            }
+            var date = dated.Groups["date"].Value;
+            var realDate = date.Length == 10 && DateTime.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+            if (dated.Success && date.Length == 10 && !realDate)
+            {
+                return null;
+            }
             if (!dated.Success && !numbered.Success)
             {
                 return null;
             }
 
             var match = dated.Success ? dated : numbered;
-            var position = dated.Success ? null : match.Groups["number"].Value.TrimStart('0');
+            var position = dated.Success ? null : IllustratedLibraryListing.NormalizeIssue(match.Groups["number"].Value);
             return new ParsedBookInfo
             {
                 BookTitle = name,
@@ -38,7 +50,7 @@ namespace NzbDrone.Core.Parser
                 SeriesPosition = position,
                 IssueIdentifier = dated.Success ? match.Groups["date"].Value : null,
                 ChapterNumber = numbered.Groups["chapter"].Success ? numbered.Groups["chapter"].Value : null,
-                ReleaseDate = dated.Success ? match.Groups["date"].Value : match.Groups["year"].Value,
+                ReleaseDate = realDate ? date : null,
                 Quality = quality,
                 ReleaseTitle = title
             };

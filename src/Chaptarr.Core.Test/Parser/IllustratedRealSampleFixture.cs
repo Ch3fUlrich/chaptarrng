@@ -116,6 +116,66 @@ namespace NzbDrone.Core.Test.Parser
             Assert.That(parsed, Is.Null);
         }
 
+        [TestCase("epub")]
+        [TestCase("pdf")]
+        [TestCase("mobi")]
+        [TestCase("azw3")]
+        [TestCase("mp3")]
+        [TestCase("m4b")]
+        public void ordinary_positive_control_preserves_author_and_book(string format)
+        {
+            var parsed = NzbDrone.Core.Parser.Parser.ParseBookTitle($"Freida McFadden - Want to Know a Secret ({format})");
+            Assert.That(parsed, Is.Not.Null);
+            Assert.That(parsed.AuthorName, Is.EqualTo("Freida McFadden"));
+            Assert.That(parsed.BookTitle, Is.EqualTo("Want to Know a Secret"));
+            Assert.That(parsed.SeriesTitle, Is.Null);
+        }
+
+        [TestCase("13DL.APP_Cardcaptor Sakura Clear Card Arc v01-03", "manga", "Extensionless bundle: no individual media file or issue identity supplied")]
+        [TestCase("13DL.APP_Fujiko F. Fujio Daizenshu Doraemon v01-05", "manga", "Extensionless bundle: no individual media file or issue identity supplied")]
+        [TestCase("Thinking Fellers Union Local 282 - Tangle - BM-07liners-web.pdf", "magazines", "No unambiguous numbered magazine identity; catalog metadata required")]
+        [TestCase("Little Caesar - Francis Edwards Faragoh {supplement to the July 2001 issue of Sight And Sound}.pdf", "magazines", "No unambiguous numbered magazine identity; catalog metadata required")]
+        public void real_sample_limitations_are_explicit(string name, string type, string limitation)
+        {
+            var entry = IllustratedLibraryListing.List(name, type);
+            Assert.That(entry.Series, Is.Null);
+            Assert.That(entry.Issue, Is.Null);
+            Assert.That(entry.Limitation, Is.EqualTo(limitation));
+        }
+
+        [TestCase("033", "33")]
+        [TestCase("2026-001", "2026-1")]
+        [TestCase("000", "0")]
+        [TestCase("2026-01-01", "2026-1-1")]
+        public void gap_comparison_normalizes_both_sides(string padded, string canonical)
+        {
+            Assert.That(IllustratedLibraryListing.MissingIssues(new[] { ("Series", padded) }, new[] { ("Series", canonical) }), Is.Empty);
+            Assert.That(IllustratedLibraryListing.MissingIssues(new[] { ("Series", canonical) }, new[] { ("Series", padded) }), Is.Empty);
+        }
+
+        [TestCase("2026-12")]
+        [TestCase("2026-123456")]
+        [TestCase("2026-02-30")]
+        public void invalid_issue_shapes_are_not_illustrated_identity(string issue)
+        {
+            Assert.That(IllustratedBookParser.Parse($"Series {issue}.cbz"), Is.Null);
+        }
+
+        [TestCase("Series 2026-001.cbz", null)]
+        [TestCase("Series v00.cbz", null)]
+        [TestCase("Series v03 (2019).cbz", null)]
+        [TestCase("Series 2026-01-01.cbz", "2026-01-01")]
+        public void release_date_requires_a_real_date(string title, string date)
+        {
+            var parsed = IllustratedBookParser.Parse(title);
+            Assert.That(parsed, Is.Not.Null);
+            Assert.That(parsed.ReleaseDate, Is.EqualTo(date));
+            if (title.Contains("v00"))
+            {
+                Assert.That(parsed.SeriesPosition, Is.EqualTo("0"));
+            }
+        }
+
         [TestCase("Author [CBR] - Book.epub", "EPUB")]
         [TestCase("Author [CBZ] - Book.mp3", "MP3")]
         public void archive_tokens_inside_titles_do_not_override_format(string title, string quality)
