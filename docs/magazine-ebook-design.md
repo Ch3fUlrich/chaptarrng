@@ -46,6 +46,13 @@ Migration 124 uses frozen definitions, rejects conflicting reserved IDs, preserv
 custom settings, skips malformed/null JSON, and adds missing formats disabled.
 Its SQLite integration fixture covers grouped JSON, invalid quality values,
 non-ebook profiles, unchanged complete profiles and custom settings.
+Reserved-ID conflict tests cover IDs 5–7 and verify rollback of earlier inserts,
+unchanged profiles and no migration version advancement. Numbered issue comparison
+normalizes width on both sides while preserving zero and ISO date identifiers.
+Filename identifiers accept exactly YYYY-NNN or a valid YYYY-MM-DD; only the
+latter populates ReleaseDate. A year annotation alone is not a publication date.
+Positive ordinary ebook/audiobook controls assert author and book fields, and
+archive parsing accepts trailing bracketed tags without matching internal tokens.
 
 Review finding rejected: MediaFileExtensions already derives TextExtensions and
 IsSingleFileBookContainer from the extension map. A CBZ is one on-disk book

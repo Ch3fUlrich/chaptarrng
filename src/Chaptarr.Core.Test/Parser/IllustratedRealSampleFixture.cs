@@ -146,7 +146,6 @@ namespace NzbDrone.Core.Test.Parser
         [TestCase("033", "33")]
         [TestCase("2026-001", "2026-1")]
         [TestCase("000", "0")]
-        [TestCase("2026-01-01", "2026-1-1")]
         public void gap_comparison_normalizes_both_sides(string padded, string canonical)
         {
             Assert.That(IllustratedLibraryListing.MissingIssues(new[] { ("Series", padded) }, new[] { ("Series", canonical) }), Is.Empty);

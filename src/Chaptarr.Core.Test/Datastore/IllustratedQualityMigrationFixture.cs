@@ -13,6 +13,41 @@ namespace Chaptarr.Core.Test.Datastore
     [TestFixture]
     public class IllustratedQualityMigrationFixture
     {
+        [TestCase(6, "Other", 14)]
+        [TestCase(7, "CB7", 99)]
+        [TestCase(5, "Other", 13)]
+        public void conflicting_reserved_quality_rolls_back(int quality, string title, int weight)
+        {
+            var path = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"illustrated_conflict_{Guid.NewGuid():N}.db");
+            var cs = $"Data Source={path};Pooling=False";
+            try
+            {
+                using var db = new SqliteConnection(cs);
+                db.Open();
+                db.Execute(@"CREATE TABLE VersionInfo (Version INTEGER PRIMARY KEY, AppliedOn TEXT, Description TEXT);
+                    WITH RECURSIVE v(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM v WHERE n<123)
+                    INSERT INTO VersionInfo SELECT n, CURRENT_TIMESTAMP, 'baseline' FROM v;
+                    CREATE TABLE Authors (Id INTEGER PRIMARY KEY, AudiobookRootFolderPath TEXT, EbookRootFolderPath TEXT);
+                    CREATE TABLE QualityDefinitions (Quality INTEGER, Title TEXT, Weight INTEGER, MinSize REAL, MaxSize REAL);
+                    CREATE TABLE QualityProfiles (Id INTEGER PRIMARY KEY, ProfileType INTEGER, Items TEXT, Cutoff INTEGER);
+                    INSERT INTO QualityProfiles VALUES (1,2,'[]',3);");
+                db.Execute("INSERT INTO QualityDefinitions VALUES (@quality,@title,@weight,12,34)", new { quality, title, weight });
+                var error = Assert.Catch<Exception>(() =>
+                    new MigrationController(LogManager.GetLogger(nameof(IllustratedQualityMigrationFixture)), null)
+                        .Migrate(cs, new MigrationContext(MigrationType.Main, 124), DatabaseType.SQLite));
+                Assert.That(error.ToString(), Does.Contain($"Quality id {quality} conflicts"));
+                Assert.That(db.QuerySingle<int>("SELECT COUNT(*) FROM QualityDefinitions"), Is.EqualTo(1));
+                Assert.That(db.QuerySingle<string>("SELECT Title FROM QualityDefinitions"), Is.EqualTo(title));
+                Assert.That(db.QuerySingle<int>("SELECT Weight FROM QualityDefinitions"), Is.EqualTo(weight));
+                Assert.That(db.QuerySingle<string>("SELECT Items FROM QualityProfiles"), Is.EqualTo("[]"));
+                Assert.That(db.QuerySingle<int>("SELECT COUNT(*) FROM VersionInfo WHERE Version=124"), Is.Zero);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
         [Test]
         public void preserves_grouped_custom_and_malformed_profiles()
         {

@@ -48,6 +48,11 @@ namespace NzbDrone.Core.Parser
                 return null;
             }
 
+            if (Regex.IsMatch(issue, @"^\d{4}-\d{2}-\d{2}$"))
+            {
+                return issue;
+            }
+
             return Regex.Replace(issue, @"\d+", match => match.Value.TrimStart('0') is var value && value.Length > 0 ? value : "0");
         }
     }
