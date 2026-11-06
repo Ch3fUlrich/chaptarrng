@@ -217,14 +217,14 @@ namespace Chaptarr.Core.Test.DecisionEngine
         {
             var author = new Author
             {
-                Name = "Freida McFadden"
+                Name = "Velrina Quorvale"
             };
 
             var book = new Book
             {
                 Author = author,
                 AuthorId = author.Id,
-                Title = "Want to Know a Secret"
+                Title = "Where the Copper Lantern Sleeps"
             };
 
             var criteria = new BookSearchCriteria
@@ -237,7 +237,7 @@ namespace Chaptarr.Core.Test.DecisionEngine
 
             var report = new ReleaseInfo
             {
-                Title = "Want to Know a Secret by Freida McFadden EPUB",
+                Title = "Where the Copper Lantern Sleeps by Velrina Quorvale EPUB",
                 Indexer = "The Pirate Bay (Prowlarr)",
                 Categories = new List<int>(),
                 PublishDate = DateTime.UtcNow
@@ -258,7 +258,7 @@ namespace Chaptarr.Core.Test.DecisionEngine
 
             Assert.That(decisions, Has.Count.EqualTo(1));
             Assert.That(decisions[0].Rejections, Is.Empty);
-            Assert.That(decisions[0].RemoteBook.ParsedBookInfo.AuthorName, Is.EqualTo("Freida McFadden"));
+            Assert.That(decisions[0].RemoteBook.ParsedBookInfo.AuthorName, Is.EqualTo("Velrina Quorvale"));
         }
 
         [Test]

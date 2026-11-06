@@ -1112,7 +1112,7 @@ namespace Chaptarr.Core.Test.Profiles.Metadata
             var profile = CreateProfile(id: 1);
             profile.IgnoredGenres = new List<string> { "Comics", "Graphic novels" };
 
-            var comic = CreateBookWithGenres("Action Comics", "gr:1", "Comics", "Superman");
+            var comic = CreateBookWithGenres("Quorvex Chronicles", "gr:1", "Comics", "Superman");
             var novel = CreateBookWithGenres("Foundation", "gr:2", "Science Fiction", "Classics");
             var untagged = CreateBookWithGenres("Untitled", "gr:3");
 
@@ -1129,7 +1129,7 @@ namespace Chaptarr.Core.Test.Profiles.Metadata
             var profile = CreateProfile(id: 1);
             profile.IgnoredGenres = new List<string> { "comics" };
 
-            var comic = CreateBookWithGenres("Action Comics", "gr:1", "COMICS");
+            var comic = CreateBookWithGenres("Quorvex Chronicles", "gr:1", "COMICS");
             var remoteAuthor = new Author { Books = new List<Book> { comic } };
 
             var result = CreateService(profile).FilterBooks(remoteAuthor, profile.Id);
@@ -1143,7 +1143,7 @@ namespace Chaptarr.Core.Test.Profiles.Metadata
             var profile = CreateProfile(id: 1);
             profile.IgnoredGenres = new List<string>();
 
-            var comic = CreateBookWithGenres("Action Comics", "gr:1", "Comics");
+            var comic = CreateBookWithGenres("Quorvex Chronicles", "gr:1", "Comics");
             var remoteAuthor = new Author { Books = new List<Book> { comic } };
 
             var result = CreateService(profile).FilterBooks(remoteAuthor, profile.Id);

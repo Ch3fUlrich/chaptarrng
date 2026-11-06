@@ -11,11 +11,11 @@ namespace Chaptarr.Core.Test.Parser
         [Test]
         public void should_parse_author_and_book_from_author_dash_title_with_suffix()
         {
-            var result = CoreParser.ParseBookTitle("Freida McFadden - Want to Know a Secret (epub)");
+            var result = CoreParser.ParseBookTitle("Velrina Quorvale - Where the Copper Lantern Sleeps (epub)");
 
             Assert.That(result, Is.Not.Null);
-            Assert.That(result.AuthorName, Is.EqualTo("Freida McFadden"));
-            Assert.That(result.BookTitle, Is.EqualTo("Want to Know a Secret"));
+            Assert.That(result.AuthorName, Is.EqualTo("Velrina Quorvale"));
+            Assert.That(result.BookTitle, Is.EqualTo("Where the Copper Lantern Sleeps"));
         }
 
         [Test]
@@ -31,34 +31,34 @@ namespace Chaptarr.Core.Test.Parser
         [Test]
         public void should_parse_author_and_book_from_title_by_author_with_format_suffix()
         {
-            var result = CoreParser.ParseBookTitle("Want to Know a Secret by Freida McFadden EPUB");
+            var result = CoreParser.ParseBookTitle("Where the Copper Lantern Sleeps by Velrina Quorvale EPUB");
 
             Assert.That(result, Is.Not.Null);
-            Assert.That(result.AuthorName, Is.EqualTo("Freida McFadden"));
-            Assert.That(result.BookTitle, Is.EqualTo("Want to Know a Secret"));
+            Assert.That(result.AuthorName, Is.EqualTo("Velrina Quorvale"));
+            Assert.That(result.BookTitle, Is.EqualTo("Where the Copper Lantern Sleeps"));
         }
 
         [Test]
         public void should_parse_author_and_book_from_title_by_author_without_format_suffix()
         {
-            var result = CoreParser.ParseBookTitle("Want to Know a Secret by Freida McFadden");
+            var result = CoreParser.ParseBookTitle("Where the Copper Lantern Sleeps by Velrina Quorvale");
 
             Assert.That(result, Is.Not.Null);
-            Assert.That(result.AuthorName, Is.EqualTo("Freida McFadden"));
-            Assert.That(result.BookTitle, Is.EqualTo("Want to Know a Secret"));
+            Assert.That(result.AuthorName, Is.EqualTo("Velrina Quorvale"));
+            Assert.That(result.BookTitle, Is.EqualTo("Where the Copper Lantern Sleeps"));
         }
 
         [Test]
         public void should_match_search_criteria_book_even_with_punctuation_variants()
         {
-            var author = new Author { Name = "Freida McFadden" };
-            var book = new Book { Author = author, Title = "Want to Know a Secret?" };
+            var author = new Author { Name = "Velrina Quorvale" };
+            var book = new Book { Author = author, Title = "Where the Copper Lantern Sleeps?" };
 
-            var result = CoreParser.ParseBookTitleWithSearchCriteria("Freida McFadden - Want to Know a Secret¿", author, new List<Book> { book });
+            var result = CoreParser.ParseBookTitleWithSearchCriteria("Velrina Quorvale - Where the Copper Lantern Sleeps¿", author, new List<Book> { book });
 
             Assert.That(result, Is.Not.Null);
-            Assert.That(result.AuthorName, Is.EqualTo("Freida McFadden"));
-            Assert.That(result.BookTitle, Is.EqualTo("Want to Know a Secret?"));
+            Assert.That(result.AuthorName, Is.EqualTo("Velrina Quorvale"));
+            Assert.That(result.BookTitle, Is.EqualTo("Where the Copper Lantern Sleeps?"));
         }
 
         [Test]

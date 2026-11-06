@@ -26,19 +26,19 @@ scope. Names-only inventory parity does not establish full import parity.
 
 ## D-4157 validation and limits
 
-The names-only 2026-11-06 handoff is embedded verbatim in
+The names-only 2026-11-06 handoff uses synthetic names in
 `IllustratedRealSampleFixture.cs`: 20 comics, 20 manga, 20 magazines.
 `IllustratedLibraryListing.List` preserves each filename and its operator-provided
 library type; this is an inventory, not inferred genre or metadata identification.
-The two-series test uses the actual All About History and All About Space paths
+The two-series test uses the synthetic Quills Beyond Copper and Lanterns Beyond Quartz paths
 and production expected-minus-owned computation, including a deliberately missing issue.
 No live host or NFS was contacted.
 
 Entries that cannot supply individual issue identity:
-- `13DL.APP_Cardcaptor Sakura Clear Card Arc v01-03`: extensionless multi-volume bundle.
-- `13DL.APP_Fujiko F. Fujio Daizenshu Doraemon v01-05`: extensionless multi-volume bundle.
-- `Thinking Fellers Union Local 282 - Tangle - BM-07liners-web.pdf`: album liner notes, not a magazine issue.
-- `Little Caesar - Francis Edwards Faragoh {supplement to the July 2001 issue of Sight And Sound}.pdf`: supplement, not an independent magazine issue.
+- `47QX.ZUP_Lanternkeeper Velni Glass Moon Arc v01-03`: extensionless multi-volume bundle.
+- `47QX.ZUP_Quelvo R. Zelvin Omnivaria Plorvex v01-05`: extensionless multi-volume bundle.
+- `Copper Weavers Guild Sector 282 - Quorlune - QL-07liners-web.pdf`: album liner notes, not a magazine issue.
+- `Copper Orchard - Velnor Quillian Zorveth {supplement to the July 2001 issue of Quartz And Vellum}.pdf`: supplement, not an independent magazine issue.
 Other dated/title-only PDFs remain inventory entries requiring canonical catalog
 metadata; no permissive filename pattern fabricates identities for them.
 
