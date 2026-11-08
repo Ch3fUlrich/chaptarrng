@@ -1079,7 +1079,8 @@ namespace Chaptarr.Core.Test.MediaCover
 
                 new ImageResizer(null, null).Resize(source, destination, 10);
 
-                Assert.That(Image.DetectFormat(destination)?.Name, Is.EqualTo(expectedFormat));
+                // Format names differ in case between ImageSharp versions (3.x "Webp", 4.x "WEBP").
+                Assert.That(Image.DetectFormat(destination)?.Name, Is.EqualTo(expectedFormat).IgnoreCase);
                 Assert.That(Image.Identify(destination)?.Height, Is.EqualTo(10));
             }
             finally

@@ -2,7 +2,6 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 
 namespace NzbDrone.Core.MediaCover
@@ -30,11 +29,6 @@ namespace NzbDrone.Core.MediaCover
                 ColorType = JpegEncodingColor.YCbCrRatio444
             });
 
-            // Avoid the 3.x lossy encoder's failure on small transparent thumbnails.
-            SixLabors.ImageSharp.Configuration.Default.ImageFormatsManager.SetEncoder(WebpFormat.Instance, new WebpEncoder
-            {
-                FileFormat = WebpFileFormatType.Lossless
-            });
         }
 
         public void Resize(string source, string destination, int height)
