@@ -92,7 +92,7 @@ namespace NzbDrone.Core.Datastore
             return Query(Builder());
         }
 
-        public TModel Find(int id)
+        public virtual TModel Find(int id)
         {
             var model = Query(x => x.Id == id).FirstOrDefault();
 
@@ -881,6 +881,11 @@ namespace NzbDrone.Core.Datastore
 
         private void UpdateFields(IDbConnection connection, IDbTransaction transaction, TModel model, List<PropertyInfo> propertiesToUpdate)
         {
+            if (model is NzbDrone.Core.MediaFiles.BookFile file && !file.MatchProvenanceLoaded)
+            {
+                propertiesToUpdate = propertiesToUpdate.Where(p => p.Name != nameof(file.MatchProvenance)).ToList();
+            }
+
             var sql = propertiesToUpdate == _properties ? _updateSql : GetUpdateSql(propertiesToUpdate);
 
             SqlBuilderExtensions.LogQuery(sql, model);
@@ -898,6 +903,16 @@ namespace NzbDrone.Core.Datastore
 
         private void UpdateFields(IDbConnection connection, IDbTransaction transaction, IList<TModel> models, List<PropertyInfo> propertiesToUpdate)
         {
+            if (typeof(TModel) == typeof(NzbDrone.Core.MediaFiles.BookFile))
+            {
+                foreach (var model in models)
+                {
+                    UpdateFields(connection, transaction, model, propertiesToUpdate);
+                }
+
+                return;
+            }
+
             var sql = propertiesToUpdate == _properties ? _updateSql : GetUpdateSql(propertiesToUpdate);
 
             foreach (var model in models)

@@ -20,12 +20,28 @@ namespace NzbDrone.Core.Datastore
 
         public static SqlBuilder Select(this SqlBuilder builder, params Type[] types)
         {
-            return builder.Select(types.Select(x => $"\"{TableMapping.Mapper.TableNameMapping(x)}\".*").Join(", "));
+            return builder.Select(types.Select(SelectColumns).Join(", "));
         }
 
         public static SqlBuilder SelectDistinct(this SqlBuilder builder, params Type[] types)
         {
-            return builder.Select("DISTINCT " + types.Select(x => $"\"{TableMapping.Mapper.TableNameMapping(x)}\".*").Join(", "));
+            return builder.Select("DISTINCT " + types.Select(SelectColumns).Join(", "));
+        }
+
+        private static string SelectColumns(Type type)
+        {
+            var table = TableMapping.Mapper.TableNameMapping(type);
+            if (type != typeof(NzbDrone.Core.MediaFiles.BookFile))
+            {
+                return $"\"{table}\".*";
+            }
+
+            // Keep the large explanation document out of all list/join projections.
+            var excluded = TableMapping.Mapper.ExcludeProperties(type).Select(p => p.Name).ToHashSet();
+            return type.GetProperties()
+                .Where(p => p.IsMappableProperty() && !excluded.Contains(p.Name) && p.Name != "MatchProvenance")
+                .OrderBy(p => p.Name == "Id" ? 0 : 1)
+                .Select(p => $"\"{table}\".\"{p.Name}\"").Join(", ");
         }
 
         public static SqlBuilder SelectCount(this SqlBuilder builder)

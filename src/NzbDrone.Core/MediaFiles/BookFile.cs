@@ -47,7 +47,20 @@ namespace NzbDrone.Core.MediaFiles
 
         // Structured explanation for the successful automatic/manual match that linked this file.
         // MatchDetails remains the separate why-unmapped/apply-failure scratchpad.
-        public MatchProvenance MatchProvenance { get; set; }
+        private MatchProvenance _matchProvenance;
+
+        public MatchProvenance MatchProvenance
+        {
+            get => _matchProvenance;
+            set
+            {
+                _matchProvenance = value;
+                MatchProvenanceLoaded = true;
+            }
+        }
+
+        [JsonIgnore]
+        public bool MatchProvenanceLoaded { get; private set; }
 
         // Media type tracking
         public string MediaType { get; set; } = "audiobook";

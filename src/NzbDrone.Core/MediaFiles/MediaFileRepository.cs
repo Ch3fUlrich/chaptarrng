@@ -41,6 +41,29 @@ namespace NzbDrone.Core.MediaFiles
         {
         }
 
+        public override BookFile Find(int id)
+        {
+            var file = base.Find(id);
+            return LoadProvenance(file);
+        }
+
+        private BookFile LoadProvenance(BookFile file)
+        {
+            if (file != null)
+            {
+                using var connection = _database.OpenConnection();
+                file.MatchProvenance = connection.QuerySingle<MatchProvenanceRow>(
+                    "SELECT \"MatchProvenance\" FROM \"BookFiles\" WHERE \"Id\" = @id", new { id = file.Id }).MatchProvenance;
+            }
+
+            return file;
+        }
+
+        private sealed class MatchProvenanceRow
+        {
+            public MatchProvenance MatchProvenance { get; set; }
+        }
+
         // always join with all the other good stuff
         // needed more often than not so better to load it all now
         protected override SqlBuilder Builder() => new SqlBuilder(_database.DatabaseType)
@@ -352,7 +375,7 @@ namespace NzbDrone.Core.MediaFiles
 
         public BookFile GetFileWithPath(string path)
         {
-            return Query(x => x.Path == path).SingleOrDefault();
+            return LoadProvenance(Query(x => x.Path == path).SingleOrDefault());
         }
 
         public List<BookFile> GetFileWithPath(List<string> paths)

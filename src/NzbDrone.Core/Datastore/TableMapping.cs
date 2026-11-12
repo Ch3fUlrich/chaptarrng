@@ -196,6 +196,7 @@ namespace NzbDrone.Core.Datastore
                 .HasOne(e => e.LazyBook, e => e.BookId);
 
             Mapper.Entity<BookFile>("BookFiles").RegisterModel()
+                .Ignore(x => x.MatchProvenanceLoaded)
                 .Ignore(x => x.PartCount)
                 .HasOne(f => f.LazyEdition, f => f.EditionId)
                 .LazyLoad(f => f.LazyAuthor,
