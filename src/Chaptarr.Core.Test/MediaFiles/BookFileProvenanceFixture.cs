@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Linq;
@@ -146,7 +147,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             Seed(1);
             var files = _repository.GetFilesByBook(1)
                 .Concat(_repository.Get(new[] { 1 }))
-                .Concat(_repository.GetFileWithPath(new() { "/books/1.m4b" }))
+                .Concat(_repository.GetFileWithPath(new List<string> { "/books/1.m4b" }))
                 .Concat(_repository.All())
                 .Concat(_repository.GetFilesByBooks(new() { 1 }))
                 .Append(_repository.Find(1))
