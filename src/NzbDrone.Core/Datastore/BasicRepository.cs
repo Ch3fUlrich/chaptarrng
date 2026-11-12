@@ -884,7 +884,7 @@ namespace NzbDrone.Core.Datastore
             {
                 foreach (var property in properties)
                 {
-                    var name = property.GetMemberName();
+                    var name = property.GetMemberName().Name;
                     if (!file.IsColumnLoaded(name))
                     {
                         throw new InvalidOperationException($"Cannot SetFields for unloaded column {name} on a BookFile display projection.");
