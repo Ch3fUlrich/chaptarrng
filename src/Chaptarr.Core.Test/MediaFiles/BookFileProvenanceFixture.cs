@@ -3,11 +3,13 @@ using System;
 using System.IO;
 using System.Linq;
 using Dapper;
+using Chaptarr.Api.V1.Books;
 using Microsoft.Data.Sqlite;
 using Moq;
 using NUnit.Framework;
 using NLog;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore.Migration.Framework;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Events;
@@ -20,6 +22,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         private string _path;
         private SqliteConnection _connection;
         private MediaFileRepository _repository;
+        private BasicRepository<Edition> _editions;
         private const string DocumentPrefix = "{\"summary\":\"";
         private static readonly string Document = DocumentPrefix + new string('x', 6000) + "\"}";
 
@@ -45,6 +48,7 @@ namespace Chaptarr.Core.Test.MediaFiles
                 return connection;
             });
             _repository = new MediaFileRepository(new MainDatabase(database), Mock.Of<IEventAggregator>());
+            _editions = new BasicRepository<Edition>(new MainDatabase(database), Mock.Of<IEventAggregator>());
         }
 
         [TearDown]
@@ -164,15 +168,16 @@ namespace Chaptarr.Core.Test.MediaFiles
             if (batch)
             {
                 _repository.UpdateMany(new[] { file });
-                _repository.SetFields(new[] { file }, f => f.AllTags, f => f.Narrator, f => f.MediaType);
+                Assert.Throws<InvalidOperationException>(() => _repository.SetFields(new[] { file }, f => f.AllTags, f => f.Narrator, f => f.MediaType));
             }
             else
             {
                 _repository.Update(file);
-                _repository.SetFields(file, f => f.AllTags, f => f.Narrator, f => f.MediaType);
+                Assert.Throws<InvalidOperationException>(() => _repository.SetFields(file, f => f.AllTags, f => f.Narrator, f => f.MediaType));
             }
 
             var after = (IDictionary<string, object>)_connection.QuerySingle("SELECT * FROM BookFiles");
+            Assert.That(after["Path"], Is.EqualTo(file.Path));
             foreach (var column in (IDictionary<string, object>)before)
             {
                 if (column.Key != "Path")
@@ -199,6 +204,63 @@ namespace Chaptarr.Core.Test.MediaFiles
                 Assert.That(file.Edition.BookId, Is.EqualTo(1));
                 Assert.That(file.MediaType, Is.EqualTo("audiobook"), "Omitted column retains constructor default, not stored value");
             });
+        }
+
+        [TestCase("update")]
+        [TestCase("updateMany")]
+        [TestCase("upsert")]
+        [TestCase("delete")]
+        [TestCase("deleteMany")]
+        [TestCase("setFields")]
+        [TestCase("setFieldsMany")]
+        public void display_edition_writes_should_throw_and_preserve_stored_row(string operation)
+        {
+            Seed(1);
+            var before = (IDictionary<string, object>)_connection.QuerySingle("SELECT * FROM Editions");
+            var edition = _repository.GetFilesByBooksForDisplay(new() { 1 }).Single().Edition;
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+            {
+                switch (operation)
+                {
+                    case "update": _editions.Update(edition); break;
+                    case "updateMany": _editions.UpdateMany(new[] { edition }); break;
+                    case "upsert": _editions.Upsert(edition); break;
+                    case "delete": _editions.Delete(edition); break;
+                    case "deleteMany": _editions.DeleteMany(new List<Edition> { edition }); break;
+                    case "setFields": _editions.SetFields(edition, e => e.Title); break;
+                    case "setFieldsMany": _editions.SetFields(new[] { edition }, e => e.Title); break;
+                }
+            });
+            Assert.That(exception.Message, Does.Contain("Edition display projection"));
+            var after = (IDictionary<string, object>)_connection.QuerySingle("SELECT * FROM Editions");
+            foreach (var column in before)
+            {
+                Assert.That(after[column.Key], Is.EqualTo(column.Value), column.Key);
+            }
+        }
+
+        [TestCase("ebook", "epub", true, false)]
+        [TestCase("audiobook", "m4b", false, true)]
+        public void repository_display_files_should_map_real_availability(string mediaType, string extension, bool canRead, bool canListen)
+        {
+            Seed(1);
+            _connection.Execute("UPDATE BookFiles SET MediaType = @mediaType, Path = @path",
+                new { mediaType, path = "/books/book." + extension });
+            var files = _repository.GetFilesByBooksForDisplay(new() { 1 });
+            Assert.That(files.Single().MediaType, Is.EqualTo("audiobook"), "Display row retains the omitted column's constructor default");
+            var filesByBookId = files.GroupBy(f => f.Edition.BookId).ToDictionary(g => g.Key, g => g.ToList());
+            var book = new Book
+            {
+                Id = 1,
+                MediaType = canRead ? BookMediaType.Ebook : BookMediaType.Audiobook,
+                Editions = new List<Edition> { new Edition { Id = 1, BookId = 1, Monitored = true } },
+                BookFiles = filesByBookId[1]
+            };
+            var resource = book.ToResource(BookResourceMappingOptions.Lean());
+            Assert.That(resource.Availability, Is.Not.Null);
+            Assert.That(resource.Availability.CanRead, Is.EqualTo(canRead));
+            Assert.That(resource.Availability.CanListen, Is.EqualTo(canListen));
+            Assert.That(resource.Availability.FileFormats, Is.EqualTo(new[] { extension }));
         }
 
         [Test]
@@ -282,12 +344,12 @@ namespace Chaptarr.Core.Test.MediaFiles
             if (batch)
             {
                 _repository.UpdateMany(new[] { file });
-                _repository.SetFields(new[] { file }, f => f.MatchProvenance);
+                Assert.Throws<InvalidOperationException>(() => _repository.SetFields(new[] { file }, f => f.MatchProvenance));
             }
             else
             {
                 _repository.Update(file);
-                _repository.SetFields(file, f => f.MatchProvenance);
+                Assert.Throws<InvalidOperationException>(() => _repository.SetFields(file, f => f.MatchProvenance));
             }
 
             Assert.That(_connection.QuerySingle<string>("SELECT MatchProvenance FROM BookFiles"), Is.EqualTo(Document));

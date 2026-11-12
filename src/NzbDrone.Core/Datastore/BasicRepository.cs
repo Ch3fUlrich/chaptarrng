@@ -171,6 +171,7 @@ namespace NzbDrone.Core.Datastore
 
         public TModel Insert(TModel model)
         {
+            EnsureWritable(model);
             if (model.Id != 0)
             {
                 throw new InvalidOperationException("Can't insert model with existing ID " + model.Id);
@@ -242,6 +243,7 @@ namespace NzbDrone.Core.Datastore
 
         public void InsertMany(IList<TModel> models)
         {
+            foreach (var model in models) EnsureWritable(model);
             var __insertAllSw = System.Diagnostics.Stopwatch.StartNew();
             if (models.Any(x => x.Id != 0))
             {
@@ -482,6 +484,7 @@ namespace NzbDrone.Core.Datastore
 
         public void InsertMany(IList<TModel> models, IDbConnection connection, IDbTransaction transaction)
         {
+            foreach (var model in models) EnsureWritable(model);
             if (models.Any(x => x.Id != 0))
             {
                 throw new InvalidOperationException("Can't insert model with existing ID != 0");
@@ -594,6 +597,7 @@ namespace NzbDrone.Core.Datastore
 
         public TModel Update(TModel model)
         {
+            EnsureWritable(model);
             if (model.Id == 0)
             {
                 throw new InvalidOperationException("Can't update model with ID 0");
@@ -611,6 +615,7 @@ namespace NzbDrone.Core.Datastore
 
         public void UpdateMany(IList<TModel> models)
         {
+            foreach (var model in models) EnsureWritable(model);
             if (models.Any(x => x.Id == 0))
             {
                 throw new InvalidOperationException("Can't update model with ID 0");
@@ -682,6 +687,7 @@ namespace NzbDrone.Core.Datastore
 
         public void Delete(TModel model)
         {
+            EnsureWritable(model);
             Delete(model.Id);
         }
 
@@ -741,11 +747,13 @@ namespace NzbDrone.Core.Datastore
 
         public void DeleteMany(List<TModel> models)
         {
+            foreach (var model in models) EnsureWritable(model);
             DeleteMany(models.Select(m => m.Id));
         }
 
         public TModel Upsert(TModel model)
         {
+            EnsureWritable(model);
             if (model.Id == 0)
             {
                 Insert(model);
@@ -781,6 +789,7 @@ namespace NzbDrone.Core.Datastore
 
         public void SetFields(TModel model, params Expression<Func<TModel, object>>[] properties)
         {
+            EnsureExplicitFieldsWritable(model, properties);
             if (model.Id == 0)
             {
                 throw new InvalidOperationException("Attempted to update model without ID");
@@ -798,6 +807,7 @@ namespace NzbDrone.Core.Datastore
 
         public void SetFields(IList<TModel> models, params Expression<Func<TModel, object>>[] properties)
         {
+            foreach (var model in models) EnsureExplicitFieldsWritable(model, properties);
             if (models.Any(x => x.Id == 0))
             {
                 throw new InvalidOperationException("Attempted to update model without ID");
@@ -856,6 +866,30 @@ namespace NzbDrone.Core.Datastore
             foreach (var model in models)
             {
                 ModelUpdated(model);
+            }
+        }
+
+        private static void EnsureWritable(TModel model)
+        {
+            if (model is NzbDrone.Core.Books.Edition edition && edition.IsDisplayProjection)
+            {
+                throw new InvalidOperationException("Cannot persist or delete an Edition display projection. Load the full Edition first.");
+            }
+        }
+
+        private static void EnsureExplicitFieldsWritable(TModel model, Expression<Func<TModel, object>>[] properties)
+        {
+            EnsureWritable(model);
+            if (model is NzbDrone.Core.MediaFiles.BookFile file && file.IsDisplayProjection)
+            {
+                foreach (var property in properties)
+                {
+                    var name = property.GetMemberName();
+                    if (!file.IsColumnLoaded(name))
+                    {
+                        throw new InvalidOperationException($"Cannot SetFields for unloaded column {name} on a BookFile display projection.");
+                    }
+                }
             }
         }
 

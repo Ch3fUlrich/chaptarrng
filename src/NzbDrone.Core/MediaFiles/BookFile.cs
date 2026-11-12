@@ -20,6 +20,8 @@ namespace NzbDrone.Core.MediaFiles
 
         private bool _displayProjection;
 
+        internal bool IsDisplayProjection => _displayProjection;
+
         internal void MarkDisplayProjection() => _displayProjection = true;
 
         internal bool IsColumnLoaded(string name) => name == nameof(MatchProvenance)

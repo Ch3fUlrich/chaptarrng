@@ -12,6 +12,10 @@ namespace NzbDrone.Core.Books
 {
     public class Edition : Entity<Edition>
     {
+        internal bool IsDisplayProjection { get; private set; }
+
+        internal void MarkDisplayProjection() => IsDisplayProjection = true;
+
         public Edition()
         {
             Overview = string.Empty;

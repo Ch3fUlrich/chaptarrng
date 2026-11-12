@@ -161,6 +161,7 @@ namespace NzbDrone.Core.MediaFiles
                             if (!displayEditions.TryGetValue(edition.Id, out var shared))
                             {
                                 shared = edition;
+                                shared.MarkDisplayProjection();
                                 displayEditions.Add(edition.Id, shared);
                             }
 
