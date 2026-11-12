@@ -57,6 +57,17 @@ namespace Chaptarr.Core.Test.Api
         [Test]
         public void author_book_list_should_not_reapply_metadata_profile_filter_to_local_rows()
         {
+            AssertBookListUsesDisplayFiles(unfiltered: false);
+        }
+
+        [Test]
+        public void unfiltered_book_list_should_hydrate_availability_using_only_display_files()
+        {
+            AssertBookListUsesDisplayFiles(unfiltered: true);
+        }
+
+        private void AssertBookListUsesDisplayFiles(bool unfiltered)
+        {
             var author = new Author
             {
                 Id = 42,
@@ -91,16 +102,26 @@ namespace Chaptarr.Core.Test.Api
                 }
             };
 
+            var displayLoads = 0;
+            var displayFile = new BookFile
+            {
+                Id = 900,
+                EditionId = 500,
+                Edition = new Edition { Id = 500, BookId = 100 },
+                Path = "/books/book.epub",
+                MediaType = "ebook"
+            };
             var controller = new BookController(
                 authorService: Proxy<IAuthorService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
-                    [nameof(IAuthorService.GetAuthor)] = (_, _) => author
+                    [nameof(IAuthorService.GetAuthor)] = (_, _) => author,
+                    [nameof(IAuthorService.GetAllAuthors)] = (_, _) => new List<Author> { author }
                 }),
                 bookService: Proxy<IBookService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
                     [nameof(IBookService.GetBooksForDisplay)] = (_, args) =>
                     {
-                        Assert.That(args[0], Is.EqualTo(author.Id));
+                        Assert.That(args[0], Is.EqualTo(unfiltered ? (int?)null : author.Id));
                         Assert.That(args[1], Is.EqualTo("ebook"));
                         return books;
                     }
@@ -119,7 +140,16 @@ namespace Chaptarr.Core.Test.Api
                 {
                     [nameof(IAuthorStatisticsService.AuthorStatistics)] = (_, _) => new List<AuthorStatistics>()
                 }),
-                mediaFileService: null,
+                mediaFileService: Proxy<IMediaFileService>(new Dictionary<string, Func<MethodInfo, object[], object>>
+                {
+                    // Every other call (including full loads and writes) fails through the proxy.
+                    [nameof(IMediaFileService.GetFilesByBooksForDisplay)] = (_, args) =>
+                    {
+                        Assert.That((List<int>)args[0], Is.EquivalentTo(new[] { 100, 101 }));
+                        displayLoads++;
+                        return new List<BookFile> { displayFile };
+                    }
+                }),
                 coverMapper: Proxy<IMapCoversToLocal>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
                     [nameof(IMapCoversToLocal.ConvertToLocalUrls)] = (_, _) => null
@@ -137,12 +167,20 @@ namespace Chaptarr.Core.Test.Api
                 logger: LogManager.GetCurrentClassLogger());
 
             var resources = controller.GetBooks(
-                authorId: author.Id,
+                authorId: unfiltered ? (int?)null : author.Id,
                 bookIds: new List<int>(),
                 bookId: null,
                 mediaType: "ebook");
 
             Assert.That(resources.Select(x => x.Id), Is.EquivalentTo(new[] { 100, 101 }));
+            Assert.That(displayLoads, Is.EqualTo(unfiltered ? 1 : 0));
+            if (unfiltered)
+            {
+                Assert.That(books[0].BookFiles.Single(), Is.SameAs(displayFile));
+                Assert.That(displayFile.MatchProvenanceLoaded, Is.False);
+                Assert.That(resources.Single(x => x.Id == 100).Availability.CanRead, Is.True);
+                Assert.That(resources.All(x => x.BookFiles == null), Is.True);
+            }
         }
 
         [Test]

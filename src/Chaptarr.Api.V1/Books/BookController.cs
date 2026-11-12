@@ -1032,7 +1032,7 @@ namespace Chaptarr.Api.V1.Books
             }
 
             var books = _bookService.GetBooksByAuthor(authorId) ?? new List<Book>();
-            var withFiles = (_mediaFileService?.GetFilesByBooks(books.Select(b => b.Id).ToList()) ?? new List<NzbDrone.Core.MediaFiles.BookFile>())
+            var withFiles = (_mediaFileService?.GetFilesByBooksForDisplay(books.Select(b => b.Id).ToList()) ?? new List<NzbDrone.Core.MediaFiles.BookFile>())
                 .Where(file => file?.Edition != null)
                 .Select(file => file.Edition.BookId)
                 .ToHashSet();
@@ -1067,7 +1067,7 @@ namespace Chaptarr.Api.V1.Books
 
             if (book.AuthorId <= 0)
             {
-                var currentFiles = _mediaFileService?.GetFilesByBooks(new List<int> { book.Id }) ?? new List<NzbDrone.Core.MediaFiles.BookFile>();
+                var currentFiles = _mediaFileService?.GetFilesByBooksForDisplay(new List<int> { book.Id }) ?? new List<NzbDrone.Core.MediaFiles.BookFile>();
 
                 return new BookSiblingDeleteInfoResource
                 {
@@ -1086,7 +1086,7 @@ namespace Chaptarr.Api.V1.Books
 
             var matchedBooks = new[] { book }.Concat(siblings).ToList();
             var matchedBookIds = matchedBooks.Select(candidate => candidate.Id).ToList();
-            var filesByBookId = (_mediaFileService?.GetFilesByBooks(matchedBookIds) ?? new List<NzbDrone.Core.MediaFiles.BookFile>())
+            var filesByBookId = (_mediaFileService?.GetFilesByBooksForDisplay(matchedBookIds) ?? new List<NzbDrone.Core.MediaFiles.BookFile>())
                 .Where(file => file?.Edition != null)
                 .GroupBy(file => file.Edition.BookId)
                 .ToDictionary(group => group.Key, group => group.OrderBy(file => file.Path).ToList());
@@ -1723,7 +1723,8 @@ namespace Chaptarr.Api.V1.Books
                 return;
             }
 
-            var filesByBookId = (_mediaFileService.GetFilesByBooks(idsWithFiles) ?? new List<BookFile>())
+            // These partial rows are read-only availability inputs, never persistence models.
+            var filesByBookId = (_mediaFileService.GetFilesByBooksForDisplay(idsWithFiles) ?? new List<BookFile>())
                 .Where(f => f.Edition?.BookId > 0)
                 .GroupBy(f => f.Edition.BookId)
                 .ToDictionary(g => g.Key, g => g.ToList());

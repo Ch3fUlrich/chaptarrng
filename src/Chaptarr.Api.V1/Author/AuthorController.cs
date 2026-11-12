@@ -1387,7 +1387,7 @@ namespace Chaptarr.Api.V1.Author
             PreloadAuthorIndexBooks(authorModels,
                                     (nextBooks ?? new List<Book>()).Concat(lastBooks ?? new List<Book>()),
                                     _editionService == null ? null : ids => _editionService.GetEditionsByBook(ids),
-                                    _mediaFileService == null ? null : ids => _mediaFileService.GetFilesByBooks(ids));
+                                    _mediaFileService == null ? null : ids => _mediaFileService.GetFilesByBooksForDisplay(ids));
 
             var nextByAuthor = FirstBookPerAuthor(nextBooks);
             var lastByAuthor = FirstBookPerAuthor(lastBooks);
