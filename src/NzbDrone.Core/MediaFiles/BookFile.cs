@@ -15,7 +15,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         internal static readonly HashSet<string> DisplayColumns = new HashSet<string>
         {
-            nameof(Id), nameof(EditionId), nameof(Path), nameof(Size), nameof(MediaType)
+            nameof(Id), nameof(EditionId), nameof(Path), nameof(Size), nameof(DurationSeconds)
         };
 
         private bool _displayProjection;

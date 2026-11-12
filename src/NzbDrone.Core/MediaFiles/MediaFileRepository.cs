@@ -156,13 +156,17 @@ namespace NzbDrone.Core.MediaFiles
                     {
                         // Only keys cross the join. Share the key-only model, never deserialize
                         // edition documents (especially Chapters) once for every audio part.
-                        if (!displayEditions.TryGetValue(edition.Id, out var shared))
+                        if (edition != null)
                         {
-                            shared = edition;
-                            displayEditions.Add(edition.Id, shared);
+                            if (!displayEditions.TryGetValue(edition.Id, out var shared))
+                            {
+                                shared = edition;
+                                displayEditions.Add(edition.Id, shared);
+                            }
+
+                            file.Edition = shared;
                         }
 
-                        file.Edition = shared;
                         file.MarkDisplayProjection();
                         return file;
                     }, sql.Parameters).ToList();

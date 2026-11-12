@@ -109,8 +109,24 @@ namespace Chaptarr.Core.Test.Api
                 EditionId = 500,
                 Edition = new Edition { Id = 500, BookId = 100 },
                 Path = "/books/book.epub",
-                MediaType = "ebook"
+                MediaType = "ebook",
+                DurationSeconds = 3723,
+                Size = 987654321
             };
+            if (!unfiltered)
+            {
+                // Mirror BookService.GetBooksForDisplay's author-scoped attachment:
+                // resource metadata editions are distinct from the file's key-only join.
+                books[0].BookFiles = new List<BookFile> { displayFile };
+                books[0].Editions = new List<Edition>
+                {
+                    new Edition
+                    {
+                        Id = 500, BookId = 100, Monitored = true, Language = "en",
+                        BookFiles = new List<BookFile> { displayFile }
+                    }
+                };
+            }
             var controller = new BookController(
                 authorService: Proxy<IAuthorService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
@@ -174,6 +190,22 @@ namespace Chaptarr.Core.Test.Api
 
             Assert.That(resources.Select(x => x.Id), Is.EquivalentTo(new[] { 100, 101 }));
             Assert.That(displayLoads, Is.EqualTo(unfiltered ? 1 : 0));
+            if (!unfiltered)
+            {
+                var resource = resources.Single(x => x.Id == 100);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(resource.Duration, Is.EqualTo(TimeSpan.FromSeconds(3723)));
+                    Assert.That(resource.DurationMinutes, Is.EqualTo(3723 / 60.0));
+                    Assert.That(resource.HasFiles, Is.True);
+                    Assert.That(resource.Availability, Is.Not.Null);
+                    Assert.That(resource.Availability.CanRead, Is.True);
+                    Assert.That(resource.Availability.CanListen, Is.False);
+                    Assert.That(resource.Availability.FileFormats, Is.EqualTo(new[] { "epub" }));
+                    Assert.That(resource.Availability.Languages, Is.EqualTo(new[] { "en" }));
+                    Assert.That(resource.BookFiles, Is.Null, "List does not map individual file resources");
+                });
+            }
             if (unfiltered)
             {
                 Assert.That(books[0].BookFiles.Single(), Is.SameAs(displayFile));

@@ -129,7 +129,6 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(files.All(f => f.Edition.BookId == 1), Is.True, "Edition.BookId retained");
             Assert.That(files.All(f => f.Path.EndsWith(".m4b")), Is.True, "Path retained");
             Assert.That(files.All(f => f.Size == 123), Is.True, "Size retained");
-            Assert.That(files.All(f => f.MediaType == "audiobook"), Is.True, "MediaType retained");
             Assert.That(files.All(f => f.MatchProvenance == null), Is.True, "MatchProvenance omitted");
             Assert.That(files.All(f => !f.MatchProvenanceLoaded), Is.True, "MatchProvenance not loaded");
             Assert.That(files.All(f => f.AllTags == null), Is.True, "AllTags omitted");
@@ -160,17 +159,17 @@ namespace Chaptarr.Core.Test.MediaFiles
             var file = _repository.GetFilesByBooksForDisplay(new() { 1 }).Single();
             file.AllTags = null;
             file.Narrator = null;
-            file.DurationSeconds = null;
+            file.MediaType = null;
             file.Path = "/books/new.m4b";
             if (batch)
             {
                 _repository.UpdateMany(new[] { file });
-                _repository.SetFields(new[] { file }, f => f.AllTags, f => f.Narrator, f => f.DurationSeconds);
+                _repository.SetFields(new[] { file }, f => f.AllTags, f => f.Narrator, f => f.MediaType);
             }
             else
             {
                 _repository.Update(file);
-                _repository.SetFields(file, f => f.AllTags, f => f.Narrator, f => f.DurationSeconds);
+                _repository.SetFields(file, f => f.AllTags, f => f.Narrator, f => f.MediaType);
             }
 
             var after = (IDictionary<string, object>)_connection.QuerySingle("SELECT * FROM BookFiles");
@@ -181,6 +180,25 @@ namespace Chaptarr.Core.Test.MediaFiles
                     Assert.That(after[column.Key], Is.EqualTo(column.Value), column.Key);
                 }
             }
+        }
+
+        [Test]
+        public void display_columns_should_round_trip_stored_values()
+        {
+            Seed(1);
+            _connection.Execute("UPDATE BookFiles SET Id = 27, Path = '/books/measured.mp3', Size = 987654321, DurationSeconds = 3723, MediaType = 'ebook'");
+            var file = _repository.GetFilesByBooksForDisplay(new() { 1 }).Single();
+            Assert.Multiple(() =>
+            {
+                Assert.That(file.Id, Is.EqualTo(27));
+                Assert.That(file.EditionId, Is.EqualTo(1));
+                Assert.That(file.Path, Is.EqualTo("/books/measured.mp3"));
+                Assert.That(file.Size, Is.EqualTo(987654321));
+                Assert.That(file.DurationSeconds, Is.EqualTo(3723));
+                Assert.That(file.Edition.Id, Is.EqualTo(1));
+                Assert.That(file.Edition.BookId, Is.EqualTo(1));
+                Assert.That(file.MediaType, Is.EqualTo("audiobook"), "Omitted column retains constructor default, not stored value");
+            });
         }
 
         [Test]
