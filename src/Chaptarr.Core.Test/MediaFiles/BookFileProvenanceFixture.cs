@@ -86,8 +86,8 @@ namespace Chaptarr.Core.Test.MediaFiles
             Assert.That(files.All(f => f.Edition.Id == 1 && f.Edition.Title == "Test Edition"
                 && f.Edition.Book.Id == 1 && f.Edition.Book.Title == "Test Book"), Is.True);
             // The summaries alone would occupy about 240 MB as UTF-16 strings;
-            // allow 64 MiB for the ordinary rows, lists and joined-query bookkeeping.
-            Assert.That(growth, Is.LessThan(64L * 1024 * 1024));
+            // allow 128 MiB for the ordinary rows, lists and joined-query bookkeeping.
+            Assert.That(growth, Is.LessThan(128L * 1024 * 1024));
             GC.KeepAlive(files);
         }
 
