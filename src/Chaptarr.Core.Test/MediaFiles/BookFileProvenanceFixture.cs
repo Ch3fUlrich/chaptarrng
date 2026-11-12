@@ -82,9 +82,13 @@ namespace Chaptarr.Core.Test.MediaFiles
             var growth = GC.GetTotalMemory(true) - before;
             TestContext.WriteLine($"Managed retained growth for {files.Count} rows: {growth:N0} bytes");
             Assert.That(files.Count, Is.EqualTo(20000));
-            Assert.That(files.All(f => f.MatchProvenance == null && !f.MatchProvenanceLoaded), Is.True);
-            Assert.That(files.All(f => f.Edition.Id == 1 && f.Edition.BookId == 1
-                && f.Edition.Title == null && f.Edition.Book == null), Is.True);
+            Assert.That(files.All(f => f.MatchProvenance == null), Is.True, "MatchProvenance omitted");
+            Assert.That(files.All(f => !f.MatchProvenanceLoaded), Is.True, "MatchProvenance not loaded");
+            Assert.That(files.All(f => f.Edition.Id == 1), Is.True, "Edition.Id retained");
+            Assert.That(files.All(f => f.Edition.BookId == 1), Is.True, "Edition.BookId retained");
+            Assert.That(files.All(f => f.Edition.Title == null), Is.True, "Edition.Title omitted");
+            Assert.That(files.All(f => f.Edition.LazyBook?.IsLoaded != true), Is.True, "Edition.Book not loaded (do not invoke lazy getter)");
+            Assert.That(files.All(f => ReferenceEquals(f.Edition, files[0].Edition)), Is.True, "Edition key model shared");
             // The summaries alone would occupy about 240 MB as UTF-16 strings;
             // allow 128 MiB for the ordinary rows, lists and joined-query bookkeeping.
             Assert.That(growth, Is.LessThan(128L * 1024 * 1024));
@@ -119,12 +123,25 @@ namespace Chaptarr.Core.Test.MediaFiles
             var growth = GC.GetTotalMemory(true) - before;
             TestContext.WriteLine($"Production-shaped managed retained growth: {growth:N0} bytes");
             Assert.That(files.Count, Is.EqualTo(20000));
-            Assert.That(files.All(f => f.Id > 0 && f.EditionId > 0 && f.Edition.BookId == 1
-                && f.Path.EndsWith(".m4b") && f.Size == 123 && f.MediaType == "audiobook"), Is.True);
-            Assert.That(files.All(f => f.MatchProvenance == null && !f.MatchProvenanceLoaded
-                && f.AllTags == null && f.MediaInfo == null && f.Quality == null
-                && !f.Edition.Chapters.Any() && !f.Edition.Images.Any() && !f.Edition.Links.Any()
-                && f.Edition.Overview == null && f.Edition.Book == null), Is.True);
+            Assert.That(files.All(f => f.Id > 0), Is.True, "Id retained");
+            Assert.That(files.All(f => f.EditionId > 0), Is.True, "EditionId retained");
+            Assert.That(files.All(f => f.Edition.Id == f.EditionId), Is.True, "Edition key matches file");
+            Assert.That(files.All(f => f.Edition.BookId == 1), Is.True, "Edition.BookId retained");
+            Assert.That(files.All(f => f.Path.EndsWith(".m4b")), Is.True, "Path retained");
+            Assert.That(files.All(f => f.Size == 123), Is.True, "Size retained");
+            Assert.That(files.All(f => f.MediaType == "audiobook"), Is.True, "MediaType retained");
+            Assert.That(files.All(f => f.MatchProvenance == null), Is.True, "MatchProvenance omitted");
+            Assert.That(files.All(f => !f.MatchProvenanceLoaded), Is.True, "MatchProvenance not loaded");
+            Assert.That(files.All(f => f.AllTags == null), Is.True, "AllTags omitted");
+            Assert.That(files.All(f => f.MediaInfo == null), Is.True, "MediaInfo omitted");
+            Assert.That(files.All(f => f.Quality == null), Is.True, "Quality omitted");
+            Assert.That(files.All(f => !f.Edition.Chapters.Any()), Is.True, "Edition.Chapters empty default");
+            Assert.That(files.All(f => !f.Edition.Images.Any()), Is.True, "Edition.Images empty default");
+            Assert.That(files.All(f => !f.Edition.Links.Any()), Is.True, "Edition.Links empty default");
+            Assert.That(files.All(f => f.Edition.Overview == string.Empty), Is.True, "Edition.Overview constructor default, not stored document");
+            Assert.That(files.All(f => f.Edition.Title == null), Is.True, "Edition.Title omitted");
+            Assert.That(files.All(f => f.Edition.LazyBook?.IsLoaded != true), Is.True, "Edition.Book not loaded (do not invoke lazy getter)");
+            Assert.That(files.GroupBy(f => f.EditionId).All(g => g.All(f => ReferenceEquals(f.Edition, g.First().Edition))), Is.True, "Edition key instances shared by reference");
             Assert.That(files.Select(f => f.Edition).Distinct().Count(), Is.EqualTo(100));
             // Chapters alone: 20,000 * 400 * 150 * 2 UTF-16 bytes = 2.4 GB,
             // excluding object overhead and other edition documents. 128 MiB allows

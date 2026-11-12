@@ -1720,6 +1720,11 @@ namespace Chaptarr.Api.V1.Books
 
             if (idsWithFiles.Count == 0)
             {
+                foreach (var book in books)
+                {
+                    book.BookFiles = new List<BookFile>();
+                }
+
                 return;
             }
 
@@ -1731,10 +1736,11 @@ namespace Chaptarr.Api.V1.Books
 
             foreach (var book in books)
             {
-                if (filesByBookId.TryGetValue(book.Id, out var files))
-                {
-                    book.BookFiles = files;
-                }
+                // A missing group (or a known-zero statistics row) is known-empty,
+                // not an unloaded relationship with unknown availability.
+                book.BookFiles = filesByBookId.TryGetValue(book.Id, out var files)
+                    ? files
+                    : new List<BookFile>();
             }
         }
 

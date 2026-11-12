@@ -180,8 +180,12 @@ namespace Chaptarr.Core.Test.Api
                 Assert.That(displayFile.MatchProvenanceLoaded, Is.False);
                 Assert.That(displayFile.Edition.Book, Is.Null);
                 Assert.That(displayFile.Edition.Title, Is.Null);
-                Assert.That(resources.Single(x => x.Id == 100).Availability.CanRead, Is.True);
-                Assert.That(resources.Single(x => x.Id == 101).Availability.CanRead, Is.False);
+                Assert.That(books[1].LazyBookFiles.IsLoaded, Is.True, "No-file book relationship is known-empty");
+                Assert.That(books[1].BookFiles, Is.Empty, "No-file book has no display files");
+                Assert.That(resources.Single(x => x.Id == 100).Availability, Is.Not.Null, "File-backed availability populated");
+                Assert.That(resources.Single(x => x.Id == 100).Availability.CanRead, Is.True, "EPUB can be read");
+                Assert.That(resources.Single(x => x.Id == 101).Availability, Is.Not.Null, "No-file availability populated");
+                Assert.That(resources.Single(x => x.Id == 101).Availability.CanRead, Is.False, "No-file book cannot be read");
                 Assert.That(resources.All(x => x.BookFiles == null), Is.True);
             }
         }
