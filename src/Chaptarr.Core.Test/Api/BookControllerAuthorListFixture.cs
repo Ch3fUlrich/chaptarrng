@@ -178,7 +178,10 @@ namespace Chaptarr.Core.Test.Api
             {
                 Assert.That(books[0].BookFiles.Single(), Is.SameAs(displayFile));
                 Assert.That(displayFile.MatchProvenanceLoaded, Is.False);
+                Assert.That(displayFile.Edition.Book, Is.Null);
+                Assert.That(displayFile.Edition.Title, Is.Null);
                 Assert.That(resources.Single(x => x.Id == 100).Availability.CanRead, Is.True);
+                Assert.That(resources.Single(x => x.Id == 101).Availability.CanRead, Is.False);
                 Assert.That(resources.All(x => x.BookFiles == null), Is.True);
             }
         }

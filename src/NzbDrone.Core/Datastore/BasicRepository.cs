@@ -881,9 +881,9 @@ namespace NzbDrone.Core.Datastore
 
         private void UpdateFields(IDbConnection connection, IDbTransaction transaction, TModel model, List<PropertyInfo> propertiesToUpdate)
         {
-            if (model is NzbDrone.Core.MediaFiles.BookFile file && !file.MatchProvenanceLoaded)
+            if (model is NzbDrone.Core.MediaFiles.BookFile file)
             {
-                propertiesToUpdate = propertiesToUpdate.Where(p => p.Name != nameof(file.MatchProvenance)).ToList();
+                propertiesToUpdate = propertiesToUpdate.Where(p => file.IsColumnLoaded(p.Name)).ToList();
             }
 
             if (propertiesToUpdate.Count == 0)

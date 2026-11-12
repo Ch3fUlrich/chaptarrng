@@ -83,12 +83,87 @@ namespace Chaptarr.Core.Test.MediaFiles
             TestContext.WriteLine($"Managed retained growth for {files.Count} rows: {growth:N0} bytes");
             Assert.That(files.Count, Is.EqualTo(20000));
             Assert.That(files.All(f => f.MatchProvenance == null && !f.MatchProvenanceLoaded), Is.True);
-            Assert.That(files.All(f => f.Edition.Id == 1 && f.Edition.Title == "Test Edition"
-                && f.Edition.Book.Id == 1 && f.Edition.Book.Title == "Test Book"), Is.True);
+            Assert.That(files.All(f => f.Edition.Id == 1 && f.Edition.BookId == 1
+                && f.Edition.Title == null && f.Edition.Book == null), Is.True);
             // The summaries alone would occupy about 240 MB as UTF-16 strings;
             // allow 128 MiB for the ordinary rows, lists and joined-query bookkeeping.
             Assert.That(growth, Is.LessThan(128L * 1024 * 1024));
             GC.KeepAlive(files);
+        }
+
+        [Test]
+        public void production_shaped_display_should_share_keys_and_omit_all_documents()
+        {
+            Seed(20000);
+            var chapters = "[" + string.Join(",", Enumerable.Range(1, 400)
+                .Select(i => "{\"title\":\"" + new string('c', 150) + "\",\"start\":0}")) + "]";
+            var filler = new string('o', 4000);
+            using (var transaction = _connection.BeginTransaction())
+            {
+                for (var id = 2; id <= 100; id++)
+                {
+                    _connection.Execute("INSERT INTO Editions (Id, BookId, Title, Monitored) VALUES (@id, 1, 'Part edition', 1)", new { id }, transaction);
+                }
+
+                _connection.Execute("UPDATE Editions SET Chapters = @chapters, Overview = @filler, Images = @images, Links = @links",
+                    new { chapters, filler, images = "[{\"url\":\"" + filler + "\"}]", links = "[{\"url\":\"" + filler + "\"}]" }, transaction);
+                _connection.Execute("UPDATE Books SET Overview = @filler", new { filler }, transaction);
+                _connection.Execute("UPDATE BookFiles SET EditionId = ((Id - 1) / 200) + 1, AllTags = @tags",
+                    new { tags = "{\"comment\":[\"" + new string('t', 1000) + "\"]}" }, transaction);
+                transaction.Commit();
+            }
+
+            _repository.GetFilesByBooksForDisplay(new() { 1 });
+            var before = GC.GetTotalMemory(true);
+            var files = _repository.GetFilesByBooksForDisplay(new() { 1 });
+            var growth = GC.GetTotalMemory(true) - before;
+            TestContext.WriteLine($"Production-shaped managed retained growth: {growth:N0} bytes");
+            Assert.That(files.Count, Is.EqualTo(20000));
+            Assert.That(files.All(f => f.Id > 0 && f.EditionId > 0 && f.Edition.BookId == 1
+                && f.Path.EndsWith(".m4b") && f.Size == 123 && f.MediaType == "audiobook"), Is.True);
+            Assert.That(files.All(f => f.MatchProvenance == null && !f.MatchProvenanceLoaded
+                && f.AllTags == null && f.MediaInfo == null && f.Quality == null
+                && !f.Edition.Chapters.Any() && !f.Edition.Images.Any() && !f.Edition.Links.Any()
+                && f.Edition.Overview == null && f.Edition.Book == null), Is.True);
+            Assert.That(files.Select(f => f.Edition).Distinct().Count(), Is.EqualTo(100));
+            // Chapters alone: 20,000 * 400 * 150 * 2 UTF-16 bytes = 2.4 GB,
+            // excluding object overhead and other edition documents. 128 MiB allows
+            // ordinary file objects but cannot retain a full edition per file row.
+            Assert.That(growth, Is.LessThan(128L * 1024 * 1024));
+            GC.KeepAlive(files);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void display_updates_should_preserve_every_omitted_column(bool batch)
+        {
+            Seed(1);
+            _connection.Execute("UPDATE BookFiles SET AllTags = '{\"tag\":[\"keep\"]}', Narrator = 'keep', DurationSeconds = 123");
+            var before = _connection.QuerySingle("SELECT * FROM BookFiles");
+            var file = _repository.GetFilesByBooksForDisplay(new() { 1 }).Single();
+            file.AllTags = null;
+            file.Narrator = null;
+            file.DurationSeconds = null;
+            file.Path = "/books/new.m4b";
+            if (batch)
+            {
+                _repository.UpdateMany(new[] { file });
+                _repository.SetFields(new[] { file }, f => f.AllTags, f => f.Narrator, f => f.DurationSeconds);
+            }
+            else
+            {
+                _repository.Update(file);
+                _repository.SetFields(file, f => f.AllTags, f => f.Narrator, f => f.DurationSeconds);
+            }
+
+            var after = (IDictionary<string, object>)_connection.QuerySingle("SELECT * FROM BookFiles");
+            foreach (var column in (IDictionary<string, object>)before)
+            {
+                if (column.Key != "Path")
+                {
+                    Assert.That(after[column.Key], Is.EqualTo(column.Value), column.Key);
+                }
+            }
         }
 
         [Test]

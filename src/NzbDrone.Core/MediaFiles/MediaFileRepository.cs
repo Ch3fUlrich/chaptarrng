@@ -140,6 +140,7 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             var uniqueBookIds = bookIds.Distinct().ToArray();
+            var displayEditions = new Dictionary<int, Edition>();
 
             List<BookFile> QueryForBookIds(int[] chunkBookIds)
             {
@@ -149,17 +150,20 @@ namespace NzbDrone.Core.MediaFiles
 
                 if (forDisplay)
                 {
-                    builder.LeftJoin<Edition, Book>((e, b) => e.BookId == b.Id);
                     var sql = builder.Select(SqlBuilderExtensions.BookFileDisplayColumns())
-                        .Select(typeof(Edition), typeof(Book)).AddSelectTemplate(typeof(BookFile));
-                    return _database.Query<BookFile, Edition, Book, BookFile>(sql.RawSql, (file, edition, book) =>
+                        .Select("\"Editions\".\"Id\", \"Editions\".\"BookId\"").AddSelectTemplate(typeof(BookFile));
+                    return _database.Query<BookFile, Edition, BookFile>(sql.RawSql, (file, edition) =>
                     {
-                        file.Edition = edition;
-                        if (edition != null)
+                        // Only keys cross the join. Share the key-only model, never deserialize
+                        // edition documents (especially Chapters) once for every audio part.
+                        if (!displayEditions.TryGetValue(edition.Id, out var shared))
                         {
-                            edition.Book = book;
+                            shared = edition;
+                            displayEditions.Add(edition.Id, shared);
                         }
 
+                        file.Edition = shared;
+                        file.MarkDisplayProjection();
                         return file;
                     }, sql.Parameters).ToList();
                 }

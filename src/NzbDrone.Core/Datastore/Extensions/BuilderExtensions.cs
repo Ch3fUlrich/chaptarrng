@@ -35,7 +35,8 @@ namespace NzbDrone.Core.Datastore
             // Explicit opt-in projection for list display only.
             var excluded = TableMapping.Mapper.ExcludeProperties(type).Select(p => p.Name).ToHashSet();
             return type.GetProperties()
-                .Where(p => p.IsMappableProperty() && !excluded.Contains(p.Name) && p.Name != "MatchProvenance")
+                .Where(p => p.IsMappableProperty() && !excluded.Contains(p.Name)
+                    && NzbDrone.Core.MediaFiles.BookFile.DisplayColumns.Contains(p.Name))
                 .OrderBy(p => p.Name == "Id" ? 0 : 1)
                 .Select(p => $"\"{table}\".\"{p.Name}\"").Join(", ");
         }

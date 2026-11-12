@@ -13,6 +13,19 @@ namespace NzbDrone.Core.MediaFiles
 {
     public class BookFile : ModelBase
     {
+        internal static readonly HashSet<string> DisplayColumns = new HashSet<string>
+        {
+            nameof(Id), nameof(EditionId), nameof(Path), nameof(Size), nameof(MediaType)
+        };
+
+        private bool _displayProjection;
+
+        internal void MarkDisplayProjection() => _displayProjection = true;
+
+        internal bool IsColumnLoaded(string name) => name == nameof(MatchProvenance)
+            ? MatchProvenanceLoaded
+            : !_displayProjection || DisplayColumns.Contains(name);
+
         // these are model properties
         public string Path { get; set; }
         public long Size { get; set; }
