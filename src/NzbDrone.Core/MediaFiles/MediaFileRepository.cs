@@ -17,6 +17,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetMappedFilePathEvidenceByAuthor(int authorId, string mediaType);
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByBooks(List<int> bookIds);
+        List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
         DateTime? GetLatestImportDate() => null;
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
@@ -39,29 +40,6 @@ namespace NzbDrone.Core.MediaFiles
         public MediaFileRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
-        }
-
-        public override BookFile Find(int id)
-        {
-            var file = base.Find(id);
-            return LoadProvenance(file);
-        }
-
-        private BookFile LoadProvenance(BookFile file)
-        {
-            if (file != null)
-            {
-                using var connection = _database.OpenConnection();
-                file.MatchProvenance = connection.QuerySingle<MatchProvenanceRow>(
-                    "SELECT \"MatchProvenance\" FROM \"BookFiles\" WHERE \"Id\" = @id", new { id = file.Id }).MatchProvenance;
-            }
-
-            return file;
-        }
-
-        private sealed class MatchProvenanceRow
-        {
-            public MatchProvenance MatchProvenance { get; set; }
         }
 
         // always join with all the other good stuff
@@ -146,6 +124,16 @@ namespace NzbDrone.Core.MediaFiles
 
         public List<BookFile> GetFilesByBooks(List<int> bookIds)
         {
+            return GetFilesByBooks(bookIds, false);
+        }
+
+        public List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds)
+        {
+            return GetFilesByBooks(bookIds, true);
+        }
+
+        private List<BookFile> GetFilesByBooks(List<int> bookIds, bool forDisplay)
+        {
             if (bookIds == null || bookIds.Count == 0)
             {
                 return new List<BookFile>();
@@ -158,6 +146,23 @@ namespace NzbDrone.Core.MediaFiles
                 var builder = new SqlBuilder(_database.DatabaseType)
                     .LeftJoin<BookFile, Edition>((f, e) => f.EditionId == e.Id)
 	                    .Where<Edition>(e => Enumerable.Contains(chunkBookIds, e.BookId));
+
+                if (forDisplay)
+                {
+                    builder.LeftJoin<Edition, Book>((e, b) => e.BookId == b.Id);
+                    var sql = builder.Select(SqlBuilderExtensions.BookFileDisplayColumns())
+                        .Select(typeof(Edition), typeof(Book)).AddSelectTemplate(typeof(BookFile));
+                    return _database.Query<BookFile, Edition, Book, BookFile>(sql.RawSql, (file, edition, book) =>
+                    {
+                        file.Edition = edition;
+                        if (edition != null)
+                        {
+                            edition.Book = book;
+                        }
+
+                        return file;
+                    }, sql.Parameters).ToList();
+                }
 
                 return _database.QueryJoined<BookFile, Edition>(builder, MapTrack).ToList();
             }
@@ -375,7 +380,7 @@ namespace NzbDrone.Core.MediaFiles
 
         public BookFile GetFileWithPath(string path)
         {
-            return LoadProvenance(Query(x => x.Path == path).SingleOrDefault());
+            return Query(x => x.Path == path).SingleOrDefault();
         }
 
         public List<BookFile> GetFileWithPath(List<string> paths)

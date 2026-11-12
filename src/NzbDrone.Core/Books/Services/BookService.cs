@@ -2678,7 +2678,7 @@ namespace NzbDrone.Core.Books
                 if (authorId.HasValue)
                 {
                     // Batch load files for all books in a single query (avoids N+1 per-edition loads).
-                    var allBookFiles = _mediaFileService.GetFilesByBooks(bookIds) ?? new List<BookFile>();
+                    var allBookFiles = _mediaFileService.GetFilesByBooksForDisplay(bookIds) ?? new List<BookFile>();
                     filesByEdition = allBookFiles.GroupBy(f => f.EditionId).ToDictionary(g => g.Key, g => g.ToList());
                 }
 

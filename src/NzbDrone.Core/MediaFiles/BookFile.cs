@@ -55,12 +55,21 @@ namespace NzbDrone.Core.MediaFiles
             set
             {
                 _matchProvenance = value;
-                MatchProvenanceLoaded = true;
+                if (value != null)
+                {
+                    MatchProvenanceLoaded = true;
+                }
             }
         }
 
         [JsonIgnore]
         public bool MatchProvenanceLoaded { get; private set; }
+
+        public void ClearMatchProvenance()
+        {
+            _matchProvenance = null;
+            MatchProvenanceLoaded = true;
+        }
 
         // Media type tracking
         public string MediaType { get; set; } = "audiobook";

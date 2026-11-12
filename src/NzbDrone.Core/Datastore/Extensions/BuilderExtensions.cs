@@ -20,23 +20,19 @@ namespace NzbDrone.Core.Datastore
 
         public static SqlBuilder Select(this SqlBuilder builder, params Type[] types)
         {
-            return builder.Select(types.Select(SelectColumns).Join(", "));
+            return builder.Select(types.Select(x => $"\"{TableMapping.Mapper.TableNameMapping(x)}\".*").Join(", "));
         }
 
         public static SqlBuilder SelectDistinct(this SqlBuilder builder, params Type[] types)
         {
-            return builder.Select("DISTINCT " + types.Select(SelectColumns).Join(", "));
+            return builder.Select("DISTINCT " + types.Select(x => $"\"{TableMapping.Mapper.TableNameMapping(x)}\".*").Join(", "));
         }
 
-        private static string SelectColumns(Type type)
+        internal static string BookFileDisplayColumns()
         {
+            var type = typeof(NzbDrone.Core.MediaFiles.BookFile);
             var table = TableMapping.Mapper.TableNameMapping(type);
-            if (type != typeof(NzbDrone.Core.MediaFiles.BookFile))
-            {
-                return $"\"{table}\".*";
-            }
-
-            // Keep the large explanation document out of all list/join projections.
+            // Explicit opt-in projection for list display only.
             var excluded = TableMapping.Mapper.ExcludeProperties(type).Select(p => p.Name).ToHashSet();
             return type.GetProperties()
                 .Where(p => p.IsMappableProperty() && !excluded.Contains(p.Name) && p.Name != "MatchProvenance")

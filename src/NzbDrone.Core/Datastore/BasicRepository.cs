@@ -92,7 +92,7 @@ namespace NzbDrone.Core.Datastore
             return Query(Builder());
         }
 
-        public virtual TModel Find(int id)
+        public TModel Find(int id)
         {
             var model = Query(x => x.Id == id).FirstOrDefault();
 
@@ -884,6 +884,11 @@ namespace NzbDrone.Core.Datastore
             if (model is NzbDrone.Core.MediaFiles.BookFile file && !file.MatchProvenanceLoaded)
             {
                 propertiesToUpdate = propertiesToUpdate.Where(p => p.Name != nameof(file.MatchProvenance)).ToList();
+            }
+
+            if (propertiesToUpdate.Count == 0)
+            {
+                return;
             }
 
             var sql = propertiesToUpdate == _properties ? _updateSql : GetUpdateSql(propertiesToUpdate);
