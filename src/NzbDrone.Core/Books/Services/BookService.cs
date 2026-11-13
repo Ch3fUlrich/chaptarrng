@@ -2730,7 +2730,7 @@ namespace NzbDrone.Core.Books
                 var book = books[id];
                 book.BookFiles = new List<BookFile>();
                 book.Editions = editions.TryGetValue(id, out var rows) ? rows : new List<Edition>();
-                foreach (var edition in book.Editions.Value)
+                foreach (var edition in book.Editions)
                 {
                     edition.BookFiles = null;
                 }
