@@ -175,6 +175,7 @@ namespace Chaptarr.Core.Test.Books
 
         private sealed class StubMediaFileService : IMediaFileService
         {
+            public List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
             private readonly Dictionary<int, List<BookFile>> _filesByBookId;
 
             public StubMediaFileService(Dictionary<int, List<BookFile>> filesByBookId = null)

@@ -68,6 +68,7 @@ namespace Chaptarr.Core.Test.MediaFiles
 
         private sealed class StubMediaFileService : IMediaFileService
         {
+            public List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
             public List<BookFile> Files { get; set; } = new();
             public List<BookFile> Updated { get; } = new();
 

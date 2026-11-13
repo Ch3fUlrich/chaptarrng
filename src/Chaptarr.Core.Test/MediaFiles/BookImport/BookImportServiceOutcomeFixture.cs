@@ -25,6 +25,7 @@ namespace Chaptarr.Core.Test.MediaFiles.BookImport
     {
         private sealed class StubMediaFileService : IMediaFileService
         {
+            public List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
             private int _nextId = 1000;
             private readonly Dictionary<string, BookFile> _stored = new(StringComparer.OrdinalIgnoreCase);
 

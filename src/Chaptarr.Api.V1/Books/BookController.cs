@@ -609,7 +609,7 @@ namespace Chaptarr.Api.V1.Books
         }
 
         [HttpGet]
-        public List<BookResource> GetBooks([FromQuery] int? authorId,
+        public IEnumerable<BookResource> GetBooks([FromQuery] int? authorId,
             [FromQuery] List<int> bookIds,
             [FromQuery] string bookId,
             [FromQuery] string titleSlug = null,
@@ -636,13 +636,15 @@ namespace Chaptarr.Api.V1.Books
                 var allBooks = _bookService.GetBooksForDisplay(authorId: null, mediaType: normalizedMediaType);
                 var authors = _authorService.GetAllAuthors().ToDictionary(x => x.Id);
 
-                var validBooks = new List<Book>(allBooks.Count);
-                foreach (var book in allBooks)
+                var validBooks = allBooks;
+                var validCount = 0;
+                for (var bookIndex = 0; bookIndex < allBooks.Count; bookIndex++)
                 {
+                    var book = allBooks[bookIndex];
                     if (authors.TryGetValue(book.AuthorId, out var author))
                     {
                         book.Author = author;
-                        validBooks.Add(book);
+                        validBooks[validCount++] = book;
                     }
                     else
                     {
@@ -650,6 +652,8 @@ namespace Chaptarr.Api.V1.Books
                             book.Title, book.Id, book.AuthorId);
                     }
                 }
+
+                validBooks.RemoveRange(validCount, validBooks.Count - validCount);
 
                 // General /api/v1/book is a sync/index endpoint. Metadata profile pruning is enforced
                 // at hydrate/refresh time; doing it again here would force all-edition loading.
@@ -690,9 +694,7 @@ namespace Chaptarr.Api.V1.Books
                     filteredBooks = BookListPaging.Slice(filteredBooks, offset, limit, b => b.Id);
                 }
 
-                HydrateFilesForAvailability(filteredBooks, statsByBookId);
-
-                return MapToResource(filteredBooks,
+                return StreamBookResources(filteredBooks,
                     IncludeRequested(include, "author"),
                     statsByBookId,
                     includeOverview: IncludeRequested(include, "overview"),
@@ -1707,6 +1709,35 @@ namespace Chaptarr.Api.V1.Books
 	                ? author.AudiobookQualityProfileId.HasValue && !string.IsNullOrWhiteSpace(author.AudiobookRootFolderPath)
 	                : author.EbookQualityProfileId.HasValue && !string.IsNullOrWhiteSpace(author.EbookRootFolderPath);
 	        }
+
+        // Only the general index uses this one-shot sequence. MVC's System.Text.Json formatter
+        // writes it incrementally; author/detail routes retain their existing eager mapping.
+        private IEnumerable<BookResource> StreamBookResources(List<Book> books,
+            bool includeAuthor,
+            IReadOnlyDictionary<int, BookStatistics> statistics,
+            bool includeOverview,
+            bool includeLinks)
+        {
+            const int chunkSize = 256;
+            for (var start = 0; start < books.Count; start += chunkSize)
+            {
+                var count = Math.Min(chunkSize, books.Count - start);
+                var chunk = books.GetRange(start, count);
+                HydrateFilesForAvailability(chunk, statistics);
+                var resources = MapToResource(chunk, includeAuthor, statistics, includeOverview, includeLinks);
+                // Mapping is complete: release the entity graph before yielding this chunk.
+                for (var i = start; i < start + count; i++)
+                {
+                    books[i] = null;
+                }
+
+                chunk.Clear();
+                foreach (var resource in resources)
+                {
+                    yield return resource;
+                }
+            }
+        }
 
         // The lean index path leaves BookFiles empty; load them for books that have files in one
         // batched query so BookResource.Availability reflects the real files (no per-row loads).

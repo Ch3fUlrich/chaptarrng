@@ -66,7 +66,19 @@ namespace Chaptarr.Core.Test.Api
             AssertBookListUsesDisplayFiles(unfiltered: true);
         }
 
-        private void AssertBookListUsesDisplayFiles(bool unfiltered)
+        [Test]
+        public void production_shaped_index_should_keep_mapping_working_set_bounded()
+        {
+            AssertBookListUsesDisplayFiles(unfiltered: true, large: true);
+        }
+
+        [Test]
+        public void paged_index_should_match_eager_json_in_the_same_order()
+        {
+            AssertBookListUsesDisplayFiles(unfiltered: true, paged: true);
+        }
+
+        private void AssertBookListUsesDisplayFiles(bool unfiltered, bool large = false, bool paged = false)
         {
             var author = new Author
             {
@@ -103,6 +115,19 @@ namespace Chaptarr.Core.Test.Api
             };
 
             var displayLoads = 0;
+            if (large)
+            {
+                books.Clear();
+                for (var i = 0; i < 50000; i++)
+                {
+                    books.Add(new Book
+                    {
+                        Id = i + 100, AuthorId = author.Id, Title = "Generated book " + i,
+                        MediaType = BookMediaType.Ebook, Ratings = new Ratings(),
+                        Editions = new List<Edition> { new Edition { Id = i + 1, BookId = i + 100, Monitored = true } }
+                    });
+                }
+            }
             var displayFile = new BookFile
             {
                 Id = 900,
@@ -161,7 +186,10 @@ namespace Chaptarr.Core.Test.Api
                     // Every other call (including full loads and writes) fails through the proxy.
                     [nameof(IMediaFileService.GetFilesByBooksForDisplay)] = (_, args) =>
                     {
-                        Assert.That((List<int>)args[0], Is.EquivalentTo(new[] { 100, 101 }));
+                        if (!large)
+                        {
+                            Assert.That((List<int>)args[0], Is.EquivalentTo(new[] { 100, 101 }));
+                        }
                         displayLoads++;
                         return new List<BookFile> { displayFile };
                     }
@@ -182,11 +210,60 @@ namespace Chaptarr.Core.Test.Api
                 metadataProfileExistsValidator: new MetadataProfileExistsValidator(new TestMetadataProfileService()),
                 logger: LogManager.GetCurrentClassLogger());
 
-            var resources = controller.GetBooks(
+            var before = GC.GetTotalMemory(true);
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            string expectedJson = null;
+            if (unfiltered && !large)
+            {
+                // Reproduce the former eager general-list mapping on the same fixture.
+                foreach (var book in books)
+                {
+                    book.Author = author;
+                    book.BookFiles = book.Id == 100 ? new List<BookFile> { displayFile } : new List<BookFile>();
+                }
+
+                var map = typeof(BookControllerWithSignalR).GetMethod("MapToResource",
+                    BindingFlags.Instance | BindingFlags.NonPublic, null,
+                    new[] { typeof(List<Book>), typeof(bool), typeof(IReadOnlyDictionary<int, BookStatistics>), typeof(bool), typeof(bool) }, null);
+                expectedJson = NzbDrone.Common.Serializer.STJson.ToJson(map.Invoke(controller,
+                    new object[] { books, false, new Dictionary<int, BookStatistics>(), false, false }));
+            }
+
+            var sequence = controller.GetBooks(
                 authorId: unfiltered ? (int?)null : author.Id,
                 bookIds: new List<int>(),
                 bookId: null,
-                mediaType: "ebook");
+                mediaType: "ebook",
+                offset: paged ? 0 : (int?)null,
+                limit: paged ? 2 : (int?)null);
+
+            if (large)
+            {
+                var count = 0;
+                var peak = before;
+                foreach (var resource in sequence)
+                {
+                    count++;
+                    if (count % 256 == 1)
+                    {
+                        peak = Math.Max(peak, GC.GetTotalMemory(true));
+                    }
+                }
+
+                TestContext.WriteLine($"50000-book mapping managed growth: {peak - before:N0} bytes");
+                // Old eager mapping retains 50,000 resources plus nested lists/availability.
+                // Even 512 bytes/resource = 25.6 MB; a 16 MiB bound excludes that path.
+                Assert.That(peak - before, Is.LessThan(16L * 1024 * 1024));
+                Assert.That(count, Is.EqualTo(50000));
+                Assert.That(books.All(b => b == null), Is.True);
+                return;
+            }
+
+            var resources = sequence.ToList();
+            if (expectedJson != null)
+            {
+                Assert.That(NzbDrone.Common.Serializer.STJson.ToJson(resources), Is.EqualTo(expectedJson));
+            }
 
             Assert.That(resources.Select(x => x.Id), Is.EquivalentTo(new[] { 100, 101 }));
             Assert.That(displayLoads, Is.EqualTo(unfiltered ? 1 : 0));
@@ -208,12 +285,17 @@ namespace Chaptarr.Core.Test.Api
             }
             if (unfiltered)
             {
-                Assert.That(books[0].BookFiles.Single(), Is.SameAs(displayFile));
+                if (!paged)
+                {
+                    Assert.That(books[0], Is.Null, "Stream releases consumed entity references");
+                }
                 Assert.That(displayFile.MatchProvenanceLoaded, Is.False);
                 Assert.That(displayFile.Edition.Book, Is.Null);
                 Assert.That(displayFile.Edition.Title, Is.Null);
-                Assert.That(books[1].LazyBookFiles.IsLoaded, Is.True, "No-file book relationship is known-empty");
-                Assert.That(books[1].BookFiles, Is.Empty, "No-file book has no display files");
+                if (!paged)
+                {
+                    Assert.That(books[1], Is.Null, "Stream releases consumed entity references");
+                }
                 Assert.That(resources.Single(x => x.Id == 100).Availability, Is.Not.Null, "File-backed availability populated");
                 Assert.That(resources.Single(x => x.Id == 100).Availability.CanRead, Is.True, "EPUB can be read");
                 Assert.That(resources.Single(x => x.Id == 101).Availability, Is.Not.Null, "No-file availability populated");

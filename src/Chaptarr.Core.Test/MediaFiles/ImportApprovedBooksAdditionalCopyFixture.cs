@@ -43,6 +43,7 @@ namespace Chaptarr.Core.Test.MediaFiles
         }
         private sealed class StubMediaFileService : IMediaFileService
         {
+            public List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
             public List<BookFile> FilesByBook { get; } = new();
             public Dictionary<string, BookFile> FilesByPath { get; } = new(StringComparer.OrdinalIgnoreCase);
             public List<(BookFile File, DeleteMediaFileReason Reason)> DeletedFiles { get; } = new();

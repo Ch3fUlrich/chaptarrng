@@ -17,7 +17,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetMappedFilePathEvidenceByAuthor(int authorId, string mediaType);
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByBooks(List<int> bookIds);
-        List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
+        List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds);
         DateTime? GetLatestImportDate() => null;
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();

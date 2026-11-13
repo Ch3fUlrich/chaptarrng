@@ -206,6 +206,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             });
         }
 
+        [TestCase("insert")]
         [TestCase("update")]
         [TestCase("updateMany")]
         [TestCase("upsert")]
@@ -222,6 +223,7 @@ namespace Chaptarr.Core.Test.MediaFiles
             {
                 switch (operation)
                 {
+                    case "insert": edition.Id = 0; _editions.Insert(edition); break;
                     case "update": _editions.Update(edition); break;
                     case "updateMany": _editions.UpdateMany(new[] { edition }); break;
                     case "upsert": _editions.Upsert(edition); break;
@@ -239,8 +241,8 @@ namespace Chaptarr.Core.Test.MediaFiles
             }
         }
 
-        [TestCase("ebook", "epub", true, false)]
-        [TestCase("audiobook", "m4b", false, true)]
+        [TestCase("audiobook", "epub", true, false)]
+        [TestCase("ebook", "m4b", false, true)]
         public void repository_display_files_should_map_real_availability(string mediaType, string extension, bool canRead, bool canListen)
         {
             Seed(1);

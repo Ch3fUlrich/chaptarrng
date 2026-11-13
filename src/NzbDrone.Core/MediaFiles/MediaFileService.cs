@@ -53,7 +53,7 @@ namespace NzbDrone.Core.MediaFiles
         }
         List<BookFile> GetFilesByBook(int bookId);
         List<BookFile> GetFilesByBooks(List<int> bookIds);
-        List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
+        List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds);
         List<BookFile> GetFilesByEdition(int editionId);
         List<BookFile> GetUnmappedFiles();
         List<BookFile> GetUnmappedFiles(string mediaType)

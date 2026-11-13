@@ -511,6 +511,7 @@ namespace Chaptarr.Core.Test.Datastore
 
         private sealed class RecordingMediaFileService : IMediaFileService
         {
+            public List<BookFile> GetFilesByBooksForDisplay(List<int> bookIds) => GetFilesByBooks(bookIds);
             private readonly Dictionary<string, BookFile> _files = new(StringComparer.OrdinalIgnoreCase);
 
             public BookFile Add(BookFile bookFile)
