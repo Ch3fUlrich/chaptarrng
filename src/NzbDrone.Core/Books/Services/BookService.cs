@@ -2721,7 +2721,8 @@ namespace NzbDrone.Core.Books
 
         public List<Book> GetGeneralListChunk(List<int> ids)
         {
-            var books = _bookRepository.Get(ids).ToDictionary(b => b.Id);
+            // The id snapshot can outlive a refresh/delete; unlike Get, FindExisting tolerates missing rows.
+            var books = _bookRepository.FindExisting(ids).ToDictionary(b => b.Id);
             var editions = _editionService.GetMonitoredEditionsForBookIds(ids)
                 .GroupBy(e => e.BookId).ToDictionary(g => g.Key, g => g.ToList());
             var result = new List<Book>(ids.Count);
@@ -2729,9 +2730,10 @@ namespace NzbDrone.Core.Books
             {
                 if (!books.TryGetValue(id, out var book))
                 {
-                    _logger.Debug("Skipping book {0}: no longer present while loading general list chunk", id);
+                    _logger.Warn("Skipping book {0}: no longer present while loading general list chunk", id);
                     continue;
                 }
+
                 book.BookFiles = new List<BookFile>();
                 book.Editions = editions.TryGetValue(id, out var rows) ? rows : new List<Edition>();
                 foreach (var edition in book.Editions)

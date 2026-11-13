@@ -1728,12 +1728,20 @@ namespace Chaptarr.Api.V1.Books
             bool includeLinks)
         {
             const int chunkSize = 256;
+            var facadeContext = HttpContext?.GetReadarrFacadeContext();
+            // Keep only a count across chunks, not the resources or their entity graphs.
+            var missingIdentityCount = 0;
             for (var start = 0; start < books.Count; start += chunkSize)
             {
                 var count = Math.Min(chunkSize, books.Count - start);
                 var chunk = books.GetRange(start, count);
                 HydrateFilesForAvailability(chunk, statistics);
-                var resources = MapToResource(chunk, includeAuthor, statistics, includeOverview, includeLinks);
+                var resources = MapToResource(chunk, includeAuthor, statistics, includeOverview, includeLinks, warnFacadeIdentityGaps: false);
+                if (facadeContext != null)
+                {
+                    missingIdentityCount += resources.Count(resource => string.IsNullOrWhiteSpace(resource.ForeignBookId));
+                }
+
                 // Mapping is complete: release the entity graph before yielding this chunk.
                 for (var i = start; i < start + count; i++)
                 {
@@ -1746,30 +1754,42 @@ namespace Chaptarr.Api.V1.Books
                     yield return resource;
                 }
             }
+
+            BookResourceMapper.WarnFacadeIdentityGaps(missingIdentityCount, facadeContext, "book response");
         }
 
         private IEnumerable<BookResource> StreamGeneralList(List<int> ids, bool includeAuthor,
             IReadOnlyDictionary<int, BookStatistics> statistics, bool includeOverview, bool includeLinks)
         {
             const int chunkSize = 256;
+            var facadeContext = HttpContext?.GetReadarrFacadeContext();
+            // Keep only a count across chunks, not the resources or their entity graphs.
+            var missingIdentityCount = 0;
             for (var start = 0; start < ids.Count; start += chunkSize)
             {
                 // Keep entity locals out of the iterator state machine: none survive a yield
                 // or the start of the next repository load.
                 var resources = MapGeneralListChunk(ids.GetRange(start, Math.Min(chunkSize, ids.Count - start)),
                     includeAuthor, statistics, includeOverview, includeLinks);
+                if (facadeContext != null)
+                {
+                    missingIdentityCount += resources.Count(resource => string.IsNullOrWhiteSpace(resource.ForeignBookId));
+                }
+
                 foreach (var resource in resources)
                 {
                     yield return resource;
                 }
             }
+
+            BookResourceMapper.WarnFacadeIdentityGaps(missingIdentityCount, facadeContext, "book response");
         }
 
         private List<BookResource> MapGeneralListChunk(List<int> ids, bool includeAuthor,
             IReadOnlyDictionary<int, BookStatistics> statistics, bool includeOverview, bool includeLinks)
         {
             var books = _bookService.GetGeneralListChunk(ids);
-            var authors = _authorService.GetAuthors(books.Select(b => b.AuthorId).Distinct()).ToDictionary(a => a.Id);
+            var authors = _authorService.GetExistingAuthors(books.Select(b => b.AuthorId).Distinct()).ToDictionary(a => a.Id);
             var validBooks = new List<Book>(books.Count);
             foreach (var book in books)
             {
@@ -1784,7 +1804,7 @@ namespace Chaptarr.Api.V1.Books
             }
 
             HydrateFilesForAvailability(validBooks, statistics);
-            return MapToResource(validBooks, includeAuthor, statistics, includeOverview, includeLinks);
+            return MapToResource(validBooks, includeAuthor, statistics, includeOverview, includeLinks, warnFacadeIdentityGaps: false);
         }
 
         // The lean index path leaves BookFiles empty; load them for books that have files in one

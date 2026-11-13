@@ -12,6 +12,8 @@ namespace NzbDrone.Core.Books
 {
     public interface IAuthorRepository : IBasicRepository<Author>
     {
+        // Tolerant lookup for drifting snapshots; Get retains its strict row-count contract.
+        IEnumerable<Author> FindExisting(IEnumerable<int> ids) => throw new NotImplementedException();
         bool AuthorPathExists(string path);
         Author FindByName(string cleanName);
         Author FindByGoodreadsId(string goodreadsId);
@@ -55,6 +57,11 @@ namespace NzbDrone.Core.Books
         public static IEnumerable<Author> Query(IDatabase database, SqlBuilder builder)
         {
             return database.Query<Author>(builder);
+        }
+
+        public IEnumerable<Author> FindExisting(IEnumerable<int> ids)
+        {
+            return FindMany(ids);
         }
 
         public bool AuthorPathExists(string path)

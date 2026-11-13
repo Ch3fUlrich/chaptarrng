@@ -79,6 +79,16 @@ namespace Chaptarr.Api.V1.Books
                                                    bool includeOverview,
                                                    bool includeLinks)
         {
+            return MapToResource(books, includeAuthor, statsByBookId, includeOverview, includeLinks, warnFacadeIdentityGaps: true);
+        }
+
+        protected List<BookResource> MapToResource(List<Book> books,
+                                                   bool includeAuthor,
+                                                   IReadOnlyDictionary<int, BookStatistics> statsByBookId,
+                                                   bool includeOverview,
+                                                   bool includeLinks,
+                                                   bool warnFacadeIdentityGaps)
+        {
             var facadeContext = HttpContext?.GetReadarrFacadeContext();
             var seriesLinks = _seriesBookLinkService.GetLinksByBook(books.Select(x => x.Id).ToList())
                 .GroupBy(x => x.BookId)
@@ -112,7 +122,11 @@ namespace Chaptarr.Api.V1.Books
                     FacadeContext = facadeContext
                 });
             }).ToList();
-            BookResourceMapper.WarnFacadeIdentityGaps(result, facadeContext, "book response");
+
+            if (warnFacadeIdentityGaps)
+            {
+                BookResourceMapper.WarnFacadeIdentityGaps(result, facadeContext, "book response");
+            }
 
             MapCoversToLocal(result.ToArray());
 

@@ -24,6 +24,8 @@ namespace NzbDrone.Core.Books
     {
         Author GetAuthor(int authorId);
         List<Author> GetAuthors(IEnumerable<int> authorIds);
+        // Tolerant read for streamed snapshots. The default only keeps lightweight stubs compatible.
+        List<Author> GetExistingAuthors(IEnumerable<int> authorIds) => throw new NotImplementedException();
         Author AddAuthor(Author newAuthor, bool doRefresh);
         List<Author> AddAuthors(List<Author> newAuthors, bool doRefresh);
         Author FindByProviderId(string provider, string providerId);
@@ -691,6 +693,11 @@ namespace NzbDrone.Core.Books
         public List<Author> GetAuthors(IEnumerable<int> authorIds)
         {
             return _authorRepository.Get(authorIds).ToList();
+        }
+
+        public List<Author> GetExistingAuthors(IEnumerable<int> authorIds)
+        {
+            return _authorRepository.FindExisting(authorIds).ToList();
         }
 
 	        public void RemoveAddOptions(Author author)

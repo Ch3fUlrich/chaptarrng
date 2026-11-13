@@ -649,7 +649,12 @@ namespace Chaptarr.Api.V1.Books
                 }
 
                 var missingCount = resources?.Count(resource => resource != null && string.IsNullOrWhiteSpace(resource.ForeignBookId)) ?? 0;
-                if (missingCount == 0)
+                WarnFacadeIdentityGaps(missingCount, facadeContext, source);
+            }
+
+            public static void WarnFacadeIdentityGaps(int missingCount, ReadarrFacadeContext facadeContext, string source)
+            {
+                if (facadeContext == null || missingCount == 0)
                 {
                     return;
                 }
