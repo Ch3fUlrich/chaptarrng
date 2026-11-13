@@ -1775,7 +1775,7 @@ namespace Chaptarr.Api.V1.Books
             {
                 if (!authors.TryGetValue(book.AuthorId, out var author))
                 {
-                    _logger.Debug("Skipping book {0}: author {1} no longer present while loading general list chunk", book.Id, book.AuthorId);
+                    _logger.Warn("Skipping book {0}: author {1} no longer present while loading general list chunk", book.Id, book.AuthorId);
                     continue;
                 }
 
