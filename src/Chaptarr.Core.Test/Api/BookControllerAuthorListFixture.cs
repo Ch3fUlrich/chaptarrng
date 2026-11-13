@@ -196,7 +196,8 @@ namespace Chaptarr.Core.Test.Api
                 authorService: Proxy<IAuthorService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
                     [nameof(IAuthorService.GetAuthor)] = (_, _) => author,
-                    [nameof(IAuthorService.GetAuthors)] = (_, _) => authors,
+                    [nameof(IAuthorService.GetAuthors)] = (_, args) => authors
+                        .Where(a => ((IEnumerable<int>)args[0]).Contains(a.Id)).ToList(),
                     [nameof(IAuthorService.GetAllAuthors)] = (_, _) => authors
                 }),
                 bookService: Proxy<IBookService>(new Dictionary<string, Func<MethodInfo, object[], object>>
@@ -223,7 +224,7 @@ namespace Chaptarr.Core.Test.Api
                             Id = id, AuthorId = author.Id, Title = "Generated book " + id,
                             MediaType = BookMediaType.Ebook, Ratings = new Ratings(),
                             Editions = new List<Edition> { new Edition { Id = id, BookId = id, Monitored = true } }
-                        }).ToList() : books.ToList();
+                        }).ToList() : ids.Select(id => books.Single(b => b.Id == id)).ToList();
                         if (large)
                         {
                             liveBooks.AddRange(chunk.Select(b => new WeakReference(b)));
@@ -318,7 +319,9 @@ namespace Chaptarr.Core.Test.Api
                 // Reproduce the former eager general-list mapping on the same fixture.
                 foreach (var book in books)
                 {
-                    book.Author = authors.SingleOrDefault(a => a.Id == book.AuthorId);
+                    // Set the relationship directly: Author's setter also changes AuthorId,
+                    // including resetting the orphan's foreign key when no author exists.
+                    book.LazyAuthor = authors.SingleOrDefault(a => a.Id == book.AuthorId);
                     book.BookFiles = book.Id == 100 ? new List<BookFile> { displayFile } : new List<BookFile>();
                 }
 
@@ -330,7 +333,8 @@ namespace Chaptarr.Core.Test.Api
                 // Do not let eager hydration mask a missing streamed relationship load.
                 foreach (var book in books)
                 {
-                    book.Author = null;
+                    // Clear only the relationship, retaining the stored foreign key for chunk loading.
+                    book.LazyAuthor = null;
                     book.SeriesLinks = new List<SeriesBookLink>();
                     book.BookFiles = new List<BookFile>();
                 }
@@ -370,6 +374,7 @@ namespace Chaptarr.Core.Test.Api
             var resources = sequence.ToList();
             if (expectedJson != null)
             {
+                Assert.That(resources, Is.Not.Empty);
                 Assert.That(NzbDrone.Common.Serializer.STJson.ToJson(resources), Is.EqualTo(expectedJson));
             }
 
