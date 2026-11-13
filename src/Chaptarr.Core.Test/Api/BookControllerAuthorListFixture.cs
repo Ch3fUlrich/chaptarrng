@@ -115,18 +115,12 @@ namespace Chaptarr.Core.Test.Api
             };
 
             var displayLoads = 0;
+            var liveBooks = new List<WeakReference>();
+            var entityLoads = 0;
             if (large)
             {
                 books.Clear();
-                for (var i = 0; i < 50000; i++)
-                {
-                    books.Add(new Book
-                    {
-                        Id = i + 100, AuthorId = author.Id, Title = "Generated book " + i,
-                        MediaType = BookMediaType.Ebook, Ratings = new Ratings(),
-                        Editions = new List<Edition> { new Edition { Id = i + 1, BookId = i + 100, Monitored = true } }
-                    });
-                }
+                // Only ids are generated below; no eager production-sized entity set.
             }
             var displayFile = new BookFile
             {
@@ -156,10 +150,36 @@ namespace Chaptarr.Core.Test.Api
                 authorService: Proxy<IAuthorService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
                     [nameof(IAuthorService.GetAuthor)] = (_, _) => author,
+                    [nameof(IAuthorService.GetAuthors)] = (_, _) => new List<Author> { author },
                     [nameof(IAuthorService.GetAllAuthors)] = (_, _) => new List<Author> { author }
                 }),
                 bookService: Proxy<IBookService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
+                    [nameof(IBookService.GetGeneralListIds)] = (_, _) => large
+                        ? Enumerable.Range(100, 50000).ToList() : books.Select(b => b.Id).ToList(),
+                    [nameof(IBookService.GetGeneralListChunk)] = (_, args) =>
+                    {
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                        GC.Collect();
+                        Assert.That(liveBooks.Count(w => w.IsAlive), Is.Zero, "Previous entity chunk must be released before loading another");
+                        liveBooks.Clear();
+                        var ids = (List<int>)args[0];
+                        Assert.That(ids.Count, Is.LessThanOrEqualTo(256));
+                        entityLoads++;
+                        var chunk = large ? ids.Select(id => new Book
+                        {
+                            Id = id, AuthorId = author.Id, Title = "Generated book " + id,
+                            MediaType = BookMediaType.Ebook, Ratings = new Ratings(),
+                            Editions = new List<Edition> { new Edition { Id = id, BookId = id, Monitored = true } }
+                        }).ToList() : books.ToList();
+                        if (large)
+                        {
+                            liveBooks.AddRange(chunk.Select(b => new WeakReference(b)));
+                        }
+
+                        return chunk;
+                    },
                     [nameof(IBookService.GetBooksForDisplay)] = (_, args) =>
                     {
                         Assert.That(args[0], Is.EqualTo(unfiltered ? (int?)null : author.Id));
@@ -233,7 +253,7 @@ namespace Chaptarr.Core.Test.Api
                 authorId: unfiltered ? (int?)null : author.Id,
                 bookIds: new List<int>(),
                 bookId: null,
-                mediaType: "ebook",
+                mediaType: unfiltered && !paged ? null : "ebook",
                 offset: paged ? 0 : (int?)null,
                 limit: paged ? 2 : (int?)null);
 
@@ -255,7 +275,7 @@ namespace Chaptarr.Core.Test.Api
                 // Even 512 bytes/resource = 25.6 MB; a 16 MiB bound excludes that path.
                 Assert.That(peak - before, Is.LessThan(16L * 1024 * 1024));
                 Assert.That(count, Is.EqualTo(50000));
-                Assert.That(books.All(b => b == null), Is.True);
+                Assert.That(entityLoads, Is.EqualTo(196));
                 return;
             }
 
@@ -285,17 +305,9 @@ namespace Chaptarr.Core.Test.Api
             }
             if (unfiltered)
             {
-                if (!paged)
-                {
-                    Assert.That(books[0], Is.Null, "Stream releases consumed entity references");
-                }
                 Assert.That(displayFile.MatchProvenanceLoaded, Is.False);
                 Assert.That(displayFile.Edition.Book, Is.Null);
                 Assert.That(displayFile.Edition.Title, Is.Null);
-                if (!paged)
-                {
-                    Assert.That(books[1], Is.Null, "Stream releases consumed entity references");
-                }
                 Assert.That(resources.Single(x => x.Id == 100).Availability, Is.Not.Null, "File-backed availability populated");
                 Assert.That(resources.Single(x => x.Id == 100).Availability.CanRead, Is.True, "EPUB can be read");
                 Assert.That(resources.Single(x => x.Id == 101).Availability, Is.Not.Null, "No-file availability populated");

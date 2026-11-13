@@ -44,6 +44,7 @@ namespace NzbDrone.Core.Books
 		            throw new NotSupportedException();
 		        }
 		        List<Book> GetBooksByMediaType(BookMediaType mediaType) => throw new NotImplementedException();
+                List<int> GetGeneralListIds() => throw new NotImplementedException();
 		        List<Book> GetBooksByAuthorIds(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
 		        List<AuthorBookCount> GetBookCountsByAuthor(BookMediaType mediaType) => throw new NotImplementedException();
 		        List<Book> GetBooksForRefresh(int authorId, IEnumerable<string> providerIds);
@@ -322,6 +323,16 @@ namespace NzbDrone.Core.Books
         public List<Book> GetBooksByMediaType(BookMediaType mediaType)
         {
             return Query(s => s.MediaType == mediaType);
+        }
+
+        public List<int> GetGeneralListIds()
+        {
+            // All() has no ORDER BY: SQLite scans Books in INTEGER PRIMARY KEY
+            // (rowid) order. EXISTS preserves that order without multiplying rows.
+            using (var connection = _database.OpenConnection())
+            {
+                return connection.Query<int>("SELECT b.\"Id\" FROM \"Books\" b WHERE EXISTS (SELECT 1 FROM \"Authors\" a WHERE a.\"Id\" = b.\"AuthorId\") ORDER BY b.\"Id\"").ToList();
+            }
         }
 
         public List<Book> GetBooksByAuthorIds(IEnumerable<int> authorIds, BookMediaType mediaType)

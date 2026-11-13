@@ -632,6 +632,15 @@ namespace Chaptarr.Api.V1.Books
                 var parsedMediaType = MediaTypeParameterParser.ParseOptional(mediaType);
                 var normalizedMediaType = parsedMediaType.HasValue ? MediaTypeParameterParser.ToApiValue(parsedMediaType.Value) : null;
 
+                // Leave filtered and explicitly paged requests on their existing path.
+                if (!parsedMediaType.HasValue && !monitored.HasValue && !BookListPaging.IsRequested(offset, limit))
+                {
+                    return StreamGeneralList(_bookService.GetGeneralListIds(),
+                        IncludeRequested(include, "author"),
+                        BuildBookStatisticsById(_authorStatisticsService.AuthorStatistics(normalizedMediaType)),
+                        IncludeRequested(include, "overview"), IncludeRequested(include, "links"));
+                }
+
                 // Load lean display/sync books: monitored edition only, no book files.
                 var allBooks = _bookService.GetBooksForDisplay(authorId: null, mediaType: normalizedMediaType);
                 var authors = _authorService.GetAllAuthors().ToDictionary(x => x.Id);
@@ -1737,6 +1746,37 @@ namespace Chaptarr.Api.V1.Books
                     yield return resource;
                 }
             }
+        }
+
+        private IEnumerable<BookResource> StreamGeneralList(List<int> ids, bool includeAuthor,
+            IReadOnlyDictionary<int, BookStatistics> statistics, bool includeOverview, bool includeLinks)
+        {
+            const int chunkSize = 256;
+            for (var start = 0; start < ids.Count; start += chunkSize)
+            {
+                // Keep entity locals out of the iterator state machine: none survive a yield
+                // or the start of the next repository load.
+                var resources = MapGeneralListChunk(ids.GetRange(start, Math.Min(chunkSize, ids.Count - start)),
+                    includeAuthor, statistics, includeOverview, includeLinks);
+                foreach (var resource in resources)
+                {
+                    yield return resource;
+                }
+            }
+        }
+
+        private List<BookResource> MapGeneralListChunk(List<int> ids, bool includeAuthor,
+            IReadOnlyDictionary<int, BookStatistics> statistics, bool includeOverview, bool includeLinks)
+        {
+            var books = _bookService.GetGeneralListChunk(ids);
+            var authors = _authorService.GetAuthors(books.Select(b => b.AuthorId).Distinct()).ToDictionary(a => a.Id);
+            foreach (var book in books)
+            {
+                book.Author = authors[book.AuthorId];
+            }
+
+            HydrateFilesForAvailability(books, statistics);
+            return MapToResource(books, includeAuthor, statistics, includeOverview, includeLinks);
         }
 
         // The lean index path leaves BookFiles empty; load them for books that have files in one

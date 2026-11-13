@@ -88,6 +88,8 @@ namespace NzbDrone.Core.Books
         void SetAddOptions(IEnumerable<Book> books);
         List<Book> GetAuthorBooksWithFiles(Author author);
             List<Book> GetBooksForDisplay(int? authorId = null, string mediaType = null);
+            List<int> GetGeneralListIds() => throw new NotImplementedException();
+            List<Book> GetGeneralListChunk(List<int> ids) => throw new NotImplementedException();
             List<Book> GetBooksByBaseId(string baseBookId);
             Book AddWantedEdition(int bookId, int editionId, bool asNewVariant = false);
             WantedEditionResult AddWantedEdition(int bookId, WantedEditionSelection selection) { throw new NotImplementedException(); }
@@ -2713,6 +2715,30 @@ namespace NzbDrone.Core.Books
             // With dual-instance architecture, just return the filtered books
             _logger.Debug("[DISPLAY-DEBUG] Returning {0} books for display", allBooks.Count);
             return allBooks;
+        }
+
+        public List<int> GetGeneralListIds() => _bookRepository.GetGeneralListIds();
+
+        public List<Book> GetGeneralListChunk(List<int> ids)
+        {
+            var books = _bookRepository.Get(ids).ToDictionary(b => b.Id);
+            var editions = _editionService.GetMonitoredEditionsForBookIds(ids)
+                .GroupBy(e => e.BookId).ToDictionary(g => g.Key, g => g.ToList());
+            var result = new List<Book>(ids.Count);
+            foreach (var id in ids)
+            {
+                var book = books[id];
+                book.BookFiles = new List<BookFile>();
+                book.Editions = editions.TryGetValue(id, out var rows) ? rows : new List<Edition>();
+                foreach (var edition in book.Editions.Value)
+                {
+                    edition.BookFiles = null;
+                }
+
+                result.Add(book);
+            }
+
+            return result;
         }
 
         public List<AuthorBookCount> GetBookshelfAuthorCounts(BookMediaType mediaType)

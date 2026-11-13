@@ -13,6 +13,7 @@ namespace NzbDrone.Core.Books
     public interface IEditionRepository : IBasicRepository<Edition>
     {
         List<Edition> GetMonitoredEditionsForBookList(BookMediaType? mediaType);
+        List<Edition> GetMonitoredEditionsForBookIds(IEnumerable<int> bookIds) => throw new NotImplementedException();
         List<Edition> GetMonitoredEditionsForAuthors(IEnumerable<int> authorIds, BookMediaType mediaType) => throw new NotImplementedException();
         Edition FindByForeignEditionId(string foreignEditionId);
         List<Edition> FindAllByForeignEditionId(string foreignEditionId);
@@ -67,6 +68,16 @@ namespace NzbDrone.Core.Books
             }
 
             var sql = builder.AddSelectTemplate(typeof(Edition));
+            return _database.Query<Edition>(sql.RawSql, sql.Parameters).ToList();
+        }
+
+        public List<Edition> GetMonitoredEditionsForBookIds(IEnumerable<int> bookIds)
+        {
+            var ids = bookIds.ToArray();
+            var monitored = true;
+            var sql = Builder().Select(_bookListColumns)
+                .Where<Edition>(e => e.Monitored == monitored && Enumerable.Contains(ids, e.BookId))
+                .AddSelectTemplate(typeof(Edition));
             return _database.Query<Edition>(sql.RawSql, sql.Parameters).ToList();
         }
 
