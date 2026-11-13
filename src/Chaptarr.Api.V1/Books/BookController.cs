@@ -1770,13 +1770,21 @@ namespace Chaptarr.Api.V1.Books
         {
             var books = _bookService.GetGeneralListChunk(ids);
             var authors = _authorService.GetAuthors(books.Select(b => b.AuthorId).Distinct()).ToDictionary(a => a.Id);
+            var validBooks = new List<Book>(books.Count);
             foreach (var book in books)
             {
-                book.Author = authors[book.AuthorId];
+                if (!authors.TryGetValue(book.AuthorId, out var author))
+                {
+                    _logger.Debug("Skipping book {0}: author {1} no longer present while loading general list chunk", book.Id, book.AuthorId);
+                    continue;
+                }
+
+                book.Author = author;
+                validBooks.Add(book);
             }
 
-            HydrateFilesForAvailability(books, statistics);
-            return MapToResource(books, includeAuthor, statistics, includeOverview, includeLinks);
+            HydrateFilesForAvailability(validBooks, statistics);
+            return MapToResource(validBooks, includeAuthor, statistics, includeOverview, includeLinks);
         }
 
         // The lean index path leaves BookFiles empty; load them for books that have files in one

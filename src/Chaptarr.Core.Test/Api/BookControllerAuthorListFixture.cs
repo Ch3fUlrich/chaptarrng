@@ -78,7 +78,27 @@ namespace Chaptarr.Core.Test.Api
             AssertBookListUsesDisplayFiles(unfiltered: true, paged: true);
         }
 
-        private void AssertBookListUsesDisplayFiles(bool unfiltered, bool large = false, bool paged = false)
+        [TestCase(null)]
+        [TestCase("links")]
+        public void unfiltered_stream_should_match_eager_json_for_multiple_authors(string include)
+        {
+            AssertBookListUsesDisplayFiles(unfiltered: true, varied: true, include: include);
+        }
+
+        [Test]
+        public void unfiltered_stream_should_complete_when_book_disappears_after_ids_load()
+        {
+            AssertBookListUsesDisplayFiles(unfiltered: true, missingBook: true);
+        }
+
+        [Test]
+        public void unfiltered_stream_should_complete_when_author_disappears_at_chunk_load()
+        {
+            AssertBookListUsesDisplayFiles(unfiltered: true, missingAuthor: true);
+        }
+
+        private void AssertBookListUsesDisplayFiles(bool unfiltered, bool large = false, bool paged = false,
+            bool varied = false, string include = null, bool missingBook = false, bool missingAuthor = false)
         {
             var author = new Author
             {
@@ -115,6 +135,32 @@ namespace Chaptarr.Core.Test.Api
             };
 
             var displayLoads = 0;
+            var authors = new List<Author> { author };
+            if (missingAuthor)
+            {
+                authors.Add(new Author { Id = 43, Name = "Surviving Author" });
+                books[1].AuthorId = 43;
+            }
+
+            if (varied)
+            {
+                authors.Add(new Author { Id = 43, Name = "Second Author" });
+                authors.Add(new Author { Id = 44, Name = "Third Author" });
+                books[0].Editions = new List<Edition>();
+                books[0].HardcoverBookId = "100";
+                books[1].Editions = new List<Edition>();
+                books[1].AuthorId = 43;
+                books.Add(new Book
+                {
+                    Id = 102, AuthorId = 44, Title = "Third Book", MediaType = BookMediaType.Ebook,
+                    Ratings = new Ratings(), Editions = new List<Edition>
+                    {
+                        new Edition { Id = 502, BookId = 102, Monitored = true }
+                    }
+                });
+                books.Add(new Book { Id = 103, AuthorId = 999, Title = "Orphan", Ratings = new Ratings() });
+            }
+
             var liveBooks = new List<WeakReference>();
             var entityLoads = 0;
             if (large)
@@ -150,8 +196,8 @@ namespace Chaptarr.Core.Test.Api
                 authorService: Proxy<IAuthorService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
                     [nameof(IAuthorService.GetAuthor)] = (_, _) => author,
-                    [nameof(IAuthorService.GetAuthors)] = (_, _) => new List<Author> { author },
-                    [nameof(IAuthorService.GetAllAuthors)] = (_, _) => new List<Author> { author }
+                    [nameof(IAuthorService.GetAuthors)] = (_, _) => authors,
+                    [nameof(IAuthorService.GetAllAuthors)] = (_, _) => authors
                 }),
                 bookService: Proxy<IBookService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
@@ -167,6 +213,11 @@ namespace Chaptarr.Core.Test.Api
                         var ids = (List<int>)args[0];
                         Assert.That(ids.Count, Is.LessThanOrEqualTo(256));
                         entityLoads++;
+                        if (missingAuthor)
+                        {
+                            authors.Remove(author);
+                        }
+
                         var chunk = large ? ids.Select(id => new Book
                         {
                             Id = id, AuthorId = author.Id, Title = "Generated book " + id,
@@ -176,6 +227,24 @@ namespace Chaptarr.Core.Test.Api
                         if (large)
                         {
                             liveBooks.AddRange(chunk.Select(b => new WeakReference(b)));
+                        }
+
+                        if (missingBook)
+                        {
+                            // Exercise the real service after the id snapshot, with a partial repository result.
+                            var service = new BookService(
+                                Proxy<IBookRepository>(new Dictionary<string, Func<MethodInfo, object[], object>>
+                                {
+                                    [nameof(IBookRepository.Get)] = (_, _) => chunk.Where(b => b.Id != 100).ToList()
+                                }),
+                                Proxy<IEditionService>(new Dictionary<string, Func<MethodInfo, object[], object>>
+                                {
+                                    [nameof(IEditionService.GetMonitoredEditionsForBookIds)] = (_, _) => new List<Edition>()
+                                }),
+                                eventAggregator: null, authorService: null, mediaFileService: null,
+                                rootFolderService: null, seriesBookLinkRepository: null,
+                                multiCopySeriesService: null, logger: LogManager.GetCurrentClassLogger());
+                            return service.GetGeneralListChunk(ids);
                         }
 
                         return chunk;
@@ -195,7 +264,16 @@ namespace Chaptarr.Core.Test.Api
                 editionSelector: null,
                 seriesBookLinkService: Proxy<ISeriesBookLinkService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
-                    [nameof(ISeriesBookLinkService.GetLinksByBook)] = (_, _) => new List<SeriesBookLink>()
+                    [nameof(ISeriesBookLinkService.GetLinksByBook)] = (_, _) => varied
+                        ? new List<SeriesBookLink>
+                        {
+                            new SeriesBookLink
+                            {
+                                BookId = 102, SeriesId = 700, Position = "1",
+                                Series = new Series { Id = 700, Title = "Fixture Series" }
+                            }
+                        }
+                        : new List<SeriesBookLink>()
                 }),
                 authorStatisticsService: Proxy<IAuthorStatisticsService>(new Dictionary<string, Func<MethodInfo, object[], object>>
                 {
@@ -208,7 +286,9 @@ namespace Chaptarr.Core.Test.Api
                     {
                         if (!large)
                         {
-                            Assert.That((List<int>)args[0], Is.EquivalentTo(new[] { 100, 101 }));
+                            Assert.That((List<int>)args[0], Is.EqualTo(books
+                                .Where(b => authors.Any(a => a.Id == b.AuthorId) && (!missingBook || b.Id != 100))
+                                .Select(b => b.Id).ToList()));
                         }
                         displayLoads++;
                         return new List<BookFile> { displayFile };
@@ -233,12 +313,12 @@ namespace Chaptarr.Core.Test.Api
             var before = GC.GetTotalMemory(true);
             controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
             string expectedJson = null;
-            if (unfiltered && !large)
+            if (unfiltered && !large && !missingBook && !missingAuthor)
             {
                 // Reproduce the former eager general-list mapping on the same fixture.
                 foreach (var book in books)
                 {
-                    book.Author = author;
+                    book.Author = authors.SingleOrDefault(a => a.Id == book.AuthorId);
                     book.BookFiles = book.Id == 100 ? new List<BookFile> { displayFile } : new List<BookFile>();
                 }
 
@@ -246,13 +326,21 @@ namespace Chaptarr.Core.Test.Api
                     BindingFlags.Instance | BindingFlags.NonPublic, null,
                     new[] { typeof(List<Book>), typeof(bool), typeof(IReadOnlyDictionary<int, BookStatistics>), typeof(bool), typeof(bool) }, null);
                 expectedJson = NzbDrone.Common.Serializer.STJson.ToJson(map.Invoke(controller,
-                    new object[] { books, false, new Dictionary<int, BookStatistics>(), false, false }));
+                    new object[] { books.Where(b => b.Author != null).ToList(), false, new Dictionary<int, BookStatistics>(), false, include == "links" }));
+                // Do not let eager hydration mask a missing streamed relationship load.
+                foreach (var book in books)
+                {
+                    book.Author = null;
+                    book.SeriesLinks = new List<SeriesBookLink>();
+                    book.BookFiles = new List<BookFile>();
+                }
             }
 
             var sequence = controller.GetBooks(
                 authorId: unfiltered ? (int?)null : author.Id,
                 bookIds: new List<int>(),
                 bookId: null,
+                include: include,
                 mediaType: unfiltered && !paged ? null : "ebook",
                 offset: paged ? 0 : (int?)null,
                 limit: paged ? 2 : (int?)null);
@@ -285,8 +373,14 @@ namespace Chaptarr.Core.Test.Api
                 Assert.That(NzbDrone.Common.Serializer.STJson.ToJson(resources), Is.EqualTo(expectedJson));
             }
 
-            Assert.That(resources.Select(x => x.Id), Is.EquivalentTo(new[] { 100, 101 }));
+            Assert.That(resources.Select(x => x.Id), Is.EqualTo(missingBook || missingAuthor
+                ? new[] { 101 } : varied ? new[] { 100, 101, 102 } : new[] { 100, 101 }));
             Assert.That(displayLoads, Is.EqualTo(unfiltered ? 1 : 0));
+            if (missingBook || missingAuthor)
+            {
+                Assert.That(NzbDrone.Common.Serializer.STJson.ToJson(resources), Does.EndWith("]"));
+                return;
+            }
             if (!unfiltered)
             {
                 var resource = resources.Single(x => x.Id == 100);

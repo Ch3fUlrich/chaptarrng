@@ -2727,7 +2727,11 @@ namespace NzbDrone.Core.Books
             var result = new List<Book>(ids.Count);
             foreach (var id in ids)
             {
-                var book = books[id];
+                if (!books.TryGetValue(id, out var book))
+                {
+                    _logger.Debug("Skipping book {0}: no longer present while loading general list chunk", id);
+                    continue;
+                }
                 book.BookFiles = new List<BookFile>();
                 book.Editions = editions.TryGetValue(id, out var rows) ? rows : new List<Edition>();
                 foreach (var edition in book.Editions)
